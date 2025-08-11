@@ -132,20 +132,96 @@ public enum Token {
 
     public final boolean primary;
     public final boolean keyword;
+    public final Boolean regexAllowed;
 
     Token() {
         primary = true;
         keyword = false;
+        regexAllowed = isRegexAllowed(this);
     }
 
     Token(boolean primary, boolean keyword) {
         this.primary = primary;
         this.keyword = keyword;
+        regexAllowed = isRegexAllowed(this);
     }
 
     Token(boolean primary) {
         this.primary = primary;
         this.keyword = false;
+        regexAllowed = isRegexAllowed(this);
+    }
+
+    private static Boolean isRegexAllowed(Token token) {
+        switch (token) {
+            // after these tokens, a regex literal is allowed (rather than division)
+            case L_PAREN:
+            case L_BRACKET:
+            case L_CURLY:
+            case COMMA:
+            case SEMI:
+            case COLON:
+            case EQ:
+            case EQ_EQ:
+            case EQ_EQ_EQ:
+            case NOT_EQ:
+            case NOT_EQ_EQ:
+            case LT:
+            case LT_EQ:
+            case GT:
+            case GT_EQ:
+            case PLUS:
+            case PLUS_EQ:
+            case MINUS:
+            case MINUS_EQ:
+            case STAR:
+            case STAR_EQ:
+            case STAR_STAR:
+            case STAR_STAR_EQ:
+            case SLASH_EQ:
+            case PERCENT:
+            case PERCENT_EQ:
+            case AMP:
+            case AMP_EQ:
+            case AMP_AMP:
+            case AMP_AMP_EQ:
+            case PIPE:
+            case PIPE_EQ:
+            case PIPE_PIPE:
+            case PIPE_PIPE_EQ:
+            case CARET:
+            case CARET_EQ:
+            case QUES:
+            case QUES_QUES:
+            case TILDE:
+            case NOT:
+            case RETURN:
+            case TYPEOF:
+            case DELETE:
+            case INSTANCEOF:
+            case IN:
+            case DO:
+            case IF:
+            case ELSE:
+            case CASE:
+            case DEFAULT:
+            case THROW:
+                return true;
+            // after these tokens, a regex literal is not allowed
+            case R_PAREN:
+            case R_BRACKET:
+            case R_CURLY:
+            case IDENT:
+            case NUMBER:
+            case S_STRING:
+            case D_STRING:
+            case TRUE:
+            case FALSE:
+            case NULL:
+                return false;
+        }
+        // for other tokens, keep the current value of regexAllowed
+        return null;
     }
 
 }

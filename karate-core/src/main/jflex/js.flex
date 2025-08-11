@@ -37,84 +37,10 @@ ArrayDeque<Integer> kkStack;
 void kkPush() { if (kkStack == null) kkStack = new ArrayDeque<>(); kkStack.push(yystate()); }
 int kkPop() { return kkStack.pop(); }
 
-private void updateRegexAllowed(Token token) {
-    switch (token) {
-        // after these tokens, a regex literal is allowed (rather than division)
-        case L_PAREN:
-        case L_BRACKET:
-        case L_CURLY:
-        case COMMA:
-        case SEMI:
-        case COLON:
-        case EQ:
-        case EQ_EQ:
-        case EQ_EQ_EQ:
-        case NOT_EQ:
-        case NOT_EQ_EQ:
-        case LT:
-        case LT_EQ:
-        case GT:
-        case GT_EQ:
-        case PLUS:
-        case PLUS_EQ:
-        case MINUS:
-        case MINUS_EQ:
-        case STAR:
-        case STAR_EQ:
-        case STAR_STAR:
-        case STAR_STAR_EQ:
-        case SLASH_EQ:
-        case PERCENT:
-        case PERCENT_EQ:
-        case AMP:
-        case AMP_EQ:
-        case AMP_AMP:
-        case AMP_AMP_EQ:
-        case PIPE:
-        case PIPE_EQ:
-        case PIPE_PIPE:
-        case PIPE_PIPE_EQ:
-        case CARET:
-        case CARET_EQ:
-        case QUES:
-        case QUES_QUES:
-        case TILDE:
-        case NOT:
-        case RETURN:
-        case TYPEOF:
-        case DELETE:
-        case INSTANCEOF:
-        case IN:
-        case DO:
-        case IF:
-        case ELSE:
-        case CASE:
-        case DEFAULT:
-        case THROW:
-            regexAllowed = true;
-            break;
-        // after these tokens, a regex literal is not allowed
-        case R_PAREN:
-        case R_BRACKET:
-        case R_CURLY:
-        case IDENT:
-        case NUMBER:
-        case S_STRING:
-        case D_STRING:
-        case TRUE:
-        case FALSE:
-        case NULL:
-            regexAllowed = false;
-            break;
-        // for other tokens, keep the current value of regexAllowed
-        default:
-            // no change to regexAllowed
-            break;
-    }
-}
-
 private Token update(Token token) {
-    updateRegexAllowed(token);
+    if (token.regexAllowed != null) {
+        regexAllowed = token.regexAllowed;
+    }
     return token;
 }
 %}
