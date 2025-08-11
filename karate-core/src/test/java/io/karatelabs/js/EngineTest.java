@@ -16,7 +16,7 @@ class EngineTest {
 
     @Test
     void test01() {
-        File file = new File("src/test/resources/test-01.js");
+        File file = new File("src/test/resources/js/test-01.js");
         Engine engine = new Engine();
         Object result = engine.eval(file);
         assertEquals("foobar", result);
@@ -25,7 +25,7 @@ class EngineTest {
 
     @Test
     void test02() {
-        File file = new File("src/test/resources/test-02.js");
+        File file = new File("src/test/resources/js/test-02.js");
         Engine engine = new Engine();
         Object result = engine.eval(file);
         assertEquals(Map.of("data", "{\\\"myKey\\\":\\\"myValue\\\"}"), result);
@@ -33,7 +33,7 @@ class EngineTest {
 
     @Test
     void test03() {
-        File file = new File("src/test/resources/test-03.js");
+        File file = new File("src/test/resources/js/test-03.js");
         Source source = Source.of(file);
         Parser parser = new Parser(source);
         Node node = parser.parse();
@@ -43,7 +43,7 @@ class EngineTest {
 
     @Test
     void test04() {
-        File file = new File("src/test/resources/test-04.js");
+        File file = new File("src/test/resources/js/test-04.js");
         Source source = Source.of(file);
         Parser parser = new Parser(source);
         Node node = parser.parse();
@@ -55,7 +55,7 @@ class EngineTest {
 
     @Test
     void test05() {
-        File file = new File("src/test/resources/test-05.js");
+        File file = new File("src/test/resources/js/test-05.js");
         Engine engine = new Engine();
         String result = (String) engine.eval(file);
         assertTrue(result.startsWith("411111"));
