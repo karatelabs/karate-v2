@@ -66,6 +66,9 @@ REGEX = "/" [^*/\n] ([^/\\\n]|\\[^\n])* "/" [:jletter:]*
 
 %%
 
+// applies to all states
+<<EOF>>                         { return EOF; }
+
 <YYINITIAL, PLACEHOLDER> {
   {WS}* {LF} {WS}*              { return update(WS_LF); }
   {WS}+                         { return update(WS); }
@@ -189,10 +192,3 @@ return update(SLASH);
     "${"                        { kkPush(); yybegin(PLACEHOLDER); return update(DOLLAR_L_CURLY); }
     {T_STRING}                  { return update(T_STRING); }
 }
-
-// Add EOF handling for all states
-<YYINITIAL> <<EOF>>             { return update(EOF); }
-
-<TEMPLATE> <<EOF>>              { return update(EOF); }
-
-<PLACEHOLDER> <<EOF>>           { return update(EOF); }
