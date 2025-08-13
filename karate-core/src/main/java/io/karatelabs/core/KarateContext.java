@@ -39,7 +39,6 @@ public class KarateContext implements SimpleObject {
 
     public final Engine engine;
     private final HttpClient client;
-    private final StringBuilder logBuffer = new StringBuilder();
     private final Resource root;
 
     public KarateContext(Resource root) {
@@ -55,7 +54,6 @@ public class KarateContext implements SimpleObject {
     }
 
     void onConsole(String text) {
-        logBuffer.append(text);
         logger.info(text);
     }
 

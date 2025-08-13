@@ -110,6 +110,10 @@ public class Engine {
         context.declare(name, value);
     }
 
+    public void remove(String name) {
+        context.remove(name);
+    }
+
     public Object get(String name) {
         Object value = context.get(name);
         if (isUndefined(value) && convertUndefined) {
