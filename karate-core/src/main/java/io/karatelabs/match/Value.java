@@ -203,7 +203,7 @@ public class Value {
     }
 
     public Result is(Match.Type matchType, Object expected) {
-        Operation op = new Operation(matchType, this, new Value(parseIfJsonOrXmlString(expected), exceptionOnMatchFailure), false);
+        Operation op = new Operation(matchType, this, new Value(parseIfJsonOrXmlString(expected), exceptionOnMatchFailure));
         op.execute();
         if (op.pass) {
             return Result.PASS;

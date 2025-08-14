@@ -48,12 +48,12 @@ public class Operation {
     boolean pass = true;
     private String failReason;
 
-    Operation(Match.Type type, Value actual, Value expected, boolean matchEachEmptyAllowed) {
-        this(new Engine(), null, type, actual, expected, matchEachEmptyAllowed);
+    Operation(Match.Type type, Value actual, Value expected) {
+        this(new Engine(), null, type, actual, expected, false);
     }
 
-    Operation(Engine engine, Match.Type type, Value actual, Value expected, boolean matchEachEmptyAllowed) {
-        this(engine, null, type, actual, expected, matchEachEmptyAllowed);
+    Operation(Engine engine, Match.Type type, Value actual, Value expected) {
+        this(engine, null, type, actual, expected, false);
     }
 
     Operation(Context context, Match.Type type, Value actual, Value expected, boolean matchEachEmptyAllowed) {
@@ -259,19 +259,6 @@ public class Operation {
                 Match.Type nestedType = macroToMatchType(false, macro);
                 int startPos = matchTypeToStartPos(nestedType);
                 macro = macro.substring(startPos);
-                if (actual.isList()) { // special case, look for partial maps within list
-                    switch (nestedType) {
-                        case CONTAINS:
-                            nestedType = Match.Type.CONTAINS_DEEP;
-                            break;
-                        case CONTAINS_ONLY:
-                            nestedType = Match.Type.CONTAINS_ONLY_DEEP;
-                            break;
-                        case CONTAINS_ANY:
-                            nestedType = Match.Type.CONTAINS_ANY_DEEP;
-                            break;
-                    }
-                }
                 context.engine.set("$", context.root.actual.getValue());
                 context.engine.set("_", actual.getValue());
                 Object evalResult = context.engine.eval(macro);
@@ -451,8 +438,8 @@ public class Operation {
                 Map<String, Object> expMap = expected.getValue();
                 return matchMapValues(actMap, expMap);
             case XML:
-                Map<String, Object> actXml = (Map) Xml.toObject(actual.getValue(), true);
-                Map<String, Object> expXml = (Map) Xml.toObject(expected.getValue(), true);
+                Map<String, Object> actXml = (Map<String, Object>) Xml.toObject(actual.getValue(), true);
+                Map<String, Object> expXml = (Map<String, Object>) Xml.toObject(expected.getValue(), true);
                 return matchMapValues(actXml, expXml);
             case OTHER:
                 return actual.getValue().equals(expected.getValue());
@@ -549,8 +536,8 @@ public class Operation {
                 String expString = expected.getValue();
                 return actString.contains(expString);
             case LIST:
-                List actList = actual.getValue();
-                List expList = expected.getValue();
+                List<Object> actList = actual.getValue();
+                List<Object> expList = expected.getValue();
                 int actListCount = actList.size();
                 int expListCount = expList.size();
                 // visited array used to handle duplicates
@@ -587,17 +574,16 @@ public class Operation {
                                 return true; // exit early
                             }
                             // contains only : If element is found also check its occurrence in actVisitedList
-                            else if(type == Match.Type.CONTAINS_ONLY) {
+                            else if (type == Match.Type.CONTAINS_ONLY) {
                                 // if not yet visited
-                                if(!actVisitedList[i]) {
+                                if (!actVisitedList[i]) {
                                     // mark it visited
-                                    actVisitedList[i]  = true;
+                                    actVisitedList[i] = true;
                                     found = true;
                                     break; // next item in expected list
                                 }
                                 // else do nothing does not consider it a match
-                            }
-                            else {
+                            } else {
                                 found = true;
                                 break; // next item in expected list
                             }

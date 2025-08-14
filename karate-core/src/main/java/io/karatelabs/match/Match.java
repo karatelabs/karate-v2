@@ -27,42 +27,22 @@ public class Match {
 
     public enum Type {
 
-        EQUALS(false, false, true, false, false, false, false, false),
-        NOT_EQUALS(false, true, true, false, false, false, false, false),
-        CONTAINS(false, false, false, false, true, false, false, false),
-        NOT_CONTAINS(false, true, false, false, true, false, false, false),
-        CONTAINS_ONLY(false, false, false, false, true, false, true, false),
-        CONTAINS_ANY(false, false, false, false, true, true, false, false),
-        CONTAINS_DEEP(false, false, false, false, true, false, false, true),
-        CONTAINS_ONLY_DEEP(false, false, false, false, true, false, true, true),
-        CONTAINS_ANY_DEEP(false, false, false, false, true, true, false, true),
-        EACH_EQUALS(true, false, true, false, false, false, false, false),
-        EACH_NOT_EQUALS(true, true, true, false, false, false, false, false),
-        EACH_CONTAINS(true, false, false, false, true, false, false, false),
-        EACH_NOT_CONTAINS(true, true, false, false, true, false, false, false),
-        EACH_CONTAINS_ONLY(true, false, false, false, true, false, true, false),
-        EACH_CONTAINS_ANY(true, false, false, false, true, true, false, false),
-        EACH_CONTAINS_DEEP(true, false, false, false, true, false, false, true);
-
-        public final boolean each;
-        public final boolean not;
-        public final boolean equals;
-        public final boolean within;
-        public final boolean contains;
-        public final boolean any;
-        public final boolean only;
-        public final boolean deep;
-
-        Type(boolean each, boolean not, boolean equals, boolean within, boolean contains, boolean any, boolean only, boolean deep) {
-            this.each = each;
-            this.not = not;
-            this.equals = equals;
-            this.within = within;
-            this.contains = contains;
-            this.any = any;
-            this.only = only;
-            this.deep = deep;
-        }
+        EQUALS,
+        NOT_EQUALS,
+        CONTAINS,
+        NOT_CONTAINS,
+        CONTAINS_ONLY,
+        CONTAINS_ANY,
+        CONTAINS_DEEP,
+        CONTAINS_ONLY_DEEP,
+        CONTAINS_ANY_DEEP,
+        EACH_EQUALS,
+        EACH_NOT_EQUALS,
+        EACH_CONTAINS,
+        EACH_NOT_CONTAINS,
+        EACH_CONTAINS_ONLY,
+        EACH_CONTAINS_ANY,
+        EACH_CONTAINS_DEEP
 
     }
 
