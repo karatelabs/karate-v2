@@ -416,8 +416,8 @@ public class Operation {
                 byte[] expBytes = expected.getValue();
                 return Arrays.equals(actBytes, expBytes);
             case LIST:
-                List actList = actual.getValue();
-                List expList = expected.getValue();
+                List<Object> actList = actual.getValue();
+                List<Object> expList = expected.getValue();
                 int actListCount = actList.size();
                 int expListCount = expList.size();
                 if (actListCount != expListCount) {
@@ -509,7 +509,7 @@ public class Operation {
             }
         }
         if (type == Match.Type.CONTAINS_ANY || type == Match.Type.CONTAINS_ANY_DEEP) {
-            return unMatchedKeysExp.isEmpty() ? true : fail("no key-values matched");
+            return unMatchedKeysExp.isEmpty() || fail("no key-values matched");
         }
         if (unMatchedKeysExp.isEmpty()) {
             if (type == Match.Type.CONTAINS || type == Match.Type.CONTAINS_DEEP) {
