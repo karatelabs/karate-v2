@@ -23,8 +23,9 @@
  */
 package io.karatelabs.js;
 
-import static io.karatelabs.js.Token.*;
 import java.util.ArrayDeque;
+
+import static io.karatelabs.js.Token.*;
 %%
 
 %class Lexer
@@ -36,13 +37,7 @@ boolean regexAllowed = true; // start with true since a regex can appear at the 
 ArrayDeque<Integer> kkStack;
 void kkPush() { if (kkStack == null) kkStack = new ArrayDeque<>(); kkStack.push(yystate()); }
 int kkPop() { return kkStack.pop(); }
-
-private Token update(Token token) {
-    if (token.regexAllowed != null) {
-        regexAllowed = token.regexAllowed;
-    }
-    return token;
-}
+private Token update(Token token) { if (token.regexAllowed != null) regexAllowed = token.regexAllowed; return token; }
 %}
 
 WS = [ \t]
@@ -155,25 +150,12 @@ REGEX = "/" [^*/\n] ([^/\\\n]|\\[^\n])* "/" [:jletter:]*
   "*="                          { return update(STAR_EQ); }
   "*"                           { return update(STAR); }
   "/="                          { return update(SLASH_EQ); }
-  "/"                           {
-if (regexAllowed) {
-    return update(REGEX);
-}
-return update(SLASH);
-}
   "%="                          { return update(PERCENT_EQ); }
   "%"                           { return update(PERCENT); }
   "~"                           { return update(TILDE); }
+  "/"                           { return regexAllowed ? update(REGEX) : update(SLASH); }
   //====
-  {REGEX}                       {
-    if (regexAllowed) {
-        return update(REGEX);
-    } else {
-        // push back all but the first slash character
-        yypushback(yylength() - 1);
-        return update(SLASH);
-    }
-  }
+  {REGEX}                       { if (regexAllowed) return update(REGEX); yypushback(yylength() - 1); return update(SLASH); }
   {L_COMMENT}                   { return update(L_COMMENT); }
   {B_COMMENT}                   { return update(B_COMMENT); }
   {S_STRING}                    { return update(S_STRING); }
