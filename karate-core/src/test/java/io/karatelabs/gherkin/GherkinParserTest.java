@@ -1,20 +1,50 @@
 package io.karatelabs.gherkin;
 
-import io.karatelabs.js.Source;
+import io.karatelabs.js.*;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
 
 class GherkinParserTest {
 
     static final Logger logger = LoggerFactory.getLogger(GherkinParserTest.class);
 
+    private static void equals(String text, String json, Type type) {
+        Parser parser = new Parser(Source.of(text), true);
+        Node node = parser.parse();
+        Node child;
+        if (type == null) {
+            child = node;
+        } else {
+            Node found = node.findFirst(type);
+            child = found.children.get(0);
+        }
+        NodeUtils.assertEquals(text, child, json);
+    }
+
+    private static void feature(String text, String json) {
+        equals(text, json, null);
+    }
+
     @Test
-    void test01() {
-        File file = new File("src/test/resources/feature/test-01.feature");
-        GherkinParser parser = new GherkinParser(Source.of(file));
+    void testSimple() {
+        feature("""
+                Feature:
+                """, "Feature:");
+        feature("""
+                Feature: description
+                """, "['Feature: ', 'description']");
+        feature("""
+                Feature: feature description
+                Scenario: scenario description
+                """, "['Feature: ', 'feature description', ['Scenario: ', 'scenario description',[]]]");
+        feature("""
+                Feature: f
+                Scenario: s
+                  * print 'hello'
+                  # just a comment
+                  * print 'world'
+                """, "['Feature: ', 'f', ['Scenario: ', 's',[['* ', \"print 'hello'\"], ['* ', \"print 'world'\"]]]]");
     }
 
 

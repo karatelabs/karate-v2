@@ -27,6 +27,7 @@ public enum Token {
 
     WS_LF(false),
     WS(false),
+    EOF(false),
     BACKTICK,
     L_CURLY,
     R_CURLY,
@@ -128,7 +129,20 @@ public enum Token {
     DOLLAR_L_CURLY,
     T_STRING,
     //====
-    EOF(false);
+    G_PREFIX,
+    G_STEP,
+    G_STEP_TEXT,
+    G_COMMENT(false),
+    G_DESC,
+    G_FEATURE,
+    G_SCENARIO,
+    G_SCENARIO_OUTLINE,
+    G_EXAMPLES,
+    G_BACKGROUND,
+    G_TAG,
+    G_TRIPLE_QUOTE,
+    G_PIPE,
+    G_TABLE_CELL;
 
     public final boolean primary;
     public final boolean keyword;

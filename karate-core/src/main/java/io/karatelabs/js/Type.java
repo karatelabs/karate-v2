@@ -80,6 +80,11 @@ public enum Type {
     PAREN_EXPR,
     LIT_TEMPLATE,
     PLACEHOLDER,
-    REGEX_LITERAL
+    REGEX_LITERAL,
+    //====
+    G_FEATURE,
+    G_SCENARIO,
+    G_STEPS,
+    G_STEP
 
 }

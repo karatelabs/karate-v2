@@ -59,6 +59,16 @@ REGEX = "/" [^*/\n] ([^/\\\n]|\\[^\n])* "/" [:jletter:]*
 
 %state TEMPLATE PLACEHOLDER
 
+// gherkin macros and states
+GM_LINE = [^\r\n]+
+
+GM_HEADER = "Scenario:"|"Scenario Outline:"|"Examples:"|"Background:"
+GM_PREFIX = "*"|"Given"|"When"|"Then"|"And"|"But"
+GM_TRIPLE_QUOTE = \"\"\"
+GM_TAG = "@" [^ \t\r\n]+
+
+%state GHERKIN GS_DESC GS_STEP GS_DOC_STRING GS_TABLE_ROW GS_TAGS GS_COMMENT
+
 %%
 
 // applies to all states
@@ -173,4 +183,47 @@ REGEX = "/" [^*/\n] ([^/\\\n]|\\[^\n])* "/" [:jletter:]*
     "$"                         { return update(T_STRING); }
     "${"                        { kkPush(); yybegin(PLACEHOLDER); return update(DOLLAR_L_CURLY); }
     {T_STRING}                  { return update(T_STRING); }
+}
+
+<GHERKIN> {
+  {WS}* {LF} {WS}*              { return WS_LF; }
+  {WS}+                         { return WS; }
+  {GM_PREFIX} {WS}+             { yybegin(GS_STEP); return G_PREFIX; }
+  "#"                           { yypushback(1); yybegin(GS_COMMENT); }
+  "Scenario:" {WS}*             { yybegin(GS_DESC); return G_SCENARIO; }
+  "Scenario Outline:" {WS}*     { yybegin(GS_DESC); return G_SCENARIO_OUTLINE; }
+  "Examples:" {WS}*             { yybegin(GS_DESC); return G_EXAMPLES; }
+  "Feature:" {WS}*              { yybegin(GS_DESC); return G_FEATURE; }
+  "Background:" {WS}*           { yybegin(GS_DESC); return G_BACKGROUND; }
+  {GM_TRIPLE_QUOTE} {WS}*       { yybegin(GS_DOC_STRING); return G_TRIPLE_QUOTE; }
+  "|"                           { yybegin(GS_TABLE_ROW); return G_PIPE; }
+  {GM_TAG}                      { yybegin(GS_TAGS); return G_TAG; }
+}
+
+<GS_COMMENT> {
+  {GM_LINE}                     { return G_COMMENT; }
+  {LF}                          { yybegin(GHERKIN); return WS_LF; }
+}
+
+<GS_DESC> {
+  {GM_LINE}                     { return G_DESC; }
+  {LF} {WS}* / ({GM_HEADER}|{GM_PREFIX}|"#"|"@"|"|") { yybegin(GHERKIN); return WS_LF; }
+  {LF}                          { return WS_LF; }
+}
+
+<GS_TAGS> {
+  {GM_TAG}                      { return G_TAG; }
+  {WS}+                         { return WS; }
+  {LF}                          { yybegin(GHERKIN); return WS_LF; }
+}
+
+<GS_TABLE_ROW> {
+  [^\|\r\n]+                    { return G_TABLE_CELL; }
+  "|"                           { return G_PIPE; }
+  {LF}                          { yybegin(GHERKIN); return WS_LF; }
+}
+
+<GS_STEP> {
+  {GM_LINE}                     { return G_STEP_TEXT; }
+  {LF}                          { yybegin(GHERKIN); return WS_LF; }
 }

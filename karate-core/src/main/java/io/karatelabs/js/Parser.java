@@ -37,6 +37,7 @@ public class Parser {
 
     private final List<Chunk> chunks;
     private final int size;
+    private final boolean gherkin;
 
     private int position = 0;
     private Marker marker;
@@ -46,8 +47,13 @@ public class Parser {
     }
 
     public Parser(Source source) {
-        chunks = getChunks(source);
+        this(source, false);
+    }
+
+    public Parser(Source source, boolean gherkin) {
+        chunks = getChunks(source, gherkin);
         size = chunks.size();
+        this.gherkin = gherkin;
         marker = new Marker(position, null, new Node(Type.ROOT), -1);
     }
 
@@ -173,9 +179,12 @@ public class Parser {
         return result;
     }
 
-    private static List<Chunk> getChunks(Source source) {
+    private static List<Chunk> getChunks(Source source, boolean gherkin) {
         CharArrayReader reader = new CharArrayReader(source.text.toCharArray());
         Lexer lexer = new Lexer(reader);
+        if (gherkin) {
+            lexer.yybegin(Lexer.GHERKIN);
+        }
         List<Chunk> list = new ArrayList<>();
         Chunk prev = null;
         int line = 0;
@@ -293,9 +302,62 @@ public class Parser {
         return chunk.prev != null && chunk.prev.token == Token.WS_LF;
     }
 
+    public Node parse() {
+        return gherkin ? parseGherkin() : parseJs();
+    }
+
     //==================================================================================================================
     //
-    public Node parse() {
+    private Node parseGherkin() {
+        enter(Type.G_FEATURE);
+        final Node feature = marker.node;
+        if (peekIf(Token.G_TAG)) {
+            // TODO
+        }
+        consume(Token.G_FEATURE);
+        consumeIf(Token.G_DESC);
+        if (peekIf(Token.G_BACKGROUND)) {
+            // TODO
+        }
+        while (true) {
+            final Token next = peek();
+            if (next == Token.G_SCENARIO) {
+                enter(Type.G_SCENARIO);
+                consume(Token.G_SCENARIO);
+                consumeIf(Token.G_DESC);
+                g_steps();
+            } else if (next == Token.G_SCENARIO_OUTLINE) {
+                // TODO
+            } else {
+                break;
+            }
+        }
+        if (peek() != Token.EOF) {
+            error("cannot parse feature");
+        }
+        exit();
+        return feature;
+    }
+
+    private void g_steps() {
+        enter(Type.G_STEPS);
+        while (true) {
+            final Token next = peek();
+            if (next == Token.G_PREFIX) {
+                enter(Type.G_STEP);
+                consume(Token.G_PREFIX);
+                consume(Token.G_STEP_TEXT);
+                exit();
+            } else {
+                break;
+            }
+        }
+        exit();
+    }
+
+    //==================================================================================================================
+    //
+    private Node parseJs() {
         enter(Type.PROGRAM);
         final Node program = marker.node;
         while (true) {
@@ -873,5 +935,7 @@ public class Parser {
         consume(Token.R_PAREN);
         return exit();
     }
+
+
 
 }
