@@ -21,15 +21,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.js;
+package io.karatelabs.common;
 
 import java.io.File;
-import java.nio.file.Files;
 
 public class Source {
 
-    public final String text;
-    public final File file;
+    public final Resource resource;
+    private String text;
 
     String[] lines;
 
@@ -38,42 +37,37 @@ public class Source {
     }
 
     public static Source of(File file) {
-        String text = toString(file);
-        return new Source(file, text);
+        Resource resource = Resource.file(file);
+        return new Source(resource, null);
     }
 
-    private static String toString(File file) {
-        try {
-            return Files.readString(file.toPath());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private Source(File file, String text) {
-        this.file = file;
+    private Source(Resource resource, String text) {
+        this.resource = resource;
         this.text = text;
+    }
+
+    public String getText() {
+        if (text == null) {
+            text = resource.getText();
+        }
+        return text;
     }
 
     public String getLine(int index) {
         if (lines == null) {
-            lines = text.split("\\r?\\n");
+            lines = getText().split("\\r?\\n");
         }
         return lines[index];
     }
 
     @Override
     public String toString() {
-        return file == null ? "" : file.toString();
+        return getText();
     }
 
-    public String getStringForLog() {
-        if (file != null) {
-            try {
-                return "file://" + file.getCanonicalFile();
-            } catch (Exception ee) {
-                return file.getPath();
-            }
+    public String getPathForLog() {
+        if (resource != null) {
+            return resource.getUri().toString();
         } else {
             return "(inline)";
         }

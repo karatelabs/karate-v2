@@ -23,6 +23,8 @@
  */
 package io.karatelabs.js;
 
+import io.karatelabs.common.Source;
+
 import java.io.File;
 import java.util.Map;
 
@@ -97,7 +99,7 @@ public class Engine {
             if (message == null) {
                 message = e + "";
             }
-            message = message + "\n" + source.getStringForLog();
+            message = message + "\n" + source.getPathForLog();
             throw new RuntimeException(message);
         }
     }

@@ -1,5 +1,7 @@
 package io.karatelabs.js;
 
+import io.karatelabs.common.Source;
+
 public class GherkinParser extends Parser {
 
     public GherkinParser(Source source) {

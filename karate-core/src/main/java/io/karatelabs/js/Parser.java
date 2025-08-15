@@ -23,6 +23,7 @@
  */
 package io.karatelabs.js;
 
+import io.karatelabs.common.Source;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -176,7 +177,7 @@ abstract class Parser {
     }
 
     static List<Chunk> getChunks(Source source, boolean gherkin) {
-        CharArrayReader reader = new CharArrayReader(source.text.toCharArray());
+        CharArrayReader reader = new CharArrayReader(source.getText().toCharArray());
         Lexer lexer = new Lexer(reader);
         if (gherkin) {
             lexer.yybegin(Lexer.GHERKIN);
@@ -219,7 +220,7 @@ abstract class Parser {
                 }
             }
         } catch (Throwable e) {
-            String message = "lexer failed at [" + (line + 1) + ":" + (col + 1) + "] prev: " + prev + "\n" + source.getStringForLog();
+            String message = "lexer failed at [" + (line + 1) + ":" + (col + 1) + "] prev: " + prev + "\n" + source.getPathForLog();
             throw new ParserException(message, e);
         }
         return list;

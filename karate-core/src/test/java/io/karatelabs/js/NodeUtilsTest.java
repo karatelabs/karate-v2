@@ -1,5 +1,6 @@
 package io.karatelabs.js;
 
+import io.karatelabs.common.Source;
 import org.junit.jupiter.api.Test;
 
 class NodeUtilsTest {

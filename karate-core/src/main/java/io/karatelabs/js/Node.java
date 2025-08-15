@@ -63,7 +63,7 @@ public class Node {
 
     public String toStringError(String message) {
         Chunk first = getFirstChunk();
-        return first.getPositionDisplay() + " " + type + "\n" + first.source.getStringForLog() + "\n" + message;
+        return first.getPositionDisplay() + " " + type + "\n" + first.source.getPathForLog() + "\n" + message;
     }
 
     @Override

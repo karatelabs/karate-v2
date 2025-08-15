@@ -23,6 +23,8 @@
  */
 package io.karatelabs.js;
 
+import io.karatelabs.common.Source;
+
 public class Chunk {
 
     static final Chunk _NODE = new Chunk(Source.of(""), Token.EOF, 0, 0, 0, "");
