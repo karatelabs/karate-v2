@@ -8,7 +8,6 @@ public class JsParser extends Parser {
         super(source, false);
     }
 
-    @Override
     public Node parse() {
         enter(Type.PROGRAM);
         final Node program = marker.node;

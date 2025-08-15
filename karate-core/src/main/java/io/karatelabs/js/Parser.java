@@ -52,8 +52,6 @@ abstract class Parser {
         marker = new Marker(position, null, new Node(Type.ROOT), -1);
     }
 
-    public abstract Node parse();
-
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
@@ -250,6 +248,13 @@ abstract class Parser {
     void consumeNext() {
         Node node = new Node(chunks.get(position++));
         marker.node.children.add(node);
+    }
+
+    Chunk next() {
+        if (position == size) {
+            return Chunk._NODE;
+        }
+        return chunks.get(position++);
     }
 
     void consume(Token token) {

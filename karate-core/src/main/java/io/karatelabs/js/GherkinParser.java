@@ -1,118 +1,46 @@
 package io.karatelabs.js;
 
 import io.karatelabs.common.Source;
+import io.karatelabs.common.StringUtils;
+import io.karatelabs.gherkin.Feature;
+import io.karatelabs.gherkin.Tag;
 
 public class GherkinParser extends Parser {
 
+    final Source source;
+
     public GherkinParser(Source source) {
         super(source, true);
+        this.source = source;
     }
 
-    @Override
-    public Node parse() {
-        enter(Type.G_FEATURE);
-        final Node feature = marker.node;
-        tags();
-        consume(Token.G_FEATURE);
-        desc();
-        background();
-        while (true) {
-            enter(Type.G_SCENARIO);
-            tags();
-            final Token next = peek();
-            if (next == Token.G_SCENARIO) {
-                consume(Token.G_SCENARIO);
-                desc();
-                steps();
-            } else if (next == Token.G_SCENARIO_OUTLINE) {
-                consume(Token.G_SCENARIO_OUTLINE);
-                desc();
-                steps();
-                examples();
+    public Feature parse() {
+        Feature feature = new Feature(source);
+        while (peekIf(Token.G_TAG)) {
+            Chunk tag = next();
+            feature.addTag(new Tag(tag.line, tag.text));
+        }
+        if (next().token != Token.G_FEATURE) {
+            error(Token.G_FEATURE);
+        }
+        boolean firstLine = true;
+        StringBuilder description = new StringBuilder();
+        while (peekIf(Token.G_DESC)) {
+            Chunk desc = next();
+            if (firstLine) {
+                feature.setName(StringUtils.trimToNull(desc.text));
+                firstLine = false;
             } else {
-                exit(false, false);
-                break;
+                if (!description.isEmpty()) {
+                    description.append('\n');
+                }
+                description.append(desc.text);
             }
-            exit();
         }
-        if (peek() != Token.EOF) {
-            error("cannot parse feature");
+        if (!description.isEmpty()) {
+            feature.setDescription(description.toString());
         }
-        exit();
         return feature;
-    }
-
-    private void tags() {
-        enter(Type.G_TAGS);
-        boolean present = false;
-        while (consumeIf(Token.G_TAG)) {
-            present = true;
-        }
-        exit(present, false);
-    }
-
-    private void desc() {
-        enter(Type.G_DESC);
-        boolean present = false;
-        while (consumeIf(Token.G_DESC)) {
-            present = true;
-        }
-        exit(present, false);
-    }
-
-    private void background() {
-        enter(Type.G_BACKGROUND);
-        if (consumeIf(Token.G_BACKGROUND)) {
-            desc();
-            steps();
-            exit();
-        } else {
-            exit(false, false);
-        }
-    }
-
-    private void steps() {
-        enter(Type.G_STEPS);
-        while (true) {
-            final Token next = peek();
-            if (next == Token.G_PREFIX) {
-                enter(Type.G_STEP);
-                consume(Token.G_PREFIX);
-                consume(Token.G_STEP_TEXT);
-                exit();
-            } else {
-                break;
-            }
-        }
-        exit();
-    }
-
-    private void examples() {
-        enter(Type.G_EXAMPLES_PARENT);
-        while (true) {
-            enter(Type.G_EXAMPLES);
-            tags();
-            if (!consumeIf(Token.G_EXAMPLES)) {
-                exit(false, false);
-                break;
-            }
-            desc();
-            table();
-        }
-        exit();
-    }
-
-    private void table() {
-        enter(Type.G_TABLE);
-        while (peekIf(Token.G_PIPE_FIRST)) {
-            enter(Type.G_TABLE_ROW);
-            consume(Token.G_PIPE_FIRST);
-            while (anyOf(Token.G_PIPE, Token.G_TABLE_CELL)) {
-
-            }
-            exit();
-        }
-        exit();
     }
 
 }
