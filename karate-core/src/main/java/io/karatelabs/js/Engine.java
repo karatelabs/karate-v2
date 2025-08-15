@@ -78,7 +78,7 @@ public class Engine {
     private Object evalInternal(Source source, Map<String, Object> localVars) {
         this.source = source;
         try {
-            Parser parser = new Parser(source);
+            JsParser parser = new JsParser(source);
             Node node = parser.parse();
             Context evalContext;
             if (localVars == null) {

@@ -35,7 +35,7 @@ class EngineTest {
     void test03() {
         File file = new File("src/test/resources/js/test-03.js");
         Source source = Source.of(file);
-        Parser parser = new Parser(source);
+        JsParser parser = new JsParser(source);
         Node node = parser.parse();
         Node lastLine = node.findFirst(Token.CONST);
         assertEquals(10, lastLine.chunk.line);
@@ -45,7 +45,7 @@ class EngineTest {
     void test04() {
         File file = new File("src/test/resources/js/test-04.js");
         Source source = Source.of(file);
-        Parser parser = new Parser(source);
+        JsParser parser = new JsParser(source);
         Node node = parser.parse();
         assertEquals(2, node.children.size());
         for (Node child : node.children) {

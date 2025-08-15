@@ -1,6 +1,5 @@
-package io.karatelabs.gherkin;
+package io.karatelabs.js;
 
-import io.karatelabs.js.*;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,7 +9,7 @@ class GherkinParserTest {
     static final Logger logger = LoggerFactory.getLogger(GherkinParserTest.class);
 
     private static void equals(String text, String json, Type type) {
-        Parser parser = new Parser(Source.of(text), true);
+        GherkinParser parser = new GherkinParser(Source.of(text));
         Node node = parser.parse();
         Node child;
         if (type == null) {

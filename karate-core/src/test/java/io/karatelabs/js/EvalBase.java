@@ -16,7 +16,7 @@ class EvalBase {
     }
 
     Object eval(String text, String vars) {
-        Parser parser = new Parser(Source.of(text));
+        JsParser parser = new JsParser(Source.of(text));
         Node node = parser.parse();
         context = Context.root();
         if (vars != null) {
