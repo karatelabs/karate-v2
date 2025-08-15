@@ -24,6 +24,7 @@
 package io.karatelabs.io.http;
 
 import io.karatelabs.common.Json;
+import io.karatelabs.common.ResourceType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;

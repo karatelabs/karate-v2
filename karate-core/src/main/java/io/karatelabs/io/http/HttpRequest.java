@@ -25,6 +25,7 @@ package io.karatelabs.io.http;
 
 import io.karatelabs.common.FileUtils;
 import io.karatelabs.common.Pair;
+import io.karatelabs.common.ResourceType;
 import io.karatelabs.common.StringUtils;
 import io.karatelabs.js.Invokable;
 import io.karatelabs.js.SimpleObject;
