@@ -142,6 +142,7 @@ public enum Token {
     G_TAG,
     G_TRIPLE_QUOTE,
     G_PIPE,
+    G_PIPE_FIRST,
     G_TABLE_CELL;
 
     public final boolean primary;

@@ -196,7 +196,7 @@ GM_TAG = "@" [^ \t\r\n]+
   "Feature:" {WS}*              { yybegin(GS_DESC); return G_FEATURE; }
   "Background:" {WS}*           { yybegin(GS_DESC); return G_BACKGROUND; }
   {GM_TRIPLE_QUOTE} {WS}*       { yybegin(GS_DOC_STRING); return G_TRIPLE_QUOTE; }
-  "|"                           { yybegin(GS_TABLE_ROW); return G_PIPE; }
+  "|"                           { yybegin(GS_TABLE_ROW); return G_PIPE_FIRST; }
   {GM_TAG}                      { yybegin(GS_TAGS); return G_TAG; }
 }
 

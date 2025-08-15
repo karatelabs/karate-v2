@@ -27,7 +27,7 @@ class GherkinParserTest {
     }
 
     @Test
-    void testSimple() {
+    void testFeatureBasics() {
         feature("""
                 Feature:
                 """, "Feature:");
@@ -37,7 +37,13 @@ class GherkinParserTest {
         feature("""
                 Feature: feature description
                 Scenario: scenario description
-                """, "['Feature: ', 'feature description', ['Scenario: ', 'scenario description',[]]]");
+                """, "['Feature: ', 'feature description', ['Scenario: ', 'scenario description', []]]");
+        feature("""
+                Feature: multi
+                    line1
+                Scenario: multi
+                    line2
+                """, "['Feature: ', ['multi', '    line1'], ['Scenario: ', ['multi', '    line2'],[]]]");
         feature("""
                 Feature: f
                 Scenario: s
@@ -45,6 +51,49 @@ class GherkinParserTest {
                   # just a comment
                   * print 'world'
                 """, "['Feature: ', 'f', ['Scenario: ', 's',[['* ', \"print 'hello'\"], ['* ', \"print 'world'\"]]]]");
+        feature("""
+                # comment before feature
+                Feature:
+                # comment after feature
+                Scenario:
+                # comment after scenario
+                """, "['Feature:', ['Scenario:', []]]");
+        feature("""
+                # comment
+                @tag1 @tag2
+                Feature:
+                """, "[[@tag1, @tag2], 'Feature:']");
+        feature("""
+                @tag1 @tag2
+                # comment
+                Feature:
+                """, "[[@tag1, @tag2], 'Feature:']");
+        feature("""
+                Feature:
+                @tag1 @tag2
+                Scenario:
+                """, "['Feature:', [[@tag1, @tag2], 'Scenario:', []]]");
+        feature("""
+                Feature:
+                Background:
+                Scenario:
+                """, "['Feature:', ['Background:', []], ['Scenario:', []]]");
+        feature("""
+                Feature:
+                Scenario Outline:
+                """, "['Feature:', ['Scenario Outline:', [], []]]");
+        feature("""
+                Feature:
+                Scenario Outline:
+                Examples:
+                """, "['Feature:', ['Scenario Outline:', [], ['Examples:', []]]]");
+        feature("""
+                Feature:
+                Scenario Outline:
+                Examples:
+                | h1 | h2 |
+                | c1 | c2 |
+                """, "['Feature:', ['Scenario Outline:', [], ['Examples:', [['|', ' h1 ', '|', ' h2 ', '|'], ['|', ' c1 ', '|', ' c2 ', '|']]]]]");
     }
 
 
