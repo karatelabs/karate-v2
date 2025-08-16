@@ -23,6 +23,7 @@
  */
 package io.karatelabs.core;
 
+import io.karatelabs.common.Json;
 import io.karatelabs.common.Resource;
 import io.karatelabs.io.http.ApacheHttpClient;
 import io.karatelabs.io.http.HttpClient;
@@ -33,19 +34,19 @@ import io.karatelabs.js.SimpleObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class KarateContext implements SimpleObject {
+public class KarateJs implements SimpleObject {
 
-    private static final Logger logger = LoggerFactory.getLogger(KarateContext.class);
+    private static final Logger logger = LoggerFactory.getLogger(KarateJs.class);
 
     public final Engine engine;
     private final HttpClient client;
     private final Resource root;
 
-    public KarateContext(Resource root) {
+    public KarateJs(Resource root) {
         this(root, new ApacheHttpClient());
     }
 
-    public KarateContext(Resource root, HttpClient client) {
+    public KarateJs(Resource root, HttpClient client) {
         this.root = root;
         this.client = client;
         this.engine = new Engine();
@@ -67,11 +68,43 @@ public class KarateContext implements SimpleObject {
         };
     }
 
+    private Invokable read() {
+        return args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("read() needs at least one argument");
+            }
+            Resource resource = root.resolve((args[0] + ""));
+            switch (resource.getExtension()) {
+                case "json":
+                    return Json.of(resource.getText()).value();
+                case "js":
+                    String js = resource.getText();
+                    return engine.eval(js);
+                default:
+                    return resource.getText();
+            }
+        };
+    }
+
+    private Invokable readAsString() {
+        return args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("read() needs at least one argument");
+            }
+            Resource resource = root.resolve(args[0] + "");
+            return resource.getText();
+        };
+    }
+
     @Override
     public Object get(String key) {
         switch (key) {
             case "http":
                 return http();
+            case "read":
+                return read();
+            case "readAsString":
+                return readAsString();
         }
         return null;
     }

@@ -1,20 +1,22 @@
 package io.karatelabs.io.http;
 
 import io.karatelabs.common.Resource;
-import io.karatelabs.core.KarateContext;
+import io.karatelabs.core.KarateJs;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 class HttpServerTest {
 
     static final Logger logger = LoggerFactory.getLogger(HttpServerTest.class);
 
     @Test
-    void testServerWithJavaClient() {
+    void testJavaClientJsServer() {
         HttpServer server = HttpServer.start(0);
         int port = server.getPort();
-        try (ApacheHttpClient client = new ApacheHttpClient()) {
+        try (HttpClient client = new ApacheHttpClient()) {
             HttpRequestBuilder http = new HttpRequestBuilder(client);
             http.url("http://localhost:" + port);
             http.path("cats");
@@ -38,10 +40,10 @@ class HttpServerTest {
     }
 
     @Test
-    void testServerWithJsClient() {
+    void testJsClientJsServer() {
         HttpServer server = HttpServer.start(0);
         int port = server.getPort();
-        KarateContext context = new KarateContext(Resource.path(""));
+        KarateJs context = new KarateJs(Resource.path(""));
         String js = "var http = karate.http('http://localhost:" + port + "');\n"
                 + "var response = http.path('cats').post({ name: 'Billie' }).body;\n"
                 + "console.log('response 1:', response);\n"
@@ -49,6 +51,20 @@ class HttpServerTest {
                 + "console.log('response 2:', response);\n";
         context.eval(js);
         server.stop();
+    }
+
+    @Test
+    void testJsClientNoServerConnection() {
+        KarateJs context = new KarateJs(Resource.path(""));
+
+        String js = "var http = karate.http('http://localhost:99');\n"
+                + "var response = http.path('cats').post({ name: 'Billie' }).body;\n"
+                + "console.log('response:', response);";
+        try {
+            context.eval(js);
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("expression: http.path('cats').post({name:'Billie'}) - org.apache.hc.client5.http.HttpHostConnectException: Connect to http://localhost:99 failed: Connection refused"));
+        }
     }
 
 }

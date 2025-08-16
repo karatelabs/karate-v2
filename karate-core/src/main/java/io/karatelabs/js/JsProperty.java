@@ -39,6 +39,7 @@ public class JsProperty {
     final Context context;
     String name;
     Object index;
+    String error;
 
     JsProperty(Node node, Context context) {
         this.node = node;
@@ -54,10 +55,12 @@ public class JsProperty {
             case REF_DOT_EXPR:
                 Object temp;
                 try {
-                    // ignore any nested failures, the caller (interpreter) will check for java interop
+                    // ignore any nested failures, the caller (Interpreter.evalDotExpr())
+                    // will check if this is a valid java class e.g. "foo.bar.ClassName"
                     // before bubbling up the "undefined" as an exception
                     temp = Interpreter.eval(node.children.get(0), context);
                 } catch (Exception e) {
+                    error = "expression: " + node.children.get(0).getText() + " - " + e.getMessage();
                     temp = Undefined.INSTANCE;
                 }
                 object = temp;

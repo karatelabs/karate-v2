@@ -79,7 +79,7 @@ class EngineTest {
     }
 
     @Test
-    void test05() {
+    void testFunctionWithinFunction() {
         String js = """
                 function generateCardNumber(firstSix, length) {
                 

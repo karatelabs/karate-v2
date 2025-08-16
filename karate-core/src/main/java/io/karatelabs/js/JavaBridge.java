@@ -45,7 +45,7 @@ public interface JavaBridge {
             Constructor<?> constructor = findConstructor(clazz, args);
             return constructor.newInstance(args);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("cannot construct [" + className + "]: " + e);
         }
     }
 
@@ -58,7 +58,7 @@ public interface JavaBridge {
             }
             return invoke(null, method, args);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("cannot invoke static method " + className + "#" + name + ": " + e);
         }
     }
 
@@ -70,7 +70,7 @@ public interface JavaBridge {
             }
             return invoke(object, method, args);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("cannot invoke instance method " + object.getClass().getName() + "#" + name + ": " + e);
         }
     }
 
@@ -89,7 +89,7 @@ public interface JavaBridge {
                     }
                 }
             }
-            throw new RuntimeException(e);
+            throw new RuntimeException("cannot get static field " + className + "#" + name + ": " + e);
         }
     }
 
@@ -108,7 +108,7 @@ public interface JavaBridge {
                     }
                 }
             }
-            throw new RuntimeException(e);
+            throw new RuntimeException("cannot set static field " + className + "#" + name + ": " + e);
         }
     }
 
@@ -131,7 +131,7 @@ public interface JavaBridge {
         try {
             return method.invoke(object, EMPTY);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("cannot get instance field " + object.getClass().getName() + "#" + name + ": " + e);
         }
     }
 
@@ -145,7 +145,7 @@ public interface JavaBridge {
             }
             method.invoke(object, args);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("cannot set instance field " + object.getClass().getName() + "#" + name + ": " + e);
         }
     }
 

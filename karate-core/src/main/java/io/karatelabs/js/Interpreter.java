@@ -163,6 +163,9 @@ public class Interpreter {
             if (Engine.JAVA_BRIDGE.typeExists(className)) {
                 return new JavaClass(className);
             }
+            if (prop.error != null) { // can be set in constructor of JsProperty
+                throw new RuntimeException(prop.error);
+            }
         }
         return result;
     }

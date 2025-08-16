@@ -88,6 +88,10 @@ public class DemoPojo {
         return "hello" + arg1 + arg2;
     }
 
+    public String doWorkException() {
+        throw new RuntimeException("failed");
+    }
+
     public Object varArgs(Object[] args) {
         return args[args.length - 1];
     }

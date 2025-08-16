@@ -6,4 +6,8 @@ public class DemoUtils {
         return "hello";
     }
 
+    public static String doWorkException() {
+        throw new RuntimeException("failed");
+    }
+
 }
