@@ -1,6 +1,6 @@
 package io.karatelabs.js;
 
-import io.karatelabs.common.Source;
+import io.karatelabs.common.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,7 +17,7 @@ class EvalBase {
     }
 
     Object eval(String text, String vars) {
-        JsParser parser = new JsParser(Source.of(text));
+        JsParser parser = new JsParser(Resource.text(text));
         Node node = parser.parse();
         context = Context.root();
         if (vars != null) {

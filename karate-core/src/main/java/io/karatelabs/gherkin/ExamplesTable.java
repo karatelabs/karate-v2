@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2024 Karate Labs Inc.
+ * Copyright 2025 Karate Labs Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,49 +21,49 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.js;
+package io.karatelabs.gherkin;
 
-import io.karatelabs.common.Resource;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-public class Chunk {
+public class ExamplesTable {
 
-    static final Chunk _NODE = new Chunk(Resource.text(""), Token.EOF, 0, 0, 0, "");
+    private final ScenarioOutline outline;
+    private final Table table;
+    private List<Tag> tags;
+    
 
-    Resource resource;
-    public final long pos;
-    public final int line;
-    public final int col;
-    public final Token token;
-    public final String text;
-    Chunk prev;
-    Chunk next;
-
-    public Chunk(Resource resource, Token token, long pos, int line, int col, String text) {
-        this.resource = resource;
-        this.token = token;
-        this.pos = pos;
-        this.line = line;
-        this.col = col;
-        this.text = text;
+    public ExamplesTable(ScenarioOutline outline, Table table) {
+        this.outline = outline;
+        this.table = table;
+        this.tags = new ArrayList<>();
     }
 
-    public String getLineText() {
-        return resource.getLine(line);
+    public ScenarioOutline getOutline() {
+        return outline;
     }
 
-    public String getPositionDisplay() {
-        return "[" + (line + 1) + ":" + (col + 1) + "]";
+    public List<Tag> getTags() {
+        return tags;
     }
 
-    @Override
-    public String toString() {
-        switch (token) {
-            case WS:
-                return "_";
-            case WS_LF:
-                return "_\\n_";
-        }
-        return text;
+    public void setTags(List<Tag> tags) {
+        this.tags = tags;
+    }
+
+    public Table getTable() {
+        return table;
+    }
+
+    public Map<String, Object> toKarateJson() {
+        Map<String, Object> map = new HashMap();
+        List<String> tagStrings = new ArrayList();
+        tags.forEach(tag -> tagStrings.add(tag.toString()));
+        map.put("tags", tagStrings);
+        map.put("data", table.getRowsAsMapsConverted());
+        return map;
     }
 
 }

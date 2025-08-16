@@ -23,7 +23,7 @@
  */
 package io.karatelabs.js;
 
-import io.karatelabs.common.Source;
+import io.karatelabs.common.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +36,7 @@ abstract class Parser {
 
     static final Logger logger = LoggerFactory.getLogger(Parser.class);
 
+    final Resource resource;
     final List<Chunk> chunks;
     private final int size;
 
@@ -46,8 +47,9 @@ abstract class Parser {
         NONE, LEFT, RIGHT
     }
 
-    Parser(Source source, boolean gherkin) {
-        chunks = getChunks(source, gherkin);
+    Parser(Resource resource, boolean gherkin) {
+        this.resource = resource;
+        chunks = getChunks(resource, gherkin);
         size = chunks.size();
         marker = new Marker(position, null, new Node(Type.ROOT), -1);
     }
@@ -174,8 +176,8 @@ abstract class Parser {
         return result;
     }
 
-    static List<Chunk> getChunks(Source source, boolean gherkin) {
-        CharArrayReader reader = new CharArrayReader(source.getText().toCharArray());
+    static List<Chunk> getChunks(Resource resource, boolean gherkin) {
+        CharArrayReader reader = new CharArrayReader(resource.getText().toCharArray());
         Lexer lexer = new Lexer(reader);
         if (gherkin) {
             lexer.yybegin(Lexer.GHERKIN);
@@ -189,11 +191,11 @@ abstract class Parser {
             while (true) {
                 Token token = lexer.yylex();
                 if (token == Token.EOF) {
-                    list.add(new Chunk(source, token, pos, line, col, ""));
+                    list.add(new Chunk(resource, token, pos, line, col, ""));
                     break;
                 }
                 String text = lexer.yytext();
-                Chunk chunk = new Chunk(source, token, pos, line, col, text);
+                Chunk chunk = new Chunk(resource, token, pos, line, col, text);
                 int length = lexer.yylength();
                 pos += length;
                 if (token == Token.WS_LF || token == Token.B_COMMENT || token == Token.T_STRING) {
@@ -218,7 +220,7 @@ abstract class Parser {
                 }
             }
         } catch (Throwable e) {
-            String message = "lexer failed at [" + (line + 1) + ":" + (col + 1) + "] prev: " + prev + "\n" + source.getPathForLog();
+            String message = "lexer failed at [" + (line + 1) + ":" + (col + 1) + "] prev: " + prev + "\n" + resource.getRelativePath();
             throw new ParserException(message, e);
         }
         return list;

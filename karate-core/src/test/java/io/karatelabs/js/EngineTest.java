@@ -1,6 +1,6 @@
 package io.karatelabs.js;
 
-import io.karatelabs.common.Source;
+import io.karatelabs.common.Resource;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,8 +35,8 @@ class EngineTest {
     @Test
     void test03() {
         File file = new File("src/test/resources/js/test-03.js");
-        Source source = Source.of(file);
-        JsParser parser = new JsParser(source);
+        Resource resource = Resource.file(file);
+        JsParser parser = new JsParser(resource);
         Node node = parser.parse();
         Node lastLine = node.findFirst(Token.CONST);
         assertEquals(10, lastLine.chunk.line);
@@ -45,8 +45,8 @@ class EngineTest {
     @Test
     void test04() {
         File file = new File("src/test/resources/js/test-04.js");
-        Source source = Source.of(file);
-        JsParser parser = new JsParser(source);
+        Resource resource = Resource.file(file);
+        JsParser parser = new JsParser(resource);
         Node node = parser.parse();
         assertEquals(2, node.children.size());
         for (Node child : node.children) {

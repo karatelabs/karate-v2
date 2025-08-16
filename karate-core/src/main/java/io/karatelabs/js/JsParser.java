@@ -1,11 +1,11 @@
 package io.karatelabs.js;
 
-import io.karatelabs.common.Source;
+import io.karatelabs.common.Resource;
 
 public class JsParser extends Parser {
 
-    public JsParser(Source source) {
-        super(source, false);
+    public JsParser(Resource resource) {
+        super(resource, false);
     }
 
     public Node parse() {

@@ -1,6 +1,6 @@
 package io.karatelabs.js;
 
-import io.karatelabs.common.Source;
+import io.karatelabs.common.Resource;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 class JsParserTest {
 
     private static void equals(String text, String json, Type type) {
-        JsParser parser = new JsParser(Source.of(text));
+        JsParser parser = new JsParser(Resource.text(text));
         Node node = parser.parse();
         Node child;
         if (type == null) {
@@ -22,7 +22,7 @@ class JsParserTest {
     }
 
     private static Chunk firstNumber(String text) {
-        JsParser parser = new JsParser(Source.of(text));
+        JsParser parser = new JsParser(Resource.text(text));
         Node root = parser.parse();
         Node num = root.findFirst(Token.NUMBER);
         return num.chunk;
@@ -34,7 +34,7 @@ class JsParserTest {
 
     private static <T> void error(String text, Class<T> type) {
         try {
-            JsParser parser = new JsParser(Source.of(text));
+            JsParser parser = new JsParser(Resource.text(text));
             parser.parse();
             fail("expected exception of type: " + type);
         } catch (Exception e) {

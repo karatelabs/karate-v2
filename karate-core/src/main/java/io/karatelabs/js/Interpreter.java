@@ -566,9 +566,9 @@ public class Interpreter {
                 Type childType = node.children.get(0).type;
                 if (childType != Type.EXPR && childType != Type.BLOCK) {
                     Chunk first = node.getFirstChunk();
-                    logger.trace("{}{} {} | {}", first.source, first.getPositionDisplay(), statementResult, node);
+                    logger.trace("{}{} {} | {}", first.resource, first.getPositionDisplay(), statementResult, node);
                     if (Engine.DEBUG) {
-                        System.out.println(first.source + first.getPositionDisplay() + " " + statementResult + " | " + node);
+                        System.out.println(first.resource + first.getPositionDisplay() + " " + statementResult + " | " + node);
                     }
                 }
             }
@@ -583,7 +583,7 @@ public class Interpreter {
             } else {
                 Chunk first = node.getFirstChunk();
                 String message = "js failed:\n==========\n" + first.getLineText() + "\n"
-                        + first.source + first.getPositionDisplay() + " " + e.getMessage();
+                        + first.resource + first.getPositionDisplay() + " " + e.getMessage();
                 message = message.trim() + "\n----------\n";
                 logger.error(message);
                 throw new RuntimeException(message, e);

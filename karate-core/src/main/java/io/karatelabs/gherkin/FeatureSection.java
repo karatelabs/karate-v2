@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2024 Karate Labs Inc.
+ * Copyright 2025 Karate Labs Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,56 +21,48 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.common;
+package io.karatelabs.gherkin;
 
-import java.io.File;
-
-public class Source {
-
-    public final Resource resource;
-    private String text;
-
-    String[] lines;
-
-    public static Source of(String text) {
-        return new Source(null, text);
-    }
-
-    public static Source of(File file) {
-        Resource resource = Resource.file(file);
-        return new Source(resource, null);
-    }
-
-    private Source(Resource resource, String text) {
-        this.resource = resource;
-        this.text = text;
-    }
-
-    public String getText() {
-        if (text == null) {
-            text = resource.getText();
-        }
-        return text;
-    }
-
-    public String getLine(int index) {
-        if (lines == null) {
-            lines = getText().split("\\r?\\n");
-        }
-        return lines[index];
-    }
-
-    @Override
-    public String toString() {
-        return getText();
-    }
-
-    public String getPathForLog() {
-        if (resource != null) {
-            return resource.getUri().toString();
+public class FeatureSection {
+    
+    private int index;
+    private Scenario scenario;
+    private ScenarioOutline scenarioOutline;
+    
+    public int getLine() {
+        if (scenarioOutline != null) {
+            return scenarioOutline.getLine();
         } else {
-            return "(inline)";
+            return scenario.getLine();
         }
     }
 
+    public int getIndex() {
+        return index;
+    }
+
+    public void setIndex(int index) {
+        this.index = index;
+    }        
+    
+    public boolean isOutline() {
+        return scenarioOutline != null;
+    }
+
+    public Scenario getScenario() {
+        return scenario;
+    }
+
+    public void setScenario(Scenario scenario) {
+        this.scenario = scenario;
+    }
+
+    public ScenarioOutline getScenarioOutline() {
+        return scenarioOutline;
+    }
+
+    public void setScenarioOutline(ScenarioOutline scenarioOutline) {
+        this.scenarioOutline = scenarioOutline;
+    }        
+    
 }

@@ -23,7 +23,7 @@
  */
 package io.karatelabs.js;
 
-import io.karatelabs.common.Source;
+import io.karatelabs.common.Resource;
 
 import java.io.File;
 import java.util.Map;
@@ -43,7 +43,7 @@ public class Engine {
     public static boolean DEBUG = false;
 
     public final Context context;
-    public Source source;
+    public Resource resource;
 
     private Engine(Context context) {
         this.context = context;
@@ -53,34 +53,34 @@ public class Engine {
         this(Context.root());
     }
 
-    public Object eval(Source source) {
-        return evalInternal(source);
+    public Object eval(Resource resource) {
+        return evalInternal(resource);
     }
 
     public Object eval(File file) {
-        return evalInternal(Source.of(file));
+        return evalInternal(Resource.file(file));
     }
 
     public Object eval(String text) {
-        return evalInternal(Source.of(text));
+        return evalInternal(Resource.text(text));
     }
 
     public Object evalWith(String text, Map<String, Object> vars) {
-        return evalInternal(Source.of(text), vars);
+        return evalInternal(Resource.text(text), vars);
     }
 
     public static boolean isUndefined(Object o) {
         return o == Undefined.INSTANCE || Undefined.NAN.equals(o);
     }
 
-    private Object evalInternal(Source source) {
-        return evalInternal(source, null);
+    private Object evalInternal(Resource resource) {
+        return evalInternal(resource, null);
     }
 
-    private Object evalInternal(Source source, Map<String, Object> localVars) {
-        this.source = source;
+    private Object evalInternal(Resource resource, Map<String, Object> localVars) {
+        this.resource = resource;
         try {
-            JsParser parser = new JsParser(source);
+            JsParser parser = new JsParser(resource);
             Node node = parser.parse();
             Context evalContext;
             if (localVars == null) {
@@ -99,7 +99,7 @@ public class Engine {
             if (message == null) {
                 message = e + "";
             }
-            message = message + "\n" + source.getPathForLog();
+            message = message + "\n" + resource.getRelativePath();
             throw new RuntimeException(message);
         }
     }

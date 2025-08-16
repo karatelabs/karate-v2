@@ -1,8 +1,7 @@
-package io.karatelabs.js;
+package io.karatelabs.gherkin;
 
-import io.karatelabs.common.Source;
-import io.karatelabs.gherkin.Feature;
-import io.karatelabs.gherkin.Tag;
+import io.karatelabs.common.Resource;
+import io.karatelabs.js.GherkinParser;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,8 +17,8 @@ class GherkinParserTest {
     Feature feature;
 
     private void parse(String text) {
-        Source source = Source.of(text);
-        GherkinParser parser = new GherkinParser(source);
+        Resource resource = Resource.text(text);
+        GherkinParser parser = new GherkinParser(resource);
         feature = parser.parse();
     }
 

@@ -35,8 +35,17 @@ public class UrlResource implements Resource {
     private final URL url;
     private final boolean classpath;
     private final boolean file;
+    private final String relativePath;
+
+    private String text;
+    private String[] lines;
 
     public UrlResource(File file, boolean classpath) {
+        if (file.isAbsolute()) {
+            this.relativePath = FileUtils.WORKING_DIR.toPath().relativize(file.toPath()).toString();
+        } else {
+            this.relativePath = file.getPath();
+        }
         try {
             url = file.toURI().toURL();
         } catch (Exception e) {
@@ -50,6 +59,22 @@ public class UrlResource implements Resource {
         this.url = url;
         this.classpath = classpath;
         this.file = "file".equals(url.getProtocol());
+        this.relativePath = url.getPath();
+    }
+
+    @Override
+    public String getText() {
+        if (text == null) {
+            text = FileUtils.toString(getStream());
+        }
+        return text;
+    }
+
+    public String getLine(int index) {
+        if (lines == null) {
+            lines = getText().split("\\r?\\n");
+        }
+        return lines[index];
     }
 
     @Override
@@ -60,6 +85,11 @@ public class UrlResource implements Resource {
     @Override
     public boolean isFile() {
         return file;
+    }
+
+    @Override
+    public String getRelativePath() {
+        return relativePath;
     }
 
     @Override
@@ -89,9 +119,9 @@ public class UrlResource implements Resource {
         int pos = relativePath.lastIndexOf('/');
         String parentPath = pos == -1 ? "" : relativePath.substring(0, pos);
         if (classpath) {
-            return Resource.get("classpath:" + parentPath + "/" + path);
+            return Resource.path("classpath:" + parentPath + "/" + path);
         } else {
-            return Resource.get(parentPath + "/" + path);
+            return Resource.path(parentPath + "/" + path);
         }
     }
 
@@ -101,6 +131,11 @@ public class UrlResource implements Resource {
             bytes = FileUtils.toBytes(url);
         }
         return new ByteArrayInputStream(bytes);
+    }
+
+    @Override
+    public String toString() {
+        return relativePath;
     }
 
 }

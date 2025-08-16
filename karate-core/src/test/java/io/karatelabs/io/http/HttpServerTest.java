@@ -41,7 +41,7 @@ class HttpServerTest {
     void testServerWithJsClient() {
         HttpServer server = HttpServer.start(0);
         int port = server.getPort();
-        KarateContext context = new KarateContext(Resource.get(""));
+        KarateContext context = new KarateContext(Resource.path(""));
         String js = "var http = karate.http('http://localhost:" + port + "');\n"
                 + "var response = http.path('cats').post({ name: 'Billie' }).body;\n"
                 + "console.log('response 1:', response);\n"

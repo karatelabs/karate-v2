@@ -45,6 +45,8 @@ public class FileUtils {
         // only static methods
     }
 
+    public static final File WORKING_DIR = new File("").getAbsoluteFile();
+
     public static String toString(File file) {
         try {
             return toString(new FileInputStream(file));

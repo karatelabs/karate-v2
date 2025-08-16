@@ -45,9 +45,11 @@ public interface Resource {
 
     InputStream getStream();
 
-    default String getText() {
-        return FileUtils.toString(getStream());
-    }
+    String getRelativePath();
+
+    String getText();
+
+    String getLine(int index);
 
     default long getLastModified() {
         if (isFile()) {
@@ -60,6 +62,17 @@ public interface Resource {
         }
     }
 
+    default String getPackageQualifiedName() {
+        String path = getRelativePath();
+        if (path.endsWith(".feature")) {
+            path = path.substring(0, path.length() - 8);
+        }
+        if (path.charAt(0) == '/') {
+            path = path.substring(1);
+        }
+        return path.replace('/', '.').replaceAll("\\.[.]+", ".");
+    }
+
     default String getExtension() {
         String path = getUri().getPath();
         int pos = path.lastIndexOf('.');
@@ -67,6 +80,20 @@ public interface Resource {
             return "";
         }
         return path.substring(pos + 1);
+    }
+
+    default String getFileNameWithoutExtension() {
+        String path = getRelativePath();
+        int pos = path.lastIndexOf('.');
+        if (pos == -1) {
+            return path;
+        } else {
+            return path.substring(0, pos);
+        }
+    }
+
+    default String getPrefixedPath() {
+        return isClassPath() ? CLASSPATH_COLON + getRelativePath() : getRelativePath();
     }
 
     static String removePrefix(String text) {
@@ -77,7 +104,7 @@ public interface Resource {
         }
     }
 
-    static Resource get(String path) {
+    static Resource path(String path) {
         if (path == null) {
             path = "";
         }
@@ -96,6 +123,10 @@ public interface Resource {
 
     static Resource file(File file) {
         return new UrlResource(file, false);
+    }
+
+    static Resource text(String text) {
+        return new MemoryResource(text);
     }
 
 }
