@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -16,37 +15,62 @@ class EngineTest {
     static final Logger logger = LoggerFactory.getLogger(EngineTest.class);
 
     @Test
-    void test01() {
-        File file = new File("src/test/resources/js/test-01.js");
+    void testEvalResult() {
         Engine engine = new Engine();
-        Object result = engine.eval(file);
+        Object result = engine.eval("""
+                var foo = 'foo';
+                var bar = foo + 'bar';
+                """);
         assertEquals("foobar", result);
         assertEquals("foo", engine.context.get("foo"));
     }
 
     @Test
-    void test02() {
-        File file = new File("src/test/resources/js/test-02.js");
+    void testQuotesWithinStringLiterals() {
         Engine engine = new Engine();
-        Object result = engine.eval(file);
+        Object result = engine.eval("""
+                var data = {"data": "{\\"myKey\\":\\"myValue\\"}"}
+                """);
         assertEquals(Map.of("data", "{\\\"myKey\\\":\\\"myValue\\\"}"), result);
     }
 
     @Test
-    void test03() {
-        File file = new File("src/test/resources/js/test-03.js");
-        Resource resource = Resource.file(file);
-        JsParser parser = new JsParser(resource);
+    void testWhiteSpaceTrackingWithinTemplates() {
+        String js =
+                """
+                        var request = {
+                            body: `{
+                                        "RequesterDetails": {
+                                            "InstructingTreasuryId": "000689",
+                                            "ApiRequestReference": "${idempotencyKey}",
+                                            "entity": "000689"
+                                         }
+                                   }`
+                        };
+                        const foo = 'bar';
+                        """;
+        JsParser parser = new JsParser(Resource.text(js));
         Node node = parser.parse();
         Node lastLine = node.findFirst(Token.CONST);
-        assertEquals(10, lastLine.chunk.line);
+        assertEquals(9, lastLine.chunk.line);
     }
 
     @Test
-    void test04() {
-        File file = new File("src/test/resources/js/test-04.js");
-        Resource resource = Resource.file(file);
-        JsParser parser = new JsParser(resource);
+    void testSwitchCaseDefaultSyntax() {
+        String js = """
+                a.b(() => {
+                    function c() {
+                        switch (d) {
+                            case "X":
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                });
+                var e = 1;
+                """;
+        JsParser parser = new JsParser(Resource.text(js));
         Node node = parser.parse();
         assertEquals(2, node.children.size());
         for (Node child : node.children) {
@@ -56,9 +80,47 @@ class EngineTest {
 
     @Test
     void test05() {
-        File file = new File("src/test/resources/js/test-05.js");
+        String js = """
+                function generateCardNumber(firstSix, length) {
+                
+                    function luhnCheck(input) {
+                        const number = input.toString();
+                        const digits = number.replace(/\\D/g, '').split('').map(Number);
+                        let sum = 0;
+                        let isSecond = false;
+                        for (let i = digits.length - 1; i >= 0; i--) {
+                            let digit = digits[i];
+                            if (isSecond) {
+                                digit *= 2;
+                                if (digit > 9) {
+                                    digit -= 9;
+                                }
+                            }
+                            sum += digit;
+                            isSecond = !isSecond;
+                        }
+                        return sum % 10;
+                    }
+                
+                    function randomDigit() {
+                        return Math.floor(Math.random() * 9);
+                    }
+                
+                    let cardNumber = firstSix;
+                    while (cardNumber.length < length - 1) {
+                        cardNumber = cardNumber + randomDigit();
+                    }
+                    cardNumber = cardNumber + '9';
+                    let luhnVal = luhnCheck(cardNumber);
+                    cardNumber = cardNumber - luhnVal;
+                    return cardNumber.toString();
+                
+                }
+                
+                generateCardNumber('411111',16);
+                """;
         Engine engine = new Engine();
-        String result = (String) engine.eval(file);
+        String result = (String) engine.eval(js);
         assertTrue(result.startsWith("411111"));
         assertEquals(16, result.length());
     }

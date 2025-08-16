@@ -31,12 +31,13 @@ import java.net.URL;
 
 public class UrlResource implements Resource {
 
-    private byte[] bytes;
     private final URL url;
     private final boolean classpath;
     private final boolean file;
     private final String relativePath;
 
+    // lazy
+    private byte[] bytes;
     private String text;
     private String[] lines;
 
