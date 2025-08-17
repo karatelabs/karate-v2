@@ -2,6 +2,8 @@ package io.karatelabs.js;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.ZonedDateTime;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class JsDateTest extends EvalBase {
@@ -91,9 +93,8 @@ class JsDateTest extends EvalBase {
                 + "var afterSetYear = originalDate.getFullYear();");
         assertEquals(2022, get("afterSetYear"));
 
-        // Test date string when called as function (without new)
-        Object dateString = eval("Date()");
-        assertInstanceOf(String.class, dateString);
+        Object date = eval("Date()");
+        assertInstanceOf(ZonedDateTime.class, date);
 
         // Test ability to pass date object to a function that expects a timestamp
         String js = "function getTimestamp(time) {"
@@ -106,6 +107,15 @@ class JsDateTest extends EvalBase {
                 + "var timestamp = getTimestamp(fixedDate)";
         eval(js);
         assertEquals(1609459200000L, get("timestamp"));
+
+        // Test ability to re-use date objects
+        js = "function getDate(time) {"
+                + "    return new Date(time);"
+                + "};"
+                + "var fixedDate = getDate(1609459200000);"
+                + "var fixedTime = fixedDate.getTime();";
+        eval(js);
+        assertEquals(1609459200000L, get("fixedTime"));
     }
 
 }

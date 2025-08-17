@@ -65,8 +65,6 @@ class JsStringTest extends EvalBase {
 
     @Test
     void testStringConstructor() {
-        assertEquals("", eval("new String()"));
-        assertEquals("", eval("new String"));
         assertEquals("", eval("String()"));
         assertEquals("undefined", eval("String(undefined)"));
         assertEquals("", eval("String(null)"));
@@ -75,8 +73,11 @@ class JsStringTest extends EvalBase {
         assertEquals(true, eval("typeof String() === 'string'"));
         assertEquals("", eval("new String().valueOf()"));
         assertEquals("hello", eval("new String('hello').valueOf()"));
-        // assertEquals(true, eval("typeof new String() === 'object'")); // intentional non-conformance
-        // assertEquals(true, eval("new String('hello') instanceof String")); // intentional non-conformance
+        // intentional non-conformance
+        // assertEquals("", eval("new String"));
+        // assertEquals("", eval("new String()"));
+        // assertEquals(true, eval("typeof new String() === 'object'"));
+        // assertEquals(true, eval("new String('hello') instanceof String"));
     }
 
     @Test
@@ -156,6 +157,12 @@ class JsStringTest extends EvalBase {
         assertEquals("the cat is", eval("'the Dog is'.replace(/dog/i, 'cat')"));
         assertEquals("oranges are round, oranges are juicy", eval("'Apples are round, apples are juicy'.replace(/apple/ig, 'orange')"));
         assertEquals("oranges are round, oranges are juicy", eval("'Apples are round, apples are juicy'.replaceAll(/apple/ig, 'orange')"));
+    }
+
+    @Test
+    void testToString() {
+        assertEquals("1234", eval("a = '1234'; a.toString()"));
+        assertEquals("1234", eval("a = 1234; a.toString()"));
     }
 
     @Test

@@ -299,6 +299,15 @@ public class Terms {
         if (Terms.isPrimitive(o)) {
             return o.toString();
         }
+        if (o instanceof JsString) {
+            return o.toString();
+        }
+        if (o instanceof JsNumber) {
+            return o.toString();
+        }
+        if (o instanceof JsDate) {
+            return o.toString();
+        }
         if (o instanceof List) {
             return JSONValue.toJSONString(o);
         }

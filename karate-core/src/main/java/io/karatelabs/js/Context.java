@@ -105,12 +105,7 @@ public class Context {
             case "NaN":
                 return Undefined.NAN;
             case "Number":
-                return (Invokable) args -> {
-                    if (args.length == 0) {
-                        return 0;
-                    }
-                    return Terms.toNumber(args[0]);
-                };
+                return new JsNumber();
             case "Object":
                 return new JsObject();
             case "RegExp":

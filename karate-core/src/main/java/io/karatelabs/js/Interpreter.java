@@ -211,12 +211,8 @@ public class Interpreter {
                 jsFunction.thisObject = thisObject;
             }
             Object result = invokable.invoke(args);
-            // hack to ensure any computation result is a java string
-            // it breaks some js conventions, e.g. the below is not true in karate-js
-            // typeof new String() === 'object'
-            if (result instanceof JsString) {
-                return result.toString();
-            }
+            // note JsString, JsNumber, JsDate, will not auto convert to Java primitives
+            // if returned as eval result, deliberate non-conformance
             return Terms.isPrimitive(result) ? thisObject : result;
         } else { // normal function call
             thisObject = prop.object == null ? invokable : prop.object;
@@ -224,8 +220,14 @@ public class Interpreter {
                 jsFunction.thisObject = thisObject;
             }
             Object result = invokable.invoke(args);
-            if (result instanceof JsString || result instanceof JsDate) {
+            if (result instanceof JsString) {
                 return result.toString();
+            }
+            if (result instanceof JsNumber) {
+                result = ((JsNumber) result).value;
+            }
+            if (result instanceof JsDate) {
+                return ((JsDate) result).dateTime;
             }
             return result;
         }

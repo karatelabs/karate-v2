@@ -30,38 +30,38 @@ import java.time.temporal.ChronoField;
 
 public class JsDate extends JsObject {
 
-    private ZonedDateTime dateTime;
+    ZonedDateTime dateTime;
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
     private static final ZoneId UTC = ZoneId.of("UTC");
 
-    public JsDate() {
+    JsDate() {
         this(ZonedDateTime.now());
     }
 
-    public JsDate(ZonedDateTime dateTime) {
+    JsDate(ZonedDateTime dateTime) {
         this.dateTime = dateTime;
     }
 
-    public JsDate(long timestamp) {
+    JsDate(long timestamp) {
         this.dateTime = ZonedDateTime.ofInstant(
                 Instant.ofEpochMilli(timestamp),
                 ZoneId.systemDefault());
     }
 
-    public JsDate(int year, int month, int date) {
+    JsDate(int year, int month, int date) {
         // JavaScript months are 0-indexed, Java months are 1-indexed
         this.dateTime = ZonedDateTime.of(year, month + 1, date, 0, 0, 0, 0, ZoneId.systemDefault());
     }
 
-    public JsDate(int year, int month, int date, int hours, int minutes, int seconds) {
+    JsDate(int year, int month, int date, int hours, int minutes, int seconds) {
         this.dateTime = ZonedDateTime.of(year, month + 1, date, hours, minutes, seconds, 0, ZoneId.systemDefault());
     }
 
-    public JsDate(int year, int month, int date, int hours, int minutes, int seconds, int ms) {
+    JsDate(int year, int month, int date, int hours, int minutes, int seconds, int ms) {
         this.dateTime = ZonedDateTime.of(year, month + 1, date, hours, minutes, seconds, ms * 1000000, ZoneId.systemDefault());
     }
 
-    public JsDate(String dateStr) {
+    JsDate(String dateStr) {
         ZonedDateTime parsedDateTime;
         try {
             // Try parsing as ISO format
@@ -86,11 +86,11 @@ public class JsDate extends JsObject {
         this.dateTime = parsedDateTime;
     }
 
-    public long getTime() {
+    long getTime() {
         return dateTime.toInstant().toEpochMilli();
     }
 
-    public void setDateTime(ZonedDateTime newDateTime) {
+    void setDateTime(ZonedDateTime newDateTime) {
         this.dateTime = newDateTime;
     }
 
