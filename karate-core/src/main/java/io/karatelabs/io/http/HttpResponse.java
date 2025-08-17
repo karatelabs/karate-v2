@@ -223,7 +223,7 @@ public class HttpResponse implements SimpleObject {
             case "bodyBytes":
                 return Json.toBytes(body);
             default:
-                logger.warn("get - unexpected key: {}", key);
+                // logger.warn("get - unexpected key: {}", key);
         }
         return null;
     }
