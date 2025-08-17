@@ -55,15 +55,13 @@ class HttpServerTest {
 
     @Test
     void testJsClientNoServerConnection() {
-        KarateJs context = new KarateJs(Resource.path(""));
-
+        KarateJs context = new KarateJs(Resource.path(""), new ErrorHttpClient());
         String js = "var http = karate.http('http://localhost:99');\n"
-                + "var response = http.path('cats').post({ name: 'Billie' }).body;\n"
-                + "console.log('response:', response);";
+                + "var response = http.path('cats').post({ name: 'Billie' }).body;";
         try {
             context.eval(js);
         } catch (Exception e) {
-            assertTrue(e.getMessage().contains("expression: http.path('cats').post({name:'Billie'}) - org.apache.hc.client5.http.HttpHostConnectException: Connect to http://localhost:99 failed: Connection refused"));
+            assertTrue(e.getMessage().contains("expression: http.path('cats').post({name:'Billie'}) - failed"));
         }
     }
 
