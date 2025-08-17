@@ -43,6 +43,8 @@ public class Context {
 
     BiConsumer<Node, Exception> onError;
     BiConsumer<String, Object> onAssign;
+    BiConsumer<Node, String> onConsoleLog;
+
     boolean ignoreErrors;
     int errorCount;
     int statementCount;
@@ -57,7 +59,7 @@ public class Context {
     private Object getGlobal(String key) {
         switch (key) {
             case "console":
-                return createConsole(System.out::println);
+                return createConsole();
             case "parseInt":
                 return (Invokable) args -> Terms.toNumber(args[0]);
             case "undefined":
@@ -121,16 +123,17 @@ public class Context {
         return null;
     }
 
-    public void setOnConsole(Consumer<String> onConsole) {
-        parent.bindings.put("console", createConsole(onConsole));
-    }
-
     public void setOnError(BiConsumer<Node, Exception> onError) {
         this.onError = onError;
     }
 
     public void setOnAssign(BiConsumer<String, Object> onAssign) {
         this.onAssign = onAssign;
+    }
+
+    public void setOnConsoleLog(BiConsumer<Node, String> onConsoleLog) {
+        this.onConsoleLog = onConsoleLog;
+        parent.bindings.put("console", createConsole());
     }
 
     public void setIgnoreErrors(boolean ignoreErrors) {
@@ -247,12 +250,16 @@ public class Context {
         bindings.remove(name);
     }
 
-    static ObjectLike createConsole(Consumer<String> logger) {
+    private ObjectLike createConsole() {
         return (SimpleObject) name -> {
             if ("log".equals(name)) {
                 return (Invokable) args -> {
                     StringBuilder sb = new StringBuilder();
-                    for (Object arg : args) {
+                    for (int i = 0; i < args.length; i++) {
+                        Object arg = args[i];
+                        if (i > 0) {
+                            sb.append(' ');
+                        }
                         if (arg instanceof ObjectLike) {
                             Object toString = ((ObjectLike) arg).get("toString");
                             if (toString instanceof Invokable) {
@@ -263,9 +270,12 @@ public class Context {
                         } else {
                             sb.append(Terms.TO_STRING(arg));
                         }
-                        sb.append(' ');
                     }
-                    logger.accept(sb.toString());
+                    if (onConsoleLog != null) {
+                        onConsoleLog.accept(currentStatement, sb.toString());
+                    } else {
+                        System.out.println(sb);
+                    }
                     return null;
                 };
             }
@@ -276,15 +286,11 @@ public class Context {
     //==================================================================================================================
     //
     boolean construct;
-    Node currentNode;
+    Node currentStatement;
 
     private boolean stopped;
     private Object returnValue;
     private Object errorThrown;
-
-    public Node getCurrentNode() {
-        return currentNode;
-    }
 
     Object stopAndThrow(Object error) {
         stopped = true;
@@ -292,8 +298,8 @@ public class Context {
         if (logger.isTraceEnabled()) {
             String info = error + "";
             logger.trace("**ERROR** {}", info);
-            if (currentNode != null) {
-                logger.trace(currentNode.toStringError(""));
+            if (currentStatement != null) {
+                logger.trace(currentStatement.toStringError(""));
             }
         }
         return error;

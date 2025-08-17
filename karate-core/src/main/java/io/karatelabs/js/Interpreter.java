@@ -562,6 +562,7 @@ public class Interpreter {
     }
 
     private static Object evalStatement(Node node, Context context) {
+        context.currentStatement = node;
         context.statementCount++;
         try {
             Object statementResult = eval(node.children.get(0), context);
@@ -716,7 +717,6 @@ public class Interpreter {
     }
 
     public static Object eval(Node node, Context context) {
-        context.currentNode = node;
         switch (node.type) {
             case _CHUNK:
                 return evalChunk(node, context);

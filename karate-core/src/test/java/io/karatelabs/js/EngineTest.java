@@ -140,27 +140,39 @@ class EngineTest {
         assertNull(result);
     }
 
-    static class NameValue {
-
-        String name;
-        Object value;
-
-    }
-
     @Test
     void testOnAssign() {
         Engine engine = new Engine();
-        NameValue nv = new NameValue();
+        Map<String, Object> map = new HashMap<>();
         engine.context.setOnAssign((name, value) -> {
-            nv.name = name;
-            nv.value = value;
+            map.put("name", name);
+            map.put("value", value);
         });
         engine.eval("var a = 'a'");
-        assertEquals("a", nv.name);
-        assertEquals("a", nv.value);
+        assertEquals("a", map.get("name"));
+        assertEquals("a", map.get("value"));
         engine.eval("b = 'b'");
-        assertEquals("b", nv.name);
-        assertEquals("b", nv.value);
+        assertEquals("b", map.get("name"));
+        assertEquals("b", map.get("value"));
+    }
+
+    @Test
+    void testOnConsoleLog() {
+        Engine engine = new Engine();
+        Map<String, Object> map = new HashMap<>();
+        engine.context.setOnConsoleLog((node, text) -> {
+            map.put("node", node);
+            map.put("text", text);
+        });
+        engine.eval("console.log('foo');");
+        assertEquals("foo", map.get("text"));
+        Node node = (Node) map.get("node");
+        assertEquals(Type.STATEMENT, node.type);
+        Chunk first = node.getFirstChunk();
+        assertEquals(Token.IDENT, first.token);
+        assertEquals("console", first.text);
+        assertEquals(0, first.line);
+        assertEquals(0, first.col);
     }
 
     @Test
