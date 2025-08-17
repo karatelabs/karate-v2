@@ -43,6 +43,7 @@ class JsStringTest extends EvalBase {
     void testStringTemplate() {
         assertEquals("foobar", eval("var a = 'foo'; `${a}bar`"));
         assertEquals("$foobar", eval("var a = 'foo'; `$${a}bar`"));
+        assertEquals("Cost New: $100", eval("var a = 100; `Cost New: $${a}`"));
         assertEquals("foobar", eval("var a = x => 'foo'; `${a()}bar`"));
         assertEquals("[1, 2, 3]", eval("`[${[].map.call([1,2,3], String).join(', ')}]`"));
     }

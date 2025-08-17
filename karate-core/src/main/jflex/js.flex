@@ -54,7 +54,7 @@ B_COMMENT = "/*"([^*]|\*+[^*/])*(\*+"/")?
 D_STRING = \"([^\"]|\\\")*\"?
 S_STRING = '([^']|\\')*'?
 IDENT = [:jletter:][:jletterdigit:]*
-T_STRING = [^`$]+ ("$"[^{])?
+T_STRING = [^`$]+ | "$"[^{$`]+
 REGEX = "/" [^*/\n] ([^/\\\n]|\\[^\n])* "/" [:jletter:]*
 
 %state TEMPLATE PLACEHOLDER
