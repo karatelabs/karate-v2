@@ -28,6 +28,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
+import static io.karatelabs.js.TokenType.*;
+
 public class Interpreter {
 
     static final Logger logger = LoggerFactory.getLogger(Interpreter.class);
@@ -36,7 +38,7 @@ public class Interpreter {
         List<String> list = new ArrayList<>(fnArgs.children.size());
         for (Node fnArg : fnArgs.children) {
             Node first = fnArg.children.get(0);
-            if (first.chunk.token == Token.DOT_DOT_DOT) { // varargs
+            if (first.token.type == DOT_DOT_DOT) { // varargs
                 list.add("." + fnArg.children.get(1).getText());
             } else {
                 list.add(fnArg.children.get(0).getText());
@@ -54,7 +56,7 @@ public class Interpreter {
     }
 
     private static Object evalChunk(Node node, Context context) {
-        switch (node.chunk.token) {
+        switch (node.token.type) {
             case IDENT:
                 String varName = node.getText();
                 if (!context.hasKey(varName)) {
@@ -63,9 +65,9 @@ public class Interpreter {
                 return context.get(varName);
             case S_STRING:
             case D_STRING:
-                return node.chunk.text.substring(1, node.chunk.text.length() - 1);
+                return node.token.text.substring(1, node.token.text.length() - 1);
             case NUMBER:
-                return Terms.toNumber(node.chunk.text);
+                return Terms.toNumber(node.token.text);
             case NULL:
                 return null;
             case TRUE:
@@ -73,7 +75,7 @@ public class Interpreter {
             case FALSE:
                 return false;
             case REGEX:
-                return new JsRegex(node.chunk.text);
+                return new JsRegex(node.token.text);
             default:
                 throw new RuntimeException(node.toStringError("eval - unexpected chunk"));
         }
@@ -82,7 +84,7 @@ public class Interpreter {
     private static Object evalAssignExpr(Node node, Context context) {
         JsProperty prop = new JsProperty(node.children.get(0), context);
         Object value = eval(node.children.get(2), context);
-        switch (node.children.get(1).chunk.token) {
+        switch (node.children.get(1).token.type) {
             case EQ:
                 break;
             case PLUS_EQ:
@@ -122,7 +124,7 @@ public class Interpreter {
     private static Object evalBlock(Node node, Context context) {
         Object blockResult = null;
         for (Node child : node.children) {
-            if (child.type == Type.STATEMENT) {
+            if (child.type == NodeType.STATEMENT) {
                 blockResult = eval(child, context);
                 if (context.isStopped()) {
                     break;
@@ -136,7 +138,7 @@ public class Interpreter {
     private static Object evalExprList(Node node, Context context) {
         Object result = null;
         for (Node child : node.children) {
-            if (child.type == Type.EXPR) {
+            if (child.type == NodeType.EXPR) {
                 result = eval(child, context);
             }
         }
@@ -181,7 +183,7 @@ public class Interpreter {
             for (int i = 0; i < argsCount; i++) {
                 Node fnArgNode = fnArgsNode.children.get(i);
                 Node argNode = fnArgNode.children.get(0);
-                if (argNode.isChunk()) { // DOT_DOT_DOT
+                if (argNode.isToken()) { // DOT_DOT_DOT
                     Object arg = eval(fnArgNode.children.get(1), context);
                     if (arg instanceof List) {
                         argsList.addAll((List<Object>) arg);
@@ -234,7 +236,7 @@ public class Interpreter {
     }
 
     private static Object evalFnExpr(Node node, Context context) {
-        if (node.children.get(1).chunk.token == Token.IDENT) {
+        if (node.children.get(1).token.type == IDENT) {
             NodeFunction nodeFunction = new NodeFunction(false, argNames(node.children.get(3)), node.children.get(5), context);
             context.declare(node.children.get(1).getText(), nodeFunction);
             return nodeFunction;
@@ -244,7 +246,7 @@ public class Interpreter {
     }
 
     private static Object evalFnArrowExpr(Node node, Context context) {
-        if (node.children.get(0).chunk.token == Token.IDENT) {
+        if (node.children.get(0).token.type == IDENT) {
             String argName = node.children.get(0).getText();
             return new NodeFunction(true, Collections.singletonList(argName), node.children.get(2), context);
         } else {
@@ -256,14 +258,14 @@ public class Interpreter {
         Context forContext = new Context(context);
         Node forBody = node.children.get(node.children.size() - 1);
         Object forResult = null;
-        if (node.children.get(2).chunk.token == Token.SEMI) {
+        if (node.children.get(2).token.type == SEMI) {
 
-        } else if (node.children.get(3).chunk.token == Token.SEMI) {
+        } else if (node.children.get(3).token.type == SEMI) {
             eval(node.children.get(2), forContext);
-            if (node.children.get(4).chunk.token == Token.SEMI) {
+            if (node.children.get(4).token.type == SEMI) {
 
             } else {
-                Node forAfter = node.children.get(6).chunk.token == Token.R_PAREN ? null : node.children.get(6);
+                Node forAfter = node.children.get(6).token.type == R_PAREN ? null : node.children.get(6);
                 while (true) {
                     Object forCondition = eval(node.children.get(4), forContext);
                     if (!Terms.isTruthy(forCondition)) {
@@ -280,11 +282,11 @@ public class Interpreter {
                 }
             }
         } else { // for in / of
-            boolean in = node.children.get(3).chunk.token == Token.IN;
+            boolean in = node.children.get(3).token.type == IN;
             Object forObject = eval(node.children.get(4), forContext);
             Iterable<KeyValue> iterable = JsObject.toIterable(forObject);
             String varName;
-            if (node.children.get(2).type == Type.VAR_STMT) {
+            if (node.children.get(2).type == NodeType.VAR_STMT) {
                 varName = node.children.get(2).children.get(1).getText();
             } else {
                 varName = node.children.get(2).getText();
@@ -323,7 +325,7 @@ public class Interpreter {
         for (int i = 1; i < last; i++) {
             Node elem = node.children.get(i);
             Node exprNode = elem.children.get(0);
-            if (exprNode.chunk.token == Token.DOT_DOT_DOT) { // spread
+            if (exprNode.token.type == DOT_DOT_DOT) { // spread
                 Object value = eval(elem.children.get(1), context);
                 if (value instanceof List) {
                     List<Object> temp = (List<Object>) value;
@@ -334,7 +336,7 @@ public class Interpreter {
                         list.add(Character.toString(c));
                     }
                 }
-            } else if (exprNode.chunk.token == Token.COMMA) { // sparse
+            } else if (exprNode.token.type == COMMA) { // sparse
                 list.add(null);
             } else {
                 Object value = eval(exprNode, context);
@@ -351,16 +353,16 @@ public class Interpreter {
         for (int i = 1; i < last; i++) {
             Node elem = node.children.get(i);
             Node keyNode = elem.children.get(0);
-            Token token = keyNode.chunk.token;
+            TokenType token = keyNode.token.type;
             String key;
-            if (token == Token.DOT_DOT_DOT) {
+            if (token == DOT_DOT_DOT) {
                 key = elem.children.get(1).getText();
-            } else if (token == Token.S_STRING || token == Token.D_STRING) {
+            } else if (token == S_STRING || token == D_STRING) {
                 key = (String) eval(keyNode, context);
             } else { // IDENT, NUMBER
                 key = keyNode.getText();
             }
-            if (token == Token.DOT_DOT_DOT) {
+            if (token == DOT_DOT_DOT) {
                 Object value = context.get(key);
                 if (value instanceof Map) {
                     Map<String, Object> temp = (Map<String, Object>) value;
@@ -381,9 +383,9 @@ public class Interpreter {
     private static String evalLitTemplate(Node node, Context context) {
         StringBuilder sb = new StringBuilder();
         for (Node child : node.children) {
-            if (child.chunk.token == Token.T_STRING) {
-                sb.append(child.chunk.text);
-            } else if (child.type == Type.EXPR) {
+            if (child.token.type == T_STRING) {
+                sb.append(child.token.text);
+            } else if (child.type == NodeType.EXPR) {
                 Object value = eval(child, context);
                 if (value == Undefined.INSTANCE) {
                     throw new RuntimeException(child.getText() + " is not defined");
@@ -395,7 +397,7 @@ public class Interpreter {
     }
 
     private static Object evalLogicBitExpr(Node node, Context context) {
-        switch (node.children.get(1).chunk.token) {
+        switch (node.children.get(1).token.type) {
             case AMP:
                 return terms(node, context).bitAnd();
             case PIPE:
@@ -416,10 +418,10 @@ public class Interpreter {
     private static boolean evalLogicExpr(Node node, Context context) {
         Object lhs = eval(node.children.get(0), context);
         Object rhs = eval(node.children.get(2), context);
-        Token logicOp = node.children.get(1).chunk.token;
+        TokenType logicOp = node.children.get(1).token.type;
         if (Undefined.NAN.equals(lhs) || Undefined.NAN.equals(rhs)) {
             if (Undefined.NAN.equals(lhs) && Undefined.NAN.equals(rhs)) {
-                return logicOp == Token.NOT_EQ || logicOp == Token.NOT_EQ_EQ;
+                return logicOp == NOT_EQ || logicOp == NOT_EQ_EQ;
             }
             return false;
         }
@@ -448,7 +450,7 @@ public class Interpreter {
     private static Object evalLogicAndExpr(Node node, Context context) {
         Object andOrLhs = eval(node.children.get(0), context);
         Object andOrRhs = eval(node.children.get(2), context);
-        switch (node.children.get(1).chunk.token) {
+        switch (node.children.get(1).token.type) {
             case AMP_AMP:
                 return Terms.and(andOrLhs, andOrRhs);
             case PIPE_PIPE:
@@ -467,7 +469,7 @@ public class Interpreter {
     }
 
     private static Object evalMathAddExpr(Node node, Context context) {
-        switch (node.children.get(1).chunk.token) {
+        switch (node.children.get(1).token.type) {
             case PLUS:
                 return Terms.add(eval(node.children.get(0), context), eval(node.children.get(2), context));
             case MINUS:
@@ -478,7 +480,7 @@ public class Interpreter {
     }
 
     private static Object evalMathMulExpr(Node node, Context context) {
-        switch (node.children.get(1).chunk.token) {
+        switch (node.children.get(1).token.type) {
             case STAR:
                 return terms(node, context).mul();
             case SLASH:
@@ -493,7 +495,7 @@ public class Interpreter {
     private static Object evalMathPostExpr(Node node, Context context) {
         JsProperty postProp = new JsProperty(node.children.get(0), context);
         Object postValue = postProp.get();
-        switch (node.children.get(1).chunk.token) {
+        switch (node.children.get(1).token.type) {
             case PLUS_PLUS:
                 postProp.set(Terms.add(postValue, 1));
                 break;
@@ -509,7 +511,7 @@ public class Interpreter {
     private static Object evalMathPreExpr(Node node, Context context) {
         JsProperty preProp = new JsProperty(node.children.get(1), context);
         Object preValue = preProp.get();
-        switch (node.children.get(0).chunk.token) {
+        switch (node.children.get(0).token.type) {
             case PLUS_PLUS:
                 preProp.set(Terms.add(preValue, 1));
                 return preProp.get();
@@ -528,7 +530,7 @@ public class Interpreter {
     private static Object evalNewExpr(Node node, Context context) {
         context.construct = true;
         Node fn = node.children.get(1);
-        if (fn.children.get(0).type == Type.REF_EXPR) { // rare case where there were no parentheses on constructor call
+        if (fn.children.get(0).type == NodeType.REF_EXPR) { // rare case where there were no parentheses on constructor call
             return evalFnCall(fn, context);
         }
         return eval(fn, context);
@@ -569,9 +571,9 @@ public class Interpreter {
         try {
             Object statementResult = eval(node.children.get(0), context);
             if (logger.isTraceEnabled() || Engine.DEBUG) {
-                Type childType = node.children.get(0).type;
-                if (childType != Type.EXPR && childType != Type.BLOCK) {
-                    Chunk first = node.getFirstChunk();
+                NodeType childType = node.children.get(0).type;
+                if (childType != NodeType.EXPR && childType != NodeType.BLOCK) {
+                    Token first = node.getFirstToken();
                     logger.trace("{}{} {} | {}", first.resource, first.getPositionDisplay(), statementResult, node);
                     if (Engine.DEBUG) {
                         System.out.println(first.resource + first.getPositionDisplay() + " " + statementResult + " | " + node);
@@ -587,7 +589,7 @@ public class Interpreter {
                 }
                 return null;
             } else {
-                Chunk first = node.getFirstChunk();
+                Token first = node.getFirstToken();
                 String message = "js failed:\n==========\n" + first.getLineText() + "\n"
                         + first.resource + first.getPositionDisplay() + " " + e.getMessage();
                 message = message.trim() + "\n----------\n";
@@ -599,7 +601,7 @@ public class Interpreter {
 
     private static Object evalSwitchStmt(Node node, Context context) {
         Object switchValue = eval(node.children.get(2), context);
-        List<Node> caseNodes = node.findChildrenOfType(Type.CASE_BLOCK);
+        List<Node> caseNodes = node.findChildrenOfType(NodeType.CASE_BLOCK);
         for (Node caseNode : caseNodes) {
             Object caseValue = eval(caseNode.children.get(1), context);
             if (Terms.eq(switchValue, caseValue, true)) {
@@ -609,7 +611,7 @@ public class Interpreter {
                 }
             }
         }
-        List<Node> defaultNodes = node.findChildrenOfType(Type.DEFAULT_BLOCK);
+        List<Node> defaultNodes = node.findChildrenOfType(NodeType.DEFAULT_BLOCK);
         if (!defaultNodes.isEmpty()) {
             return evalBlock(defaultNodes.get(0), context);
         }
@@ -619,13 +621,13 @@ public class Interpreter {
     private static Object evalTryStmt(Node node, Context context) {
         Object tryValue = eval(node.children.get(1), context);
         Node finallyBlock = null;
-        if (node.children.get(2).chunk.token == Token.CATCH) {
+        if (node.children.get(2).token.type == CATCH) {
             if (node.children.size() > 7) {
                 finallyBlock = node.children.get(8);
             }
             if (context.isError()) {
                 Context catchContext = new Context(context);
-                if (node.children.get(3).chunk.token == Token.L_PAREN) {
+                if (node.children.get(3).token.type == L_PAREN) {
                     String errorName = node.children.get(4).getText();
                     catchContext.declare(errorName, context.getErrorThrown());
                     tryValue = eval(node.children.get(6), catchContext);
@@ -637,7 +639,7 @@ public class Interpreter {
                 }
                 context.updateFrom(catchContext);
             }
-        } else if (node.children.get(2).chunk.token == Token.FINALLY) {
+        } else if (node.children.get(2).token.type == FINALLY) {
             finallyBlock = node.children.get(3);
         }
         if (finallyBlock != null) {
@@ -652,7 +654,7 @@ public class Interpreter {
 
     private static Object evalUnaryExpr(Node node, Context context) {
         Object unaryValue = eval(node.children.get(1), context);
-        switch (node.children.get(0).chunk.token) {
+        switch (node.children.get(0).token.type) {
             case NOT:
                 return !Terms.isTruthy(unaryValue);
             case TILDE:
@@ -669,7 +671,7 @@ public class Interpreter {
         } else {
             varValue = Undefined.INSTANCE;
         }
-        List<Node> varNames = node.children.get(1).findAll(Token.IDENT);
+        List<Node> varNames = node.children.get(1).findAll(IDENT);
         // TODO let & const
         for (Node varName : varNames) {
             context.declare(varName.getText(), varValue);
@@ -720,7 +722,7 @@ public class Interpreter {
 
     public static Object eval(Node node, Context context) {
         switch (node.type) {
-            case _CHUNK:
+            case _TOKEN:
                 return evalChunk(node, context);
             case ASSIGN_EXPR:
                 return evalAssignExpr(node, context);
@@ -754,7 +756,7 @@ public class Interpreter {
             case LIT_TEMPLATE:
                 return evalLitTemplate(node, context);
             case REGEX_LITERAL:
-                return new JsRegex(node.children.get(0).chunk.text);
+                return new JsRegex(node.children.get(0).token.text);
             case LOGIC_EXPR:
                 return evalLogicExpr(node, context);
             case LOGIC_AND_EXPR:

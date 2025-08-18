@@ -33,43 +33,43 @@ public class Node {
 
     static final Logger logger = LoggerFactory.getLogger(Node.class);
 
-    public final Type type;
-    public final Chunk chunk;
+    public final NodeType type;
+    public final Token token;
     public final List<Node> children = new ArrayList<>();
 
-    public Node(Type type) {
+    public Node(NodeType type) {
         this.type = type;
-        chunk = Chunk._NODE;
+        token = Token._EMPTY;
     }
 
-    public Node(Chunk chunk) {
-        this.chunk = chunk;
-        type = Type._CHUNK;
+    public Node(Token chunk) {
+        this.token = chunk;
+        type = NodeType._TOKEN;
     }
 
-    public boolean isChunk() {
-        return type == Type._CHUNK;
+    public boolean isToken() {
+        return type == NodeType._TOKEN;
     }
 
-    public Chunk getFirstChunk() {
-        if (isChunk()) {
-            return chunk;
+    public Token getFirstToken() {
+        if (isToken()) {
+            return token;
         }
         if (children.isEmpty()) {
-            return Chunk._NODE;
+            return Token._EMPTY;
         }
-        return children.get(0).getFirstChunk();
+        return children.get(0).getFirstToken();
     }
 
     public String toStringError(String message) {
-        Chunk first = getFirstChunk();
+        Token first = getFirstToken();
         return first.getPositionDisplay() + " " + type + "\n" + first.resource.getRelativePath() + "\n" + message;
     }
 
     @Override
     public String toString() {
-        if (isChunk()) {
-            return chunk.text;
+        if (isToken()) {
+            return token.text;
         }
         StringBuilder sb = new StringBuilder();
         for (Node child : children) {
@@ -81,7 +81,7 @@ public class Node {
         return sb.toString();
     }
 
-    public Node findFirst(Type type) {
+    public Node findFirst(NodeType type) {
         for (Node child : children) {
             if (child.type == type) {
                 return child;
@@ -94,9 +94,9 @@ public class Node {
         return null;
     }
 
-    public Node findFirst(Token token) {
+    public Node findFirst(TokenType token) {
         for (Node child : children) {
-            if (child.chunk.token == token) {
+            if (child.token.type == token) {
                 return child;
             }
             Node temp = child.findFirst(token);
@@ -107,7 +107,7 @@ public class Node {
         return null;
     }
 
-    public List<Node> findChildrenOfType(Type type) {
+    public List<Node> findChildrenOfType(NodeType type) {
         List<Node> results = new ArrayList<>();
         for (Node child : children) {
             if (child.type == type) {
@@ -117,25 +117,25 @@ public class Node {
         return results;
     }
 
-    public List<Node> findAll(Token token) {
+    public List<Node> findAll(TokenType token) {
         List<Node> results = new ArrayList<>();
         findAll(token, results);
         return results;
     }
 
-    private void findAll(Token token, List<Node> results) {
+    private void findAll(TokenType token, List<Node> results) {
         for (Node child : children) {
-            if (!child.isChunk()) {
+            if (!child.isToken()) {
                 child.findAll(token, results);
-            } else if (child.chunk.token == token) {
+            } else if (child.token.type == token) {
                 results.add(child);
             }
         }
     }
 
     public String getText() {
-        if (isChunk()) {
-            return chunk.text;
+        if (isToken()) {
+            return token.text;
         }
         StringBuilder sb = new StringBuilder();
         for (Node child : children) {

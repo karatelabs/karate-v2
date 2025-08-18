@@ -45,7 +45,7 @@ public class JsProperty {
     JsProperty(Node node, Context context) {
         this.node = node;
         this.context = context;
-        if (node.type == Type.EXPR) {
+        if (node.type == NodeType.EXPR) {
             node = node.children.get(0);
         }
         switch (node.type) {

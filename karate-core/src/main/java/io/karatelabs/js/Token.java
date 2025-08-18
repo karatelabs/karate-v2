@@ -23,220 +23,47 @@
  */
 package io.karatelabs.js;
 
-public enum Token {
+import io.karatelabs.common.Resource;
 
-    WS_LF(false),
-    WS(false),
-    EOF(false),
-    BACKTICK,
-    L_CURLY,
-    R_CURLY,
-    L_BRACKET,
-    R_BRACKET,
-    L_PAREN,
-    R_PAREN,
-    COMMA,
-    COLON,
-    SEMI,
-    DOT_DOT_DOT,
-    DOT,
-    //====
-    NULL(true, true),
-    TRUE(true, true),
-    FALSE(true, true),
-    FUNCTION(true, true),
-    RETURN(true, true),
-    TRY(true, true),
-    CATCH(true, true),
-    FINALLY(true, true),
-    THROW(true, true),
-    NEW(true, true),
-    VAR(true, true),
-    LET(true, true),
-    CONST(true, true),
-    IF(true, true),
-    ELSE(true, true),
-    TYPEOF(true, true),
-    INSTANCEOF(true, true),
-    DELETE(true, true),
-    FOR(true, true),
-    IN(true, true),
-    OF(true, true),
-    DO(true, true),
-    WHILE(true, true),
-    SWITCH(true, true),
-    CASE(true, true),
-    DEFAULT(true, true),
-    BREAK(true, true),
-    THIS(true, true),
-    VOID(true, true),
-    //====
-    EQ_EQ_EQ,
-    EQ_EQ,
-    EQ,
-    EQ_GT, // arrow
-    LT_LT_EQ,
-    LT_LT,
-    LT_EQ,
-    LT,
-    GT_GT_GT_EQ,
-    GT_GT_GT,
-    GT_GT_EQ,
-    GT_GT,
-    GT_EQ,
-    GT,
-    //====
-    NOT_EQ_EQ,
-    NOT_EQ,
-    NOT,
-    PIPE_PIPE_EQ,
-    PIPE_PIPE,
-    PIPE_EQ,
-    PIPE,
-    AMP_AMP_EQ,
-    AMP_AMP,
-    AMP_EQ,
-    AMP,
-    CARET_EQ,
-    CARET,
-    QUES_QUES,
-    QUES,
-    //====
-    PLUS_PLUS,
-    PLUS_EQ,
-    PLUS,
-    MINUS_MINUS,
-    MINUS_EQ,
-    MINUS,
-    STAR_STAR_EQ,
-    STAR_STAR,
-    STAR_EQ,
-    STAR,
-    SLASH_EQ,
-    SLASH,
-    PERCENT_EQ,
-    PERCENT,
-    TILDE,
-    //====
-    L_COMMENT(false),
-    B_COMMENT(false),
-    S_STRING,
-    D_STRING,
-    NUMBER,
-    IDENT,
-    //====
-    REGEX,
-    DOLLAR_L_CURLY,
-    T_STRING,
-    //====
-    G_PREFIX,
-    G_STEP,
-    G_STEP_TEXT,
-    G_COMMENT(false),
-    G_DESC,
-    G_FEATURE,
-    G_SCENARIO,
-    G_SCENARIO_OUTLINE,
-    G_EXAMPLES,
-    G_BACKGROUND,
-    G_TAG,
-    G_TRIPLE_QUOTE,
-    G_PIPE,
-    G_PIPE_FIRST,
-    G_TABLE_CELL;
+public class Token {
 
-    public final boolean primary;
-    public final boolean keyword;
-    public final Boolean regexAllowed;
+    static final Token _EMPTY = new Token(Resource.text(""), TokenType.EOF, 0, 0, 0, "");
 
-    Token() {
-        primary = true;
-        keyword = false;
-        regexAllowed = isRegexAllowed(this);
+    Resource resource;
+    public final long pos;
+    public final int line;
+    public final int col;
+    public final TokenType type;
+    public final String text;
+    Token prev;
+    Token next;
+
+    public Token(Resource resource, TokenType type, long pos, int line, int col, String text) {
+        this.resource = resource;
+        this.type = type;
+        this.pos = pos;
+        this.line = line;
+        this.col = col;
+        this.text = text;
     }
 
-    Token(boolean primary, boolean keyword) {
-        this.primary = primary;
-        this.keyword = keyword;
-        regexAllowed = isRegexAllowed(this);
+    public String getLineText() {
+        return resource.getLine(line);
     }
 
-    Token(boolean primary) {
-        this.primary = primary;
-        this.keyword = false;
-        regexAllowed = isRegexAllowed(this);
+    public String getPositionDisplay() {
+        return "[" + (line + 1) + ":" + (col + 1) + "]";
     }
 
-    private static Boolean isRegexAllowed(Token token) {
-        switch (token) {
-            // after these tokens, a regex literal is allowed (rather than division)
-            case L_PAREN:
-            case L_BRACKET:
-            case L_CURLY:
-            case COMMA:
-            case SEMI:
-            case COLON:
-            case EQ:
-            case EQ_EQ:
-            case EQ_EQ_EQ:
-            case NOT_EQ:
-            case NOT_EQ_EQ:
-            case LT:
-            case LT_EQ:
-            case GT:
-            case GT_EQ:
-            case PLUS:
-            case PLUS_EQ:
-            case MINUS:
-            case MINUS_EQ:
-            case STAR:
-            case STAR_EQ:
-            case STAR_STAR:
-            case STAR_STAR_EQ:
-            case SLASH_EQ:
-            case PERCENT:
-            case PERCENT_EQ:
-            case AMP:
-            case AMP_EQ:
-            case AMP_AMP:
-            case AMP_AMP_EQ:
-            case PIPE:
-            case PIPE_EQ:
-            case PIPE_PIPE:
-            case PIPE_PIPE_EQ:
-            case CARET:
-            case CARET_EQ:
-            case QUES:
-            case QUES_QUES:
-            case TILDE:
-            case NOT:
-            case RETURN:
-            case TYPEOF:
-            case DELETE:
-            case INSTANCEOF:
-            case IN:
-            case DO:
-            case IF:
-            case ELSE:
-            case CASE:
-            case DEFAULT:
-            case THROW:
-                return true;
-            // after these tokens, a regex literal is not allowed
-            case R_PAREN:
-            case R_BRACKET:
-            case R_CURLY:
-            case IDENT:
-            case NUMBER:
-            case S_STRING:
-            case D_STRING:
-            case TRUE:
-            case FALSE:
-            case NULL:
-                return false;
+    @Override
+    public String toString() {
+        switch (type) {
+            case WS:
+                return "_";
+            case WS_LF:
+                return "_\\n_";
         }
-        // for other tokens, keep the current value of regexAllowed
-        return null;
+        return text;
     }
 
 }

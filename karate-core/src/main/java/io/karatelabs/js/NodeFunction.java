@@ -87,7 +87,7 @@ public class NodeFunction extends JsFunction {
         if (invokeContext != null && childContext.isError()) {
             invokeContext.updateFrom(childContext);
         }
-        return body.type == Type.BLOCK ? childContext.getReturnValue() : result;
+        return body.type == NodeType.BLOCK ? childContext.getReturnValue() : result;
     }
 
     @Override

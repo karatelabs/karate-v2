@@ -115,10 +115,10 @@ public class NodeUtils {
                     }
                     return Collections.singletonMap(key, list);
                 }
-            case _CHUNK:
-                switch (node.chunk.token) {
+            case _TOKEN:
+                switch (node.token.type) {
                     case IDENT:
-                        return "$" + node.chunk.text;
+                        return "$" + node.token.text;
                     case S_STRING:
                     case D_STRING:
                     case NUMBER:
@@ -127,7 +127,7 @@ public class NodeUtils {
                     case FALSE:
                         return Interpreter.eval(node, Context.EMPTY);
                     default:
-                        return node.chunk.text;
+                        return node.token.text;
                 }
             default:
                 if (node.children.size() == 1) {

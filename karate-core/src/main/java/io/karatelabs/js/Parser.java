@@ -32,12 +32,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static io.karatelabs.js.TokenType.*;
+
 abstract class Parser {
 
     static final Logger logger = LoggerFactory.getLogger(Parser.class);
 
     final Resource resource;
-    final List<Chunk> chunks;
+    final List<Token> chunks;
     private final int size;
 
     int position = 0;
@@ -51,7 +53,7 @@ abstract class Parser {
         this.resource = resource;
         chunks = getChunks(resource, gherkin);
         size = chunks.size();
-        marker = new Marker(position, null, new Node(Type.ROOT), -1);
+        marker = new Marker(position, null, new Node(NodeType.ROOT), -1);
     }
 
     @Override
@@ -79,7 +81,7 @@ abstract class Parser {
     }
 
     void error(String message) {
-        Chunk chunk;
+        Token chunk;
         if (position == size) {
             chunk = chunks.get(position - 1);
         } else {
@@ -90,23 +92,23 @@ abstract class Parser {
                 + " " + chunk + "\nparser state: " + this);
     }
 
-    void error(Type... expected) {
+    void error(NodeType... expected) {
         error("expected: " + Arrays.asList(expected));
     }
 
-    void error(Token... expected) {
+    void error(TokenType... expected) {
         error("expected: " + Arrays.asList(expected));
     }
 
-    void enter(Type type) {
+    void enter(NodeType type) {
         enterIf(type, null);
     }
 
-    boolean enter(Type type, Token... tokens) {
+    boolean enter(NodeType type, TokenType... tokens) {
         return enterIf(type, tokens);
     }
 
-    boolean enterIf(Type type, Token[] tokens) {
+    boolean enterIf(NodeType type, TokenType[] tokens) {
         if (tokens != null) {
             if (!peekAnyOf(tokens)) {
                 return false;
@@ -176,29 +178,29 @@ abstract class Parser {
         return result;
     }
 
-    static List<Chunk> getChunks(Resource resource, boolean gherkin) {
+    static List<Token> getChunks(Resource resource, boolean gherkin) {
         CharArrayReader reader = new CharArrayReader(resource.getText().toCharArray());
         Lexer lexer = new Lexer(reader);
         if (gherkin) {
             lexer.yybegin(Lexer.GHERKIN);
         }
-        List<Chunk> list = new ArrayList<>();
-        Chunk prev = null;
+        List<Token> list = new ArrayList<>();
+        Token prev = null;
         int line = 0;
         int col = 0;
         long pos = 0;
         try {
             while (true) {
-                Token token = lexer.yylex();
-                if (token == Token.EOF) {
-                    list.add(new Chunk(resource, token, pos, line, col, ""));
+                TokenType token = lexer.yylex();
+                if (token == EOF) {
+                    list.add(new Token(resource, token, pos, line, col, ""));
                     break;
                 }
                 String text = lexer.yytext();
-                Chunk chunk = new Chunk(resource, token, pos, line, col, text);
+                Token chunk = new Token(resource, token, pos, line, col, text);
                 int length = lexer.yylength();
                 pos += length;
-                if (token == Token.WS_LF || token == Token.B_COMMENT || token == Token.T_STRING) {
+                if (token == WS_LF || token == B_COMMENT || token == T_STRING) {
                     for (int i = 0; i < length; i++) {
                         if (text.charAt(i) == '\n') {
                             col = 0;
@@ -226,25 +228,25 @@ abstract class Parser {
         return list;
     }
 
-    boolean peekIf(Token token) {
+    boolean peekIf(TokenType token) {
         if (position == size) {
             return false;
         }
-        return chunks.get(position).token == token;
+        return chunks.get(position).type == token;
     }
 
-    Token peek() {
+    TokenType peek() {
         if (position == size) {
-            return Token.EOF;
+            return EOF;
         }
-        return chunks.get(position).token;
+        return chunks.get(position).type;
     }
 
-    Token peekPrev() {
+    TokenType peekPrev() {
         if (position == 0) {
-            return Token.EOF;
+            return EOF;
         }
-        return chunks.get(position - 1).token;
+        return chunks.get(position - 1).type;
     }
 
     void consumeNext() {
@@ -252,20 +254,20 @@ abstract class Parser {
         marker.node.children.add(node);
     }
 
-    Chunk next() {
+    Token next() {
         if (position == size) {
-            return Chunk._NODE;
+            return Token._EMPTY;
         }
         return chunks.get(position++);
     }
 
-    void consume(Token token) {
+    void consume(TokenType token) {
         if (!consumeIf(token)) {
             error(token);
         }
     }
 
-    boolean consumeIf(Token token) {
+    boolean consumeIf(TokenType token) {
         if (peekIf(token)) {
             Node node = new Node(chunks.get(position++));
             marker.node.children.add(node);
@@ -274,8 +276,8 @@ abstract class Parser {
         return false;
     }
 
-    boolean peekAnyOf(Token... tokens) {
-        for (Token token : tokens) {
+    boolean peekAnyOf(TokenType... tokens) {
+        for (TokenType token : tokens) {
             if (peekIf(token)) {
                 return true;
             }
@@ -283,8 +285,8 @@ abstract class Parser {
         return false;
     }
 
-    boolean anyOf(Token... tokens) {
-        for (Token token : tokens) {
+    boolean anyOf(TokenType... tokens) {
+        for (TokenType token : tokens) {
             if (consumeIf(token)) {
                 return true;
             }

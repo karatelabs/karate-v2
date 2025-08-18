@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 class JsParserTest {
 
-    private static void equals(String text, String json, Type type) {
+    private static void equals(String text, String json, NodeType type) {
         JsParser parser = new JsParser(Resource.text(text));
         Node node = parser.parse();
         Node child;
@@ -21,15 +21,15 @@ class JsParserTest {
         NodeUtils.assertEquals(text, child, json);
     }
 
-    private static Chunk firstNumber(String text) {
+    private static Token firstNumber(String text) {
         JsParser parser = new JsParser(Resource.text(text));
         Node root = parser.parse();
-        Node num = root.findFirst(Token.NUMBER);
-        return num.chunk;
+        Node num = root.findFirst(TokenType.NUMBER);
+        return num.token;
     }
 
     private static void expr(String text, String json) {
-        equals(text, json, Type.STATEMENT);
+        equals(text, json, NodeType.STATEMENT);
     }
 
     private static <T> void error(String text, Class<T> type) {
@@ -308,7 +308,7 @@ class JsParserTest {
 
     @Test
     void testWhiteSpaceCounting() {
-        Chunk chunk = firstNumber("/* */  1");
+        Token chunk = firstNumber("/* */  1");
         assertEquals(0, chunk.line);
         assertEquals(7, chunk.col);
         assertEquals(7, chunk.pos);

@@ -23,47 +23,75 @@
  */
 package io.karatelabs.js;
 
-import io.karatelabs.common.Resource;
+public enum NodeType {
 
-public class Chunk {
-
-    static final Chunk _NODE = new Chunk(Resource.text(""), Token.EOF, 0, 0, 0, "");
-
-    Resource resource;
-    public final long pos;
-    public final int line;
-    public final int col;
-    public final Token token;
-    public final String text;
-    Chunk prev;
-    Chunk next;
-
-    public Chunk(Resource resource, Token token, long pos, int line, int col, String text) {
-        this.resource = resource;
-        this.token = token;
-        this.pos = pos;
-        this.line = line;
-        this.col = col;
-        this.text = text;
-    }
-
-    public String getLineText() {
-        return resource.getLine(line);
-    }
-
-    public String getPositionDisplay() {
-        return "[" + (line + 1) + ":" + (col + 1) + "]";
-    }
-
-    @Override
-    public String toString() {
-        switch (token) {
-            case WS:
-                return "_";
-            case WS_LF:
-                return "_\\n_";
-        }
-        return text;
-    }
+    _TOKEN,
+    ROOT,
+    PROGRAM,
+    STATEMENT,
+    IF_STMT,
+    VAR_STMT,
+    VAR_STMT_NAMES,
+    RETURN_STMT,
+    TRY_STMT,
+    THROW_STMT,
+    FOR_STMT,
+    WHILE_STMT,
+    DO_WHILE_STMT,
+    SWITCH_STMT,
+    CASE_BLOCK,
+    DEFAULT_BLOCK,
+    BREAK_STMT,
+    DELETE_STMT,
+    BLOCK,
+    EOS,
+    EXPR,
+    EXPR_LIST,
+    FN_EXPR,
+    FN_ARROW_EXPR,
+    FN_DECL_ARGS,
+    FN_DECL_ARG,
+    NEW_EXPR,
+    TYPEOF_EXPR,
+    INSTANCEOF_EXPR,
+    FN_CALL_EXPR,
+    FN_CALL_ARGS,
+    FN_CALL_ARG,
+    ASSIGN_EXPR,
+    LOGIC_EXPR,
+    LOGIC_AND_EXPR,
+    LOGIC_TERN_EXPR,
+    LOGIC_BIT_EXPR,
+    MATH_ADD_EXPR,
+    MATH_MUL_EXPR,
+    MATH_EXP_EXPR,
+    MATH_POST_EXPR,
+    MATH_PRE_EXPR,
+    PATH_EXPR,
+    REF_EXPR,
+    REF_DOT_EXPR,
+    REF_BRACKET_EXPR,
+    UNARY_EXPR,
+    LIT_OBJECT,
+    OBJECT_ELEM,
+    LIT_ARRAY,
+    ARRAY_ELEM,
+    LIT_EXPR,
+    PAREN_EXPR,
+    LIT_TEMPLATE,
+    PLACEHOLDER,
+    REGEX_LITERAL,
+    //====
+    G_FEATURE,
+    G_BACKGROUND,
+    G_SCENARIO,
+    G_EXAMPLES_PARENT,
+    G_EXAMPLES,
+    G_TABLE,
+    G_TABLE_ROW,
+    G_TAGS,
+    G_DESC,
+    G_STEPS,
+    G_STEP
 
 }

@@ -51,8 +51,8 @@ class EngineTest {
                         """;
         JsParser parser = new JsParser(Resource.text(js));
         Node node = parser.parse();
-        Node lastLine = node.findFirst(Token.CONST);
-        assertEquals(9, lastLine.chunk.line);
+        Node lastLine = node.findFirst(TokenType.CONST);
+        assertEquals(9, lastLine.token.line);
     }
 
     @Test
@@ -74,7 +74,7 @@ class EngineTest {
         Node node = parser.parse();
         assertEquals(2, node.children.size());
         for (Node child : node.children) {
-            assertEquals(Type.STATEMENT, child.type);
+            assertEquals(NodeType.STATEMENT, child.type);
         }
     }
 
@@ -167,9 +167,9 @@ class EngineTest {
         engine.eval("console.log('foo');");
         assertEquals("foo", map.get("text"));
         Node node = (Node) map.get("node");
-        assertEquals(Type.STATEMENT, node.type);
-        Chunk first = node.getFirstChunk();
-        assertEquals(Token.IDENT, first.token);
+        assertEquals(NodeType.STATEMENT, node.type);
+        Token first = node.getFirstToken();
+        assertEquals(TokenType.IDENT, first.type);
         assertEquals("console", first.text);
         assertEquals(0, first.line);
         assertEquals(0, first.col);

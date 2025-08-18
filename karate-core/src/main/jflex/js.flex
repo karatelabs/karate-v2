@@ -25,19 +25,19 @@ package io.karatelabs.js;
 
 import java.util.ArrayDeque;
 
-import static io.karatelabs.js.Token.*;
+import static io.karatelabs.js.TokenType.*;
 %%
 
 %class Lexer
 %unicode
-%type Token
+%type TokenType
 
 %{
 boolean regexAllowed = true; // start with true since a regex can appear at the start of a program
 ArrayDeque<Integer> kkStack;
 void kkPush() { if (kkStack == null) kkStack = new ArrayDeque<>(); kkStack.push(yystate()); }
 int kkPop() { return kkStack.pop(); }
-private Token update(Token token) { if (token.regexAllowed != null) regexAllowed = token.regexAllowed; return token; }
+private TokenType tt(TokenType type) { if (type.regexAllowed != null) regexAllowed = type.regexAllowed; return type; }
 %}
 
 WS = [ \t]
@@ -75,114 +75,114 @@ GM_TAG = "@" [^ \t\r\n]+
 <<EOF>>                         { return EOF; }
 
 <YYINITIAL, PLACEHOLDER> {
-  {WS}* {LF} {WS}*              { return update(WS_LF); }
-  {WS}+                         { return update(WS); }
-  "`"                           { kkPush(); yybegin(TEMPLATE); return update(BACKTICK); }
-  "{"                           { return update(L_CURLY); }
-  //====                        { return update(R_CURLY); }
-  "["                           { return update(L_BRACKET); }
-  "]"                           { return update(R_BRACKET); }
-  "("                           { return update(L_PAREN); }
-  ")"                           { return update(R_PAREN); }
-  ","                           { return update(COMMA); }
-  ":"                           { return update(COLON); }
-  ";"                           { return update(SEMI); }
-  "..."                         { return update(DOT_DOT_DOT); }
-  "."                           { return update(DOT); }
+  {WS}* {LF} {WS}*              { return tt(WS_LF); }
+  {WS}+                         { return tt(WS); }
+  "`"                           { kkPush(); yybegin(TEMPLATE); return tt(BACKTICK); }
+  "{"                           { return tt(L_CURLY); }
+  //====                        { return tt(R_CURLY); }
+  "["                           { return tt(L_BRACKET); }
+  "]"                           { return tt(R_BRACKET); }
+  "("                           { return tt(L_PAREN); }
+  ")"                           { return tt(R_PAREN); }
+  ","                           { return tt(COMMA); }
+  ":"                           { return tt(COLON); }
+  ";"                           { return tt(SEMI); }
+  "..."                         { return tt(DOT_DOT_DOT); }
+  "."                           { return tt(DOT); }
   //====
-  "null"                        { return update(NULL); }
-  "true"                        { return update(TRUE); }
-  "false"                       { return update(FALSE); }
-  "function"                    { return update(FUNCTION); }
-  "return"                      { return update(RETURN); }
-  "try"                         { return update(TRY); }
-  "catch"                       { return update(CATCH); }
-  "finally"                     { return update(FINALLY); }
-  "throw"                       { return update(THROW); }
-  "new"                         { return update(NEW); }
-  "var"                         { return update(VAR); }
-  "let"                         { return update(LET); }
-  "const"                       { return update(CONST); }
-  "if"                          { return update(IF); }
-  "else"                        { return update(ELSE); }
-  "typeof"                      { return update(TYPEOF); }
-  "instanceof"                  { return update(INSTANCEOF); }
-  "delete"                      { return update(DELETE); }
-  "for"                         { return update(FOR); }
-  "in"                          { return update(IN); }
-  "of"                          { return update(OF); }
-  "do"                          { return update(DO); }
-  "while"                       { return update(WHILE); }
-  "switch"                      { return update(SWITCH); }
-  "case"                        { return update(CASE); }
-  "default"                     { return update(DEFAULT); }
-  "break"                       { return update(BREAK); }
+  "null"                        { return tt(NULL); }
+  "true"                        { return tt(TRUE); }
+  "false"                       { return tt(FALSE); }
+  "function"                    { return tt(FUNCTION); }
+  "return"                      { return tt(RETURN); }
+  "try"                         { return tt(TRY); }
+  "catch"                       { return tt(CATCH); }
+  "finally"                     { return tt(FINALLY); }
+  "throw"                       { return tt(THROW); }
+  "new"                         { return tt(NEW); }
+  "var"                         { return tt(VAR); }
+  "let"                         { return tt(LET); }
+  "const"                       { return tt(CONST); }
+  "if"                          { return tt(IF); }
+  "else"                        { return tt(ELSE); }
+  "typeof"                      { return tt(TYPEOF); }
+  "instanceof"                  { return tt(INSTANCEOF); }
+  "delete"                      { return tt(DELETE); }
+  "for"                         { return tt(FOR); }
+  "in"                          { return tt(IN); }
+  "of"                          { return tt(OF); }
+  "do"                          { return tt(DO); }
+  "while"                       { return tt(WHILE); }
+  "switch"                      { return tt(SWITCH); }
+  "case"                        { return tt(CASE); }
+  "default"                     { return tt(DEFAULT); }
+  "break"                       { return tt(BREAK); }
   //====
-  "==="                         { return update(EQ_EQ_EQ); }
-  "=="                          { return update(EQ_EQ); }
-  "="                           { return update(EQ); }
-  "=>"                          { return update(EQ_GT); }
-  "<<="                         { return update(LT_LT_EQ); }
-  "<<"                          { return update(LT_LT); }
-  "<="                          { return update(LT_EQ); }
-  "<"                           { return update(LT); }
-  ">>>="                        { return update(GT_GT_GT_EQ); }
-  ">>>"                         { return update(GT_GT_GT); }
-  ">>="                         { return update(GT_GT_EQ); }
-  ">>"                          { return update(GT_GT); }
-  ">="                          { return update(GT_EQ); }
-  ">"                           { return update(GT); }
+  "==="                         { return tt(EQ_EQ_EQ); }
+  "=="                          { return tt(EQ_EQ); }
+  "="                           { return tt(EQ); }
+  "=>"                          { return tt(EQ_GT); }
+  "<<="                         { return tt(LT_LT_EQ); }
+  "<<"                          { return tt(LT_LT); }
+  "<="                          { return tt(LT_EQ); }
+  "<"                           { return tt(LT); }
+  ">>>="                        { return tt(GT_GT_GT_EQ); }
+  ">>>"                         { return tt(GT_GT_GT); }
+  ">>="                         { return tt(GT_GT_EQ); }
+  ">>"                          { return tt(GT_GT); }
+  ">="                          { return tt(GT_EQ); }
+  ">"                           { return tt(GT); }
   //====
-  "!=="                         { return update(NOT_EQ_EQ); }
-  "!="                          { return update(NOT_EQ); }
-  "!"                           { return update(NOT); }
-  "||="                         { return update(PIPE_PIPE_EQ); }
-  "||"                          { return update(PIPE_PIPE); }
-  "|="                          { return update(PIPE_EQ); }
-  "|"                           { return update(PIPE); }
-  "&&="                         { return update(AMP_AMP_EQ); }
-  "&&"                          { return update(AMP_AMP); }
-  "&="                          { return update(AMP_EQ); }
-  "&"                           { return update(AMP); }
-  "^="                          { return update(CARET_EQ); }
-  "^"                           { return update(CARET); }
-  "??"                          { return update(QUES_QUES); }
-  "?"                           { return update(QUES); }
+  "!=="                         { return tt(NOT_EQ_EQ); }
+  "!="                          { return tt(NOT_EQ); }
+  "!"                           { return tt(NOT); }
+  "||="                         { return tt(PIPE_PIPE_EQ); }
+  "||"                          { return tt(PIPE_PIPE); }
+  "|="                          { return tt(PIPE_EQ); }
+  "|"                           { return tt(PIPE); }
+  "&&="                         { return tt(AMP_AMP_EQ); }
+  "&&"                          { return tt(AMP_AMP); }
+  "&="                          { return tt(AMP_EQ); }
+  "&"                           { return tt(AMP); }
+  "^="                          { return tt(CARET_EQ); }
+  "^"                           { return tt(CARET); }
+  "??"                          { return tt(QUES_QUES); }
+  "?"                           { return tt(QUES); }
   //====
-  "++"                          { return update(PLUS_PLUS); }
-  "+="                          { return update(PLUS_EQ); }
-  "+"                           { return update(PLUS); }
-  "--"                          { return update(MINUS_MINUS); }
-  "-="                          { return update(MINUS_EQ); }
-  "-"                           { return update(MINUS); }
-  "**="                         { return update(STAR_STAR_EQ); }
-  "**"                          { return update(STAR_STAR); }
-  "*="                          { return update(STAR_EQ); }
-  "*"                           { return update(STAR); }
-  "/="                          { return update(SLASH_EQ); }
-  "%="                          { return update(PERCENT_EQ); }
-  "%"                           { return update(PERCENT); }
-  "~"                           { return update(TILDE); }
-  "/"                           { return regexAllowed ? update(REGEX) : update(SLASH); }
+  "++"                          { return tt(PLUS_PLUS); }
+  "+="                          { return tt(PLUS_EQ); }
+  "+"                           { return tt(PLUS); }
+  "--"                          { return tt(MINUS_MINUS); }
+  "-="                          { return tt(MINUS_EQ); }
+  "-"                           { return tt(MINUS); }
+  "**="                         { return tt(STAR_STAR_EQ); }
+  "**"                          { return tt(STAR_STAR); }
+  "*="                          { return tt(STAR_EQ); }
+  "*"                           { return tt(STAR); }
+  "/="                          { return tt(SLASH_EQ); }
+  "%="                          { return tt(PERCENT_EQ); }
+  "%"                           { return tt(PERCENT); }
+  "~"                           { return tt(TILDE); }
+  "/"                           { return regexAllowed ? tt(REGEX) : tt(SLASH); }
   //====
-  {REGEX}                       { if (regexAllowed) return update(REGEX); yypushback(yylength() - 1); return update(SLASH); }
-  {L_COMMENT}                   { return update(L_COMMENT); }
-  {B_COMMENT}                   { return update(B_COMMENT); }
-  {S_STRING}                    { return update(S_STRING); }
-  {D_STRING}                    { return update(D_STRING); }
-  {NUMBER} | {HEX}              { return update(NUMBER); }
-  {IDENT}                       { return update(IDENT); }
+  {REGEX}                       { if (regexAllowed) return tt(REGEX); yypushback(yylength() - 1); return tt(SLASH); }
+  {L_COMMENT}                   { return tt(L_COMMENT); }
+  {B_COMMENT}                   { return tt(B_COMMENT); }
+  {S_STRING}                    { return tt(S_STRING); }
+  {D_STRING}                    { return tt(D_STRING); }
+  {NUMBER} | {HEX}              { return tt(NUMBER); }
+  {IDENT}                       { return tt(IDENT); }
 }
 
-<YYINITIAL> "}"                 { return update(R_CURLY); }
+<YYINITIAL> "}"                 { return tt(R_CURLY); }
 
-<PLACEHOLDER> "}"               { yybegin(kkPop()); return update(R_CURLY); }
+<PLACEHOLDER> "}"               { yybegin(kkPop()); return tt(R_CURLY); }
 
 <TEMPLATE> {
-    "`"                         { yybegin(kkPop()); return update(BACKTICK); }
-    "$"                         { return update(T_STRING); }
-    "${"                        { kkPush(); yybegin(PLACEHOLDER); return update(DOLLAR_L_CURLY); }
-    {T_STRING}                  { return update(T_STRING); }
+    "`"                         { yybegin(kkPop()); return tt(BACKTICK); }
+    "$"                         { return tt(T_STRING); }
+    "${"                        { kkPush(); yybegin(PLACEHOLDER); return tt(DOLLAR_L_CURLY); }
+    {T_STRING}                  { return tt(T_STRING); }
 }
 
 <GHERKIN> {
