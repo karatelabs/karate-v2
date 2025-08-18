@@ -14,7 +14,7 @@ class JsNumberTest extends EvalBase {
     }
 
     @Test
-    void testumberMethods() {
+    void testApi() {
         assertEquals("0.100", eval("var a = 0.1; a.toFixed(3)"));
     }
 

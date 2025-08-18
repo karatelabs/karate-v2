@@ -90,8 +90,8 @@ class EvalTest extends EvalBase {
 
     @Test
     void testVarStatement() {
-        assertEquals(null, eval("var a"));
-        assertEquals(null, get("a"));
+        assertNull(eval("var a"));
+        assertNull(get("a"));
         assertEquals(1, eval("var a = 1"));
         assertEquals(1, get("a"));
         assertEquals(2, eval("var a, b = 2"));
@@ -202,13 +202,13 @@ class EvalTest extends EvalBase {
         eval("if (true) a = 1");
         assertEquals(1, get("a"));
         eval("if (false) a = 1");
-        assertEquals(null, get("a"));
+        assertNull(get("a"));
         eval("if (false) a = 1; else a = 2");
         assertEquals(2, get("a"));
         eval("a = 1; if (a) b = 2");
         assertEquals(2, get("b"));
         eval("a = 0; if (a) b = 2");
-        assertEquals(null, get("b"));
+        assertNull(get("b"));
         eval("a = ''; if (a) b = 1; else b = 2");
         assertEquals(2, get("b"));
         assertEquals(true, eval("if (false) { false } else { true }"));
@@ -281,8 +281,8 @@ class EvalTest extends EvalBase {
 
     @Test
     void testDotExpressionUndefined() {
-        assertEquals(null, eval("var foo = {}; foo.bar"));
-        assertEquals(null, eval("foo.bar"));
+        assertNull(eval("var foo = {}; foo.bar"));
+        assertNull(eval("foo.bar"));
     }
 
     @Test

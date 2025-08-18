@@ -13,5 +13,4 @@ class JavaClassTest {
         assertEquals("java.util.Properties", o.getClass().getName());
     }
 
-
 }
