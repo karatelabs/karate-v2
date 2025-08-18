@@ -153,7 +153,7 @@ public class Scenario {
     }
 
     public List<Step> getBackgroundSteps() {
-        return feature.isBackgroundPresent() ? feature.getBackground().getSteps() : Collections.EMPTY_LIST;
+        return feature.isBackgroundPresent() ? feature.getBackground().getSteps() : Collections.emptyList();
     }
 
     public List<Step> getStepsIncludingBackground() {
@@ -262,10 +262,10 @@ public class Scenario {
     }
 
     public boolean isSetup() {
-        return getTags() == null ? false :
-            getTags()
+        return getTags() != null && getTags()
                 .stream()
                 .map(Tag::getName)
-                .anyMatch((t)->t.equals(Tag.SETUP));
+                .anyMatch((t) -> t.equals(Tag.SETUP));
     }
+
 }

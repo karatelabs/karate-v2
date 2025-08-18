@@ -80,11 +80,11 @@ public class Table {
         int rowCount = rows.size();
         List<String> keys = rows.get(0);
         int colCount = keys.size();
-        List<List<String>> list = new ArrayList(rowCount);
+        List<List<String>> list = new ArrayList<>(rowCount);
         list.add(keys); // header row
         for (int i = 1; i < rowCount; i++) { // don't include header row    
             List<String> row = rows.get(i);
-            List<String> replaced = new ArrayList(colCount);
+            List<String> replaced = new ArrayList<>(colCount);
             list.add(replaced);
             for (int j = 0; j < colCount; j++) {
                 String text = row.get(j).replace(token, value);
@@ -102,11 +102,12 @@ public class Table {
         return rows.get(row).get(col.index);
     }
 
+    @SuppressWarnings("unchecked")
     public static Table fromKarateJson(List<Map<String, Object>> tableRows) {
-        List<List<String>> rows = new ArrayList(tableRows.size());
-        List<Integer> lines = new ArrayList(tableRows.size());
+        List<List<String>> rows = new ArrayList<>(tableRows.size());
+        List<Integer> lines = new ArrayList<>(tableRows.size());
         for (Map<String, Object> row : tableRows) {
-            rows.add((List) row.get("row"));
+            rows.add((List<String>) row.get("row"));
             lines.add((Integer) row.get("line"));
         }
         return new Table(rows, lines);
@@ -114,9 +115,9 @@ public class Table {
     
     public List<Map<String, Object>> toKarateJson() {
         int count = rows.size();
-        List<Map<String, Object>> list = new ArrayList(count);
+        List<Map<String, Object>> list = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            Map<String, Object> map = new HashMap(2);
+            Map<String, Object> map = new HashMap<>(2);
             list.add(map);
             map.put("row", rows.get(i));
             map.put("line", lineNumbers.get(i));            
@@ -129,7 +130,7 @@ public class Table {
         this.lineNumbers = lineNumbers;
         List<String> keys = rows.get(0);
         int colCount = keys.size();
-        colMap = new LinkedHashMap(colCount);
+        colMap = new LinkedHashMap<>(colCount);
         for (int i = 0; i < colCount; i++) {
             String key = keys.get(i);
             ColumnType type;
@@ -146,7 +147,7 @@ public class Table {
         } else {
             dynamicExpression = null;
         }
-        cols = new ArrayList(colMap.values()); // just to be able to call cols.get(index)
+        cols = new ArrayList<>(colMap.values()); // just to be able to call cols.get(index)
     }
 
     public List<List<String>> getRows() {
@@ -155,9 +156,9 @@ public class Table {
 
     public List<Map<String, String>> getRowsAsMaps() {
         int rowCount = rows.size();
-        List<Map<String, String>> list = new ArrayList(rowCount - 1);
+        List<Map<String, String>> list = new ArrayList<>(rowCount - 1);
         for (int i = 1; i < rowCount; i++) { // don't include header row    
-            Map<String, String> map = new LinkedHashMap(cols.size());
+            Map<String, String> map = new LinkedHashMap<>(cols.size());
             list.add(map);
             List<String> row = rows.get(i);
             for (Column col : cols) {
@@ -169,9 +170,9 @@ public class Table {
 
     public List<Map<String, Object>> getRowsAsMapsConverted() {
         int rowCount = rows.size();
-        List<Map<String, Object>> list = new ArrayList(rowCount - 1);
+        List<Map<String, Object>> list = new ArrayList<>(rowCount - 1);
         for (int i = 1; i < rowCount; i++) { // don't include header row    
-            Map<String, Object> map = new LinkedHashMap(cols.size());
+            Map<String, Object> map = new LinkedHashMap<>(cols.size());
             list.add(map);
             List<String> row = rows.get(i);
             for (Column col : cols) {
@@ -206,7 +207,7 @@ public class Table {
 
     public Map<String, Object> getExampleData(int exampleIndex) {
         List<String> row = rows.get(exampleIndex + 1);
-        Map<String, Object> map = new LinkedHashMap(cols.size());
+        Map<String, Object> map = new LinkedHashMap<>(cols.size());
         for (Column col : cols) {
             String raw = row.get(col.index);
             map.put(col.key, convert(raw, col));

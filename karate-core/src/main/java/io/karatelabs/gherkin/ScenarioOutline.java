@@ -27,9 +27,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * @author pthomas3
- */
 public class ScenarioOutline {
 
     private final Feature feature;

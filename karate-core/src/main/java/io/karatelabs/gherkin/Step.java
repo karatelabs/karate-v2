@@ -69,6 +69,7 @@ public class Step {
         this.index = index;
     }
 
+    @SuppressWarnings("unchecked")
     public static Step fromKarateJson(Scenario scenario, Map<String, Object> map) {
         int index = (Integer) map.get("index");
         Boolean background = (Boolean) map.get("background");
@@ -84,13 +85,13 @@ public class Step {
         }
         step.setEndLine(endLine);
         if (map.get("comments") instanceof List) {
-            step.setComments((List) map.get("comments"));
+            step.setComments((List<String>) map.get("comments"));
         }
         step.setPrefix((String) map.get("prefix"));
         step.setText((String) map.get("text"));
         step.setDocString((String) map.get("docString"));
         if (map.get("table") instanceof List) {
-            List<Map<String, Object>> table = (List) map.get("table");
+            List<Map<String, Object>> table = (List<Map<String, Object>>) map.get("table");
             if (table != null) {
                 step.setTable(Table.fromKarateJson(table));
             }
@@ -99,7 +100,7 @@ public class Step {
     }
 
     public Map<String, Object> toKarateJson() {
-        Map<String, Object> map = new HashMap();
+        Map<String, Object> map = new HashMap<>();
         if (isBackground()) {
             map.put("background", true);
         }
