@@ -25,9 +25,9 @@ package io.karatelabs.js;
 
 public enum TokenType {
 
-    WS_LF(false),
-    WS(false),
-    EOF(false),
+    WS_LF,
+    WS,
+    EOF,
     BACKTICK,
     L_CURLY,
     R_CURLY,
@@ -40,36 +40,36 @@ public enum TokenType {
     SEMI,
     DOT_DOT_DOT,
     DOT,
-    //====
-    NULL(true, true),
-    TRUE(true, true),
-    FALSE(true, true),
-    FUNCTION(true, true),
-    RETURN(true, true),
-    TRY(true, true),
-    CATCH(true, true),
-    FINALLY(true, true),
-    THROW(true, true),
-    NEW(true, true),
-    VAR(true, true),
-    LET(true, true),
-    CONST(true, true),
-    IF(true, true),
-    ELSE(true, true),
-    TYPEOF(true, true),
-    INSTANCEOF(true, true),
-    DELETE(true, true),
-    FOR(true, true),
-    IN(true, true),
-    OF(true, true),
-    DO(true, true),
-    WHILE(true, true),
-    SWITCH(true, true),
-    CASE(true, true),
-    DEFAULT(true, true),
-    BREAK(true, true),
-    THIS(true, true),
-    VOID(true, true),
+    //==== keywords
+    NULL(true),
+    TRUE(true),
+    FALSE(true),
+    FUNCTION(true),
+    RETURN(true),
+    TRY(true),
+    CATCH(true),
+    FINALLY(true),
+    THROW(true),
+    NEW(true),
+    VAR(true),
+    LET(true),
+    CONST(true),
+    IF(true),
+    ELSE(true),
+    TYPEOF(true),
+    INSTANCEOF(true),
+    DELETE(true),
+    FOR(true),
+    IN(true),
+    OF(true),
+    DO(true),
+    WHILE(true),
+    SWITCH(true),
+    CASE(true),
+    DEFAULT(true),
+    BREAK(true),
+    THIS(true),
+    VOID(true),
     //====
     EQ_EQ_EQ,
     EQ_EQ,
@@ -118,8 +118,8 @@ public enum TokenType {
     PERCENT,
     TILDE,
     //====
-    L_COMMENT(false),
-    B_COMMENT(false),
+    L_COMMENT,
+    B_COMMENT,
     S_STRING,
     D_STRING,
     NUMBER,
@@ -132,7 +132,7 @@ public enum TokenType {
     G_PREFIX,
     G_STEP,
     G_STEP_TEXT,
-    G_COMMENT(false),
+    G_COMMENT,
     G_DESC,
     G_FEATURE,
     G_SCENARIO,
@@ -150,17 +150,26 @@ public enum TokenType {
     public final Boolean regexAllowed;
 
     TokenType() {
-        this(true, false);
+        this(false);
     }
 
-    TokenType(boolean primary) {
-        this(primary, false);
-    }
-
-    TokenType(boolean primary, boolean keyword) {
-        this.primary = primary;
+    TokenType(boolean keyword) {
+        this.primary = !isCommentOrWhitespace(this);
         this.keyword = keyword;
         regexAllowed = isRegexAllowed(this);
+    }
+
+    private static boolean isCommentOrWhitespace(TokenType type) {
+        switch (type) {
+            case L_COMMENT:
+            case B_COMMENT:
+            case G_COMMENT:
+            case WS:
+            case WS_LF:
+            case EOF:
+                return true;
+        }
+        return false;
     }
 
     private static Boolean isRegexAllowed(TokenType type) {
