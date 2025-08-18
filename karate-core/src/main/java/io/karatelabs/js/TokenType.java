@@ -150,20 +150,16 @@ public enum TokenType {
     public final Boolean regexAllowed;
 
     TokenType() {
-        primary = true;
-        keyword = false;
-        regexAllowed = isRegexAllowed(this);
+        this(true, false);
+    }
+
+    TokenType(boolean primary) {
+        this(primary, false);
     }
 
     TokenType(boolean primary, boolean keyword) {
         this.primary = primary;
         this.keyword = keyword;
-        regexAllowed = isRegexAllowed(this);
-    }
-
-    TokenType(boolean primary) {
-        this.primary = primary;
-        this.keyword = false;
         regexAllowed = isRegexAllowed(this);
     }
 
