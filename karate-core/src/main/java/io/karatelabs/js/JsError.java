@@ -23,7 +23,7 @@
  */
 package io.karatelabs.js;
 
-public class JsError extends JsObject {
+class JsError extends JsObject {
 
     private final String message;
 

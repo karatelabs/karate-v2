@@ -25,7 +25,7 @@ package io.karatelabs.js;
 
 import java.util.*;
 
-public class JsArray extends JsObject {
+class JsArray extends JsObject {
 
     final List<Object> list;
 

@@ -3,7 +3,7 @@ package io.karatelabs.js;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-public class JsMath extends JsObject {
+class JsMath extends JsObject {
 
     @Override
     Prototype initPrototype() {

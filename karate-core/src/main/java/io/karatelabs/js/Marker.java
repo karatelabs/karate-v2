@@ -23,7 +23,7 @@
  */
 package io.karatelabs.js;
 
-public class Marker {
+class Marker {
 
     final int position;
     final Marker caller;

@@ -56,11 +56,11 @@ public class JsProperty {
             case REF_DOT_EXPR:
                 Object temp;
                 try {
+                    temp = Interpreter.eval(node.children.get(0), context);
+                } catch (Exception e) {
                     // ignore any nested failures, the caller (Interpreter.evalDotExpr())
                     // will check if this is a valid java class e.g. "foo.bar.ClassName"
                     // before bubbling up the "undefined" as an exception
-                    temp = Interpreter.eval(node.children.get(0), context);
-                } catch (Exception e) {
                     error = "expression: " + node.children.get(0).getText() + " - " + e.getMessage();
                     temp = Undefined.INSTANCE;
                 }

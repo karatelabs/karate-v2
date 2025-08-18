@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 
-public class JsNumber extends JsObject {
+class JsNumber extends JsObject {
 
     final Number value;
 

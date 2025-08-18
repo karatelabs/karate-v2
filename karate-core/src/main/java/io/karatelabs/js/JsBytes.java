@@ -1,6 +1,6 @@
 package io.karatelabs.js;
 
-public class JsBytes extends JsObject {
+class JsBytes extends JsObject {
 
     final byte[] bytes;
 

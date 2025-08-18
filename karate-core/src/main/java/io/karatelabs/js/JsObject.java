@@ -25,7 +25,7 @@ package io.karatelabs.js;
 
 import java.util.*;
 
-public class JsObject implements ObjectLike, Invokable, Iterable<KeyValue> {
+class JsObject implements ObjectLike, Invokable, Iterable<KeyValue> {
 
     Object thisObject = this; // will be updated in Interpreter.evalFnCall()
     private final Map<String, Object> map;

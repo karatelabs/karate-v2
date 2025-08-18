@@ -26,7 +26,7 @@ package io.karatelabs.js;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-public class JsString extends JsObject {
+class JsString extends JsObject {
 
     final String text;
 

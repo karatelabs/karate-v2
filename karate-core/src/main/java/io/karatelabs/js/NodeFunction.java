@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class NodeFunction extends JsFunction {
+class NodeFunction extends JsFunction {
 
     static final Logger logger = LoggerFactory.getLogger(NodeFunction.class);
 
