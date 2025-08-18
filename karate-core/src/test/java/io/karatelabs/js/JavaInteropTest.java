@@ -15,8 +15,6 @@ class JavaInteropTest extends EvalBase {
         List<Object> list = NodeUtils.fromJson("['foo', 'bar']");
         JsArray jl = new JsArray(list);
         assertEquals(2, jl.get("length"));
-        Invokable invokable = (Invokable) jl.get("map");
-        Invokable transform = args -> args[0] + "bar";
     }
 
     @Test
@@ -66,37 +64,37 @@ class JavaInteropTest extends EvalBase {
             eval("var DemoUtils = Java.type('io.karatelabs.js.DemoUtils'); var b = DemoUtils.doWorkException; var c = b()");
             fail("expected exception");
         } catch (Exception e) {
-            assertTrue(e.getCause().getMessage().startsWith("cannot invoke static method io.karatelabs.js.DemoUtils#doWorkException"));
+            assertTrue(e.getMessage().contains("cannot invoke static method io.karatelabs.js.DemoUtils#doWorkException"));
         }
         try {
             eval("var DemoUtils = Java.type('io.karatelabs.js.DemoUtils'); var b = DemoUtils.doWorkException; var c = b().foo");
             fail("expected exception");
         } catch (Exception e) {
-            assertTrue(e.getCause().getMessage().startsWith("expression: b() - cannot invoke static method io.karatelabs.js.DemoUtils#doWorkException: java.lang.reflect.InvocationTargetException"));
+            assertTrue(e.getMessage().contains("expression: b() - cannot invoke static method io.karatelabs.js.DemoUtils#doWorkException: java.lang.reflect.InvocationTargetException"));
         }
         try {
             eval("var DemoPojo = Java.type('io.karatelabs.js.DemoPojo'); var b = new DemoPojo(); var c = b.doWorkException()");
             fail("expected exception");
         } catch (Exception e) {
-            assertTrue(e.getCause().getMessage().startsWith("cannot invoke instance method io.karatelabs.js.DemoPojo#doWorkException"));
+            assertTrue(e.getMessage().contains("cannot invoke instance method io.karatelabs.js.DemoPojo#doWorkException"));
         }
         try {
             eval("var DemoUtils = Java.type('io.karatelabs.js.DemoUtils'); var b = DemoUtils.doWorkException()");
             fail("expected exception");
         } catch (Exception e) {
-            assertTrue(e.getCause().getMessage().startsWith("cannot invoke static method io.karatelabs.js.DemoUtils#doWorkException"));
+            assertTrue(e.getMessage().contains("cannot invoke static method io.karatelabs.js.DemoUtils#doWorkException"));
         }
         try {
             eval("var DemoSimpleObject = Java.type('io.karatelabs.js.DemoSimpleObject'); var b = new DemoSimpleObject(); var c = b.doWorkException()");
             fail("expected exception");
         } catch (Exception e) {
-            assertTrue(e.getCause().getMessage().startsWith("failed"));
+            assertTrue(e.getMessage().contains("failed"));
         }
         try {
             eval("var DemoSimpleObject = Java.type('io.karatelabs.js.DemoSimpleObject'); var b = new DemoSimpleObject(); var c = b.inner.doWorkException()");
             fail("expected exception");
         } catch (Exception e) {
-            assertTrue(e.getCause().getMessage().startsWith("failed"));
+            assertTrue(e.getMessage().contains("failed"));
         }
     }
 

@@ -26,7 +26,7 @@ package io.karatelabs.js;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-class JsString extends JsObject {
+class JsString extends JsObject implements JavaMirror {
 
     final String text;
 
@@ -40,6 +40,11 @@ class JsString extends JsObject {
 
     @Override
     public String toString() {
+        return text;
+    }
+
+    @Override
+    public Object toJava() {
         return text;
     }
 

@@ -231,6 +231,11 @@ class JsParserTest {
     }
 
     @Test
+    void testConstMissingInitializer() {
+        error("const a", ParserException.class);
+    }
+
+    @Test
     void testAssignStatement() {
         expr("a = 1", "[$a,'=',1]");
         expr("a.b = 1", "[[$a,'.',$b],'=',1]");

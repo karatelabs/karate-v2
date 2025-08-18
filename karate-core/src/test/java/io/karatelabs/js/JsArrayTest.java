@@ -65,7 +65,7 @@ class JsArrayTest extends EvalBase {
         match(eval("Array.from([1, 2, 3], x => x * 2)"), "[2, 4, 6]");
         match(eval("Array.from({ length: 3 }, (v, i) => i)"), "[0, 1, 2]");
         assertEquals(2, eval("[1, 2, 3].find(x => x % 2 === 0)"));
-        assertEquals(Undefined.INSTANCE, eval("[1, 2, 3].find(x => x % 5 === 0)"));
+        assertEquals(null, eval("[1, 2, 3].find(x => x % 5 === 0)"));
         assertEquals(1, eval("[1, 2, 3].findIndex(x => x % 2 === 0)"));
         assertEquals(-1, eval("[1, 2, 3].findIndex(x => x % 5 === 0)"));
         assertEquals(2, eval("[1, 2, 3].findIndex((val, idx, arr) => idx === 2)"));
@@ -170,7 +170,7 @@ class JsArrayTest extends EvalBase {
         // shift() tests
         match(eval("var a = [1, 2, 3]; var shifted = a.shift(); shifted"), "1");
         match(eval("var a = [1, 2, 3]; a.shift(); a"), "[2, 3]");
-        match(eval("var a = []; var shifted = a.shift(); shifted"), "undefined");
+        match(eval("var a = []; var shifted = a.shift(); shifted"), "null");
         // unshift() tests
         match(eval("var a = [1, 2, 3]; var newLength = a.unshift(4, 5); newLength"), "5");
         match(eval("var a = [1, 2, 3]; a.unshift(4, 5); a"), "[4, 5, 1, 2, 3]");
@@ -179,14 +179,14 @@ class JsArrayTest extends EvalBase {
         // pop() tests
         match(eval("var a = [1, 2, 3]; var popped = a.pop(); popped"), "3");
         match(eval("var a = [1, 2, 3]; a.pop(); a"), "[1, 2]");
-        match(eval("var a = []; var popped = a.pop(); popped"), "undefined");
+        match(eval("var a = []; var popped = a.pop(); popped"), null);
         // at() tests
         assertEquals(2, eval("[1, 2, 3].at(1)"));
         assertEquals(3, eval("[1, 2, 3].at(-1)"));
         assertEquals(2, eval("[1, 2, 3].at(-2)"));
-        assertEquals(Undefined.INSTANCE, eval("[1, 2, 3].at(3)"));
-        assertEquals(Undefined.INSTANCE, eval("[1, 2, 3].at(-4)"));
-        assertEquals(Undefined.INSTANCE, eval("[].at(0)"));
+        assertEquals(null, eval("[1, 2, 3].at(3)"));
+        assertEquals(null, eval("[1, 2, 3].at(-4)"));
+        assertEquals(null, eval("[].at(0)"));
         // copyWithin() tests
         match(eval("[1, 2, 3, 4, 5].copyWithin(0, 3)"), "[4, 5, 3, 4, 5]");
         match(eval("[1, 2, 3, 4, 5].copyWithin(1, 3)"), "[1, 4, 5, 4, 5]");
@@ -210,8 +210,8 @@ class JsArrayTest extends EvalBase {
         match(eval("Array.of()"), "[]");
         // findLast() and findLastIndex() tests
         assertEquals(4, eval("[1, 2, 3, 4, 5].findLast(x => x % 2 === 0)"));
-        assertEquals(Undefined.INSTANCE, eval("[1, 3, 5, 7].findLast(x => x % 2 === 0)"));
-        assertEquals(Undefined.INSTANCE, eval("[].findLast(x => true)"));
+        assertEquals(null, eval("[1, 3, 5, 7].findLast(x => x % 2 === 0)"));
+        assertEquals(null, eval("[].findLast(x => true)"));
         assertEquals(4, eval("[1, 2, 3, 4, 2].findLastIndex(x => x % 2 === 0)"));
         assertEquals(2, eval("[1, 2, 3, 4, 2].findLastIndex(x => x === 3)"));
         assertEquals(-1, eval("[1, 3, 5, 7].findLastIndex(x => x % 2 === 0)"));

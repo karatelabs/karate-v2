@@ -33,10 +33,10 @@ import static io.karatelabs.js.TokenType.*;
 %type TokenType
 
 %{
-boolean regexAllowed = true; // start with true since a regex can appear at the start of a program
-ArrayDeque<Integer> kkStack;
-void kkPush() { if (kkStack == null) kkStack = new ArrayDeque<>(); kkStack.push(yystate()); }
-int kkPop() { return kkStack.pop(); }
+private ArrayDeque<Integer> kkStack;
+private void kkPush() { if (kkStack == null) kkStack = new ArrayDeque<>(); kkStack.push(yystate()); }
+private int kkPop() { return kkStack.pop(); }
+private boolean regexAllowed = true; // start with true since a regex can appear at the start of a program
 private TokenType tt(TokenType type) { if (type.regexAllowed != null) regexAllowed = type.regexAllowed; return type; }
 %}
 

@@ -75,11 +75,10 @@ class JsStringTest extends EvalBase {
         assertEquals(true, eval("typeof String() === 'string'"));
         assertEquals("", eval("new String().valueOf()"));
         assertEquals("hello", eval("new String('hello').valueOf()"));
-        // intentional non-conformance
-        // assertEquals("", eval("new String"));
-        // assertEquals("", eval("new String()"));
-        // assertEquals(true, eval("typeof new String() === 'object'"));
-        // assertEquals(true, eval("new String('hello') instanceof String"));
+        assertEquals("", eval("new String"));
+        assertEquals("", eval("new String()"));
+        assertEquals(true, eval("typeof new String() === 'object'"));
+        assertEquals(true, eval("new String('hello') instanceof String"));
     }
 
     @Test
@@ -97,7 +96,7 @@ class JsStringTest extends EvalBase {
         assertEquals(111, eval("a = 'foobar'; a.charCodeAt(1)")); // 'o' is 111
         assertEquals(Undefined.NAN, eval("a = 'foobar'; a.charCodeAt(10)"));
         assertEquals(111, eval("a = 'foobar'; a.codePointAt(1)")); // 'o' is 111
-        assertEquals(Undefined.INSTANCE, eval("a = 'foobar'; a.codePointAt(10)"));
+        assertEquals(null, eval("a = 'foobar'; a.codePointAt(10)"));
         assertEquals("foobarbaz", eval("a = 'foobar'; a.concat('baz')"));
         assertEquals("foobarbazqux", eval("a = 'foobar'; a.concat('baz', 'qux')"));
         assertEquals(true, eval("a = 'foobar'; a.endsWith('bar')"));

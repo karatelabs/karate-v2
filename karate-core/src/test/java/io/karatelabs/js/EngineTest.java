@@ -129,13 +129,7 @@ class EngineTest {
     void testUndefined() {
         Engine engine = new Engine();
         Object result = engine.eval("1 * 'a'");
-        assertNull(result);
-        engine.setConvertUndefined(false);
-        result = engine.eval("1 * 'a'");
-        assertTrue(Engine.isUndefined(result));
-        result = engine.eval("foo.bar");
-        assertTrue(Engine.isUndefined(result));
-        engine.setConvertUndefined(true);
+        assertEquals(Double.NaN, result);
         result = engine.eval("foo.bar");
         assertNull(result);
     }

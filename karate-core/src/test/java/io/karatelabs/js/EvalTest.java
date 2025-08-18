@@ -90,8 +90,8 @@ class EvalTest extends EvalBase {
 
     @Test
     void testVarStatement() {
-        assertEquals(Undefined.INSTANCE, eval("var a"));
-        assertEquals(Undefined.INSTANCE, get("a"));
+        assertEquals(null, eval("var a"));
+        assertEquals(null, get("a"));
         assertEquals(1, eval("var a = 1"));
         assertEquals(1, get("a"));
         assertEquals(2, eval("var a, b = 2"));
@@ -202,13 +202,13 @@ class EvalTest extends EvalBase {
         eval("if (true) a = 1");
         assertEquals(1, get("a"));
         eval("if (false) a = 1");
-        assertEquals(Undefined.INSTANCE, get("a"));
+        assertEquals(null, get("a"));
         eval("if (false) a = 1; else a = 2");
         assertEquals(2, get("a"));
         eval("a = 1; if (a) b = 2");
         assertEquals(2, get("b"));
         eval("a = 0; if (a) b = 2");
-        assertEquals(Undefined.INSTANCE, get("b"));
+        assertEquals(null, get("b"));
         eval("a = ''; if (a) b = 1; else b = 2");
         assertEquals(2, get("b"));
         assertEquals(true, eval("if (false) { false } else { true }"));
@@ -281,8 +281,8 @@ class EvalTest extends EvalBase {
 
     @Test
     void testDotExpressionUndefined() {
-        assertEquals(Undefined.INSTANCE, eval("var foo = {}; foo.bar"));
-        assertEquals(Undefined.INSTANCE, eval("foo.bar"));
+        assertEquals(null, eval("var foo = {}; foo.bar"));
+        assertEquals(null, eval("foo.bar"));
     }
 
     @Test
@@ -317,6 +317,16 @@ class EvalTest extends EvalBase {
         assertEquals(2, get("b"));
         eval("var a = 1; var b; switch (a) { case 1: b = 1; default: b = 2 }");
         assertEquals(2, get("b"));
+    }
+
+    @Test
+    void testLetAndConstBasic() {
+        assertEquals(1, eval("let a = 1; a"));
+        assertEquals(1, get("a"));
+        assertEquals(2, eval("let b = 1; b = 2"));
+        assertEquals(2, get("b"));
+        assertEquals(1, eval("const a = 1; a"));
+        assertEquals(1, get("a"));
     }
 
 }

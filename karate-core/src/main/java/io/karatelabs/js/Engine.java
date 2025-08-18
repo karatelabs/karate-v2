@@ -34,12 +34,6 @@ public class Engine {
         // non-final default that you can over-ride
     };
 
-    private boolean convertUndefined = true;
-
-    public void setConvertUndefined(boolean convertUndefined) {
-        this.convertUndefined = convertUndefined;
-    }
-
     public static boolean DEBUG = false;
 
     public final Context context;
@@ -90,7 +84,10 @@ public class Engine {
                 evalContext.getBindings().putAll(localVars);
             }
             Object result = Interpreter.eval(node, evalContext);
-            if (isUndefined(result) && convertUndefined) {
+            if (result instanceof JavaMirror) {
+                return ((JavaMirror) result).toJava();
+            }
+            if (result == Undefined.INSTANCE) {
                 return null;
             }
             return result;
@@ -118,7 +115,10 @@ public class Engine {
 
     public Object get(String name) {
         Object value = context.get(name);
-        if (isUndefined(value) && convertUndefined) {
+        if (value instanceof JavaMirror) {
+            return ((JavaMirror) value).toJava();
+        }
+        if (value == Undefined.INSTANCE) {
             return null;
         }
         return value;

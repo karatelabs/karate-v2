@@ -278,6 +278,9 @@ public class Terms {
 
     public static boolean instanceOf(Object lhs, Object rhs) {
         if (lhs instanceof JsObject && rhs instanceof JsObject) {
+            if (lhs instanceof JavaMirror && rhs instanceof JavaMirror) {
+                return lhs.getClass().equals(rhs.getClass());
+            }
             JsObject objectLhs = (JsObject) lhs;
             Prototype prototypeLhs = objectLhs.getPrototype();
             if (prototypeLhs != null) {

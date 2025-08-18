@@ -1,6 +1,5 @@
 package io.karatelabs.js;
 
-import io.karatelabs.common.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,21 +9,19 @@ class EvalBase {
 
     static final Logger logger = LoggerFactory.getLogger(EvalTest.class);
 
-    Context context;
+    Engine engine;
 
     Object eval(String text) {
         return eval(text, null);
     }
 
     Object eval(String text, String vars) {
-        JsParser parser = new JsParser(Resource.text(text));
-        Node node = parser.parse();
-        context = Context.root();
+        engine = new Engine();
         if (vars != null) {
             Map<String, Object> map = NodeUtils.fromJson(vars);
-            map.forEach((k, v) -> context.declare(k, v));
+            map.forEach(engine::set);
         }
-        return Interpreter.eval(node, context);
+        return engine.eval(text);
     }
 
     void matchEval(String text, String expected) {
@@ -40,7 +37,7 @@ class EvalBase {
     }
 
     Object get(String varName) {
-        return context.get(varName);
+        return engine.get(varName);
     }
 
 }
