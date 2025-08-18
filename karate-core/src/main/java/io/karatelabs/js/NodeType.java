@@ -80,18 +80,6 @@ public enum NodeType {
     PAREN_EXPR,
     LIT_TEMPLATE,
     PLACEHOLDER,
-    REGEX_LITERAL,
-    //====
-    G_FEATURE,
-    G_BACKGROUND,
-    G_SCENARIO,
-    G_EXAMPLES_PARENT,
-    G_EXAMPLES,
-    G_TABLE,
-    G_TABLE_ROW,
-    G_TAGS,
-    G_DESC,
-    G_STEPS,
-    G_STEP
+    REGEX_LITERAL
 
 }
