@@ -157,11 +157,6 @@ class Interpreter {
         return true;
     }
 
-    private static Object evalDotExpr(Node node, Context context) {
-        JsProperty prop = new JsProperty(node, context);
-        return prop.get();
-    }
-
     @SuppressWarnings("unchecked")
     private static Object evalFnCall(Node node, Context context) {
         JsProperty prop = new JsProperty(node.children.get(0), context);
@@ -772,9 +767,8 @@ class Interpreter {
             case REF_EXPR:
                 return context.get(node.getText());
             case REF_BRACKET_EXPR:
-                return new JsProperty(node, context).get();
             case REF_DOT_EXPR:
-                return evalDotExpr(node, context);
+                return new JsProperty(node, context).get();
             case RETURN_STMT:
                 return evalReturnStmt(node, context);
             case STATEMENT:
