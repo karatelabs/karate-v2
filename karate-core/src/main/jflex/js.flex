@@ -88,6 +88,7 @@ GM_TAG = "@" [^ \t\r\n]+
   ":"                           { return tt(COLON); }
   ";"                           { return tt(SEMI); }
   "..."                         { return tt(DOT_DOT_DOT); }
+  "?."                          { return tt(QUES_DOT); }
   "."                           { return tt(DOT); }
   //====
   "null"                        { return tt(NULL); }

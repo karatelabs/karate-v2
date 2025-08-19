@@ -39,6 +39,7 @@ public enum TokenType {
     COLON,
     SEMI,
     DOT_DOT_DOT,
+    QUES_DOT,
     DOT,
     //==== keywords
     NULL(true),

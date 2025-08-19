@@ -11,6 +11,11 @@ import static org.junit.jupiter.api.Assertions.*;
 class JavaInteropTest extends EvalBase {
 
     @Test
+    void testDev() {
+
+    }
+
+    @Test
     void testArrayLengthAndMap() {
         List<Object> list = NodeUtils.fromJson("['foo', 'bar']");
         JsArray jl = new JsArray(list);

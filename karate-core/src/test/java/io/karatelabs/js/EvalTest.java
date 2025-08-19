@@ -280,9 +280,63 @@ class EvalTest extends EvalBase {
     }
 
     @Test
+    void testBracketExpression() {
+        assertNull(eval("var foo = {}; foo['bar']"));
+    }
+
+    @Test
     void testDotExpressionUndefined() {
         assertNull(eval("var foo = {}; foo.bar"));
-        assertNull(eval("foo.bar"));
+    }
+
+    @Test
+    void testDotExpressionFailure() {
+        try {
+            eval("foo.bar");
+            fail("error expected");
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("cannot read properties of undefined (reading 'bar')"));
+        }
+        try {
+            eval("var obj = { a: null }; obj.a.b");
+            fail("error expected");
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("cannot read properties of null (reading 'b')"));
+        }
+        try {
+            eval("var obj = { }; obj.a.b");
+            fail("error expected");
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("cannot read properties of undefined (reading 'b')"));
+        }
+    }
+
+    @Test
+    void testDotExpressionOptional() {
+        assertNull(eval("var foo = null; foo?.bar"));
+        assertNull(eval("var foo = undefined; foo?.bar"));
+        assertNull(eval("var foo; foo?.bar"));
+        assertEquals("baz", eval("var foo = { bar: 'baz' }; foo?.bar"));
+        assertEquals(42, eval("var obj = { num: 42 }; obj?.num"));
+        assertNull(eval("var obj = null; obj?.a?.b?.c"));
+        assertNull(eval("var obj = { a: null }; obj?.a?.b?.c"));
+        assertNull(eval("var obj = { a: { b: null } }; obj?.a?.b?.c"));
+        assertEquals("deep", eval("var obj = { a: { b: { c: 'deep' } } }; obj?.a?.b?.c"));
+        assertEquals("value", eval("var obj = { a: { b: 'value' } }; obj?.a.b"));
+        try {
+            eval("var obj = { a: null }; obj?.a.b");
+            fail("error expected");
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("cannot read properties of null (reading 'b')"));
+        }
+        // bracket
+        assertNull(eval("var obj = null; obj?.['key']"));
+        assertEquals("value", eval("var obj = { key: 'value' }; obj?.['key']"));
+        assertEquals("dynamic", eval("var obj = { foo: 'dynamic' }; var key = 'foo'; obj?.[key]"));
+        // function call
+        assertNull(eval("var obj = null; obj?.method()"));
+        assertEquals("called", eval("var obj = { method: function() { return 'called'; } }; obj?.method()"));
+        assertNull(eval("var obj = { method: null }; obj?.method?.()"));
     }
 
     @Test

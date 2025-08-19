@@ -130,8 +130,6 @@ class EngineTest {
         Engine engine = new Engine();
         Object result = engine.eval("1 * 'a'");
         assertEquals(Double.NaN, result);
-        result = engine.eval("foo.bar");
-        assertNull(result);
     }
 
     @Test

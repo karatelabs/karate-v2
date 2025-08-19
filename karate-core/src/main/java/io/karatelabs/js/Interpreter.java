@@ -159,23 +159,16 @@ class Interpreter {
 
     private static Object evalDotExpr(Node node, Context context) {
         JsProperty prop = new JsProperty(node, context);
-        Object result = prop.get();
-        if (result == Undefined.INSTANCE) {
-            String className = node.getText();
-            if (Engine.JAVA_BRIDGE.typeExists(className)) {
-                return new JavaClass(className);
-            }
-            if (prop.error != null) { // can be set in constructor of JsProperty
-                throw new RuntimeException(prop.error);
-            }
-        }
-        return result;
+        return prop.get();
     }
 
     @SuppressWarnings("unchecked")
     private static Object evalFnCall(Node node, Context context) {
         JsProperty prop = new JsProperty(node.children.get(0), context);
         Invokable invokable = prop.getInvokable();
+        if (invokable == null) { // optional chaining
+            return Undefined.INSTANCE;
+        }
         List<Object> argsList = new ArrayList<>();
         if (node.children.size() > 1) { // check for rare case, new syntax without parentheses
             Node fnArgsNode = node.children.get(2);

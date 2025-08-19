@@ -38,9 +38,10 @@ public class JsProperty {
     final Node node;
     final Object object;
     final Context context;
+
+    boolean optional;
     String name;
     Object index;
-    String error;
 
     JsProperty(Node node, Context context) {
         this.node = node;
@@ -54,35 +55,48 @@ public class JsProperty {
                 name = node.getText();
                 break;
             case REF_DOT_EXPR:
-                Object temp;
-                try {
-                    temp = Interpreter.eval(node.children.get(0), context);
-                } catch (Exception e) {
-                    // ignore any nested failures, the caller (Interpreter.evalDotExpr())
-                    // will check if this is a valid java class e.g. "foo.bar.ClassName"
-                    // before bubbling up the "undefined" as an exception
-                    error = "expression: " + node.children.get(0).getText() + " - " + e.getMessage();
-                    temp = Undefined.INSTANCE;
+                Object temp = null;
+                if (node.children.get(1).type == NodeType._TOKEN) { // normal dot or optional
+                    optional = node.children.get(1).token.type == TokenType.QUES_DOT;
+                    name = node.children.get(2).getText();
+                    try {
+                        temp = Interpreter.eval(node.children.get(0), context);
+                    } catch (Exception e) {
+                        // try java interop
+                        String base = node.children.get(0).getText();
+                        String path = base + "." + name;
+                        if (Engine.JAVA_BRIDGE.typeExists(path)) {
+                            temp = new JavaClass(path);
+                            name = null;
+                        } else if (Engine.JAVA_BRIDGE.typeExists(base)) {
+                            temp = new JavaClass(base);
+                        } else {
+                            throw new RuntimeException("expression: " + base + " - " + e.getMessage());
+                        }
+                    }
+                } else {
+                    optional = true;
+                    if (node.children.get(1).type == NodeType.REF_BRACKET_EXPR) { // optional bracket
+                        temp = Interpreter.eval(node.children.get(0), context);
+                        index = Interpreter.eval(node.children.get(1).children.get(2), context);
+                    } else { // optional function call
+                        temp = Interpreter.eval(node.children.get(0), context); // evalFnCall
+                    }
                 }
                 object = temp;
-                name = node.children.get(2).getText();
                 break;
             case REF_BRACKET_EXPR:
                 object = Interpreter.eval(node.children.get(0), context);
                 index = Interpreter.eval(node.children.get(2), context);
-                name = null;
                 break;
             case LIT_EXPR:
                 object = Interpreter.eval(node.children.get(0), context);
-                name = null;
                 break;
             case PAREN_EXPR:
                 object = Interpreter.eval(node.children.get(1), context);
-                name = null;
                 break;
             case FN_CALL_EXPR:
                 object = Interpreter.eval(node, context); // evalFnCall
-                name = null;
                 break;
             default:
                 throw new RuntimeException("cannot assign from: " + node);
@@ -99,31 +113,30 @@ public class JsProperty {
             } else {
                 throw new RuntimeException("cannot set by index [" + index + "]:" + value + " on (non-array): " + object);
             }
+        }
+        if (index != null) {
+            name = index + "";
+        }
+        if (name == null) {
+            throw new RuntimeException("unexpected set [null]:" + value + " on: " + object);
+        }
+        if (value instanceof JsFunction) { // pre-process
+            ((JsFunction) value).setName(name);
+        }
+        if (object == null) {
+            context.update(name, value);
+        } else if (object instanceof Map) {
+            ((Map<String, Object>) object).put(name, value);
+        } else if (object instanceof ObjectLike) {
+            ((ObjectLike) object).put(name, value);
+        } else if (object instanceof JavaClass) {
+            ((JavaClass) object).update(name, value);
         } else {
-            if (index != null) {
-                name = index + "";
-            }
-            if (name == null) {
-                throw new RuntimeException("unexpected set [null]:" + value + " on: " + object);
-            }
-            if (value instanceof JsFunction) { // pre-process
-                ((JsFunction) value).setName(name);
-            }
-            if (object == null) {
-                context.update(name, value);
-            } else if (object instanceof Map) {
-                ((Map<String, Object>) object).put(name, value);
-            } else if (object instanceof ObjectLike) {
-                ((ObjectLike) object).put(name, value);
-            } else if (object instanceof JavaClass) {
-                ((JavaClass) object).update(name, value);
-            } else {
-                try {
-                    Engine.JAVA_BRIDGE.set(object, name, value);
-                } catch (Exception e) {
-                    logger.error("java bridge error: {}", e.getMessage());
-                    throw new RuntimeException("cannot set '" + name + "'");
-                }
+            try {
+                Engine.JAVA_BRIDGE.set(object, name, value);
+            } catch (Exception e) {
+                logger.error("java bridge error: {}", e.getMessage());
+                throw new RuntimeException("cannot set '" + name + "'");
             }
         }
     }
@@ -133,9 +146,6 @@ public class JsProperty {
     }
 
     private Object get(boolean function) {
-        if (object == Undefined.INSTANCE) {
-            return object;
-        }
         if (index instanceof Number) {
             int num = ((Number) index).intValue();
             if (object instanceof List) {
@@ -178,15 +188,17 @@ public class JsProperty {
         }
         if (object instanceof Map) {
             Map<String, Object> map = (Map<String, Object>) object;
-            if (map.containsKey(name)) { // performance optimization
+            // property access, most likely case
+            if (map.containsKey(name)) {
                 return map.get(name);
             }
+            // try js object api
             JsObject jsObject = new JsObject(map);
             Object result = jsObject.get(name);
             if (result != null) {
                 return result;
             }
-            // else attempt java interop
+            // java interop may have been the intent, will be attempted at the end
         }
         if (object instanceof ObjectLike) {
             return ((ObjectLike) object).get(name);
@@ -209,12 +221,16 @@ public class JsProperty {
         if (!function && object instanceof JavaFields) {
             return ((JavaFields) object).read(name);
         }
-        if (object == null) { // literal or function reference (see constructor switch case)
+        if (object == null || object == Undefined.INSTANCE) {
             if (context.hasKey(name)) {
                 return context.get(name);
             }
+            if (optional) {
+                return Undefined.INSTANCE;
+            }
+            throw new RuntimeException("cannot read properties of " + object + " (reading '" + name + "')");
         }
-        try {
+        try { // java interop
             if (function) {
                 if (object instanceof Class) {
                     return new JavaInvokable(name, new JavaClass((Class<?>) object));
@@ -228,20 +244,9 @@ public class JsProperty {
                     return new JavaObject(object).get(name);
                 }
             }
-        } catch (Exception e) {
+        } catch (Exception e) { // java reflection failed on this object + name
             return Undefined.INSTANCE;
         }
-    }
-
-    private String getErrorMessageExtra() {
-        String message = "";
-        if (name != null) {
-            message = message + ", property: " + name;
-        }
-        if (object != null) {
-            message = message + ", object: " + object;
-        }
-        return message;
     }
 
     Invokable getInvokable() {
@@ -257,16 +262,7 @@ public class JsProperty {
         } else if (JavaFunction.isFunction(o)) {
             return new JavaFunction(o);
         } else if (o == Undefined.INSTANCE) {
-            String className = node.getText();
-            if (Engine.JAVA_BRIDGE.typeExists(className)) {
-                try {
-                    return args -> Engine.JAVA_BRIDGE.construct(className, args);
-                } catch (Exception e) {
-                    throw new RuntimeException("undefined is not a function" + getErrorMessageExtra());
-                }
-            } else {
-                throw new RuntimeException("undefined is not a function" + getErrorMessageExtra());
-            }
+            return null;
         } else if (o != null) { // java interop
             JavaObject jo = new JavaObject(o);
             return new JavaInvokable(name, jo);

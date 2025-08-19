@@ -374,11 +374,17 @@ public class JsParser extends Parser {
                 fn_call_args();
                 consume(R_PAREN);
                 exit(Shift.LEFT);
-            } else if (enter(NodeType.REF_DOT_EXPR, DOT)) {
+            } else if (enter(NodeType.REF_DOT_EXPR, DOT, QUES_DOT)) {
                 TokenType next = peek();
                 // allow reserved words as property accessors
                 if (next == IDENT || next.keyword) {
                     consumeNext();
+                } else if (peekPrev() == QUES_DOT) {
+                    if (next == L_BRACKET || next == L_PAREN) {
+                        expr_rhs(7);
+                    } else {
+                        error(L_BRACKET, L_PAREN);
+                    }
                 } else {
                     error(IDENT);
                 }
