@@ -181,7 +181,7 @@ class EngineTest {
     @Test
     void testWith() {
         Engine engine = new Engine();
-        engine.set("foo", "parent");
+        engine.put("foo", "parent");
         Map<String, Object> vars = new HashMap<>();
         vars.put("foo", "child");
         assertEquals("child", engine.evalWith("foo", vars));

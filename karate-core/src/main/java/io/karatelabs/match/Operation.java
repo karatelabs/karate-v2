@@ -159,7 +159,7 @@ public class Operation {
                     int count = list.size();
                     for (int i = 0; i < count; i++) {
                         Object o = list.get(i);
-                        context.engine.set("_$", o);
+                        context.engine.put("_$", o);
                         Operation mo = new Operation(context.descend(i), nestedMatchType, new Value(o), expected, matchEachEmptyAllowed);
                         mo.execute();
                         context.engine.remove("_$");
@@ -259,8 +259,8 @@ public class Operation {
                 Match.Type nestedType = macroToMatchType(false, macro);
                 int startPos = matchTypeToStartPos(nestedType);
                 macro = macro.substring(startPos);
-                context.engine.set("$", context.root.actual.getValue());
-                context.engine.set("_", actual.getValue());
+                context.engine.put("$", context.root.actual.getValue());
+                context.engine.put("_", actual.getValue());
                 Object evalResult = context.engine.eval(macro);
                 context.engine.remove("$");
                 context.engine.remove("_");
@@ -276,8 +276,8 @@ public class Operation {
                         String bracketContents = macro.substring(1, closeBracketPos);
                         List<Object> listAct = actual.getValue();
                         int listSize = listAct.size();
-                        context.engine.set("$", context.root.actual.getValue());
-                        context.engine.set("_", listSize);
+                        context.engine.put("$", context.root.actual.getValue());
+                        context.engine.put("_", listSize);
                         String sizeExpr;
                         if (containsPlaceholderUnderscore(bracketContents)) { // #[_ < 5]
                             sizeExpr = bracketContents;
@@ -366,8 +366,8 @@ public class Operation {
                 }
                 macro = StringUtils.trimToNull(macro);
                 if (macro != null && questionPos != -1) {
-                    context.engine.set("$", context.root.actual.getValue());
-                    context.engine.set("_", actual.getValue());
+                    context.engine.put("$", context.root.actual.getValue());
+                    context.engine.put("_", actual.getValue());
                     Object evalResult = context.engine.eval(macro);
                     context.engine.remove("$");
                     context.engine.remove("_");

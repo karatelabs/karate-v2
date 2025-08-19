@@ -221,7 +221,7 @@ class Interpreter {
     private static Object evalFnExpr(Node node, Context context) {
         if (node.children.get(1).token.type == IDENT) {
             NodeFunction nodeFunction = new NodeFunction(false, argNames(node.children.get(3)), node.children.get(5), context);
-            context.declare(node.children.get(1).getText(), nodeFunction);
+            context.put(node.children.get(1).getText(), nodeFunction);
             return nodeFunction;
         } else {
             return new NodeFunction(false, argNames(node.children.get(2)), node.children.get(4), context);
@@ -276,9 +276,9 @@ class Interpreter {
             }
             for (KeyValue kv : iterable) {
                 if (in) {
-                    forContext.declare(varName, kv.key);
+                    forContext.put(varName, kv.key);
                 } else {
-                    forContext.declare(varName, kv.value);
+                    forContext.put(varName, kv.value);
                 }
                 forResult = eval(forBody, forContext);
             }
@@ -612,7 +612,7 @@ class Interpreter {
                 Context catchContext = new Context(context);
                 if (node.children.get(3).token.type == L_PAREN) {
                     String errorName = node.children.get(4).getText();
-                    catchContext.declare(errorName, context.getErrorThrown());
+                    catchContext.put(errorName, context.getErrorThrown());
                     tryValue = eval(node.children.get(6), catchContext);
                 } else { // catch without variable name, 3 is block
                     tryValue = eval(node.children.get(3), context);
@@ -657,7 +657,7 @@ class Interpreter {
         List<Node> varNames = node.children.get(1).findAll(IDENT);
         // TODO let & const
         for (Node varName : varNames) {
-            context.declare(varName.getText(), varValue);
+            context.put(varName.getText(), varValue);
             if (context.onAssign != null) {
                 context.onAssign.accept(varName.getText(), varValue);
             }

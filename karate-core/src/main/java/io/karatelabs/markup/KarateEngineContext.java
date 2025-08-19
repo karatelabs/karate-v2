@@ -98,7 +98,7 @@ public class KarateEngineContext implements IEngineContext, SimpleObject {
     }
 
     public Object evalGlobal(String src) {
-        getVariableNames().forEach(name -> engine.set(name, getVariable(name)));
+        getVariableNames().forEach(name -> engine.put(name, getVariable(name)));
         return engine.eval(src);
     }
 

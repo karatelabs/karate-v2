@@ -51,7 +51,7 @@ public class KarateJs implements SimpleObject {
         this.client = client;
         this.engine = new Engine();
         engine.context.setOnConsoleLog((n, s) -> logger.info(s));
-        engine.setRootBinding("karate", this);
+        engine.putRootBinding("karate", this);
     }
 
     private Invokable http() {

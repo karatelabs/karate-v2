@@ -19,7 +19,7 @@ class EvalBase {
         engine = new Engine();
         if (vars != null) {
             Map<String, Object> map = NodeUtils.fromJson(vars);
-            map.forEach(engine::set);
+            map.forEach(engine::put);
         }
         return engine.eval(text);
     }

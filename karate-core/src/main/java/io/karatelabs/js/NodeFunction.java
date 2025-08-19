@@ -52,7 +52,7 @@ class NodeFunction extends JsFunction {
     public Object invoke(Object... args) {
         Context childContext = originalContext.merge(invokeContext);
         if (!childContext.hasKey("arguments")) {
-            childContext.declare("arguments", Arrays.asList(args));
+            childContext.put("arguments", Arrays.asList(args));
         }
         int actualArgCount = Math.min(args.length, argCount);
         for (int i = 0; i < actualArgCount; i++) {
@@ -62,19 +62,19 @@ class NodeFunction extends JsFunction {
                 for (int j = i; j < args.length; j++) {
                     remainingArgs.add(args[j]);
                 }
-                childContext.declare(name.substring(1), remainingArgs);
+                childContext.put(name.substring(1), remainingArgs);
             } else {
-                childContext.declare(name, args[i]);
+                childContext.put(name, args[i]);
             }
         }
         if (args.length < argCount) {
             for (int i = args.length; i < argCount; i++) {
                 String name = argNames.get(i);
-                childContext.declare(name, Undefined.INSTANCE);
+                childContext.put(name, Undefined.INSTANCE);
             }
         }
         if (!arrow) {
-            childContext.declare("this", thisObject);
+            childContext.put("this", thisObject);
         }
         if (logger.isTraceEnabled()) {
             logger.trace(">> {}", this);

@@ -218,14 +218,14 @@ public class Context {
         return false;
     }
 
-    public void declare(String name, Object value) {
+    void put(String name, Object value) {
         if (value instanceof JsFunction && !"this".equals(name)) {
             ((JsFunction) value).setName(name);
         }
         bindings.put(name, value);
     }
 
-    public void update(String name, Object value) {
+    void update(String name, Object value) {
         if (bindings.containsKey(name)) {
             bindings.put(name, value);
         } else if (caller != null && caller.hasKey(name)) {
@@ -240,7 +240,7 @@ public class Context {
         }
     }
 
-    public void remove(String name) {
+    void remove(String name) {
         bindings.remove(name);
     }
 

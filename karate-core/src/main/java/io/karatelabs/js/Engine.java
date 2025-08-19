@@ -63,10 +63,6 @@ public class Engine {
         return evalInternal(Resource.text(text), vars);
     }
 
-    public static boolean isUndefined(Object o) {
-        return o == Undefined.INSTANCE || Undefined.NAN.equals(o);
-    }
-
     private Object evalInternal(Resource resource) {
         return evalInternal(resource, null);
     }
@@ -101,12 +97,12 @@ public class Engine {
         }
     }
 
-    public void setRootBinding(String name, Object value) {
+    public void putRootBinding(String name, Object value) {
         context.setParent(name, value);
     }
 
-    public void set(String name, Object value) {
-        context.declare(name, value);
+    public void put(String name, Object value) {
+        context.put(name, value);
     }
 
     public void remove(String name) {
