@@ -27,7 +27,7 @@ import io.karatelabs.common.Resource;
 
 public class Token {
 
-    static final Token _EMPTY = new Token(Resource.text(""), TokenType.EOF, 0, 0, 0, "");
+    static final Token EMPTY = new Token(Resource.text(""), TokenType.EOF, 0, 0, 0, "");
 
     Resource resource;
     public final long pos;

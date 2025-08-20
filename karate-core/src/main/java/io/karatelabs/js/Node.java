@@ -39,16 +39,16 @@ public class Node {
 
     public Node(NodeType type) {
         this.type = type;
-        token = Token._EMPTY;
+        token = Token.EMPTY;
     }
 
     public Node(Token chunk) {
         this.token = chunk;
-        type = NodeType._TOKEN;
+        type = NodeType.TOKEN;
     }
 
     public boolean isToken() {
-        return type == NodeType._TOKEN;
+        return type == NodeType.TOKEN;
     }
 
     public Token getFirstToken() {
@@ -56,7 +56,7 @@ public class Node {
             return token;
         }
         if (children.isEmpty()) {
-            return Token._EMPTY;
+            return Token.EMPTY;
         }
         return children.get(0).getFirstToken();
     }

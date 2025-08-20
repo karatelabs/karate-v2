@@ -71,7 +71,7 @@ public class JsParser extends Parser {
         if (peek() == EOF) {
             return true;
         }
-        Token chunk = chunks.get(position);
+        Token chunk = tokens.get(position);
         if (chunk.type == R_CURLY) {
             return true;
         }
@@ -114,10 +114,13 @@ public class JsParser extends Parser {
     }
 
     private boolean var_stmt() {
-        if (!enter(NodeType.VAR_STMT, VAR, CONST, LET)) {
+        TokenType varType = peek();
+        if (varType == VAR || varType == CONST || varType == LET) {
+            enter(NodeType.VAR_STMT);
+            consumeNext();
+        } else {
             return false;
         }
-        final TokenType varType = peekPrev();
         if (!var_stmt_names()) {
             error(NodeType.VAR_STMT_NAMES);
         }
@@ -375,12 +378,13 @@ public class JsParser extends Parser {
                 consume(R_PAREN);
                 exit(Shift.LEFT);
             } else if (enter(NodeType.REF_DOT_EXPR, DOT, QUES_DOT)) {
-                TokenType next = peek();
+                TokenType dotType = lastConsumed;
                 // allow reserved words as property accessors
-                if (next == IDENT || next.keyword) {
+                TokenType dotNext = peek();
+                if (dotNext == IDENT || dotNext.keyword) {
                     consumeNext();
-                } else if (peekPrev() == QUES_DOT) {
-                    if (next == L_BRACKET || next == L_PAREN) {
+                } else if (dotType == QUES_DOT) {
+                    if (dotNext == L_BRACKET || dotNext == L_PAREN) {
                         expr_rhs(7);
                     } else {
                         error(L_BRACKET, L_PAREN);
@@ -562,6 +566,7 @@ public class JsParser extends Parser {
     }
 
     private boolean object_elem() {
+
         if (!enter(NodeType.OBJECT_ELEM, IDENT, S_STRING, D_STRING, NUMBER, DOT_DOT_DOT)) {
             return false;
         }
@@ -570,7 +575,7 @@ public class JsParser extends Parser {
         }
         boolean spread = false;
         if (!consumeIf(COLON)) {
-            if (peekPrev() == DOT_DOT_DOT) { // spread operator
+            if (lastConsumed == DOT_DOT_DOT) { // spread operator
                 if (consumeIf(IDENT)) {
                     spread = true;
                 } else {

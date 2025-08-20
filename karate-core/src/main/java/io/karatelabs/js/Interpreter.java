@@ -705,7 +705,7 @@ class Interpreter {
 
     static Object eval(Node node, Context context) {
         switch (node.type) {
-            case _TOKEN:
+            case TOKEN:
                 return evalChunk(node, context);
             case ASSIGN_EXPR:
                 return evalAssignExpr(node, context);

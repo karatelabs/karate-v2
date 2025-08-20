@@ -56,7 +56,7 @@ public class JsProperty {
                 break;
             case REF_DOT_EXPR:
                 Object temp = null;
-                if (node.children.get(1).type == NodeType._TOKEN) { // normal dot or optional
+                if (node.children.get(1).type == NodeType.TOKEN) { // normal dot or optional
                     optional = node.children.get(1).token.type == TokenType.QUES_DOT;
                     name = node.children.get(2).getText();
                     try {

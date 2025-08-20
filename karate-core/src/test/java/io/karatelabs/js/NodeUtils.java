@@ -113,7 +113,7 @@ public class NodeUtils {
                     }
                     return Collections.singletonMap(key, list);
                 }
-            case _TOKEN:
+            case TOKEN:
                 switch (node.token.type) {
                     case IDENT:
                         return "$" + node.token.text;

@@ -39,7 +39,7 @@ abstract class Parser {
     static final Logger logger = LoggerFactory.getLogger(Parser.class);
 
     final Resource resource;
-    final List<Token> chunks;
+    final List<Token> tokens;
     private final int size;
 
     int position = 0;
@@ -51,8 +51,8 @@ abstract class Parser {
 
     Parser(Resource resource, boolean gherkin) {
         this.resource = resource;
-        chunks = getChunks(resource, gherkin);
-        size = chunks.size();
+        tokens = getTokens(resource, gherkin);
+        size = tokens.size();
         marker = new Marker(position, null, new Node(NodeType.ROOT), -1);
     }
 
@@ -68,7 +68,7 @@ abstract class Parser {
             if (i == position) {
                 sb.append(">>");
             }
-            sb.append(chunks.get(i));
+            sb.append(tokens.get(i));
             sb.append(' ');
         }
         if (position == size) {
@@ -81,15 +81,15 @@ abstract class Parser {
     }
 
     void error(String message) {
-        Token chunk;
+        Token token;
         if (position == size) {
-            chunk = chunks.get(position - 1);
+            token = tokens.get(position - 1);
         } else {
-            chunk = chunks.get(position);
+            token = tokens.get(position);
         }
         throw new ParserException(message + "\n"
-                + chunk.getPositionDisplay()
-                + " " + chunk + "\nparser state: " + this);
+                + token.getPositionDisplay()
+                + " " + token + "\nparser state: " + this);
     }
 
     void error(NodeType... expected) {
@@ -114,9 +114,8 @@ abstract class Parser {
                 return false;
             }
         }
-        Node node = new Node(type);
         Marker caller = marker;
-        marker = new Marker(position, caller, node, marker.depth + 1);
+        marker = new Marker(position, caller, new Node(type), marker.depth + 1);
         if (marker.depth > 100) {
             throw new ParserException("too much recursion");
         }
@@ -178,7 +177,7 @@ abstract class Parser {
         return result;
     }
 
-    static List<Token> getChunks(Resource resource, boolean gherkin) {
+    static List<Token> getTokens(Resource resource, boolean gherkin) {
         CharArrayReader reader = new CharArrayReader(resource.getText().toCharArray());
         Lexer lexer = new Lexer(reader);
         if (gherkin) {
@@ -191,16 +190,16 @@ abstract class Parser {
         long pos = 0;
         try {
             while (true) {
-                TokenType token = lexer.yylex();
-                if (token == EOF) {
-                    list.add(new Token(resource, token, pos, line, col, ""));
+                TokenType type = lexer.yylex();
+                if (type == EOF) {
+                    list.add(new Token(resource, type, pos, line, col, ""));
                     break;
                 }
                 String text = lexer.yytext();
-                Token chunk = new Token(resource, token, pos, line, col, text);
+                Token token = new Token(resource, type, pos, line, col, text);
                 int length = lexer.yylength();
                 pos += length;
-                if (token == WS_LF || token == B_COMMENT || token == T_STRING) {
+                if (type == WS_LF || type == B_COMMENT || type == T_STRING) {
                     for (int i = 0; i < length; i++) {
                         if (text.charAt(i) == '\n') {
                             col = 0;
@@ -212,13 +211,13 @@ abstract class Parser {
                 } else {
                     col += length;
                 }
-                chunk.prev = prev;
+                token.prev = prev;
                 if (prev != null) {
-                    prev.next = chunk;
+                    prev.next = token;
                 }
-                prev = chunk;
-                if (token.primary) {
-                    list.add(chunk);
+                prev = token;
+                if (type.primary) {
+                    list.add(token);
                 }
             }
         } catch (Throwable e) {
@@ -229,51 +228,18 @@ abstract class Parser {
     }
 
     boolean peekIf(TokenType token) {
-        if (position == size) {
-            return false;
-        }
-        return chunks.get(position).type == token;
+        return peek() == token;
     }
+
+    private TokenType cachedPeek = null;
+    private int cachedPeekPos = -1;
 
     TokenType peek() {
-        if (position == size) {
-            return EOF;
+        if (cachedPeekPos != position) {
+            cachedPeekPos = position;
+            cachedPeek = (position == size) ? EOF : tokens.get(position).type;
         }
-        return chunks.get(position).type;
-    }
-
-    TokenType peekPrev() {
-        if (position == 0) {
-            return EOF;
-        }
-        return chunks.get(position - 1).type;
-    }
-
-    void consumeNext() {
-        Node node = new Node(chunks.get(position++));
-        marker.node.children.add(node);
-    }
-
-    Token next() {
-        if (position == size) {
-            return Token._EMPTY;
-        }
-        return chunks.get(position++);
-    }
-
-    void consume(TokenType token) {
-        if (!consumeIf(token)) {
-            error(token);
-        }
-    }
-
-    boolean consumeIf(TokenType token) {
-        if (peekIf(token)) {
-            Node node = new Node(chunks.get(position++));
-            marker.node.children.add(node);
-            return true;
-        }
-        return false;
+        return cachedPeek;
     }
 
     boolean peekAnyOf(TokenType... tokens) {
@@ -292,6 +258,32 @@ abstract class Parser {
             }
         }
         return false;
+    }
+
+    void consume(TokenType token) {
+        if (!consumeIf(token)) {
+            error(token);
+        }
+    }
+
+    boolean consumeIf(TokenType token) {
+        if (peekIf(token)) {
+            consumeNext();
+            return true;
+        }
+        return false;
+    }
+
+    void consumeNext() {
+        marker.node.children.add(new Node(next()));
+    }
+
+    TokenType lastConsumed = EOF;
+
+    Token next() {
+        Token next = position == size ? Token.EMPTY : tokens.get(position++);
+        lastConsumed = next.type;
+        return next;
     }
 
 }
