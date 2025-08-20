@@ -231,6 +231,15 @@ abstract class Parser {
         return peek() == token;
     }
 
+    boolean peekAnyOf(TokenType... tokens) {
+        for (TokenType token : tokens) {
+            if (peekIf(token)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private TokenType cachedPeek = null;
     private int cachedPeekPos = -1;
 
@@ -242,13 +251,10 @@ abstract class Parser {
         return cachedPeek;
     }
 
-    boolean peekAnyOf(TokenType... tokens) {
-        for (TokenType token : tokens) {
-            if (peekIf(token)) {
-                return true;
-            }
+    void consume(TokenType token) {
+        if (!consumeIf(token)) {
+            error(token);
         }
-        return false;
     }
 
     boolean anyOf(TokenType... tokens) {
@@ -258,12 +264,6 @@ abstract class Parser {
             }
         }
         return false;
-    }
-
-    void consume(TokenType token) {
-        if (!consumeIf(token)) {
-            error(token);
-        }
     }
 
     boolean consumeIf(TokenType token) {
