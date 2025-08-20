@@ -162,7 +162,7 @@ class Interpreter {
         JsProperty prop = new JsProperty(node.children.get(0), context);
         Invokable invokable = prop.getInvokable();
         if (invokable == null) { // optional chaining
-            return Undefined.INSTANCE;
+            return Context.UNDEFINED;
         }
         List<Object> argsList = new ArrayList<>();
         if (node.children.size() > 1) { // check for rare case, new syntax without parentheses
@@ -370,7 +370,7 @@ class Interpreter {
                 sb.append(child.token.text);
             } else if (child.type == NodeType.EXPR) {
                 Object value = eval(child, context);
-                if (value == Undefined.INSTANCE) {
+                if (value == Context.UNDEFINED) {
                     throw new RuntimeException(child.getText() + " is not defined");
                 }
                 sb.append(value);
@@ -402,8 +402,8 @@ class Interpreter {
         Object lhs = eval(node.children.get(0), context);
         Object rhs = eval(node.children.get(2), context);
         TokenType logicOp = node.children.get(1).token.type;
-        if (Undefined.NAN.equals(lhs) || Undefined.NAN.equals(rhs)) {
-            if (Undefined.NAN.equals(lhs) && Undefined.NAN.equals(rhs)) {
+        if (Context.NAN.equals(lhs) || Context.NAN.equals(rhs)) {
+            if (Context.NAN.equals(lhs) && Context.NAN.equals(rhs)) {
                 return logicOp == NOT_EQ || logicOp == NOT_EQ_EQ;
             }
             return false;
@@ -652,7 +652,7 @@ class Interpreter {
         if (node.children.size() > 3) {
             varValue = eval(node.children.get(3), context);
         } else {
-            varValue = Undefined.INSTANCE;
+            varValue = Context.UNDEFINED;
         }
         List<Node> varNames = node.children.get(1).findAll(IDENT);
         // TODO let & const

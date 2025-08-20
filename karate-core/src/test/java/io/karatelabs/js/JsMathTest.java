@@ -43,7 +43,7 @@ class JsMathTest extends EvalBase {
         assertEquals(1.4142135623730951, eval("Math.SQRT2"));
         assertEquals(5, eval("Math.abs(-5)"));
         assertEquals(Math.PI, eval("Math.acos(-1)"));
-        assertEquals(Undefined.NAN, eval("Math.acosh(0.5)"));
+        assertEquals(Double.NaN, eval("Math.acosh(0.5)"));
         assertEquals(1.5667992369724109, (double) eval("Math.acosh(2.5)"), 0.01);
         assertEquals(1.5707963267948966, eval("Math.asin(1)"));
         assertEquals(0.8813735870195429, eval("Math.asinh(1)"));

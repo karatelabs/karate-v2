@@ -221,12 +221,12 @@ public class JsProperty {
         if (!function && object instanceof JavaFields) {
             return ((JavaFields) object).read(name);
         }
-        if (object == null || object == Undefined.INSTANCE) {
+        if (object == null || object == Context.UNDEFINED) {
             if (context.hasKey(name)) {
                 return context.get(name);
             }
             if (optional) {
-                return Undefined.INSTANCE;
+                return Context.UNDEFINED;
             }
             throw new RuntimeException("cannot read properties of " + object + " (reading '" + name + "')");
         }
@@ -245,7 +245,7 @@ public class JsProperty {
                 }
             }
         } catch (Exception e) { // java reflection failed on this object + name
-            return Undefined.INSTANCE;
+            return Context.UNDEFINED;
         }
     }
 
@@ -261,7 +261,7 @@ public class JsProperty {
             return jc::construct;
         } else if (JavaFunction.isFunction(o)) {
             return new JavaFunction(o);
-        } else if (o == Undefined.INSTANCE) {
+        } else if (o == Context.UNDEFINED) {
             return null;
         } else if (o != null) { // java interop
             JavaObject jo = new JavaObject(o);

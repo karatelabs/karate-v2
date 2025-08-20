@@ -94,7 +94,7 @@ class JsStringTest extends EvalBase {
         assertEquals("o", eval("a = 'foobar'; a.charAt(1)"));
         assertEquals("", eval("a = 'foobar'; a.charAt(10)"));
         assertEquals(111, eval("a = 'foobar'; a.charCodeAt(1)")); // 'o' is 111
-        assertEquals(Undefined.NAN, eval("a = 'foobar'; a.charCodeAt(10)"));
+        assertEquals(Double.NaN, eval("a = 'foobar'; a.charCodeAt(10)"));
         assertEquals(111, eval("a = 'foobar'; a.codePointAt(1)")); // 'o' is 111
         assertNull(eval("a = 'foobar'; a.codePointAt(10)"));
         assertEquals("foobarbaz", eval("a = 'foobar'; a.concat('baz')"));

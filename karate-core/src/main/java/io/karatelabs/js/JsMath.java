@@ -165,7 +165,7 @@ class JsMath extends JsObject {
                 Double y = fn.apply(x.doubleValue());
                 return Terms.narrow(y);
             } catch (Exception e) {
-                return Undefined.NAN;
+                return Double.NaN;
             }
         };
     }
@@ -178,7 +178,7 @@ class JsMath extends JsObject {
                 Double r = fn.apply(x.doubleValue(), y.doubleValue());
                 return Terms.narrow(r);
             } catch (Exception e) {
-                return Undefined.NAN;
+                return Double.NaN;
             }
         };
     }

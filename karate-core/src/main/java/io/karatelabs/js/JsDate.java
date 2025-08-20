@@ -116,13 +116,13 @@ class JsDate extends JsObject implements JavaMirror {
                     case "parse":
                         return (Invokable) args -> {
                             if (args.length == 0 || args[0] == null) {
-                                return Undefined.NAN;
+                                return Double.NaN;
                             }
                             try {
                                 String dateStr = args[0].toString();
                                 return new JsDate(dateStr).getTime();
                             } catch (Exception e) {
-                                return Undefined.NAN;
+                                return Double.NaN;
                             }
                         };
                     case "getTime":
@@ -208,7 +208,7 @@ class JsDate extends JsObject implements JavaMirror {
                     case "setDate":
                         return (Invokable) args -> {
                             if (args.length == 0 || !(args[0] instanceof Number)) {
-                                return Undefined.NAN;
+                                return Double.NaN;
                             }
                             int day = ((Number) args[0]).intValue();
                             ZonedDateTime dt = thisObject instanceof JsDate
@@ -222,7 +222,7 @@ class JsDate extends JsObject implements JavaMirror {
                     case "setMonth":
                         return (Invokable) args -> {
                             if (args.length == 0 || !(args[0] instanceof Number)) {
-                                return Undefined.NAN;
+                                return Double.NaN;
                             }
                             // JavaScript months are 0-indexed
                             int month = ((Number) args[0]).intValue() + 1;
@@ -237,7 +237,7 @@ class JsDate extends JsObject implements JavaMirror {
                     case "setFullYear":
                         return (Invokable) args -> {
                             if (args.length == 0 || !(args[0] instanceof Number)) {
-                                return Undefined.NAN;
+                                return Double.NaN;
                             }
                             int year = ((Number) args[0]).intValue();
                             ZonedDateTime dt = thisObject instanceof JsDate
@@ -251,7 +251,7 @@ class JsDate extends JsObject implements JavaMirror {
                     case "setHours":
                         return (Invokable) args -> {
                             if (args.length == 0 || !(args[0] instanceof Number)) {
-                                return Undefined.NAN;
+                                return Double.NaN;
                             }
                             int hours = ((Number) args[0]).intValue();
                             ZonedDateTime dt = thisObject instanceof JsDate
@@ -275,7 +275,7 @@ class JsDate extends JsObject implements JavaMirror {
                     case "setMinutes":
                         return (Invokable) args -> {
                             if (args.length == 0 || !(args[0] instanceof Number)) {
-                                return Undefined.NAN;
+                                return Double.NaN;
                             }
                             int minutes = ((Number) args[0]).intValue();
                             ZonedDateTime dt = thisObject instanceof JsDate
@@ -296,7 +296,7 @@ class JsDate extends JsObject implements JavaMirror {
                     case "setSeconds":
                         return (Invokable) args -> {
                             if (args.length == 0 || !(args[0] instanceof Number)) {
-                                return Undefined.NAN;
+                                return Double.NaN;
                             }
                             int seconds = ((Number) args[0]).intValue();
                             ZonedDateTime dt = thisObject instanceof JsDate ? ((JsDate) thisObject).value : value;
@@ -313,7 +313,7 @@ class JsDate extends JsObject implements JavaMirror {
                     case "setMilliseconds":
                         return (Invokable) args -> {
                             if (args.length == 0 || !(args[0] instanceof Number)) {
-                                return Undefined.NAN;
+                                return Double.NaN;
                             }
                             int ms = ((Number) args[0]).intValue();
                             ZonedDateTime dt = thisObject instanceof JsDate ? ((JsDate) thisObject).value : value;
@@ -326,7 +326,7 @@ class JsDate extends JsObject implements JavaMirror {
                     case "setTime":
                         return (Invokable) args -> {
                             if (args.length == 0 || !(args[0] instanceof Number)) {
-                                return Undefined.NAN;
+                                return Double.NaN;
                             }
                             long timestamp = ((Number) args[0]).longValue();
                             ZonedDateTime newDt = ZonedDateTime.ofInstant(

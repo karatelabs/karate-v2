@@ -87,7 +87,7 @@ class JsString extends JsObject implements JavaMirror {
                         return (Invokable) args -> {
                             int index = ((Number) args[0]).intValue();
                             if (index < 0 || index >= text.length()) {
-                                return Undefined.NAN;
+                                return Double.NaN;
                             }
                             return (int) text.charAt(index);
                         };
@@ -95,7 +95,7 @@ class JsString extends JsObject implements JavaMirror {
                         return (Invokable) args -> {
                             int index = ((Number) args[0]).intValue();
                             if (index < 0 || index >= text.length()) {
-                                return Undefined.INSTANCE;
+                                return Context.UNDEFINED;
                             }
                             return text.codePointAt(index);
                         };

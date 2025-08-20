@@ -13,7 +13,7 @@ class TermsTest {
         assertTrue(Terms.isTruthy(true));
         assertFalse(Terms.isTruthy(false));
         assertFalse(Terms.isTruthy(null));
-        assertFalse(Terms.isTruthy(Undefined.INSTANCE));
+        assertFalse(Terms.isTruthy(Context.UNDEFINED));
         assertFalse(Terms.isTruthy(""));
         assertFalse(Terms.isTruthy(0));
         assertFalse(Terms.isTruthy(-0));

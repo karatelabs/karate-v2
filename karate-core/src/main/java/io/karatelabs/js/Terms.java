@@ -76,7 +76,7 @@ public class Terms {
                     return narrow(longValue);
                 }
             }
-            return Undefined.NAN;
+            return Double.NaN;
         }
     }
 
@@ -90,10 +90,10 @@ public class Terms {
 
     static boolean eq(Object lhs, Object rhs, boolean strict) {
         if (lhs == null) {
-            return rhs == null || !strict && rhs == Undefined.INSTANCE;
+            return rhs == null || !strict && rhs == Context.UNDEFINED;
         }
-        if (lhs == Undefined.INSTANCE) {
-            return rhs == Undefined.INSTANCE || !strict && rhs == null;
+        if (lhs == Context.UNDEFINED) {
+            return rhs == Context.UNDEFINED || !strict && rhs == null;
         }
         if (lhs == rhs) { // instance equality !
             return true;
@@ -230,7 +230,7 @@ public class Terms {
     }
 
     public static boolean isTruthy(Object value) {
-        if (value == null || value.equals(Undefined.INSTANCE) || value.equals(Undefined.NAN)) {
+        if (value == null || value.equals(Context.UNDEFINED) || value.equals(Double.NaN)) {
             return false;
         }
         if (value instanceof Boolean) {
@@ -254,7 +254,7 @@ public class Terms {
                 || value instanceof Boolean) {
             return true;
         }
-        return value == Undefined.INSTANCE;
+        return value == Context.UNDEFINED;
     }
 
     public static String typeOf(Object value) {
@@ -270,7 +270,7 @@ public class Terms {
         if (value instanceof Boolean) {
             return "boolean";
         }
-        if (value == Undefined.INSTANCE) {
+        if (value == Context.UNDEFINED) {
             return "undefined";
         }
         return "object";

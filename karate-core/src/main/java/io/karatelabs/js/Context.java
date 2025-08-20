@@ -34,7 +34,16 @@ public class Context {
 
     static final Logger logger = LoggerFactory.getLogger(Context.class);
 
-    public static final Context EMPTY = new Context(null, Collections.emptyMap(), null);
+    static final Context EMPTY = new Context(null, Collections.emptyMap(), null);
+
+    static final Object UNDEFINED = new Object() {
+        @Override
+        public String toString() {
+            return "undefined";
+        }
+    };
+
+    static final Object NAN = Double.NaN;
 
     private final Context parent;
     private final Context caller;
@@ -62,7 +71,7 @@ public class Context {
             case "parseInt":
                 return (Invokable) args -> Terms.toNumber(args[0]);
             case "undefined":
-                return Undefined.INSTANCE;
+                return UNDEFINED;
             case "Array":
                 return new JsArray();
             case "Date":
@@ -102,7 +111,7 @@ public class Context {
             case "Math":
                 return new JsMath();
             case "NaN":
-                return Undefined.NAN;
+                return Double.NaN;
             case "Number":
                 return new JsNumber();
             case "Object":
@@ -183,7 +192,7 @@ public class Context {
             bindings.put(name, global);
             return global;
         }
-        return Undefined.INSTANCE;
+        return UNDEFINED;
     }
 
     public boolean hasKey(String name) {
