@@ -114,13 +114,10 @@ public class JsParser extends Parser {
     }
 
     private boolean var_stmt() {
-        TokenType varType = peek();
-        if (varType == VAR || varType == CONST || varType == LET) {
-            enter(NodeType.VAR_STMT);
-            consumeNext();
-        } else {
+        if (!enter(NodeType.VAR_STMT, VAR, CONST, LET)) {
             return false;
         }
+        TokenType varType = lastConsumed;
         if (!var_stmt_names()) {
             error(NodeType.VAR_STMT_NAMES);
         }
@@ -169,7 +166,7 @@ public class JsParser extends Parser {
                     block(true);
                 }
             } else if (block(false)) { // catch without exception variable
-                // done
+                // ok
             } else {
                 error(CATCH);
             }
@@ -410,11 +407,16 @@ public class JsParser extends Parser {
 
     private boolean fn_arrow_expr() {
         enter(NodeType.FN_ARROW_EXPR);
-        boolean result = consumeIf(IDENT);
-        result = result || (consumeIf(L_PAREN) && fn_decl_args() && consumeIf(R_PAREN));
-        result = result && consumeIf(EQ_GT);
-        result = result && (block(false) || expr(-1, false));
-        return exit(result, false);
+        if (consumeIf(IDENT) || (consumeIf(L_PAREN) && fn_decl_args() && consumeIf(R_PAREN))) {
+            if (consumeIf(EQ_GT)) {
+                if (block(false) || expr(-1, false)) {
+                    return exit();
+                } else {
+                    error(NodeType.BLOCK, NodeType.EXPR);
+                }
+            }
+        }
+        return exit(false, false);
     }
 
     private boolean fn_expr() {
@@ -542,7 +544,7 @@ public class JsParser extends Parser {
             return false;
         }
         if (expr(8, false) || consumeIf(NUMBER)) {
-            // all good
+            // ok
         } else {
             error(NodeType.EXPR);
         }
@@ -566,7 +568,6 @@ public class JsParser extends Parser {
     }
 
     private boolean object_elem() {
-
         if (!enter(NodeType.OBJECT_ELEM, IDENT, S_STRING, D_STRING, NUMBER, DOT_DOT_DOT)) {
             return false;
         }
@@ -589,7 +590,7 @@ public class JsParser extends Parser {
             expr(-1, true);
         }
         if (consumeIf(COMMA) || peekIf(R_CURLY)) {
-            // all good
+            // ok
         } else {
             error(COMMA, R_CURLY);
         }
@@ -617,7 +618,7 @@ public class JsParser extends Parser {
         consumeIf(DOT_DOT_DOT); // spread operator
         expr(-1, false); // optional for sparse array
         if (consumeIf(COMMA) || peekIf(R_BRACKET)) {
-            // all good
+            // ok
         } else {
             error(COMMA, R_BRACKET);
         }
