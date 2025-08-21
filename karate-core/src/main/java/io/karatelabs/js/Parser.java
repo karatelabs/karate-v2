@@ -38,19 +38,21 @@ abstract class Parser {
 
     static final Logger logger = LoggerFactory.getLogger(Parser.class);
 
-    final Resource resource;
     final List<Token> tokens;
     private final int size;
 
-    int position = 0;
-    Marker marker;
+    private int position = 0;
+    private Marker marker;
+
+    Node markerNode() {
+        return marker.node;
+    }
 
     enum Shift {
         NONE, LEFT, RIGHT
     }
 
     Parser(Resource resource, boolean gherkin) {
-        this.resource = resource;
         tokens = getTokens(resource, gherkin);
         size = tokens.size();
         marker = new Marker(position, null, new Node(NodeType.ROOT), -1);
@@ -227,13 +229,17 @@ abstract class Parser {
         return list;
     }
 
-    private TokenType cachedPeek = null;
+    private Token cachedPeek = Token.EMPTY;
     private int cachedPeekPos = -1;
 
     TokenType peek() {
+        return peekToken().type;
+    }
+
+    Token peekToken() {
         if (cachedPeekPos != position) {
             cachedPeekPos = position;
-            cachedPeek = (position == size) ? EOF : tokens.get(position).type;
+            cachedPeek = (position == size) ? Token.EMPTY : tokens.get(position);
         }
         return cachedPeek;
     }
@@ -274,16 +280,16 @@ abstract class Parser {
         return false;
     }
 
+    TokenType lastConsumed() {
+        return marker.node.children.getLast().token.type;
+    }
+
     void consumeNext() {
         marker.node.children.add(new Node(next()));
     }
 
-    TokenType lastConsumed = EOF;
-
     Token next() {
-        Token next = position == size ? Token.EMPTY : tokens.get(position++);
-        lastConsumed = next.type;
-        return next;
+        return position == size ? Token.EMPTY : tokens.get(position++);
     }
 
 }

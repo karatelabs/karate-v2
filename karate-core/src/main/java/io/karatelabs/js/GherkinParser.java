@@ -32,8 +32,11 @@ import static io.karatelabs.js.TokenType.*;
 
 public class GherkinParser extends Parser {
 
+    final Resource resource;
+
     public GherkinParser(Resource resource) {
         super(resource, true);
+        this.resource = resource;
     }
 
     public Feature parse() {

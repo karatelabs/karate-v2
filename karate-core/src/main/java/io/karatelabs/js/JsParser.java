@@ -35,7 +35,7 @@ public class JsParser extends Parser {
 
     public Node parse() {
         enter(NodeType.PROGRAM);
-        final Node program = marker.node;
+        final Node program = markerNode();
         while (true) {
             if (!statement(false)) {
                 break;
@@ -68,17 +68,14 @@ public class JsParser extends Parser {
     }
 
     private boolean eos() {
-        if (peek() == EOF) {
-            return true;
-        }
-        Token chunk = tokens.get(position);
-        if (chunk.type == R_CURLY) {
-            return true;
-        }
         if (enter(NodeType.EOS, SEMI)) {
             return exit();
         }
-        return chunk.prev != null && chunk.prev.type == WS_LF;
+        Token next = peekToken();
+        if (next.type == R_CURLY || next.type == EOF) {
+            return true;
+        }
+        return next.prev != null && next.prev.type == WS_LF;
     }
 
     private boolean expr_list() {
@@ -117,7 +114,7 @@ public class JsParser extends Parser {
         if (!enter(NodeType.VAR_STMT, VAR, CONST, LET)) {
             return false;
         }
-        TokenType varType = lastConsumed;
+        TokenType varType = lastConsumed();
         if (!var_stmt_names()) {
             error(NodeType.VAR_STMT_NAMES);
         }
@@ -375,7 +372,7 @@ public class JsParser extends Parser {
                 consume(R_PAREN);
                 exit(Shift.LEFT);
             } else if (enter(NodeType.REF_DOT_EXPR, DOT, QUES_DOT)) {
-                TokenType dotType = lastConsumed;
+                TokenType dotType = lastConsumed();
                 // allow reserved words as property accessors
                 TokenType dotNext = peek();
                 if (dotNext == IDENT || dotNext.keyword) {
@@ -576,7 +573,7 @@ public class JsParser extends Parser {
         }
         boolean spread = false;
         if (!consumeIf(COLON)) {
-            if (lastConsumed == DOT_DOT_DOT) { // spread operator
+            if (lastConsumed() == DOT_DOT_DOT) { // spread operator
                 if (consumeIf(IDENT)) {
                     spread = true;
                 } else {
