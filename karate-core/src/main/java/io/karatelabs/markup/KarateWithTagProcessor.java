@@ -34,14 +34,14 @@ import org.thymeleaf.templatemode.TemplateMode;
 
 import java.util.Map;
 
-public class KarateWithTagProcessor extends AbstractAttributeTagProcessor {
+class KarateWithTagProcessor extends AbstractAttributeTagProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(KarateWithTagProcessor.class);
 
-    public static final int PRECEDENCE = 600;
-    public static final String ATTR_NAME = "with";
+    private static final int PRECEDENCE = 600;
+    private static final String ATTR_NAME = "with";
 
-    public KarateWithTagProcessor(final TemplateMode templateMode, final String dialectPrefix) {
+    KarateWithTagProcessor(final TemplateMode templateMode, final String dialectPrefix) {
         super(templateMode, dialectPrefix, null, false, ATTR_NAME, true, PRECEDENCE, true);
     }
 

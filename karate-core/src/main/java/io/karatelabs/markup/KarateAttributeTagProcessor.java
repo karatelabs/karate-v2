@@ -52,7 +52,7 @@ abstract class KarateAttributeTagProcessor extends AbstractAttributeTagProcessor
 
     private final ModificationType modificationType;
 
-    protected KarateAttributeTagProcessor(
+    KarateAttributeTagProcessor(
             final TemplateMode templateMode, final String dialectPrefix,
             final String attrName, final int precedence,
             final ModificationType modificationType) {
@@ -87,9 +87,8 @@ abstract class KarateAttributeTagProcessor extends AbstractAttributeTagProcessor
                 }
             } else {
                 // is a "normal" attribute, not a fixed-value conditional one - or we are not just replacing
-                final String newAttributeValue
-                        = EscapedAttributeUtils.escapeAttribute(getTemplateMode(), v == null ? null : v.toString());
-                if (newAttributeValue == null || newAttributeValue.length() == 0) {
+                final String newAttributeValue = EscapedAttributeUtils.escapeAttribute(getTemplateMode(), v == null ? null : v.toString());
+                if (newAttributeValue == null || newAttributeValue.isEmpty()) {
                     if (this.modificationType == ModificationType.SUBSTITUTION) {
                         // equivalent to simply removing
                         structureHandler.removeAttribute(k);
@@ -98,7 +97,7 @@ abstract class KarateAttributeTagProcessor extends AbstractAttributeTagProcessor
                 } else {
                     if (this.modificationType == ModificationType.SUBSTITUTION
                             || !tag.hasAttribute(k)
-                            || tag.getAttributeValue(k).length() == 0) {
+                            || tag.getAttributeValue(k).isEmpty()) {
                         // normal value replace
                         structureHandler.setAttribute(k, newAttributeValue);
                     } else {
@@ -119,7 +118,7 @@ abstract class KarateAttributeTagProcessor extends AbstractAttributeTagProcessor
         });
     }
 
-    public static class KarateAttrTagProcessor extends KarateAttributeTagProcessor {
+    static class KarateAttrTagProcessor extends KarateAttributeTagProcessor {
 
         public KarateAttrTagProcessor(final TemplateMode templateMode, final String dialectPrefix) {
             super(templateMode, dialectPrefix, "attr", 700, ModificationType.SUBSTITUTION);
@@ -127,7 +126,7 @@ abstract class KarateAttributeTagProcessor extends AbstractAttributeTagProcessor
 
     }
 
-    public static class KarateAttrappendTagProcessor extends KarateAttributeTagProcessor {
+    static class KarateAttrappendTagProcessor extends KarateAttributeTagProcessor {
 
         public KarateAttrappendTagProcessor(final TemplateMode templateMode, final String dialectPrefix) {
             super(templateMode, dialectPrefix, "attrappend", 900, ModificationType.APPEND);
@@ -135,7 +134,7 @@ abstract class KarateAttributeTagProcessor extends AbstractAttributeTagProcessor
 
     }
 
-    public static class KarateAttrprependTagProcessor extends KarateAttributeTagProcessor {
+    static class KarateAttrprependTagProcessor extends KarateAttributeTagProcessor {
 
         public KarateAttrprependTagProcessor(final TemplateMode templateMode, final String dialectPrefix) {
             super(templateMode, dialectPrefix, "attrprepend", 900, ModificationType.PREPEND);

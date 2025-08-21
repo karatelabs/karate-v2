@@ -32,6 +32,7 @@ public interface Resource {
 
     String CLASSPATH_COLON = "classpath:";
     String FILE_COLON = "file:";
+    String THIS_COLON = "this:";
 
     boolean isFile();
 
@@ -102,6 +103,11 @@ public interface Resource {
         } else {
             return text;
         }
+    }
+
+    static String getParentPath(String relativePath) {
+        int pos = relativePath.lastIndexOf('/');
+        return pos == -1 ? "" : relativePath.substring(0, pos + 1);
     }
 
     static Resource path(String path) {

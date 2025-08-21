@@ -23,9 +23,41 @@
  */
 package io.karatelabs.markup;
 
-@FunctionalInterface
-public interface TemplateSourceResolver {
+import io.karatelabs.js.SimpleObject;
+import org.thymeleaf.engine.TemplateData;
+import org.thymeleaf.templateresource.ITemplateResource;
 
-    TemplateSource resolve(String path, String caller);
+class MarkupJs implements SimpleObject {
+
+    final KarateEngineContext markup;
+
+    MarkupJs(KarateEngineContext markup) {
+        this.markup = markup;
+    }
+
+    @Override
+    public Object get(String name) {
+        switch (name) {
+            case "template":
+                return getTemplateName();
+            case "caller":
+                return getCallerTemplateName();
+        }
+        return null;
+    }
+
+    public String getCallerTemplateName() {
+        TemplateData td = markup.wrapped.getTemplateData();
+        ITemplateResource tr = td.getTemplateResource();
+        if (tr instanceof KarateTemplateResource ktr) {
+            return ktr.getCaller();
+        }
+        return null;
+    }
+
+    public String getTemplateName() {
+        String name = markup.wrapped.getTemplateData().getTemplate();
+        return name.startsWith("/") ? name.substring(1) : name;
+    }
 
 }

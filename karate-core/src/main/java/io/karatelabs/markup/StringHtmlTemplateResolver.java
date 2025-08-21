@@ -33,11 +33,11 @@ import org.thymeleaf.templateresolver.TemplateResolution;
 
 import java.util.Map;
 
-public class StringHtmlTemplateResolver implements ITemplateResolver {
+class StringHtmlTemplateResolver implements ITemplateResolver {
     
     private static final Logger logger = LoggerFactory.getLogger(StringHtmlTemplateResolver.class);
     
-    public static final StringHtmlTemplateResolver INSTANCE = new StringHtmlTemplateResolver();
+    static final StringHtmlTemplateResolver INSTANCE = new StringHtmlTemplateResolver();
 
     @Override
     public String getName() {

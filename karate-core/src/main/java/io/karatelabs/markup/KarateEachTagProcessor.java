@@ -32,14 +32,14 @@ import org.thymeleaf.processor.element.AbstractAttributeTagProcessor;
 import org.thymeleaf.processor.element.IElementTagStructureHandler;
 import org.thymeleaf.templatemode.TemplateMode;
 
-public class KarateEachTagProcessor extends AbstractAttributeTagProcessor {
+class KarateEachTagProcessor extends AbstractAttributeTagProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(KarateEachTagProcessor.class);
 
     public static final int PRECEDENCE = 200;
     public static final String ATTR_NAME = "each";
 
-    public KarateEachTagProcessor(final TemplateMode templateMode, final String dialectPrefix) {
+    KarateEachTagProcessor(final TemplateMode templateMode, final String dialectPrefix) {
         super(templateMode, dialectPrefix, null, false, ATTR_NAME, true, PRECEDENCE, true);
     }
 

@@ -34,7 +34,7 @@ import org.thymeleaf.standard.processor.*;
 import java.util.HashSet;
 import java.util.Set;
 
-public class KarateStandardDialect extends StandardDialect implements IStandardVariableExpressionEvaluator, IStandardExpressionParser {
+class KarateStandardDialect extends StandardDialect implements IStandardVariableExpressionEvaluator, IStandardExpressionParser {
 
     private static final Logger logger = LoggerFactory.getLogger(KarateStandardDialect.class);
 

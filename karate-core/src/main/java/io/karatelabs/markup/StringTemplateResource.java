@@ -29,11 +29,11 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 
-public class StringTemplateResource implements ITemplateResource {
+class StringTemplateResource implements ITemplateResource {
 
     private final String text;
 
-    public StringTemplateResource(String text) {
+    StringTemplateResource(String text) {
         this.text = text;
     }
 

@@ -23,46 +23,11 @@
  */
 package io.karatelabs.markup;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.thymeleaf.context.IContext;
+import io.karatelabs.common.Resource;
 
-import java.util.Collections;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+@FunctionalInterface
+public interface ResourceResolver {
 
-public class TemplateContext implements IContext {
-
-    private final Map<String, Object> vars;
-
-    public TemplateContext(Map<String, Object> vars) {
-        if (vars == null) {
-            vars = Collections.emptyMap();
-        }
-        this.vars = vars;
-    }
-
-    private static final Logger logger = LoggerFactory.getLogger(TemplateContext.class);
-
-    @Override
-    public Locale getLocale() {
-        return Locale.US;
-    }
-
-    @Override
-    public boolean containsVariable(String name) {
-        return vars.containsKey(name);
-    }
-
-    @Override
-    public Set<String> getVariableNames() {
-        return vars.keySet();
-    }
-
-    @Override
-    public Object getVariable(String name) {
-        return vars.get(name);
-    }
+    Resource resolve(String path, String caller);
 
 }

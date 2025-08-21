@@ -23,6 +23,7 @@
  */
 package io.karatelabs.markup;
 
+import io.karatelabs.common.Resource;
 import org.thymeleaf.templateresource.ITemplateResource;
 
 import java.io.IOException;
@@ -32,21 +33,21 @@ import java.io.Reader;
 public class KarateTemplateResource implements ITemplateResource {
 
     private final String caller;
-    private final TemplateSource resource;
+    private final Resource resource;
 
-    public KarateTemplateResource(String caller, TemplateSource resource) {
+    public KarateTemplateResource(String caller, Resource resource) {
         this.caller = caller;
         this.resource = resource;
     }
 
     @Override
     public String getDescription() {
-        return resource.getPath();
+        return resource.getPrefixedPath();
     }
 
     @Override
     public String getBaseName() {
-        return resource.getPath();
+        return resource.getPrefixedPath();
     }
 
     public String getCaller() {

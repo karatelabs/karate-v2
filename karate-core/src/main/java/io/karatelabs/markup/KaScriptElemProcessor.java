@@ -23,6 +23,7 @@
  */
 package io.karatelabs.markup;
 
+import io.karatelabs.common.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.thymeleaf.context.ITemplateContext;
@@ -34,16 +35,17 @@ import org.thymeleaf.processor.element.AbstractElementModelProcessor;
 import org.thymeleaf.processor.element.IElementModelStructureHandler;
 import org.thymeleaf.templatemode.TemplateMode;
 
-public class KaScriptElemProcessor extends AbstractElementModelProcessor {
+class KaScriptElemProcessor extends AbstractElementModelProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(KaScriptElemProcessor.class);
 
-    protected static final String SCOPE = "scope";
-    protected static final String LOCAL = "local";
-    protected static final String HEAD = "head";
-    protected static final String NOCACHE = "nocache";
+    static final String SRC = "src";
+    static final String SCOPE = "scope";
+    static final String LOCAL = "local";
+    static final String HEAD = "head";
+    static final String NOCACHE = "nocache";
 
-    public KaScriptElemProcessor(String dialectPrefix) {
+    KaScriptElemProcessor(String dialectPrefix) {
         super(TemplateMode.HTML, dialectPrefix, "script", false, SCOPE, true, 1000);
     }
 
@@ -51,23 +53,28 @@ public class KaScriptElemProcessor extends AbstractElementModelProcessor {
     protected void doProcess(ITemplateContext ctx, IModel model, IElementModelStructureHandler sh) {
         int depth = ctx.getElementStack().size();
         IProcessableElementTag tag = ctx.getElementStack().get(depth - 1);
-        String scope = tag.getAttributeValue(getDialectPrefix(), SCOPE);
+        String prefix = getDialectPrefix();
+        String scope = tag.getAttributeValue(prefix, SCOPE);
+        String src = tag.getAttributeValue(null, SRC);
         KarateEngineContext kec = (KarateEngineContext) ctx;
-        int n = model.size();
-        while (n-- != 0) {
-            final ITemplateEvent event = model.get(n);
-            if (event instanceof IText) {
-                String text = ((IText) event).getText();
-                if (text != null && !text.isBlank()) {
-                    if (LOCAL.equals(scope)) {
-                        kec.evalLocal(text);
-                    } else {
-                        kec.evalGlobal(text);
+        // if src is present, it will be processed by KaScriptSrcAttrProcessor
+        if (src == null) {
+            int n = model.size();
+            while (n-- != 0) {
+                final ITemplateEvent event = model.get(n);
+                if (event instanceof IText) {
+                    String text = ((IText) event).getText();
+                    if (text != null && !text.isBlank()) {
+                        if (LOCAL.equals(scope)) {
+                            kec.evalLocal(text);
+                        } else {
+                            kec.evalGlobal(text);
+                        }
                     }
                 }
             }
+            model.reset();
         }
-        model.reset();
     }
 
 }

@@ -29,13 +29,13 @@ import org.thymeleaf.context.IExpressionContext;
 import org.thymeleaf.standard.expression.IStandardExpression;
 import org.thymeleaf.standard.expression.StandardExpressionExecutionContext;
 
-public class KarateExpression implements IStandardExpression {
+class KarateExpression implements IStandardExpression {
 
     private static final Logger logger = LoggerFactory.getLogger(KarateExpression.class);
 
     private final String input;
 
-    public KarateExpression(String input) {
+    KarateExpression(String input) {
         if (input.contains("${")) {
             this.input = "`" + input + "`";
         } else {

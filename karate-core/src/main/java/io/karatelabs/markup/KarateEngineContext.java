@@ -24,8 +24,6 @@
 package io.karatelabs.markup;
 
 import io.karatelabs.js.Engine;
-import io.karatelabs.js.Invokable;
-import io.karatelabs.js.SimpleObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.thymeleaf.IEngineConfiguration;
@@ -37,72 +35,30 @@ import org.thymeleaf.inline.IInliner;
 import org.thymeleaf.model.IModelFactory;
 import org.thymeleaf.model.IProcessableElementTag;
 import org.thymeleaf.templatemode.TemplateMode;
-import org.thymeleaf.templateresource.ITemplateResource;
 
 import java.util.*;
 
-public class KarateEngineContext implements IEngineContext, SimpleObject {
+class KarateEngineContext implements IEngineContext {
 
     private static final Logger logger = LoggerFactory.getLogger(KarateEngineContext.class);
 
-    private final IEngineContext wrapped;
+    final IEngineContext wrapped;
     private final Engine engine;
     private final Map<String, Object> vars = new HashMap<>();
 
     KarateEngineContext(IEngineContext wrapped, Engine engine) {
         this.wrapped = wrapped;
         this.engine = engine;
+        this.engine.putRootBinding("_", vars);
+        this.engine.putRootBinding("context", new MarkupJs(this));
     }
 
-    @Override
-    public void put(String name, Object value) {
-        vars.put(name, value);
-    }
-
-    @Override
-    public Object get(String name) {
-        switch (name) {
-            case "get":
-                return (Invokable) args -> {
-                    if (args.length == 0) {
-                        return null;
-                    }
-                    String varName = args[0] + "";
-                    Object value = getVariable(varName);
-                    if (value == null && args.length > 1) {
-                        return args[1];
-                    }
-                    return value;
-                };
-            case "caller":
-                return getCallerTemplateName();
-            case "template":
-                return getTemplateName();
-            default:
-                return vars.get(name);
-        }
-    }
-
-    public String getCallerTemplateName() {
-        TemplateData td = wrapped.getTemplateData();
-        ITemplateResource tr = td.getTemplateResource();
-        if (tr instanceof KarateTemplateResource ktr) {
-            return ktr.getCaller();
-        }
-        return null;
-    }
-
-    public String getTemplateName() {
-        String name = wrapped.getTemplateData().getTemplate();
-        return name.startsWith("/") ? name.substring(1) : name;
-    }
-
-    public Object evalGlobal(String src) {
+    void evalGlobal(String src) {
         getVariableNames().forEach(name -> engine.put(name, getVariable(name)));
-        return engine.eval(src);
+        engine.eval(src);
     }
 
-    public Object evalLocalAsObject(String src) {
+    Object evalLocalAsObject(String src) {
         String temp;
         if (src.startsWith("${")) {
             temp = "`" + src + "`";
@@ -112,23 +68,23 @@ public class KarateEngineContext implements IEngineContext, SimpleObject {
         return evalLocal(temp);
     }
 
-    public Object evalLocal(String src) {
+    Object evalLocal(String src) {
         Map<String, Object> localVars = new HashMap<>();
         for (String name : getVariableNames()) {
             localVars.put(name, getVariable(name));
         }
-        localVars.put("_", this);
+        localVars.put("_", vars);
         return engine.evalWith(src, localVars);
     }
 
-    public void setLocal(String name, Object value) {
+    void setLocal(String name, Object value) {
         vars.put(name, value);
     }
 
     @Override
     public void increaseLevel() {
         if (!vars.isEmpty()) {
-            setVariables(vars);
+            wrapped.setVariables(vars);
             vars.clear();
         }
         wrapped.increaseLevel();

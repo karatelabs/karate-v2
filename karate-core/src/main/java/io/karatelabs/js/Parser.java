@@ -116,8 +116,8 @@ abstract class Parser {
                 return false;
             }
         }
-        Marker caller = marker;
-        marker = new Marker(position, caller, new Node(type), marker.depth + 1);
+        // new marker has reference to caller marker set
+        marker = new Marker(position, marker, new Node(type), marker.depth + 1);
         if (marker.depth > 100) {
             throw new ParserException("too much recursion");
         }

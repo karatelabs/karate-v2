@@ -23,7 +23,7 @@
  */
 package io.karatelabs.markup;
 
-import io.karatelabs.common.FileUtils;
+import io.karatelabs.common.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.thymeleaf.context.ITemplateContext;
@@ -33,19 +33,15 @@ import org.thymeleaf.processor.element.AbstractAttributeTagProcessor;
 import org.thymeleaf.processor.element.IElementTagStructureHandler;
 import org.thymeleaf.templatemode.TemplateMode;
 
-import java.io.InputStream;
+public class KaScriptSrcAttrProcessor extends AbstractAttributeTagProcessor {
 
-public class KaScriptAttrProcessor extends AbstractAttributeTagProcessor {
-
-    private static final Logger logger = LoggerFactory.getLogger(KaScriptAttrProcessor.class);
-
-    private static final String SRC = "src";
+    private static final Logger logger = LoggerFactory.getLogger(KaScriptSrcAttrProcessor.class);
 
     private final String hostContextPath;
-    private final TemplateSourceResolver resolver;
+    private final ResourceResolver resolver;
 
-    public KaScriptAttrProcessor(String dialectPrefix, TemplateSourceResolver resolver, String hostContextPath) {
-        super(TemplateMode.HTML, dialectPrefix, null, false, SRC, false, 1000, false);
+    public KaScriptSrcAttrProcessor(String dialectPrefix, ResourceResolver resolver, String hostContextPath) {
+        super(TemplateMode.HTML, dialectPrefix, null, false, KaScriptElemProcessor.SRC, false, 1000, false);
         this.resolver = resolver;
         this.hostContextPath = hostContextPath;
     }
@@ -53,32 +49,31 @@ public class KaScriptAttrProcessor extends AbstractAttributeTagProcessor {
     @Override
     protected void doProcess(ITemplateContext ctx, IProcessableElementTag tag, AttributeName an, String src, IElementTagStructureHandler sh) {
         String scope = tag.getAttributeValue(getDialectPrefix(), KaScriptElemProcessor.SCOPE);
-        if (scope == null) {
+        Resource srcResource = resolver.resolve(src, null);
+        if (scope == null) { // no js evaluation, we just update the html for nocache
             if (hostContextPath != null) {
                 src = hostContextPath + src;
             }
             String noCache = tag.getAttributeValue(getDialectPrefix(), KaScriptElemProcessor.NOCACHE);
             if (noCache != null) {
                 try {
-                    TemplateSource resource = resolver.resolve(src, null);
-                    src = src + "?ts=" + resource.getLastModified();
+                    src = src + "?ts=" + srcResource.getLastModified();
                 } catch (Exception e) {
                     logger.warn("nocache failed: {}", e.getMessage());
                 }
                 sh.removeAttribute(getDialectPrefix(), KaScriptElemProcessor.NOCACHE);
             }
-            sh.setAttribute(SRC, src);
-            return;
+            sh.setAttribute(KaScriptElemProcessor.SRC, src);
+        } else { // karate js evaluation
+            String js = srcResource.getText();
+            KarateEngineContext kec = (KarateEngineContext) ctx;
+            if (KaScriptElemProcessor.LOCAL.equals(scope)) {
+                kec.evalLocal(js);
+            } else {
+                kec.evalGlobal(js);
+            }
+            sh.removeElement();
         }
-        InputStream is = resolver.resolve(src, null).getStream();
-        String js = FileUtils.toString(is);
-        KarateEngineContext kec = (KarateEngineContext) ctx;
-        if (KaScriptElemProcessor.LOCAL.equals(scope)) {
-            kec.evalLocal(js);
-        } else {
-            kec.evalGlobal(js);
-        }
-        sh.removeElement();
     }
 
 }

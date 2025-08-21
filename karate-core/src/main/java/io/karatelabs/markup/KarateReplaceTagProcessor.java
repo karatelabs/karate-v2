@@ -30,10 +30,10 @@ import org.thymeleaf.processor.element.IElementTagStructureHandler;
 import org.thymeleaf.standard.processor.AbstractStandardFragmentInsertionTagProcessor;
 import org.thymeleaf.templatemode.TemplateMode;
 
-public class KarateReplaceTagProcessor extends AbstractStandardFragmentInsertionTagProcessor {
+class KarateReplaceTagProcessor extends AbstractStandardFragmentInsertionTagProcessor {
 
-    public static final int PRECEDENCE = 100;
-    public static final String ATTR_NAME = "replace";
+    static final int PRECEDENCE = 100;
+    static final String ATTR_NAME = "replace";
 
     public KarateReplaceTagProcessor(final TemplateMode templateMode, final String dialectPrefix) {
         super(templateMode, dialectPrefix, ATTR_NAME, PRECEDENCE, true);

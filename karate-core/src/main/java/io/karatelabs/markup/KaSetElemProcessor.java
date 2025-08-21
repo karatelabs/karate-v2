@@ -34,11 +34,11 @@ import org.thymeleaf.processor.element.AbstractElementModelProcessor;
 import org.thymeleaf.processor.element.IElementModelStructureHandler;
 import org.thymeleaf.templatemode.TemplateMode;
 
-public class KaSetElemProcessor extends AbstractElementModelProcessor {
+class KaSetElemProcessor extends AbstractElementModelProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(KaSetElemProcessor.class);
 
-    protected static final String SET = "set";
+    private static final String SET = "set";
 
     public KaSetElemProcessor(String dialectPrefix) {
         super(TemplateMode.HTML, dialectPrefix, null, false, SET, true, 1000);

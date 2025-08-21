@@ -23,25 +23,30 @@
  */
 package io.karatelabs.markup;
 
-import org.thymeleaf.context.ITemplateContext;
-import org.thymeleaf.engine.AttributeName;
-import org.thymeleaf.model.IProcessableElementTag;
-import org.thymeleaf.processor.element.IElementTagStructureHandler;
-import org.thymeleaf.standard.processor.AbstractStandardFragmentInsertionTagProcessor;
-import org.thymeleaf.templatemode.TemplateMode;
+import org.thymeleaf.dialect.AbstractProcessorDialect;
+import org.thymeleaf.processor.IProcessor;
 
-class KarateInsertTagProcessor extends AbstractStandardFragmentInsertionTagProcessor {
+import java.util.HashSet;
+import java.util.Set;
 
-    static final int PRECEDENCE = 100;
-    static final String ATTR_NAME = "insert";
+class KarateProcessorDialect extends AbstractProcessorDialect {
 
-    public KarateInsertTagProcessor(final TemplateMode templateMode, final String dialectPrefix) {
-        super(templateMode, dialectPrefix, ATTR_NAME, PRECEDENCE, false);
+    private final ResourceResolver resolver;
+    private final String contextPath;
+
+    KarateProcessorDialect(ResourceResolver resolver, String contextPath) {
+        super("karate", "ka", 2000); // has to be processed after standard (default) dialect which is 1000
+        this.resolver = resolver;
+        this.contextPath = contextPath;
     }
 
     @Override
-    protected void doProcess(ITemplateContext context, IProcessableElementTag tag, AttributeName attributeName, String attributeValue, IElementTagStructureHandler structureHandler) {
-        super.doProcess(context, tag, attributeName, "~{" + attributeValue + "}", structureHandler);
+    public Set<IProcessor> getProcessors(String dialectPrefix) {
+        Set<IProcessor> ps = new HashSet<>();
+        ps.add(new KaScriptSrcAttrProcessor(dialectPrefix, resolver, contextPath));
+        ps.add(new KaScriptElemProcessor(dialectPrefix));
+        ps.add(new KaSetElemProcessor(dialectPrefix));
+        return ps;
     }
 
 }

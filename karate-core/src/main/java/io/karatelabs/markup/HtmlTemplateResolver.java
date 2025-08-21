@@ -23,6 +23,7 @@
  */
 package io.karatelabs.markup;
 
+import io.karatelabs.common.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.thymeleaf.IEngineConfiguration;
@@ -37,9 +38,9 @@ public class HtmlTemplateResolver implements ITemplateResolver {
 
     private static final Logger logger = LoggerFactory.getLogger(HtmlTemplateResolver.class);
 
-    private final TemplateSourceResolver resolver;
+    private final ResourceResolver resolver;
 
-    public HtmlTemplateResolver(TemplateSourceResolver resolver) {
+    public HtmlTemplateResolver(ResourceResolver resolver) {
         this.resolver = resolver;
     }
 
@@ -58,7 +59,7 @@ public class HtmlTemplateResolver implements ITemplateResolver {
         if (!name.endsWith(".html")) {
             name = name + ".html";
         }
-        TemplateSource resource = resolver.resolve(name, ownerTemplate);
+        Resource resource = resolver.resolve(name, ownerTemplate);
         KarateTemplateResource templateResource = new KarateTemplateResource(ownerTemplate, resource);
         return new TemplateResolution(templateResource, TemplateMode.HTML, AlwaysValidCacheEntryValidity.INSTANCE);
     }

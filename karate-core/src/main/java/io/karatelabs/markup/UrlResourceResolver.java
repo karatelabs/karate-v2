@@ -23,30 +23,38 @@
  */
 package io.karatelabs.markup;
 
-import org.thymeleaf.dialect.AbstractProcessorDialect;
-import org.thymeleaf.processor.IProcessor;
+import io.karatelabs.common.Resource;
 
-import java.util.HashSet;
-import java.util.Set;
+public class UrlResourceResolver implements ResourceResolver {
 
-public class KarateScriptDialect extends AbstractProcessorDialect {
+    private final boolean classpath;
+    private final String root;
 
-    private final TemplateSourceResolver resolver;
-    private final String contextPath;
+    private static final String EMPTY = "";
+    private static final String SLASH = "/";
 
-    public KarateScriptDialect(TemplateSourceResolver resolver, String contextPath) {
-        super("karate", "xp", 2000); // has to be processed after standard (default) dialect which is 1000
-        this.resolver = resolver;
-        this.contextPath = contextPath;
+    public UrlResourceResolver(String root) {
+        if (root == null) {
+            root = EMPTY;
+        }
+        classpath = root.startsWith(Resource.CLASSPATH_COLON);
+        root = Resource.removePrefix(root);
+        if (!root.isEmpty() && !root.endsWith(SLASH)) {
+            root = root + SLASH;
+        }
+        this.root = root;
     }
 
     @Override
-    public Set<IProcessor> getProcessors(String dialectPrefix) {
-        Set<IProcessor> ps = new HashSet<>();
-        ps.add(new KaScriptAttrProcessor(dialectPrefix, resolver, contextPath));
-        ps.add(new KaScriptElemProcessor(dialectPrefix));
-        ps.add(new KaSetElemProcessor(dialectPrefix));
-        return ps;
+    public Resource resolve(String path, String caller) {
+        if (path.startsWith(Resource.CLASSPATH_COLON)) {
+            return Resource.path(path);
+        }
+        String basePath = classpath ? Resource.CLASSPATH_COLON + root : root;
+        if (path.startsWith(Resource.THIS_COLON) && caller != null) {
+            return Resource.path(basePath + Resource.getParentPath(caller) + path.substring(5));
+        }
+        return Resource.path(basePath + (path.charAt(0) == '/' ? path.substring(1) : path));
     }
 
 }
