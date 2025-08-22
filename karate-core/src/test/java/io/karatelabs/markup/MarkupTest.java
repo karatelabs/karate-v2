@@ -6,31 +6,33 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class MarkupTest {
 
     static final Logger logger = LoggerFactory.getLogger(MarkupTest.class);
 
-    private static String render(String resource) {
+    private static String render(String filename) {
         Engine js = new Engine();
-        Markup markup = Markup.forResourceRoot(js, "src/test/resources/markup");
-        return markup.process(resource);
+        UrlResourceResolver resolver = new UrlResourceResolver("src/test/resources/markup");
+        Markup markup = Markup.init(js, resolver);
+        return markup.processPath(filename, null);
     }
 
     @Test
     void testHtmlString() {
         Engine js = new Engine();
         js.put("message", "hello world");
-        Markup markup = Markup.forStrings(js, new UrlResourceResolver("src/test/resources/markup"));
-        String rendered = markup.process("<div><div th:text=\"message\"></div><div th:replace=\"/temp.html\"></div></div>");
+        Markup markup = Markup.init(js, new UrlResourceResolver("src/test/resources/markup"));
+        String html = "<div><div th:text=\"message\"></div><div th:replace=\"/temp.html\"></div></div>";
+        String rendered = markup.processString(html, null);
         assertEquals("<div><div>hello world</div><div>temp</div></div>", rendered);
     }
 
     @Test
     void testHtmlFile() {
         String rendered = render("main.html");
+        assertFalse(rendered.contains("<script foo=\"bar\" ka:scope=\"local\"></script>"));
         assertTrue(rendered.contains("<div id=\"local_js\">local.js called</div>"));
         assertTrue(rendered.contains("<div id=\"global_js\">global.js called</div>"));
         assertTrue(rendered.contains("<div id=\"before_one\"><span>js_one</span></div>"));

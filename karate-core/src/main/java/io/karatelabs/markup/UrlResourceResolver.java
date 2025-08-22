@@ -28,7 +28,7 @@ import io.karatelabs.common.Resource;
 public class UrlResourceResolver implements ResourceResolver {
 
     private final boolean classpath;
-    private final String root;
+    final String root;
 
     private static final String EMPTY = "";
     private static final String SLASH = "/";

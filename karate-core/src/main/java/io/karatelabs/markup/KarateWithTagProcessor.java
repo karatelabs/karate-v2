@@ -52,7 +52,7 @@ class KarateWithTagProcessor extends AbstractAttributeTagProcessor {
             final IProcessableElementTag tag,
             final AttributeName attributeName, String av,
             final IElementTagStructureHandler structureHandler) {
-        KarateEngineContext kec = (KarateEngineContext) ctx;
+        KarateTemplateContext kec = (KarateTemplateContext) ctx;
         Object o = kec.evalLocalAsObject(av);
         if (!(o instanceof Map)) {
             logger.warn("value did not evaluate to json: {}", av);

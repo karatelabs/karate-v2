@@ -23,39 +23,44 @@
  */
 package io.karatelabs.markup;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.thymeleaf.IEngineConfiguration;
-import org.thymeleaf.cache.NonCacheableCacheEntryValidity;
-import org.thymeleaf.templatemode.TemplateMode;
-import org.thymeleaf.templateresolver.ITemplateResolver;
-import org.thymeleaf.templateresolver.TemplateResolution;
+import org.thymeleaf.templateresource.ITemplateResource;
 
-import java.util.Map;
+import java.io.Reader;
+import java.io.StringReader;
 
-class StringHtmlTemplateResolver implements ITemplateResolver {
-    
-    private static final Logger logger = LoggerFactory.getLogger(StringHtmlTemplateResolver.class);
-    
-    static final StringHtmlTemplateResolver INSTANCE = new StringHtmlTemplateResolver();
+class HtmlStringTemplateResource implements ITemplateResource {
 
-    @Override
-    public String getName() {
-        return getClass().getName();
+    private final ResourceResolver resolver;
+    private final String text;
+
+    HtmlStringTemplateResource(String text, ResourceResolver resolver) {
+        this.text = text;
+        this.resolver = resolver;
     }
 
     @Override
-    public Integer getOrder() {
-        return 0;
+    public String getDescription() {
+        return "(inline)";
     }
 
     @Override
-    public TemplateResolution resolveTemplate(IEngineConfiguration configuration, String ownerTemplate, String template, Map<String, Object> templateResolutionAttributes) {
-        if (ownerTemplate != null) {
-            return null;
-        }
-        StringTemplateResource resource = new StringTemplateResource(template);
-        return new TemplateResolution(resource, TemplateMode.HTML, NonCacheableCacheEntryValidity.INSTANCE);
+    public String getBaseName() {
+        return null;
     }
-    
+
+    @Override
+    public boolean exists() {
+        return false;
+    }
+
+    @Override
+    public Reader reader() {
+        return new StringReader(text);
+    }
+
+    @Override
+    public ITemplateResource relative(String relativeLocation) {
+        return new HtmlTemplateResource(null, resolver.resolve(relativeLocation, null));
+    }
+
 }

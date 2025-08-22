@@ -36,8 +36,8 @@ class KarateEachTagProcessor extends AbstractAttributeTagProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(KarateEachTagProcessor.class);
 
-    public static final int PRECEDENCE = 200;
-    public static final String ATTR_NAME = "each";
+    private static final int PRECEDENCE = 200;
+    private static final String ATTR_NAME = "each";
 
     KarateEachTagProcessor(final TemplateMode templateMode, final String dialectPrefix) {
         super(templateMode, dialectPrefix, null, false, ATTR_NAME, true, PRECEDENCE, true);
@@ -57,7 +57,7 @@ class KarateEachTagProcessor extends AbstractAttributeTagProcessor {
             iterVarName = av.substring(0, pos).trim();
             av = av.substring(pos + 1);
         }
-        KarateEngineContext kec = (KarateEngineContext) ctx;
+        KarateTemplateContext kec = (KarateTemplateContext) ctx;
         Object value = kec.evalLocal(av);
         structureHandler.iterateElement(iterVarName, null, value);
     }

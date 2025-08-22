@@ -79,6 +79,11 @@ public class UrlResource implements Resource {
     }
 
     @Override
+    public boolean isUrlResource() {
+        return true;
+    }
+
+    @Override
     public boolean isClassPath() {
         return classpath;
     }

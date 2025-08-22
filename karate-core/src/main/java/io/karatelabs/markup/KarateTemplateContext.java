@@ -38,15 +38,15 @@ import org.thymeleaf.templatemode.TemplateMode;
 
 import java.util.*;
 
-class KarateEngineContext implements IEngineContext {
+class KarateTemplateContext implements IEngineContext {
 
-    private static final Logger logger = LoggerFactory.getLogger(KarateEngineContext.class);
+    private static final Logger logger = LoggerFactory.getLogger(KarateTemplateContext.class);
 
     final IEngineContext wrapped;
     private final Engine engine;
     private final Map<String, Object> vars = new HashMap<>();
 
-    KarateEngineContext(IEngineContext wrapped, Engine engine) {
+    KarateTemplateContext(IEngineContext wrapped, Engine engine) {
         this.wrapped = wrapped;
         this.engine = engine;
         this.engine.putRootBinding("_", vars);

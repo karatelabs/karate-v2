@@ -33,41 +33,41 @@ import org.thymeleaf.processor.element.AbstractAttributeTagProcessor;
 import org.thymeleaf.processor.element.IElementTagStructureHandler;
 import org.thymeleaf.templatemode.TemplateMode;
 
-public class KaScriptSrcAttrProcessor extends AbstractAttributeTagProcessor {
+class KarateScriptSrcAttributeProcessor extends AbstractAttributeTagProcessor {
 
-    private static final Logger logger = LoggerFactory.getLogger(KaScriptSrcAttrProcessor.class);
+    private static final Logger logger = LoggerFactory.getLogger(KarateScriptSrcAttributeProcessor.class);
 
     private final String hostContextPath;
     private final ResourceResolver resolver;
 
-    public KaScriptSrcAttrProcessor(String dialectPrefix, ResourceResolver resolver, String hostContextPath) {
-        super(TemplateMode.HTML, dialectPrefix, null, false, KaScriptElemProcessor.SRC, false, 1000, false);
+    KarateScriptSrcAttributeProcessor(String dialectPrefix, ResourceResolver resolver, String hostContextPath) {
+        super(TemplateMode.HTML, dialectPrefix, null, false, KarateScriptBodyProcessor.SRC, false, 1000, false);
         this.resolver = resolver;
         this.hostContextPath = hostContextPath;
     }
 
     @Override
     protected void doProcess(ITemplateContext ctx, IProcessableElementTag tag, AttributeName an, String src, IElementTagStructureHandler sh) {
-        String scope = tag.getAttributeValue(getDialectPrefix(), KaScriptElemProcessor.SCOPE);
+        String scope = tag.getAttributeValue(getDialectPrefix(), KarateScriptBodyProcessor.SCOPE);
         Resource srcResource = resolver.resolve(src, null);
         if (scope == null) { // no js evaluation, we just update the html for nocache
             if (hostContextPath != null) {
                 src = hostContextPath + src;
             }
-            String noCache = tag.getAttributeValue(getDialectPrefix(), KaScriptElemProcessor.NOCACHE);
+            String noCache = tag.getAttributeValue(getDialectPrefix(), KarateScriptBodyProcessor.NOCACHE);
             if (noCache != null) {
                 try {
                     src = src + "?ts=" + srcResource.getLastModified();
                 } catch (Exception e) {
                     logger.warn("nocache failed: {}", e.getMessage());
                 }
-                sh.removeAttribute(getDialectPrefix(), KaScriptElemProcessor.NOCACHE);
+                sh.removeAttribute(getDialectPrefix(), KarateScriptBodyProcessor.NOCACHE);
             }
-            sh.setAttribute(KaScriptElemProcessor.SRC, src);
+            sh.setAttribute(KarateScriptBodyProcessor.SRC, src);
         } else { // karate js evaluation
             String js = srcResource.getText();
-            KarateEngineContext kec = (KarateEngineContext) ctx;
-            if (KaScriptElemProcessor.LOCAL.equals(scope)) {
+            KarateTemplateContext kec = (KarateTemplateContext) ctx;
+            if (KarateScriptBodyProcessor.LOCAL.equals(scope)) {
                 kec.evalLocal(js);
             } else {
                 kec.evalGlobal(js);

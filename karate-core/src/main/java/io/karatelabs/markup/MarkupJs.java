@@ -29,9 +29,9 @@ import org.thymeleaf.templateresource.ITemplateResource;
 
 class MarkupJs implements SimpleObject {
 
-    final KarateEngineContext markup;
+    final KarateTemplateContext markup;
 
-    MarkupJs(KarateEngineContext markup) {
+    MarkupJs(KarateTemplateContext markup) {
         this.markup = markup;
     }
 
@@ -49,7 +49,7 @@ class MarkupJs implements SimpleObject {
     public String getCallerTemplateName() {
         TemplateData td = markup.wrapped.getTemplateData();
         ITemplateResource tr = td.getTemplateResource();
-        if (tr instanceof KarateTemplateResource ktr) {
+        if (tr instanceof HtmlTemplateResource ktr) {
             return ktr.getCaller();
         }
         return null;

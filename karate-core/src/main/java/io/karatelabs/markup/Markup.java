@@ -36,8 +36,6 @@ import org.thymeleaf.dialect.IDialect;
 import org.thymeleaf.engine.TemplateData;
 import org.thymeleaf.engine.TemplateManager;
 import org.thymeleaf.exceptions.TemplateOutputException;
-import org.thymeleaf.templatemode.TemplateMode;
-import org.thymeleaf.templateresolver.ITemplateResolver;
 import org.thymeleaf.util.FastStringWriter;
 
 import java.io.IOException;
@@ -51,6 +49,8 @@ public class Markup {
 
     private static final Logger logger = LoggerFactory.getLogger(Markup.class);
 
+    private static final Map<String, Object> IS_STRING = Collections.singletonMap("isString", true);
+
     private final StandardEngineContextFactory standardFactory;
     private final TemplateEngine wrapped;
 
@@ -59,7 +59,7 @@ public class Markup {
         wrapped = new TemplateEngine();
         wrapped.setEngineContextFactory((IEngineConfiguration ec, TemplateData data, Map<String, Object> attrs, IContext context) -> {
             IEngineContext engineContext = standardFactory.createEngineContext(ec, data, attrs, context);
-            return new KarateEngineContext(engineContext, engine);
+            return new KarateTemplateContext(engineContext, engine);
         });
         // the next line is a set which clears and replaces all existing / default
         wrapped.setDialect(new KarateStandardDialect());
@@ -68,67 +68,56 @@ public class Markup {
         }
     }
 
-    void addTemplateResolver(ITemplateResolver templateResolver) {
-        wrapped.addTemplateResolver(templateResolver);
+    public String processPath(String path, Map<String, Object> vars) {
+        return process(true, path, vars);
     }
 
-    void setTemplateResolver(ITemplateResolver templateResolver) {
-        wrapped.setTemplateResolver(templateResolver);
+    public String processString(String input, Map<String, Object> vars) {
+        return process(false, input, vars);
     }
 
-    String process(String template) {
-        return process(template, Collections.emptyMap());
+    private String process(boolean isPath, String content, Map<String, Object> vars) {
+        return process(isPath, content, new MarkupEngineContext(vars));
     }
 
-    String process(String template, Map<String, Object> localVars) {
-        return process(template, new MarkupEngineContext(localVars));
-    }
-
-    String process(String template, IContext context) {
-        TemplateSpec templateSpec = new TemplateSpec(template, TemplateMode.HTML);
+    private String process(boolean isPath, String content, IContext context) {
         Writer stringWriter = new FastStringWriter(100);
-        process(templateSpec, context, stringWriter);
+        process(isPath, content, context, stringWriter);
         return stringWriter.toString();
     }
 
-    void process(TemplateSpec templateSpec, IContext context, Writer writer) {
+    private void process(boolean isPath, String content, IContext context, Writer writer) {
         try {
+            // the empty map (which becomes null) is used to signal an inline string template for HtmlTemplateResolver to handle
+            TemplateSpec templateSpec = new TemplateSpec(content, isPath ? Collections.emptyMap() : IS_STRING);
             TemplateManager templateManager = wrapped.getConfiguration().getTemplateManager();
             templateManager.parseAndProcess(templateSpec, context, writer);
             try {
                 writer.flush();
             } catch (IOException e) {
-                throw new TemplateOutputException("error flushing output writer", templateSpec.getTemplate(), -1, -1, e);
+                throw new TemplateOutputException("error flushing output writer", content, -1, -1, e);
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static Markup initEngine(Engine engine, ResourceResolver resolver, String contextPath) {
+    private static Markup initInternal(Engine engine, ResourceResolver resolver, String contextPath) {
         return new Markup(engine, new KarateProcessorDialect(resolver, contextPath));
     }
 
-    public static Markup forStrings(Engine je, ResourceResolver resolver) {
-        if (resolver == null) {
-            resolver = (path, caller) -> {
-                throw new RuntimeException("cannot resolve template: " + path + ", caller: " + caller);
-            };
-        }
-        Markup engine = initEngine(je, resolver, null);
-        engine.setTemplateResolver(StringHtmlTemplateResolver.INSTANCE);
-        engine.addTemplateResolver(new HtmlTemplateResolver(resolver));
+    public static Markup init(Engine je, ResourceResolver resolver) {
+        Markup engine = initInternal(je, resolver, null);
+        engine.wrapped.setTemplateResolver(new HtmlTemplateResolver(resolver));
         return engine;
     }
 
-    public static Markup forResourceResolver(Engine je, ResourceResolver resolver) {
-        Markup engine = initEngine(je, resolver, null);
-        engine.setTemplateResolver(new HtmlTemplateResolver(resolver));
-        return engine;
+    public static Markup init(Engine je) {
+        return init(je, "classpath:");
     }
 
-    public static Markup forResourceRoot(Engine je, String root) {
-        return forResourceResolver(je, new UrlResourceResolver(root));
+    public static Markup init(Engine je, String root) {
+        return init(je, new UrlResourceResolver(root));
     }
 
     static class MarkupEngineContext implements IContext {

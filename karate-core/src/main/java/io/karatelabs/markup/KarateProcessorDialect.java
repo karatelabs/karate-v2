@@ -43,9 +43,9 @@ class KarateProcessorDialect extends AbstractProcessorDialect {
     @Override
     public Set<IProcessor> getProcessors(String dialectPrefix) {
         Set<IProcessor> ps = new HashSet<>();
-        ps.add(new KaScriptSrcAttrProcessor(dialectPrefix, resolver, contextPath));
-        ps.add(new KaScriptElemProcessor(dialectPrefix));
-        ps.add(new KaSetElemProcessor(dialectPrefix));
+        ps.add(new KarateScriptSrcAttributeProcessor(dialectPrefix, resolver, contextPath));
+        ps.add(new KarateScriptBodyProcessor(dialectPrefix));
+        ps.add(new KarateSetAttrProcessor(dialectPrefix));
         return ps;
     }
 

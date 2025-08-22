@@ -34,6 +34,8 @@ public interface Resource {
     String FILE_COLON = "file:";
     String THIS_COLON = "this:";
 
+    boolean isUrlResource();
+
     boolean isFile();
 
     boolean isClassPath();

@@ -28,19 +28,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.thymeleaf.IEngineConfiguration;
 import org.thymeleaf.cache.AlwaysValidCacheEntryValidity;
+import org.thymeleaf.cache.NonCacheableCacheEntryValidity;
 import org.thymeleaf.templatemode.TemplateMode;
 import org.thymeleaf.templateresolver.ITemplateResolver;
 import org.thymeleaf.templateresolver.TemplateResolution;
 
 import java.util.Map;
 
-public class HtmlTemplateResolver implements ITemplateResolver {
+class HtmlTemplateResolver implements ITemplateResolver {
 
     private static final Logger logger = LoggerFactory.getLogger(HtmlTemplateResolver.class);
 
     private final ResourceResolver resolver;
+    private boolean doneWithStringTemplate;
 
-    public HtmlTemplateResolver(ResourceResolver resolver) {
+    HtmlTemplateResolver(ResourceResolver resolver) {
         this.resolver = resolver;
     }
 
@@ -55,13 +57,20 @@ public class HtmlTemplateResolver implements ITemplateResolver {
     }
 
     @Override
-    public TemplateResolution resolveTemplate(IEngineConfiguration ec, String ownerTemplate, String name, Map<String, Object> templateResolutionAttributes) {
-        if (!name.endsWith(".html")) {
-            name = name + ".html";
+    public TemplateResolution resolveTemplate(IEngineConfiguration ec, String ownerTemplate, String content, Map<String, Object> attributes) {
+        if (attributes != null && !doneWithStringTemplate) { // string
+            doneWithStringTemplate = true;
+            HtmlStringTemplateResource templateResource = new HtmlStringTemplateResource(content, resolver);
+            return new TemplateResolution(templateResource, TemplateMode.HTML, NonCacheableCacheEntryValidity.INSTANCE);
+        } else { // html file name
+            if (!content.endsWith(".html")) {
+                content = content + ".html";
+            }
+            Resource resource = resolver.resolve(content, ownerTemplate);
+            HtmlTemplateResource templateResource = new HtmlTemplateResource(ownerTemplate, resource);
+            // TODO dev mode non cacheable
+            return new TemplateResolution(templateResource, TemplateMode.HTML, AlwaysValidCacheEntryValidity.INSTANCE);
         }
-        Resource resource = resolver.resolve(name, ownerTemplate);
-        KarateTemplateResource templateResource = new KarateTemplateResource(ownerTemplate, resource);
-        return new TemplateResolution(templateResource, TemplateMode.HTML, AlwaysValidCacheEntryValidity.INSTANCE);
     }
 
 }

@@ -32,8 +32,8 @@ import org.thymeleaf.templatemode.TemplateMode;
 
 class KarateReplaceTagProcessor extends AbstractStandardFragmentInsertionTagProcessor {
 
-    static final int PRECEDENCE = 100;
-    static final String ATTR_NAME = "replace";
+    private static final int PRECEDENCE = 100;
+    private static final String ATTR_NAME = "replace";
 
     public KarateReplaceTagProcessor(final TemplateMode templateMode, final String dialectPrefix) {
         super(templateMode, dialectPrefix, ATTR_NAME, PRECEDENCE, true);

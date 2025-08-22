@@ -46,7 +46,7 @@ abstract class KarateAttributeTagProcessor extends AbstractAttributeTagProcessor
 
     private static final Logger logger = LoggerFactory.getLogger(KarateAttributeTagProcessor.class);
 
-    protected enum ModificationType {
+    enum ModificationType {
         SUBSTITUTION, APPEND, PREPEND, APPEND_WITH_SPACE, PREPEND_WITH_SPACE
     }
 
@@ -67,7 +67,7 @@ abstract class KarateAttributeTagProcessor extends AbstractAttributeTagProcessor
             final IProcessableElementTag tag,
             final AttributeName attributeName, final String av,
             final IElementTagStructureHandler structureHandler) {
-        KarateEngineContext kec = (KarateEngineContext) ctx;
+        KarateTemplateContext kec = (KarateTemplateContext) ctx;
         Object o = kec.evalLocalAsObject(av);
         if (!(o instanceof Map)) {
             logger.warn("value did not evaluate to json: {}", av);

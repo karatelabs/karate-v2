@@ -50,7 +50,7 @@ class KarateExpression implements IStandardExpression {
 
     @Override
     public Object execute(IExpressionContext ctx) {
-        KarateEngineContext kec = (KarateEngineContext) ctx;
+        KarateTemplateContext kec = (KarateTemplateContext) ctx;
         return kec.evalLocal(input);
     }
 

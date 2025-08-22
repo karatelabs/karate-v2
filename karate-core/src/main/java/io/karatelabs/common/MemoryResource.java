@@ -65,6 +65,11 @@ public class MemoryResource implements Resource {
     }
 
     @Override
+    public boolean isUrlResource() {
+        return false;
+    }
+
+    @Override
     public boolean isFile() {
         return false;
     }

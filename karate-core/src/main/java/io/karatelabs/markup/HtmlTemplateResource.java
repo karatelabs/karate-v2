@@ -26,16 +26,15 @@ package io.karatelabs.markup;
 import io.karatelabs.common.Resource;
 import org.thymeleaf.templateresource.ITemplateResource;
 
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 
-public class KarateTemplateResource implements ITemplateResource {
+class HtmlTemplateResource implements ITemplateResource {
 
     private final String caller;
     private final Resource resource;
 
-    public KarateTemplateResource(String caller, Resource resource) {
+    HtmlTemplateResource(String caller, Resource resource) {
         this.caller = caller;
         this.resource = resource;
     }
@@ -47,12 +46,12 @@ public class KarateTemplateResource implements ITemplateResource {
 
     @Override
     public String getBaseName() {
-        return resource.getPrefixedPath();
+        return resource.getFileNameWithoutExtension();
     }
 
     public String getCaller() {
         return caller;
-    }        
+    }
 
     @Override
     public boolean exists() {
@@ -60,13 +59,13 @@ public class KarateTemplateResource implements ITemplateResource {
     }
 
     @Override
-    public Reader reader() throws IOException {
+    public Reader reader() {
         return new InputStreamReader(resource.getStream());
     }
 
     @Override
     public ITemplateResource relative(String relativeLocation) {
-        return new KarateTemplateResource(relativeLocation, resource.resolve(relativeLocation));
+        return new HtmlTemplateResource(relativeLocation, resource.resolve(relativeLocation));
     }
 
 }
