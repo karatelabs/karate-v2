@@ -112,10 +112,6 @@ public class Markup {
         return engine;
     }
 
-    public static Markup init(Engine je) {
-        return init(je, "classpath:");
-    }
-
     public static Markup init(Engine je, String root) {
         return init(je, new UrlResourceResolver(root));
     }

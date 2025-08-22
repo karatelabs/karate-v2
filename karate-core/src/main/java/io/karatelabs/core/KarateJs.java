@@ -31,8 +31,11 @@ import io.karatelabs.io.http.HttpRequestBuilder;
 import io.karatelabs.js.Engine;
 import io.karatelabs.js.Invokable;
 import io.karatelabs.js.SimpleObject;
+import io.karatelabs.markup.Markup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Map;
 
 public class KarateJs implements SimpleObject {
 
@@ -41,6 +44,9 @@ public class KarateJs implements SimpleObject {
     public final Engine engine;
     private final HttpClient client;
     private final Resource root;
+    private final StringBuilder htmlOutput = new StringBuilder();
+
+    private Markup _markup;
 
     public KarateJs(Resource root) {
         this(root, new ApacheHttpClient());
@@ -52,6 +58,41 @@ public class KarateJs implements SimpleObject {
         this.engine = new Engine();
         engine.context.setOnConsoleLog((n, s) -> logger.info(s));
         engine.putRootBinding("karate", this);
+    }
+
+    private Markup markup() {
+        if (_markup == null) {
+            _markup = Markup.init(engine, root.getPrefixedPath());
+        }
+        return _markup;
+    }
+
+    public String getHtmlOutput() {
+        return htmlOutput.toString();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Invokable doc() {
+        return args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("doc() needs at least one argument");
+            }
+            String read;
+            if (args[0] instanceof Map) {
+                Map<String, Object> map = (Map<String, Object>) args[0];
+                read = (String) map.get("read");
+            } else if (args[0] == null) {
+                read = null;
+            } else {
+                read = args[0] + "";
+            }
+            if (read == null) {
+                throw new RuntimeException("doc() read arg should not be null");
+            }
+            String html = markup().processPath(read, null);
+            htmlOutput.append(html);
+            return null;
+        };
     }
 
     private Invokable http() {
@@ -95,6 +136,8 @@ public class KarateJs implements SimpleObject {
     @Override
     public Object get(String key) {
         switch (key) {
+            case "doc":
+                return doc();
             case "http":
                 return http();
             case "read":
