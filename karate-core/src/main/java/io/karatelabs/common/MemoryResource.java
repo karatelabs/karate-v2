@@ -91,7 +91,7 @@ public class MemoryResource implements Resource {
 
     @Override
     public String getRelativePath() {
-        return "(inline)";
+        return "";
     }
 
     @Override

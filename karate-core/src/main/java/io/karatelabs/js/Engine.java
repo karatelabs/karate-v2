@@ -92,7 +92,9 @@ public class Engine {
             if (message == null) {
                 message = e + "";
             }
-            message = message + "\n" + resource.getRelativePath();
+            if (resource.isUrlResource()) {
+                message = message + "\n" + resource.getRelativePath();
+            }
             throw new RuntimeException(message);
         }
     }

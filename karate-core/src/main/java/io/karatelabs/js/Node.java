@@ -63,7 +63,13 @@ public class Node {
 
     public String toStringError(String message) {
         Token first = getFirstToken();
-        return first.getPositionDisplay() + " " + type + "\n" + first.resource.getRelativePath() + "\n" + message;
+        if (first.resource.isUrlResource()) {
+            return first.getPositionDisplay() + " " + type + "\n" + first.resource.getRelativePath() + "\n" + message;
+        } else if (first.line == 0) {
+            return message;
+        } else {
+            return first.getPositionDisplay() + " " + type + "\n" + message;
+        }
     }
 
     @Override

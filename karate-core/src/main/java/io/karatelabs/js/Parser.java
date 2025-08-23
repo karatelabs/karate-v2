@@ -223,7 +223,10 @@ abstract class Parser {
                 }
             }
         } catch (Throwable e) {
-            String message = "lexer failed at [" + (line + 1) + ":" + (col + 1) + "] prev: " + prev + "\n" + resource.getRelativePath();
+            String message = "lexer failed at [" + (line + 1) + ":" + (col + 1) + "] prev: " + prev;
+            if (resource.isUrlResource()) {
+                message = message + "\n" + resource.getRelativePath();
+            }
             throw new ParserException(message, e);
         }
         return list;

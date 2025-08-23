@@ -573,8 +573,13 @@ class Interpreter {
                 return null;
             } else {
                 Token first = node.getFirstToken();
-                String message = "js failed:\n==========\n" + first.getLineText() + "\n"
-                        + first.resource + first.getPositionDisplay() + " " + e.getMessage();
+                String message = "js failed:\n==========\n" + first.getLineText() + "\n";
+                if (first.resource.isUrlResource()) {
+                    message = message + first.resource + first.getPositionDisplay() + " ";
+                } else if (first.line != 0) {
+                    message = message + first.getPositionDisplay() + " ";
+                }
+                message = message + e.getMessage();
                 message = message.trim() + "\n----------\n";
                 logger.error(message);
                 throw new RuntimeException(message, e);
