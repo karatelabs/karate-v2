@@ -133,6 +133,19 @@ public class KarateJs implements SimpleObject {
         };
     }
 
+    private Invokable get() {
+        return args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("get() needs at least one argument");
+            }
+            Object result = engine.get(args[0] + "");
+            if (result == null && args.length > 1) {
+                return args[1];
+            }
+            return result;
+        };
+    }
+
     @Override
     public Object get(String key) {
         switch (key) {
@@ -144,6 +157,8 @@ public class KarateJs implements SimpleObject {
                 return read();
             case "readAsString":
                 return readAsString();
+            case "get":
+                return get();
         }
         return null;
     }
