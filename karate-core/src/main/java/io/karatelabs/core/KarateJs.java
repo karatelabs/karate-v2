@@ -41,9 +41,9 @@ public class KarateJs implements SimpleObject {
 
     private static final Logger logger = LoggerFactory.getLogger(KarateJs.class);
 
+    public final Resource root;
     public final Engine engine;
     private final HttpClient client;
-    private final Resource root;
     private final StringBuilder htmlOutput = new StringBuilder();
 
     private Markup _markup;
