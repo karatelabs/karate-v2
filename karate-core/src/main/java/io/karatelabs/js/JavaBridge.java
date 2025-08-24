@@ -151,7 +151,7 @@ public interface JavaBridge {
 
     //==================================================================================================================
     //
-    static final Object[] EMPTY = new Object[0];
+    Object[] EMPTY = new Object[0];
 
     static Class<?>[] paramTypes(Object[] args) {
         Class<?>[] paramTypes = new Class[args.length];
@@ -203,7 +203,7 @@ public interface JavaBridge {
         throw new RuntimeException(clazz + " constructor not found, param types: " + Arrays.asList(paramTypes(args)));
     }
 
-    public static Method findMethod(Class<?> clazz, String name, Object[] args) {
+    static Method findMethod(Class<?> clazz, String name, Object[] args) {
         try {
             return clazz.getMethod(name, paramTypes(args));
         } catch (Exception e) {

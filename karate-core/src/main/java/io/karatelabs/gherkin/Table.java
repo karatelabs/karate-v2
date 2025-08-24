@@ -189,7 +189,7 @@ public class Table {
                     if (Json.isJson(raw)) {
                         raw = '(' + raw + ')';
                     }
-                    return Engine.exec(raw);
+                    return new Engine().eval(raw);
                 default:
                     if (StringUtils.isBlank(raw)) {
                         return null;

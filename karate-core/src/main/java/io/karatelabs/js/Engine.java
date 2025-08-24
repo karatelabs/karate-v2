@@ -37,7 +37,6 @@ public class Engine {
     public static boolean DEBUG = false;
 
     public final Context context;
-    public Resource resource;
 
     private Engine(Context context) {
         this.context = context;
@@ -68,7 +67,6 @@ public class Engine {
     }
 
     private Object evalInternal(Resource resource, Map<String, Object> localVars) {
-        this.resource = resource;
         try {
             JsParser parser = new JsParser(resource);
             Node node = parser.parse();
@@ -124,16 +122,6 @@ public class Engine {
 
     public Engine copy() {
         return new Engine(context.copy());
-    }
-
-    public static Object exec(File file) {
-        Engine engine = new Engine();
-        return engine.eval(file);
-    }
-
-    public static Object exec(String text) {
-        Engine engine = new Engine();
-        return engine.eval(text);
     }
 
 }

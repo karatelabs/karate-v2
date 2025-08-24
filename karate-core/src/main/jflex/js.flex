@@ -59,7 +59,7 @@ REGEX = "/" [^*/\n] ([^/\\\n]|\\[^\n])* "/" [:jletter:]*
 
 %state TEMPLATE PLACEHOLDER
 
-// gherkin macros and states
+// gherkin macros (gm)
 GM_LINE = [^\r\n]+
 
 GM_HEADER = "Scenario:"|"Scenario Outline:"|"Examples:"|"Background:"
@@ -67,6 +67,7 @@ GM_PREFIX = "*"|"Given"|"When"|"Then"|"And"|"But"
 GM_TRIPLE_QUOTE = \"\"\"
 GM_TAG = "@" [^ \t\r\n]+
 
+// gherkin states (gs)
 %state GHERKIN GS_DESC GS_STEP GS_DOC_STRING GS_TABLE_ROW GS_TAGS GS_COMMENT
 
 %%
