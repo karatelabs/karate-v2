@@ -147,7 +147,7 @@ class Interpreter {
 
     @SuppressWarnings("unchecked")
     private static Object evalDeleteStmt(Node node, Context context) {
-        JsProperty prop = new JsProperty(node.children.get(1), context);
+        JsProperty prop = new JsProperty(node.children.get(1).children.get(0), context);
         String key = prop.name == null ? prop.index + "" : prop.name;
         if (prop.object instanceof Map) {
             ((Map<String, Object>) prop.object).remove(key);
@@ -157,12 +157,32 @@ class Interpreter {
         return true;
     }
 
+    private static Invokable toInvokable(Object o) {
+        if (o instanceof Invokable) {
+            return (Invokable) o;
+        } else if (o instanceof Prototype) {
+            Prototype prototype = (Prototype) o;
+            return (Invokable) prototype.get("constructor");
+        } else if (o instanceof JavaClass) {
+            JavaClass jc = (JavaClass) o;
+            return jc::construct;
+        } else if (JavaFunction.isFunction(o)) {
+            return new JavaFunction(o);
+        } else {
+            return null;
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private static Object evalFnCall(Node node, Context context) {
-        JsProperty prop = new JsProperty(node.children.get(0), context);
-        Invokable invokable = prop.getInvokable();
-        if (invokable == null) { // optional chaining
-            return Context.UNDEFINED;
+        JsProperty prop = new JsProperty(node.children.get(0), context, true);
+        Object o = prop.get();
+        if (o == Context.UNDEFINED) { // optional chaining
+            return o;
+        }
+        Invokable invokable = toInvokable(o);
+        if (invokable == null) {
+            throw new RuntimeException(node.children.get(0) + " is not a function");
         }
         List<Object> argsList = new ArrayList<>();
         if (node.children.size() > 1) { // check for rare case, new syntax without parentheses
@@ -492,19 +512,19 @@ class Interpreter {
     }
 
     private static Object evalMathPreExpr(Node node, Context context) {
-        JsProperty preProp = new JsProperty(node.children.get(1), context);
-        Object preValue = preProp.get();
+        JsProperty prop = new JsProperty(node.children.get(1).children.get(0), context);
+        final Object value = prop.get();
         switch (node.children.get(0).token.type) {
             case PLUS_PLUS:
-                preProp.set(Terms.add(preValue, 1));
-                return preProp.get();
+                prop.set(Terms.add(value, 1));
+                return prop.get();
             case MINUS_MINUS:
-                preProp.set(terms(preValue, 1).min());
-                return preProp.get();
+                prop.set(terms(value, 1).min());
+                return prop.get();
             case MINUS:
-                return terms(preValue, -1).mul();
+                return terms(value, -1).mul();
             case PLUS:
-                return Terms.toNumber(preValue);
+                return Terms.toNumber(value);
             default:
                 throw new RuntimeException("unexpected operator: " + node.children.get(0));
         }

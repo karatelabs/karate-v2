@@ -141,7 +141,7 @@ public interface JavaBridge {
         try {
             Method method = findMethod(object.getClass(), setterName, args);
             if (method == null) {
-                return;
+                throw new RuntimeException("no such method: " + setterName);
             }
             method.invoke(object, args);
         } catch (Exception e) {

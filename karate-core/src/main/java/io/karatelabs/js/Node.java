@@ -78,11 +78,11 @@ public class Node {
             return token.text;
         }
         StringBuilder sb = new StringBuilder();
-        for (Node child : children) {
-            if (sb.length() != 0) {
+        for (int i = 0; i < children.size(); i++) {
+            if (i != 0) {
                 sb.append(' ');
             }
-            sb.append(child.toString());
+            sb.append(children.get(i).toString());
         }
         return sb.toString();
     }

@@ -31,45 +31,48 @@ import java.util.List;
 import java.util.Map;
 
 @SuppressWarnings("unchecked")
-public class JsProperty {
+class JsProperty {
 
     static final Logger logger = LoggerFactory.getLogger(JsProperty.class);
 
     final Node node;
     final Object object;
     final Context context;
+    final boolean functionCall;
 
     boolean optional;
     String name;
     Object index;
 
     JsProperty(Node node, Context context) {
+        this(node, context, false);
+    }
+
+    JsProperty(Node node, Context context, boolean functionCall) {
         this.node = node;
         this.context = context;
-        if (node.type == NodeType.EXPR) {
-            node = node.children.get(0);
-        }
+        this.functionCall = functionCall;
         switch (node.type) {
             case REF_EXPR:
                 object = null;
                 name = node.getText();
                 break;
             case REF_DOT_EXPR:
-                Object temp = null;
+                Object tempObject;
                 if (node.children.get(1).type == NodeType.TOKEN) { // normal dot or optional
                     optional = node.children.get(1).token.type == TokenType.QUES_DOT;
                     name = node.children.get(2).getText();
                     try {
-                        temp = Interpreter.eval(node.children.get(0), context);
+                        tempObject = Interpreter.eval(node.children.get(0), context);
                     } catch (Exception e) {
                         // try java interop
                         String base = node.children.get(0).getText();
                         String path = base + "." + name;
                         if (Engine.JAVA_BRIDGE.typeExists(path)) {
-                            temp = new JavaClass(path);
+                            tempObject = new JavaClass(path);
                             name = null;
                         } else if (Engine.JAVA_BRIDGE.typeExists(base)) {
-                            temp = new JavaClass(base);
+                            tempObject = new JavaClass(base);
                         } else {
                             throw new RuntimeException("expression: " + base + " - " + e.getMessage());
                         }
@@ -77,26 +80,26 @@ public class JsProperty {
                 } else {
                     optional = true;
                     if (node.children.get(1).type == NodeType.REF_BRACKET_EXPR) { // optional bracket
-                        temp = Interpreter.eval(node.children.get(0), context);
+                        tempObject = Interpreter.eval(node.children.get(0), context);
                         index = Interpreter.eval(node.children.get(1).children.get(2), context);
                     } else { // optional function call
-                        temp = Interpreter.eval(node.children.get(0), context); // evalFnCall
+                        tempObject = Interpreter.eval(node.children.get(0), context); // evalFnCall
                     }
                 }
-                object = temp;
+                object = tempObject;
                 break;
             case REF_BRACKET_EXPR:
                 object = Interpreter.eval(node.children.get(0), context);
                 index = Interpreter.eval(node.children.get(2), context);
                 break;
-            case LIT_EXPR:
+            case LIT_EXPR: // so MATH_PRE_EXP can call set() to update variable value
                 object = Interpreter.eval(node.children.get(0), context);
                 break;
-            case PAREN_EXPR:
+            case PAREN_EXPR: // expression wrapped in round brackets that is invoked as a function, e.g. iife
                 object = Interpreter.eval(node.children.get(1), context);
                 break;
             case FN_CALL_EXPR:
-                object = Interpreter.eval(node, context); // evalFnCall
+                object = Interpreter.eval(node, context);
                 break;
             default:
                 throw new RuntimeException("cannot assign from: " + node);
@@ -106,47 +109,44 @@ public class JsProperty {
     void set(Object value) {
         if (index instanceof Number) {
             Number num = (Number) index;
-            if (object instanceof List) {
+            if (object instanceof List) { // most common case
                 ((List<Object>) object).set(num.intValue(), value);
             } else if (object instanceof JsArray) {
                 ((JsArray) object).set(num.intValue(), value);
             } else {
                 throw new RuntimeException("cannot set by index [" + index + "]:" + value + " on (non-array): " + object);
             }
-        }
-        if (index != null) {
-            name = index + "";
-        }
-        if (name == null) {
-            throw new RuntimeException("unexpected set [null]:" + value + " on: " + object);
-        }
-        if (value instanceof JsFunction) { // pre-process
-            ((JsFunction) value).setName(name);
-        }
-        if (object == null) {
-            context.update(name, value);
-        } else if (object instanceof Map) {
-            ((Map<String, Object>) object).put(name, value);
-        } else if (object instanceof ObjectLike) {
-            ((ObjectLike) object).put(name, value);
-        } else if (object instanceof JavaClass) {
-            ((JavaClass) object).update(name, value);
         } else {
-            try {
-                Engine.JAVA_BRIDGE.set(object, name, value);
-            } catch (Exception e) {
-                logger.error("java bridge error: {}", e.getMessage());
-                throw new RuntimeException("cannot set '" + name + "'");
+            if (index != null) {
+                name = index + "";
+            }
+            if (name == null) {
+                throw new RuntimeException("unexpected set [null]:" + value + " on: " + object);
+            }
+            if (value instanceof JsFunction) { // pre-process
+                ((JsFunction) value).setName(name);
+            }
+            if (object == null) {
+                context.update(name, value);
+            } else if (object instanceof Map) {
+                ((Map<String, Object>) object).put(name, value);
+            } else if (object instanceof ObjectLike) {
+                ((ObjectLike) object).put(name, value);
+            } else if (object instanceof JavaClass) {
+                ((JavaClass) object).update(name, value);
+            } else {
+                try {
+                    Engine.JAVA_BRIDGE.set(object, name, value);
+                } catch (Exception e) {
+                    logger.error("java bridge error: {}", e.getMessage());
+                    throw new RuntimeException("cannot set '" + name + "'");
+                }
             }
         }
     }
 
     Object get() {
-        return get(false);
-    }
-
-    private Object get(boolean function) {
-        if (index instanceof Number) {
+        if (!functionCall && index instanceof Number) {
             int num = ((Number) index).intValue();
             if (object instanceof List) {
                 return ((List<Object>) object).get(num);
@@ -193,8 +193,8 @@ public class JsProperty {
                 return map.get(name);
             }
             // try js object api
-            JsObject jsObject = new JsObject(map);
-            Object result = jsObject.get(name);
+            JsObject jso = new JsObject(map);
+            Object result = jso.get(name);
             if (result != null) {
                 return result;
             }
@@ -215,12 +215,6 @@ public class JsProperty {
         if (object instanceof byte[]) {
             return new JsBytes((byte[]) object).get(name);
         }
-        if (function && object instanceof JavaMethods) {
-            return new JavaInvokable(name, (JavaMethods) object);
-        }
-        if (!function && object instanceof JavaFields) {
-            return ((JavaFields) object).read(name);
-        }
         if (object == null || object == Context.UNDEFINED) {
             if (context.hasKey(name)) {
                 return context.get(name);
@@ -230,46 +224,23 @@ public class JsProperty {
             }
             throw new RuntimeException("cannot read properties of " + object + " (reading '" + name + "')");
         }
+        if (functionCall && object instanceof JavaMethods) {
+            return new JavaInvokable(name, (JavaMethods) object);
+        }
+        if (!functionCall && object instanceof JavaFields) {
+            return ((JavaFields) object).read(name);
+        }
         try { // java interop
-            if (function) {
-                if (object instanceof Class) {
-                    return new JavaInvokable(name, new JavaClass((Class<?>) object));
-                } else {
-                    return new JavaInvokable(name, new JavaObject(object));
-                }
+            if (functionCall) {
+                return new JavaInvokable(name, new JavaObject(object));
             } else {
-                if (object instanceof Class) {
-                    return new JavaClass((Class<?>) object).read(name);
-                } else {
-                    return new JavaObject(object).get(name);
-                }
+                return new JavaObject(object).get(name);
             }
         } catch (Exception e) { // java reflection failed on this object + name
             return Context.UNDEFINED;
         }
     }
 
-    Invokable getInvokable() {
-        Object o = get(true);
-        if (o instanceof Invokable) {
-            return (Invokable) o;
-        } else if (o instanceof Prototype) {
-            Prototype prototype = (Prototype) o;
-            return (Invokable) prototype.get("constructor");
-        } else if (o instanceof JavaClass) {
-            JavaClass jc = (JavaClass) o;
-            return jc::construct;
-        } else if (JavaFunction.isFunction(o)) {
-            return new JavaFunction(o);
-        } else if (o == Context.UNDEFINED) {
-            return null;
-        } else if (o != null) { // java interop
-            JavaObject jo = new JavaObject(o);
-            return new JavaInvokable(name, jo);
-        } else {
-            throw new RuntimeException("null is not a function");
-        }
-    }
 
 }
 

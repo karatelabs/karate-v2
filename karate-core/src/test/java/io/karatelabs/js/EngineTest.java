@@ -174,7 +174,7 @@ class EngineTest {
             engine.eval("var a = 1;\nvar b = a();");
             fail("expected error");
         } catch (Exception e) {
-            assertTrue(e.getMessage().contains("cannot find method [a]"));
+            assertTrue(e.getMessage().contains("a is not a function"));
         }
     }
 
