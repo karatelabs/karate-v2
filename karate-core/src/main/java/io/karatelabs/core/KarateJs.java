@@ -39,6 +39,7 @@ import org.w3c.dom.Node;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class KarateJs implements SimpleObject {
 
@@ -47,9 +48,9 @@ public class KarateJs implements SimpleObject {
     public final Resource root;
     public final Engine engine;
     private final HttpClient client;
-    private final StringBuilder htmlOutput = new StringBuilder();
 
     private Markup _markup;
+    private Consumer<String> onDoc;
 
     public KarateJs(Resource root) {
         this(root, new ApacheHttpClient());
@@ -70,13 +71,17 @@ public class KarateJs implements SimpleObject {
         return _markup;
     }
 
-    public String getHtmlOutput() {
-        return htmlOutput.toString();
+    public void setOnDoc(Consumer<String> onDoc) {
+        this.onDoc = onDoc;
     }
 
     @SuppressWarnings("unchecked")
     private Invokable doc() {
         return args -> {
+            if (onDoc == null) {
+                logger.warn("doc() called, but no destination set");
+                return null;
+            }
             if (args.length == 0) {
                 throw new RuntimeException("doc() needs at least one argument");
             }
@@ -93,7 +98,7 @@ public class KarateJs implements SimpleObject {
                 throw new RuntimeException("doc() read arg should not be null");
             }
             String html = markup().processPath(read, null);
-            htmlOutput.append(html);
+            onDoc.accept(html);
             return null;
         };
     }
