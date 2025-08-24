@@ -23,22 +23,28 @@
  */
 package io.karatelabs.js;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Map;
 
 public interface SimpleObject extends ObjectLike {
 
+    Logger logger = LoggerFactory.getLogger(SimpleObject.class);
+
     @Override
     default void put(String name, Object value) {
-
+        logger.warn("put() not implemented for: {} - {}", name, getClass().getName());
     }
 
     @Override
     default void remove(String name) {
-
+        logger.warn("remove() not implemented for: {} - {}", name, getClass().getName());
     }
 
     @Override
     default Map<String, Object> toMap() {
+        logger.warn("remove() not implemented for: {}", getClass().getName());
         return null;
     }
 

@@ -49,7 +49,7 @@ class HttpServerTest {
                 + "console.log('response 1:', response);\n"
                 + "response = http.path('cats').get();\n"
                 + "console.log('response 2:', response);\n";
-        context.eval(js);
+        context.engine.eval(js);
         server.stop();
     }
 
@@ -59,7 +59,7 @@ class HttpServerTest {
         String js = "var http = karate.http('http://localhost:99');\n"
                 + "var response = http.path('cats').post({ name: 'Billie' }).body;";
         try {
-            context.eval(js);
+            context.engine.eval(js);
         } catch (Exception e) {
             assertTrue(e.getMessage().contains("expression: http.path('cats').post({name:'Billie'}) - failed"));
         }

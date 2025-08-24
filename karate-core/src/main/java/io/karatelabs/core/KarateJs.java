@@ -25,6 +25,7 @@ package io.karatelabs.core;
 
 import io.karatelabs.common.Json;
 import io.karatelabs.common.Resource;
+import io.karatelabs.common.Xml;
 import io.karatelabs.io.http.ApacheHttpClient;
 import io.karatelabs.io.http.HttpClient;
 import io.karatelabs.io.http.HttpRequestBuilder;
@@ -34,7 +35,9 @@ import io.karatelabs.js.SimpleObject;
 import io.karatelabs.markup.Markup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.w3c.dom.Node;
 
+import java.util.List;
 import java.util.Map;
 
 public class KarateJs implements SimpleObject {
@@ -146,25 +149,38 @@ public class KarateJs implements SimpleObject {
         };
     }
 
+    private Invokable toStringPretty() {
+        return args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("toStringPretty() needs at least one argument");
+            }
+            if (args[0] instanceof List || args[0] instanceof Map) {
+                return Json.formatPretty(args[0]);
+            } else if (args[0] instanceof Node) {
+                return Xml.toString((Node) args[0], true);
+            } else {
+                return args[0] + "";
+            }
+        };
+    }
+
     @Override
     public Object get(String key) {
         switch (key) {
             case "doc":
                 return doc();
+            case "get":
+                return get();
             case "http":
                 return http();
             case "read":
                 return read();
             case "readAsString":
                 return readAsString();
-            case "get":
-                return get();
+            case "toStringPretty":
+                return toStringPretty();
         }
         return null;
-    }
-
-    public Object eval(String script) {
-        return engine.eval(script);
     }
 
 }

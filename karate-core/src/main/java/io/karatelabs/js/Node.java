@@ -42,8 +42,8 @@ public class Node {
         token = Token.EMPTY;
     }
 
-    public Node(Token chunk) {
-        this.token = chunk;
+    public Node(Token token) {
+        this.token = token;
         type = NodeType.TOKEN;
     }
 

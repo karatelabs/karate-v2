@@ -55,7 +55,7 @@ class Interpreter {
         return new Terms(lhs, rhs);
     }
 
-    private static Object evalChunk(Node node, Context context) {
+    private static Object evalToken(Node node, Context context) {
         switch (node.token.type) {
             case IDENT:
                 String varName = node.getText();
@@ -77,7 +77,7 @@ class Interpreter {
             case REGEX:
                 return new JsRegex(node.token.text);
             default:
-                throw new RuntimeException(node.toStringError("eval - unexpected chunk"));
+                throw new RuntimeException(node.toStringError("eval - unexpected token"));
         }
     }
 
@@ -711,7 +711,7 @@ class Interpreter {
     static Object eval(Node node, Context context) {
         switch (node.type) {
             case TOKEN:
-                return evalChunk(node, context);
+                return evalToken(node, context);
             case ASSIGN_EXPR:
                 return evalAssignExpr(node, context);
             case BLOCK:

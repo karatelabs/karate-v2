@@ -299,27 +299,12 @@ public class Terms {
         if (o == null) {
             return "[object Null]";
         }
-        if (Terms.isPrimitive(o)) {
+        if (Terms.isPrimitive(o) || o instanceof JavaMirror) {
             return o.toString();
-        }
-        if (o instanceof JsString) {
-            return o.toString();
-        }
-        if (o instanceof JsNumber) {
-            return o.toString();
-        }
-        if (o instanceof JsDate) {
-            return o.toString();
-        }
-        if (o instanceof List) {
-            return JSONValue.toJSONString(o);
         }
         if (o instanceof JsArray) {
             List<Object> list = ((JsArray) o).toList();
             return JSONValue.toJSONString(list);
-        }
-        if (o instanceof Map) {
-            return JSONValue.toJSONString(o);
         }
         if (o instanceof JsFunction) {
             return "[object Object]";
@@ -329,6 +314,9 @@ public class Terms {
             if (map != null) {
                 return JSONValue.toJSONString(map);
             }
+        }
+        if (o instanceof Map || o instanceof List) {
+            return JSONValue.toJSONString(o);
         }
         return "[object Object]";
     }
