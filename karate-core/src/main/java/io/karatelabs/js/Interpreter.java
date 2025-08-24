@@ -569,12 +569,13 @@ class Interpreter {
     }
 
     private static Object evalStatement(Node node, Context context) {
-        context.currentStatement = node;
-        context.statementCount++;
+        if (context.listener != null) {
+            context.listener.onStatementBegin(node);
+        }
         try {
-            Object statementResult = eval(node.children.get(0), context);
+            Object statementResult = eval(node, context);
             if (logger.isTraceEnabled() || Engine.DEBUG) {
-                NodeType childType = node.children.get(0).type;
+                NodeType childType = node.type;
                 if (childType != NodeType.EXPR && childType != NodeType.BLOCK) {
                     Token first = node.getFirstToken();
                     logger.trace("{}{} {} | {}", first.resource, first.getPositionDisplay(), statementResult, node);
@@ -583,27 +584,28 @@ class Interpreter {
                     }
                 }
             }
+            if (context.listener != null) {
+                context.listener.onStatementEnd(node, context);
+            }
             return statementResult;
         } catch (Exception e) {
-            if (context.ignoreErrors) {
-                context.errorCount++;
-                if (context.onError != null) {
-                    context.onError.accept(node, e);
+            if (context.listener != null) {
+                ContextListener.Result listenerResult = context.listener.onStatementError(node, e);
+                if (listenerResult != null && listenerResult.ignoreError) {
+                    return listenerResult.returnValue;
                 }
-                return null;
-            } else {
-                Token first = node.getFirstToken();
-                String message = "js failed:\n==========\n" + first.getLineText() + "\n";
-                if (first.resource.isUrlResource()) {
-                    message = message + first.resource + first.getPositionDisplay() + " ";
-                } else if (first.line != 0) {
-                    message = message + first.getPositionDisplay() + " ";
-                }
-                message = message + e.getMessage();
-                message = message.trim() + "\n----------\n";
-                logger.error(message);
-                throw new RuntimeException(message, e);
             }
+            Token first = node.getFirstToken();
+            String message = "js failed:\n==========\n" + first.getLineText() + "\n";
+            if (first.resource.isUrlResource()) {
+                message = message + first.resource + first.getPositionDisplay() + " ";
+            } else if (first.line != 0) {
+                message = message + first.getPositionDisplay() + " ";
+            }
+            message = message + e.getMessage();
+            message = message.trim() + "\n----------\n";
+            logger.error(message);
+            throw new RuntimeException(message, e);
         }
     }
 
@@ -683,8 +685,8 @@ class Interpreter {
         // TODO let & const
         for (Node varName : varNames) {
             context.put(varName.getText(), varValue);
-            if (context.onAssign != null) {
-                context.onAssign.accept(varName.getText(), varValue);
+            if (context.listener != null) {
+                context.listener.onAssign(varName.getText(), varValue);
             }
         }
         return varValue;
@@ -797,7 +799,7 @@ class Interpreter {
             case RETURN_STMT:
                 return evalReturnStmt(node, context);
             case STATEMENT:
-                return evalStatement(node, context);
+                return evalStatement(node.children.get(0), context);
             case SWITCH_STMT:
                 return evalSwitchStmt(node, context);
             case THROW_STMT:

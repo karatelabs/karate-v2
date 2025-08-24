@@ -136,10 +136,14 @@ class EngineTest {
     void testOnAssign() {
         Engine engine = new Engine();
         Map<String, Object> map = new HashMap<>();
-        engine.context.setOnAssign((name, value) -> {
-            map.put("name", name);
-            map.put("value", value);
-        });
+        ContextListener listener = new ContextListener() {
+            @Override
+            public void onAssign(String name, Object value) {
+                map.put("name", name);
+                map.put("value", value);
+            }
+        };
+        engine.context.setListener(listener);
         engine.eval("var a = 'a'");
         assertEquals("a", map.get("name"));
         assertEquals("a", map.get("value"));
@@ -152,19 +156,9 @@ class EngineTest {
     void testOnConsoleLog() {
         Engine engine = new Engine();
         Map<String, Object> map = new HashMap<>();
-        engine.context.setOnConsoleLog((node, text) -> {
-            map.put("node", node);
-            map.put("text", text);
-        });
+        engine.context.setOnConsoleLog(text -> map.put("text", text));
         engine.eval("console.log('foo');");
         assertEquals("foo", map.get("text"));
-        Node node = (Node) map.get("node");
-        assertEquals(NodeType.STATEMENT, node.type);
-        Token first = node.getFirstToken();
-        assertEquals(TokenType.IDENT, first.type);
-        assertEquals("console", first.text);
-        assertEquals(0, first.line);
-        assertEquals(0, first.col);
     }
 
     @Test

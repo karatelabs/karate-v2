@@ -28,7 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 public class Context {
 
@@ -36,7 +36,7 @@ public class Context {
 
     static final Context EMPTY = new Context(null, Collections.emptyMap(), null);
 
-    static final Object UNDEFINED = new Object() {
+    public static final Object UNDEFINED = new Object() {
         @Override
         public String toString() {
             return "undefined";
@@ -49,18 +49,17 @@ public class Context {
     private final Context caller;
     private final Map<String, Object> bindings;
 
-    BiConsumer<Node, Exception> onError;
-    BiConsumer<String, Object> onAssign;
-    BiConsumer<Node, String> onConsoleLog;
-
-    boolean ignoreErrors;
-    int errorCount;
-    int statementCount;
+    Consumer<String> onConsoleLog;
+    ContextListener listener;
 
     private Context(Context parent, Map<String, Object> bindings, Context caller) {
         this.parent = parent;
         this.bindings = bindings;
         this.caller = caller;
+    }
+
+    public void setListener(ContextListener listener) {
+        this.listener = listener;
     }
 
     @SuppressWarnings("unchecked")
@@ -126,29 +125,9 @@ public class Context {
         return null;
     }
 
-    public void setOnError(BiConsumer<Node, Exception> onError) {
-        this.onError = onError;
-    }
-
-    public void setOnAssign(BiConsumer<String, Object> onAssign) {
-        this.onAssign = onAssign;
-    }
-
-    public void setOnConsoleLog(BiConsumer<Node, String> onConsoleLog) {
+    public void setOnConsoleLog(Consumer<String> onConsoleLog) {
         this.onConsoleLog = onConsoleLog;
         parent.bindings.put("console", createConsole());
-    }
-
-    public void setIgnoreErrors(boolean ignoreErrors) {
-        this.ignoreErrors = ignoreErrors;
-    }
-
-    public int getErrorCount() {
-        return errorCount;
-    }
-
-    public int getStatementCount() {
-        return statementCount;
     }
 
     public Map<String, Object> getBindings() {
@@ -243,8 +222,8 @@ public class Context {
             parent.update(name, value);
         } else {
             bindings.put(name, value);
-            if (onAssign != null) {
-                onAssign.accept(name, value);
+            if (listener != null) {
+                listener.onAssign(name, value);
             }
         }
     }
@@ -275,7 +254,7 @@ public class Context {
                         }
                     }
                     if (onConsoleLog != null) {
-                        onConsoleLog.accept(currentStatement, sb.toString());
+                        onConsoleLog.accept(sb.toString());
                     } else {
                         System.out.println(sb);
                     }
