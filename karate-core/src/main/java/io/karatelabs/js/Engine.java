@@ -81,7 +81,7 @@ public class Engine {
             if (result instanceof JavaMirror) {
                 return ((JavaMirror) result).toJava();
             }
-            if (result == Context.UNDEFINED) {
+            if (result == Terms.UNDEFINED) {
                 return null;
             }
             return result;
@@ -114,7 +114,7 @@ public class Engine {
         if (value instanceof JavaMirror) {
             return ((JavaMirror) value).toJava();
         }
-        if (value == Context.UNDEFINED) {
+        if (value == Terms.UNDEFINED) {
             return null;
         }
         return value;

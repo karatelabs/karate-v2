@@ -77,7 +77,7 @@ public class NodeUtils {
                 }
             } else { // string or primitive
                 if ("undefined".equals(expected)) {
-                    expected = Context.UNDEFINED;
+                    expected = Terms.UNDEFINED;
                 }
                 Assertions.assertEquals(expected, actual);
             }

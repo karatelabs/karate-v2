@@ -106,7 +106,7 @@ class JsObject implements ObjectLike, Invokable, Iterable<KeyValue> {
                             if (args.length == 0) {
                                 return new LinkedHashMap<>();
                             }
-                            if (args[0] == null || args[0] == Context.UNDEFINED) {
+                            if (args[0] == null || args[0] == Terms.UNDEFINED) {
                                 throw new RuntimeException("assign() requires valid first argument");
                             }
                             Iterable<KeyValue> iterable = toIterable(args[0]);
@@ -123,7 +123,7 @@ class JsObject implements ObjectLike, Invokable, Iterable<KeyValue> {
                         };
                     case "fromEntries":
                         return (Invokable) args -> {
-                            if (args.length == 0 || args[0] == null || args[0] == Context.UNDEFINED) {
+                            if (args.length == 0 || args[0] == null || args[0] == Terms.UNDEFINED) {
                                 throw new RuntimeException("fromEntries() requires valid argument(s)");
                             }
                             Map<String, Object> result = new LinkedHashMap<>();

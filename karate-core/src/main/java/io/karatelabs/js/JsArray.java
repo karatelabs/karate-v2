@@ -105,7 +105,7 @@ class JsArray extends JsObject {
                                         return kv.value;
                                     }
                                 }
-                                return Context.UNDEFINED;
+                                return Terms.UNDEFINED;
                             }
                         };
                     case "findIndex":
@@ -226,7 +226,7 @@ class JsArray extends JsObject {
                                 for (KeyValue kv : this) {
                                     invokable.invoke(kv.value, kv.index, thisObject);
                                 }
-                                return Context.UNDEFINED;
+                                return Terms.UNDEFINED;
                             }
                         };
                     case "concat":
@@ -509,7 +509,7 @@ class JsArray extends JsObject {
                                 JsArray thisArray = asArray(thisObject);
                                 int size = thisArray.size();
                                 if (size == 0) {
-                                    return Context.UNDEFINED;
+                                    return Terms.UNDEFINED;
                                 }
                                 Object firstElement = thisArray.get(0);
                                 List<Object> newList = new ArrayList<>(size - 1);
@@ -588,7 +588,7 @@ class JsArray extends JsObject {
                                 JsArray thisArray = asArray(thisObject);
                                 int size = thisArray.size();
                                 if (size == 0) {
-                                    return Context.UNDEFINED;
+                                    return Terms.UNDEFINED;
                                 }
                                 Object lastElement = thisArray.get(size - 1);
                                 List<Object> newList = new ArrayList<>(size - 1);
@@ -609,14 +609,14 @@ class JsArray extends JsObject {
                                 JsArray thisArray = asArray(thisObject);
                                 int size = thisArray.size();
                                 if (size == 0 || args.length == 0 || args[0] == null) {
-                                    return Context.UNDEFINED;
+                                    return Terms.UNDEFINED;
                                 }
                                 int index = Terms.toNumber(args[0]).intValue();
                                 if (index < 0) {
                                     index = size + index;
                                 }
                                 if (index < 0 || index >= size) {
-                                    return Context.UNDEFINED;
+                                    return Terms.UNDEFINED;
                                 }
                                 return thisArray.get(index);
                             }
@@ -717,7 +717,7 @@ class JsArray extends JsObject {
                                 JsArray thisArray = asArray(thisObject);
                                 int size = thisArray.size();
                                 if (size == 0 || args.length == 0) {
-                                    return Context.UNDEFINED;
+                                    return Terms.UNDEFINED;
                                 }
                                 Invokable invokable = toInvokable(args);
                                 for (int i = size - 1; i >= 0; i--) {
@@ -727,7 +727,7 @@ class JsArray extends JsObject {
                                         return value;
                                     }
                                 }
-                                return Context.UNDEFINED;
+                                return Terms.UNDEFINED;
                             }
                         };
                     case "findLastIndex":
@@ -867,7 +867,7 @@ class JsArray extends JsObject {
             if (length instanceof Number) {
                 int size = ((Number) length).intValue();
                 for (int i = 0; i < size; i++) {
-                    list.add(0, Context.UNDEFINED);
+                    list.add(0, Terms.UNDEFINED);
                 }
             }
         }

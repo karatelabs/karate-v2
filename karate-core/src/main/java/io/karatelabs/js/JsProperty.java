@@ -215,12 +215,12 @@ class JsProperty {
         if (object instanceof byte[]) {
             return new JsBytes((byte[]) object).get(name);
         }
-        if (object == null || object == Context.UNDEFINED) {
+        if (object == null || object == Terms.UNDEFINED) {
             if (context.hasKey(name)) {
                 return context.get(name);
             }
             if (optional) {
-                return Context.UNDEFINED;
+                return Terms.UNDEFINED;
             }
             throw new RuntimeException("cannot read properties of " + object + " (reading '" + name + "')");
         }
@@ -237,7 +237,7 @@ class JsProperty {
                 return new JavaObject(object).get(name);
             }
         } catch (Exception e) { // java reflection failed on this object + name
-            return Context.UNDEFINED;
+            return Terms.UNDEFINED;
         }
     }
 

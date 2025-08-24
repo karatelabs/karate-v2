@@ -177,7 +177,7 @@ class Interpreter {
     private static Object evalFnCall(Node node, Context context) {
         JsProperty prop = new JsProperty(node.children.get(0), context, true);
         Object o = prop.get();
-        if (o == Context.UNDEFINED) { // optional chaining
+        if (o == Terms.UNDEFINED) { // optional chaining
             return o;
         }
         Invokable invokable = toInvokable(o);
@@ -390,7 +390,7 @@ class Interpreter {
                 sb.append(child.token.text);
             } else if (child.type == NodeType.EXPR) {
                 Object value = eval(child, context);
-                if (value == Context.UNDEFINED) {
+                if (value == Terms.UNDEFINED) {
                     throw new RuntimeException(child.getText() + " is not defined");
                 }
                 sb.append(value);
@@ -679,7 +679,7 @@ class Interpreter {
         if (node.children.size() > 3) {
             varValue = eval(node.children.get(3), context);
         } else {
-            varValue = Context.UNDEFINED;
+            varValue = Terms.UNDEFINED;
         }
         List<Node> varNames = node.children.get(1).findAll(IDENT);
         // TODO let & const

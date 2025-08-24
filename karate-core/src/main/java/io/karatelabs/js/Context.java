@@ -36,13 +36,6 @@ public class Context {
 
     static final Context EMPTY = new Context(null, Collections.emptyMap(), null);
 
-    public static final Object UNDEFINED = new Object() {
-        @Override
-        public String toString() {
-            return "undefined";
-        }
-    };
-
     static final Object NAN = Double.NaN;
 
     private final Context parent;
@@ -70,7 +63,7 @@ public class Context {
             case "parseInt":
                 return (Invokable) args -> Terms.toNumber(args[0]);
             case "undefined":
-                return UNDEFINED;
+                return Terms.UNDEFINED;
             case "Array":
                 return new JsArray();
             case "Date":
@@ -171,7 +164,7 @@ public class Context {
             bindings.put(name, global);
             return global;
         }
-        return UNDEFINED;
+        return Terms.UNDEFINED;
     }
 
     public boolean hasKey(String name) {
