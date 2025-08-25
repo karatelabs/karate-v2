@@ -265,6 +265,9 @@ class EvalTest extends EvalBase {
         match(get("a"), "[0]");
         eval("var i = 0; var a = []; while (i < 3) { if (i == 1) { i++; continue }; a.push(i); i++ }");
         match(get("a"), "[0, 2]");
+        // ensure extra semicolons in blocks are ignored
+        eval("var i = 0; var a = []; while (i < 3) { if (i == 1) { i++;; continue;; };; a.push(i);; i++;; };;");
+        match(get("a"), "[0, 2]");
     }
 
     @Test

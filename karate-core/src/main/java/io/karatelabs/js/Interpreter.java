@@ -588,6 +588,9 @@ class Interpreter {
     }
 
     private static Object evalStatement(Node node, Context context) {
+        if (node.getFirstToken().type == SEMI) { // ignore empty statements
+            return null;
+        }
         if (context.listener != null) {
             context.listener.onStatementBegin(context, node);
         }

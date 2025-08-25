@@ -57,10 +57,15 @@ class JsParserTest {
     void testBlock() {
         expr("{ a }", "['{',$a,'}']");
         expr("{ 1; 2 }", "['{',[1,';'],2,'}']");
+        expr("{ 1; 2; }", "['{',[1,';'],[2,';'],'}']");
+        expr("{ 1; 2; };", "['{',[1,';'],[2,';'],'}']");
+        expr("{ 1;; 2; }", "['{',[1,';'],';',[2,';'],'}']");
     }
 
     @Test
     void testProgram() {
+        program(";", "{PROGRAM:';'}");
+        program(";;", "{PROGRAM:[';',';']}");
         program("1;2", "{PROGRAM:[[1,';'],2]}");
         program("1\n2", "{PROGRAM:[1,2]}");
         program("1 \n 2", "{PROGRAM:[1,2]}");
