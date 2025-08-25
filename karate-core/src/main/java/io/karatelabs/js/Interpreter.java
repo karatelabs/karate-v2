@@ -135,6 +135,14 @@ class Interpreter {
         return context.isStopped() ? context.getReturnValue() : blockResult;
     }
 
+    private static Object evalBreak(Node node, Context context) {
+        return context.stopAndBreak();
+    }
+
+    private static Object evalContinue(Node node, Context context) {
+        return context.stopAndContinue();
+    }
+
     private static Object evalExprList(Node node, Context context) {
         Object result = null;
         for (Node child : node.children) {
@@ -262,11 +270,11 @@ class Interpreter {
         Node forBody = node.children.get(node.children.size() - 1);
         Object forResult = null;
         if (node.children.get(2).token.type == SEMI) {
-
+            // rare case: "for(;;)"
         } else if (node.children.get(3).token.type == SEMI) {
             eval(node.children.get(2), forContext);
             if (node.children.get(4).token.type == SEMI) {
-
+                // rare no-condition case: "for(init;;increment)"
             } else {
                 Node forAfter = node.children.get(6).token.type == R_PAREN ? null : node.children.get(6);
                 while (true) {
@@ -276,8 +284,12 @@ class Interpreter {
                     }
                     forResult = eval(forBody, forContext);
                     if (forContext.isStopped()) {
-                        context.updateFrom(forContext);
-                        break;
+                        if (forContext.isContinuing()) {
+                            forContext.reset();
+                        } else { // break, return or throw
+                            context.updateFrom(forContext);
+                            break;
+                        }
                     }
                     if (forAfter != null) {
                         eval(forAfter, forContext);
@@ -301,6 +313,14 @@ class Interpreter {
                     forContext.put(varName, kv.value);
                 }
                 forResult = eval(forBody, forContext);
+                if (forContext.isStopped()) {
+                    if (forContext.isContinuing()) {
+                        forContext.reset();
+                    } else { // break, return or throw
+                        context.updateFrom(forContext);
+                        break;
+                    }
+                }
             }
         }
         return forResult;
@@ -570,7 +590,7 @@ class Interpreter {
 
     private static Object evalStatement(Node node, Context context) {
         if (context.listener != null) {
-            context.listener.onStatementBegin(node);
+            context.listener.onStatementBegin(context, node);
         }
         try {
             Object statementResult = eval(node, context);
@@ -585,14 +605,14 @@ class Interpreter {
                 }
             }
             if (context.listener != null) {
-                context.listener.onStatementEnd(node, context);
+                context.listener.onStatementEnd(context, node, context);
             }
             return statementResult;
         } catch (Exception e) {
             if (context.listener != null) {
-                ContextListener.Result listenerResult = context.listener.onStatementError(node, e);
-                if (listenerResult != null && listenerResult.ignoreError) {
-                    return listenerResult.returnValue;
+                ContextResult contextResult = context.listener.onStatementError(context, node, e);
+                if (contextResult != null && contextResult.ignoreError) {
+                    return contextResult.returnValue;
                 }
             }
             Token first = node.getFirstToken();
@@ -686,7 +706,7 @@ class Interpreter {
         for (Node varName : varNames) {
             context.put(varName.getText(), varValue);
             if (context.listener != null) {
-                context.listener.onAssign(varName.getText(), varValue);
+                context.listener.onVariableWrite(context, varName.getText(), varValue);
             }
         }
         return varValue;
@@ -739,7 +759,9 @@ class Interpreter {
             case BLOCK:
                 return evalBlock(node, context);
             case BREAK_STMT:
-                return context.stopAndReturn(null);
+                return evalBreak(node, context);
+            case CONTINUE_STMT:
+                return evalContinue(node, context);
             case DELETE_STMT:
                 return evalDeleteStmt(node, context);
             case EXPR_LIST:

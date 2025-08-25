@@ -69,6 +69,7 @@ public enum TokenType {
     CASE(true),
     DEFAULT(true),
     BREAK(true),
+    CONTINUE(true),
     THIS(true),
     VOID(true),
     //====

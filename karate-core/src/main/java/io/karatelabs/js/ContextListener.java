@@ -25,32 +25,17 @@ package io.karatelabs.js;
 
 public interface ContextListener {
 
-    default void onAssign(String name, Object value) {
-
+    default void onStatementBegin(Context context, Node node) {
     }
 
-    default void onStatementBegin(Node node) {
-
+    default void onStatementEnd(Context context, Node node, Object result) {
     }
 
-    default void onStatementEnd(Node node, Object result) {
-
-    }
-
-    default Result onStatementError(Node node, Exception error) {
+    default ContextResult onStatementError(Context context, Node node, Exception error) {
         return null;
     }
 
-    class Result {
-
-        final public boolean ignoreError;
-        final public Object returnValue;
-
-        Result(boolean ignoreError, Object returnValue) {
-            this.ignoreError = ignoreError;
-            this.returnValue = returnValue;
-        }
-
+    default void onVariableWrite(Context context, String name, Object value) {
     }
 
 }

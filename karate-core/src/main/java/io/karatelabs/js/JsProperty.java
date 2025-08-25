@@ -241,6 +241,5 @@ class JsProperty {
         }
     }
 
-
 }
 

@@ -119,6 +119,7 @@ GM_TAG = "@" [^ \t\r\n]+
   "case"                        { return tt(CASE); }
   "default"                     { return tt(DEFAULT); }
   "break"                       { return tt(BREAK); }
+  "continue"                    { return tt(CONTINUE); }
   //====
   "==="                         { return tt(EQ_EQ_EQ); }
   "=="                          { return tt(EQ_EQ); }

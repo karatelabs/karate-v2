@@ -138,7 +138,7 @@ class EngineTest {
         Map<String, Object> map = new HashMap<>();
         ContextListener listener = new ContextListener() {
             @Override
-            public void onAssign(String name, Object value) {
+            public void onVariableWrite(Context context, String name, Object value) {
                 map.put("name", name);
                 map.put("value", value);
             }

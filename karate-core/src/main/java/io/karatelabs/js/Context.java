@@ -216,7 +216,7 @@ public class Context {
         } else {
             bindings.put(name, value);
             if (listener != null) {
-                listener.onAssign(name, value);
+                listener.onVariableWrite(this, name, value);
             }
         }
     }
@@ -261,42 +261,63 @@ public class Context {
     //==================================================================================================================
     //
     boolean construct;
-    Node currentStatement;
 
-    private boolean stopped;
+    private ExitType exitType;
     private Object returnValue;
     private Object errorThrown;
 
+    public Object stopAndBreak() {
+        exitType = ExitType.BREAK;
+        returnValue = null;
+        errorThrown = null;
+        return null;
+    }
+
     Object stopAndThrow(Object error) {
-        stopped = true;
+        exitType = ExitType.THROW;
+        returnValue = null;
         errorThrown = error;
-        if (logger.isTraceEnabled()) {
-            String info = error + "";
-            logger.trace("**ERROR** {}", info);
-            if (currentStatement != null) {
-                logger.trace(currentStatement.toStringError(""));
-            }
-        }
         return error;
     }
 
     Object stopAndReturn(Object value) {
-        stopped = true;
+        exitType = ExitType.RETURN;
         returnValue = value;
         errorThrown = null;
         return value;
     }
 
+    public Object stopAndContinue() {
+        exitType = ExitType.CONTINUE;
+        returnValue = null;
+        errorThrown = null;
+        return null;
+    }
+
     boolean isStopped() {
-        return stopped;
+        return exitType != null;
+    }
+
+    public ExitType getExitType() {
+        return exitType;
+    }
+
+    boolean isContinuing() {
+        return exitType == ExitType.CONTINUE;
+    }
+
+    public void reset() {
+        exitType = null;
+        returnValue = null;
+        errorThrown = null;
     }
 
     boolean isError() {
-        return errorThrown != null;
+        return exitType == ExitType.THROW;
     }
 
     public Object getReturnValue() {
-        return errorThrown == null ? returnValue : null;
+        return returnValue;
     }
 
     public Object getErrorThrown() {
@@ -304,7 +325,7 @@ public class Context {
     }
 
     void updateFrom(Context childContext) {
-        stopped = childContext.stopped;
+        exitType = childContext.exitType;
         errorThrown = childContext.errorThrown;
         returnValue = childContext.returnValue;
     }

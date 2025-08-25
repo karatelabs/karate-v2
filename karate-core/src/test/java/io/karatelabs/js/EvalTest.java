@@ -217,20 +217,32 @@ class EvalTest extends EvalBase {
 
     @Test
     void testForLoop() {
-        eval("a = 0; for (var i = 0; i < 5; i++) a++");
-        assertEquals(5, get("a"));
+        eval("var a = []; for (var i = 0; i < 3; i++) a.push(i)");
+        match(get("a"), "[0, 1, 2]");
+        eval("var a = []; for (var i = 0; i < 3; i++) { if (i == 1) break; a.push(i) }");
+        match(get("a"), "[0]");
+        eval("var a = []; for (var i = 0; i < 3; i++) { if (i == 1) continue; a.push(i) }");
+        match(get("a"), "[0, 2]");
     }
 
     @Test
     void testForInLoop() {
         eval("var a = []; for (var x in [1, 2, 3]) a.push(x)");
         match(get("a"), "['0', '1', '2']");
+        eval("var a = []; for (var x in [1, 2, 3]) { if (x == '1') break; a.push(x) }");
+        match(get("a"), "['0']");
+        eval("var a = []; for (var x in [1, 2, 3]) { if (x == '1') continue; a.push(x) }");
+        match(get("a"), "['0', '2']");
     }
 
     @Test
     void testForOfLoop() {
         eval("var a = []; var x; for (x of [1, 2, 3]) a.push(x)");
         match(get("a"), "[1, 2, 3]");
+        eval("var a = []; var x; for (x of [1, 2, 3]) { if (x == 2) break; a.push(x) }");
+        match(get("a"), "[1]");
+        eval("var a = []; var x; for (x of [1, 2, 3]) { if (x == 2) continue; a.push(x) }");
+        match(get("a"), "[1, 3]");
     }
 
     @Test

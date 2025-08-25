@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2024 Karate Labs Inc.
+ * Copyright 2025 Karate Labs Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,64 +23,13 @@
  */
 package io.karatelabs.js;
 
-public enum NodeType {
+public enum ExitType {
 
-    TOKEN,
-    ROOT,
-    PROGRAM,
-    STATEMENT,
-    IF_STMT,
-    VAR_STMT,
-    VAR_STMT_NAMES,
-    RETURN_STMT,
-    TRY_STMT,
-    THROW_STMT,
-    FOR_STMT,
-    WHILE_STMT,
-    DO_WHILE_STMT,
-    SWITCH_STMT,
-    CASE_BLOCK,
-    DEFAULT_BLOCK,
-    BREAK_STMT,
-    CONTINUE_STMT,
-    DELETE_STMT,
-    BLOCK,
-    EOS,
-    EXPR,
-    EXPR_LIST,
-    FN_EXPR,
-    FN_ARROW_EXPR,
-    FN_DECL_ARGS,
-    FN_DECL_ARG,
-    NEW_EXPR,
-    TYPEOF_EXPR,
-    INSTANCEOF_EXPR,
-    FN_CALL_EXPR,
-    FN_CALL_ARGS,
-    FN_CALL_ARG,
-    ASSIGN_EXPR,
-    LOGIC_EXPR,
-    LOGIC_AND_EXPR,
-    LOGIC_TERN_EXPR,
-    LOGIC_BIT_EXPR,
-    MATH_ADD_EXPR,
-    MATH_MUL_EXPR,
-    MATH_EXP_EXPR,
-    MATH_POST_EXPR,
-    MATH_PRE_EXPR,
-    PATH_EXPR,
-    REF_EXPR,
-    REF_DOT_EXPR,
-    REF_BRACKET_EXPR,
-    UNARY_EXPR,
-    LIT_OBJECT,
-    OBJECT_ELEM,
-    LIT_ARRAY,
-    ARRAY_ELEM,
-    LIT_EXPR,
-    PAREN_EXPR,
-    LIT_TEMPLATE,
-    PLACEHOLDER,
-    REGEX_LITERAL
+    CONDITION_FALSE,
+    BREAK,
+    CONTINUE,
+    RETURN,
+    THROW,
+    ALL_ITERATIONS_COMPLETED
 
 }

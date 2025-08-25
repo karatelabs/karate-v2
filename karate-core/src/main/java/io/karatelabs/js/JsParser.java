@@ -60,6 +60,7 @@ public class JsParser extends Parser {
         result = result || do_while_stmt();
         result = result || switch_stmt();
         result = result || (break_stmt() && eos());
+        result = result || (continue_stmt() && eos());
         result = result || (delete_stmt() && eos());
         result = result || (expr_list() && eos());
         result = result || block(false);
@@ -279,6 +280,13 @@ public class JsParser extends Parser {
 
     private boolean break_stmt() {
         if (!enter(NodeType.BREAK_STMT, BREAK)) {
+            return false;
+        }
+        return exit();
+    }
+
+    private boolean continue_stmt() {
+        if (!enter(NodeType.CONTINUE_STMT, CONTINUE)) {
             return false;
         }
         return exit();
