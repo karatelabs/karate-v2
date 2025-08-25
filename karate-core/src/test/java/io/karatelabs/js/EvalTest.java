@@ -227,6 +227,12 @@ class EvalTest extends EvalBase {
 
     @Test
     void testForInLoop() {
+        eval("var a = []; for (var x in {a: 1, b: 2, c: 3}) a.push(x)");
+        match(get("a"), "['a', 'b', 'c']");
+        eval("var a = []; for (var x in {a: 1, b: 2, c: 3}) { if (x == 'b') break; a.push(x) }");
+        match(get("a"), "['a']");
+        eval("var a = []; for (var x in {a: 1, b: 2, c: 3}) { if (x == 'b') continue; a.push(x) }");
+        match(get("a"), "['a', 'c']");
         eval("var a = []; for (var x in [1, 2, 3]) a.push(x)");
         match(get("a"), "['0', '1', '2']");
         eval("var a = []; for (var x in [1, 2, 3]) { if (x == '1') break; a.push(x) }");
@@ -237,6 +243,12 @@ class EvalTest extends EvalBase {
 
     @Test
     void testForOfLoop() {
+        eval("var a = []; var x; for (x of {a: 1, b: 2, c: 3}) a.push(x)");
+        match(get("a"), "[1, 2, 3]");
+        eval("var a = []; var x; for (x of {a: 1, b: 2, c: 3}) { if (x == 2) break; a.push(x) }");
+        match(get("a"), "[1]");
+        eval("var a = []; var x; for (x of {a: 1, b: 2, c: 3}) { if (x == 2) continue; a.push(x) }");
+        match(get("a"), "[1, 3]");
         eval("var a = []; var x; for (x of [1, 2, 3]) a.push(x)");
         match(get("a"), "[1, 2, 3]");
         eval("var a = []; var x; for (x of [1, 2, 3]) { if (x == 2) break; a.push(x) }");
@@ -247,14 +259,22 @@ class EvalTest extends EvalBase {
 
     @Test
     void testWhileLoop() {
-        eval("a = 0; while(a < 5) a++");
-        assertEquals(5, get("a"));
+        eval("var i = 0; var a = []; while (i < 3) { a.push(i); i++ }");
+        match(get("a"), "[0, 1, 2]");
+        eval("var i = 0; var a = []; while (i < 3) { if (i == 1) break; a.push(i); i++ }");
+        match(get("a"), "[0]");
+        eval("var i = 0; var a = []; while (i < 3) { if (i == 1) { i++; continue }; a.push(i); i++ }");
+        match(get("a"), "[0, 2]");
     }
 
     @Test
     void testDoWhileLoop() {
-        eval("a = 0; do { a++ } while (a <= 5)");
-        assertEquals(6, get("a"));
+        eval("var i = 0; var a = []; do { a.push(i); i++ } while (i < 3)");
+        match(get("a"), "[0, 1, 2]");
+        eval("var i = 0; var a = []; do { if (i == 1) break; a.push(i); i++ } while (i < 3)");
+        match(get("a"), "[0]");
+        eval("var i = 0; var a = []; do { if (i == 1) { i++; continue }; a.push(i); i++ } while (i < 3)");
+        match(get("a"), "[0, 2]");
     }
 
     @Test

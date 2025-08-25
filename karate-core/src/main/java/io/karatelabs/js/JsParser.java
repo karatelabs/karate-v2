@@ -64,7 +64,7 @@ public class JsParser extends Parser {
         result = result || (delete_stmt() && eos());
         result = result || (expr_list() && eos());
         result = result || block(false);
-        result = result || consumeIf(SEMI); // empty statement
+        consumeIf(SEMI); // ignore empty statements or semicolons after blocks
         return exit(result, mandatory);
     }
 

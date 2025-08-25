@@ -125,21 +125,20 @@ class Interpreter {
         Object blockResult = null;
         for (Node child : node.children) {
             if (child.type == NodeType.STATEMENT) {
-                blockResult = eval(child, context);
+                blockResult = evalStatement(child, context);
                 if (context.isStopped()) {
                     break;
                 }
             }
         }
-        // handle return statement
         return context.isStopped() ? context.getReturnValue() : blockResult;
     }
 
-    private static Object evalBreak(Node node, Context context) {
+    private static Object evalBreakStmt(Node node, Context context) {
         return context.stopAndBreak();
     }
 
-    private static Object evalContinue(Node node, Context context) {
+    private static Object evalContinueStmt(Node node, Context context) {
         return context.stopAndContinue();
     }
 
@@ -724,8 +723,12 @@ class Interpreter {
             }
             whileResult = eval(whileBody, whileContext);
             if (whileContext.isStopped()) {
-                context.updateFrom(whileContext);
-                break;
+                if (whileContext.isContinuing()) {
+                    whileContext.reset();
+                } else { // break, return or throw
+                    context.updateFrom(whileContext);
+                    break;
+                }
             }
         }
         return whileResult;
@@ -735,12 +738,16 @@ class Interpreter {
         Context doContext = new Context(context);
         Node doBody = node.children.get(1);
         Node doExpr = node.children.get(4);
-        Object doResult = null;
+        Object doResult;
         while (true) {
             doResult = eval(doBody, doContext);
             if (doContext.isStopped()) {
-                context.updateFrom(doContext);
-                break;
+                if (doContext.isContinuing()) {
+                    doContext.reset();
+                } else { // break, return or throw
+                    context.updateFrom(doContext);
+                    break;
+                }
             }
             Object doCondition = eval(doExpr, doContext);
             if (!Terms.isTruthy(doCondition)) {
@@ -759,9 +766,9 @@ class Interpreter {
             case BLOCK:
                 return evalBlock(node, context);
             case BREAK_STMT:
-                return evalBreak(node, context);
+                return evalBreakStmt(node, context);
             case CONTINUE_STMT:
-                return evalContinue(node, context);
+                return evalContinueStmt(node, context);
             case DELETE_STMT:
                 return evalDeleteStmt(node, context);
             case EXPR_LIST:
