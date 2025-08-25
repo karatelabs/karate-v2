@@ -224,6 +224,7 @@ class JsArray extends JsObject {
                             public Object invoke(Object... args) {
                                 Invokable invokable = toInvokable(args);
                                 for (KeyValue kv : this) {
+                                    invokeContext.iterationIndex = kv.index;
                                     invokable.invoke(kv.value, kv.index, thisObject);
                                 }
                                 return Terms.UNDEFINED;
@@ -887,10 +888,7 @@ class JsArray extends JsObject {
     }
 
     static Invokable toInvokable(Object[] args) {
-        if (args.length == 0) {
-            throw new RuntimeException("function expected");
-        }
-        if (args[0] instanceof Invokable) {
+        if (args.length != 0 && args[0] instanceof Invokable) {
             return (Invokable) args[0];
         }
         throw new RuntimeException("function expected");

@@ -27,15 +27,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-abstract class JsFunction extends JsObject {
+public abstract class JsFunction extends JsObject {
 
     private static final Object[] EMPTY = new Object[0];
 
     String name;
     Context invokeContext;
 
-    public void setName(String name) {
-        this.name = name;
+    public String getName() {
+        return name;
     }
 
     @Override

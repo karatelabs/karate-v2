@@ -45,6 +45,10 @@ public interface ContextListener {
         return null;
     }
 
+    default void onFunctionCallEnter(Context context, Node node, JsFunction fn, Object[] args) {
+
+    }
+
     default void onVariableWrite(Context context, String name, Object value) {
     }
 

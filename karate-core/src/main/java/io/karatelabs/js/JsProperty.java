@@ -123,9 +123,6 @@ class JsProperty {
             if (name == null) {
                 throw new RuntimeException("unexpected set [null]:" + value + " on: " + object);
             }
-            if (value instanceof JsFunction) { // pre-process
-                ((JsFunction) value).setName(name);
-            }
             if (object == null) {
                 context.update(name, value);
             } else if (object instanceof Map) {

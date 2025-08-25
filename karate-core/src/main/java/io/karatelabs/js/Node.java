@@ -61,6 +61,16 @@ public class Node {
         return children.get(0).getFirstToken();
     }
 
+    public Token getLastToken() {
+        if (isToken()) {
+            return token;
+        }
+        if (children.isEmpty()) {
+            return Token.EMPTY;
+        }
+        return children.get(children.size() - 1).getLastToken();
+    }
+
     public String toStringError(String message) {
         Token first = getFirstToken();
         if (first.resource.isUrlResource()) {
@@ -78,11 +88,27 @@ public class Node {
             return token.text;
         }
         StringBuilder sb = new StringBuilder();
+        sb.append(type).append("[");
         for (int i = 0; i < children.size(); i++) {
             if (i != 0) {
                 sb.append(' ');
             }
-            sb.append(children.get(i).toString());
+            sb.append(children.get(i).toStringWithoutType());
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
+    String toStringWithoutType() {
+        if (isToken()) {
+            return token.text;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < children.size(); i++) {
+            if (i != 0) {
+                sb.append(' ');
+            }
+            sb.append(children.get(i).toStringWithoutType());
         }
         return sb.toString();
     }

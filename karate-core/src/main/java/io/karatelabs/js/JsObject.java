@@ -30,11 +30,11 @@ class JsObject implements ObjectLike, Invokable, Iterable<KeyValue> {
     Object thisObject = this; // will be updated in Interpreter.evalFnCall()
     private final Map<String, Object> map;
 
-    public JsObject(Map<String, Object> map) {
+    JsObject(Map<String, Object> map) {
         this.map = map;
     }
 
-    public JsObject() {
+    JsObject() {
         this(new LinkedHashMap<>());
     }
 

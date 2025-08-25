@@ -38,19 +38,19 @@ class NodeFunction extends JsFunction {
     final Node body; // STATEMENT or BLOCK (that may return expr)
     final List<String> argNames;
     final int argCount;
-    final Context originalContext;
+    final Context declaredContext;
 
     public NodeFunction(boolean arrow, List<String> argNames, Node body, Context context) {
         this.arrow = arrow;
         this.argNames = argNames;
         this.argCount = argNames.size();
         this.body = body;
-        this.originalContext = context;
+        this.declaredContext = context;
     }
 
     @Override
     public Object invoke(Object... args) {
-        Context childContext = originalContext.merge(invokeContext);
+        Context childContext = declaredContext.merge(invokeContext);
         if (!childContext.hasKey("arguments")) {
             childContext.put("arguments", Arrays.asList(args));
         }

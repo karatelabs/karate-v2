@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -22,7 +23,7 @@ class EngineTest {
                 var bar = foo + 'bar';
                 """);
         assertEquals("foobar", result);
-        assertEquals("foo", engine.context.get("foo"));
+        assertEquals("foo", engine.get("foo"));
     }
 
     @Test
@@ -180,6 +181,30 @@ class EngineTest {
         vars.put("foo", "child");
         assertEquals("child", engine.evalWith("foo", vars));
         assertEquals("parent", engine.eval("foo"));
+    }
+
+    @Test
+    void testArrayIterationTracking() {
+        Engine engine = new Engine();
+        StringBuilder sb = new StringBuilder();
+        ContextListener listener = new ContextListener() {
+            @Override
+            public void onFunctionCallEnter(Context context, Node node, JsFunction fn, Object[] args) {
+                Token token = node.getLastToken();
+                if (token.type == TokenType.IDENT && token.text.equals("push")) {
+                    sb.append(context.parent.getIterationIndex()).append(":").append(args[0]).append("|");
+                }
+            }
+        };
+        engine.context.setListener(listener);
+        String js = """
+                var a = [1, 2, 3];
+                var b = [];
+                a.forEach(x => b.push(x));
+                """;
+        engine.eval(js);
+        assertEquals(List.of(1, 2, 3), engine.get("b"));
+        assertEquals("0:1|1:2|2:3|", sb.toString());
     }
 
 }

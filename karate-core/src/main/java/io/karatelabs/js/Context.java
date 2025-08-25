@@ -38,7 +38,7 @@ public class Context {
 
     static final Object NAN = Double.NaN;
 
-    private final Context parent;
+    public final Context parent;
     private final Context caller;
     private final Map<String, Object> bindings;
 
@@ -108,8 +108,8 @@ public class Context {
     }
 
     void put(String name, Object value) {
-        if (value instanceof JsFunction && !"this".equals(name)) {
-            ((JsFunction) value).setName(name);
+        if (value instanceof JsFunction) {
+            ((JsFunction) value).name = name;
         }
         bindings.put(name, value);
     }
@@ -264,6 +264,11 @@ public class Context {
     //==================================================================================================================
     //
     boolean construct;
+    int iterationIndex = -1;
+
+    public int getIterationIndex() {
+        return iterationIndex;
+    }
 
     private ExitType exitType;
     private Object returnValue;

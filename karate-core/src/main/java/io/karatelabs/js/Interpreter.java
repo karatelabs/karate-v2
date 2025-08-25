@@ -204,34 +204,33 @@ class Interpreter {
 
     @SuppressWarnings("unchecked")
     private static Object evalFnCall(Node node, Context context) {
-        JsProperty prop = new JsProperty(node.children.get(0), context, true);
+        Node fnArgsNode = node.children.size() > 1 ? node.children.get(2) : null;
+        node = node.children.get(0);
+        JsProperty prop = new JsProperty(node, context, true);
         Object o = prop.get();
         if (o == Terms.UNDEFINED) { // optional chaining
             return o;
         }
         Invokable invokable = toInvokable(o);
         if (invokable == null) {
-            throw new RuntimeException(node.children.get(0) + " is not a function");
+            throw new RuntimeException(node.toStringWithoutType() + " is not a function");
         }
         List<Object> argsList = new ArrayList<>();
-        if (node.children.size() > 1) { // check for rare case, new syntax without parentheses
-            Node fnArgsNode = node.children.get(2);
-            int argsCount = fnArgsNode.children.size();
-            for (int i = 0; i < argsCount; i++) {
-                Node fnArgNode = fnArgsNode.children.get(i);
-                Node argNode = fnArgNode.children.get(0);
-                if (argNode.isToken()) { // DOT_DOT_DOT
-                    Object arg = eval(fnArgNode.children.get(1), context);
-                    if (arg instanceof List) {
-                        argsList.addAll((List<Object>) arg);
-                    } else if (arg instanceof JsArray) {
-                        JsArray arrayLike = (JsArray) arg;
-                        argsList.addAll(arrayLike.toList());
-                    }
-                } else {
-                    Object arg = eval(argNode, context);
-                    argsList.add(arg);
+        int argsCount = fnArgsNode == null ? 0 : fnArgsNode.children.size();
+        for (int i = 0; i < argsCount; i++) {
+            Node fnArgNode = fnArgsNode.children.get(i);
+            Node argNode = fnArgNode.children.get(0);
+            if (argNode.isToken()) { // DOT_DOT_DOT
+                Object arg = eval(fnArgNode.children.get(1), context);
+                if (arg instanceof List) {
+                    argsList.addAll((List<Object>) arg);
+                } else if (arg instanceof JsArray) {
+                    JsArray arrayLike = (JsArray) arg;
+                    argsList.addAll(arrayLike.toList());
                 }
+            } else {
+                Object arg = eval(argNode, context);
+                argsList.add(arg);
             }
         }
         Object[] args = argsList.toArray();
@@ -258,6 +257,9 @@ class Interpreter {
             thisObject = prop.object == null ? invokable : prop.object;
             if (jsFunction != null) {
                 jsFunction.thisObject = thisObject;
+                if (context.listener != null) {
+                    context.listener.onFunctionCallEnter(context, node, jsFunction, args);
+                }
             }
             Object result = invokable.invoke(args);
             if (result instanceof JavaMirror) {
@@ -572,12 +574,16 @@ class Interpreter {
     }
 
     private static Object evalNewExpr(Node node, Context context) {
+        node = node.children.get(1);
         context.construct = true;
-        Node fn = node.children.get(1);
-        if (fn.children.get(0).type == NodeType.REF_EXPR) { // rare case where there were no parentheses on constructor call
-            return evalFnCall(fn, context);
+        if (node.children.get(0).type == NodeType.REF_EXPR) {
+            // rare case where there were no parentheses for constructor e.g. "new String"
+            Node wrapper = new Node(NodeType.FN_CALL_EXPR);
+            wrapper.children.add(node.children.get(0));
+            return eval(wrapper, context);
+        } else {
+            return eval(node, context);
         }
-        return eval(fn, context);
     }
 
     private static Object evalProgram(Node node, Context context) {
