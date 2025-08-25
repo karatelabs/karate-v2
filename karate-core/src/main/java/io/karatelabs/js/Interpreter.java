@@ -125,7 +125,7 @@ class Interpreter {
         Object blockResult = null;
         for (Node child : node.children) {
             if (child.type == NodeType.STATEMENT) {
-                blockResult = evalStatement(child, context);
+                blockResult = eval(child, context);
                 if (context.isStopped()) {
                     break;
                 }
@@ -140,6 +140,28 @@ class Interpreter {
 
     private static Object evalContinueStmt(Node node, Context context) {
         return context.stopAndContinue();
+    }
+
+    private static Object evalExpr(Node node, Context context) {
+        node = node.children.get(0);
+        if (context.listener != null) {
+            context.listener.onExpressionEnter(context, node);
+        }
+        try {
+            Object result = eval(node, context);
+            if (context.listener != null) {
+                context.listener.onExpressionExit(context, node, result);
+            }
+            return result;
+        } catch (Exception e) {
+            if (context.listener != null) {
+                ContextResult contextResult = context.listener.onExpressionError(context, node, e);
+                if (contextResult != null && contextResult.ignoreError) {
+                    return contextResult.returnValue;
+                }
+            }
+            throw e;
+        }
     }
 
     private static Object evalExprList(Node node, Context context) {
@@ -588,17 +610,18 @@ class Interpreter {
     }
 
     private static Object evalStatement(Node node, Context context) {
-        if (node.getFirstToken().type == SEMI) { // ignore empty statements
+        node = node.children.get(0); // go straight to relevant node
+        if (node.token.type == SEMI) { // ignore empty statements
             return null;
         }
         if (context.listener != null) {
-            context.listener.onStatementBegin(context, node);
+            context.listener.onStatementEnter(context, node);
         }
         try {
             Object statementResult = eval(node, context);
             if (logger.isTraceEnabled() || Engine.DEBUG) {
-                NodeType childType = node.type;
-                if (childType != NodeType.EXPR && childType != NodeType.BLOCK) {
+                NodeType nodeType = node.type;
+                if (nodeType != NodeType.EXPR && nodeType != NodeType.BLOCK) {
                     Token first = node.getFirstToken();
                     logger.trace("{}{} {} | {}", first.resource, first.getPositionDisplay(), statementResult, node);
                     if (Engine.DEBUG) {
@@ -607,7 +630,7 @@ class Interpreter {
                 }
             }
             if (context.listener != null) {
-                context.listener.onStatementEnd(context, node, context);
+                context.listener.onStatementExit(context, node, context);
             }
             return statementResult;
         } catch (Exception e) {
@@ -777,6 +800,7 @@ class Interpreter {
             case EXPR_LIST:
                 return evalExprList(node, context);
             case EXPR:
+                return evalExpr(node, context);
             case LIT_EXPR:
                 return eval(node.children.get(0), context);
             case FN_EXPR:
@@ -831,7 +855,7 @@ class Interpreter {
             case RETURN_STMT:
                 return evalReturnStmt(node, context);
             case STATEMENT:
-                return evalStatement(node.children.get(0), context);
+                return evalStatement(node, context);
             case SWITCH_STMT:
                 return evalSwitchStmt(node, context);
             case THROW_STMT:

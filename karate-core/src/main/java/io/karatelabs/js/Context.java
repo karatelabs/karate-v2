@@ -49,10 +49,153 @@ public class Context {
         this.parent = parent;
         this.bindings = bindings;
         this.caller = caller;
+        if (parent != null) {
+            listener = parent.listener;
+        }
+    }
+
+    void setParent(String key, Object value) {
+        parent.bindings.put(key, value);
+    }
+
+    static Context root() {
+        Context root = new Context(null, new HashMap<>(), null);
+        return new Context(root);
+    }
+
+    Context(Context parent) {
+        this(parent, new HashMap<>(), null);
+    }
+
+    Context merge(Context caller) {
+        return new Context(this, new HashMap<>(), caller);
+    }
+
+    Context copy() {
+        Map<String, Object> map = new HashMap<>(bindings);
+        return new Context(null, map, null);
+    }
+
+    public void setOnConsoleLog(Consumer<String> onConsoleLog) {
+        this.onConsoleLog = onConsoleLog;
+        parent.bindings.put("console", createConsole());
     }
 
     public void setListener(ContextListener listener) {
         this.listener = listener;
+    }
+
+    public Map<String, Object> getBindings() {
+        return bindings;
+    }
+
+    public Object get(String name) {
+        if (bindings.containsKey(name)) {
+            return bindings.get(name);
+        }
+        if (caller != null && caller.hasKey(name)) {
+            return caller.get(name);
+        }
+        if (parent != null && parent.hasKey(name)) {
+            return parent.get(name);
+        }
+        Object global = getGlobal(name);
+        if (global != null) {
+            bindings.put(name, global);
+            return global;
+        }
+        return Terms.UNDEFINED;
+    }
+
+    void put(String name, Object value) {
+        if (value instanceof JsFunction && !"this".equals(name)) {
+            ((JsFunction) value).setName(name);
+        }
+        bindings.put(name, value);
+    }
+
+    void update(String name, Object value) {
+        if (bindings.containsKey(name)) {
+            bindings.put(name, value);
+        } else if (caller != null && caller.hasKey(name)) {
+            caller.update(name, value);
+        } else if (parent != null && parent.hasKey(name)) {
+            parent.update(name, value);
+        } else {
+            bindings.put(name, value);
+            if (listener != null) {
+                listener.onVariableWrite(this, name, value);
+            }
+        }
+    }
+
+    void remove(String name) {
+        bindings.remove(name);
+    }
+
+    private ObjectLike createConsole() {
+        return (SimpleObject) name -> {
+            if ("log".equals(name)) {
+                return (Invokable) args -> {
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < args.length; i++) {
+                        Object arg = args[i];
+                        if (i > 0) {
+                            sb.append(' ');
+                        }
+                        if (arg instanceof ObjectLike) {
+                            Object toString = ((ObjectLike) arg).get("toString");
+                            if (toString instanceof Invokable) {
+                                sb.append(((Invokable) toString).invoke(arg));
+                            } else {
+                                sb.append(Terms.TO_STRING(arg));
+                            }
+                        } else {
+                            sb.append(Terms.TO_STRING(arg));
+                        }
+                    }
+                    if (onConsoleLog != null) {
+                        onConsoleLog.accept(sb.toString());
+                    } else {
+                        System.out.println(sb);
+                    }
+                    return null;
+                };
+            }
+            return null;
+        };
+    }
+
+    boolean hasKey(String name) {
+        if (bindings.containsKey(name)) {
+            return true;
+        }
+        if (caller != null && caller.hasKey(name)) {
+            return true;
+        }
+        if (parent != null && parent.hasKey(name)) {
+            return true;
+        }
+        switch (name) {
+            case "console":
+            case "parseInt":
+            case "undefined":
+            case "Array":
+            case "Date":
+            case "Error":
+            case "Infinity":
+            case "Java":
+            case "JSON":
+            case "Math":
+            case "NaN":
+            case "Number":
+            case "Object":
+            case "RegExp":
+            case "String":
+            case "TypeError":
+                return true;
+        }
+        return false;
     }
 
     @SuppressWarnings("unchecked")
@@ -116,146 +259,6 @@ public class Context {
                 return new JsError("TypeError");
         }
         return null;
-    }
-
-    public void setOnConsoleLog(Consumer<String> onConsoleLog) {
-        this.onConsoleLog = onConsoleLog;
-        parent.bindings.put("console", createConsole());
-    }
-
-    public Map<String, Object> getBindings() {
-        return bindings;
-    }
-
-    void setParent(String key, Object value) {
-        parent.bindings.put(key, value);
-    }
-
-    public static Context root() {
-        Context root = new Context(null, new HashMap<>(), null);
-        return new Context(root);
-    }
-
-    Context(Context parent) {
-        this(parent, new HashMap<>(), null);
-    }
-
-    Context merge(Context caller) {
-        return new Context(this, new HashMap<>(), caller);
-    }
-
-    Context copy() {
-        Map<String, Object> map = new HashMap<>(bindings);
-        return new Context(null, map, null);
-    }
-
-    public Object get(String name) {
-        if (bindings.containsKey(name)) {
-            return bindings.get(name);
-        }
-        if (caller != null && caller.hasKey(name)) {
-            return caller.get(name);
-        }
-        if (parent != null && parent.hasKey(name)) {
-            return parent.get(name);
-        }
-        Object global = getGlobal(name);
-        if (global != null) {
-            bindings.put(name, global);
-            return global;
-        }
-        return Terms.UNDEFINED;
-    }
-
-    public boolean hasKey(String name) {
-        if (bindings.containsKey(name)) {
-            return true;
-        }
-        if (caller != null && caller.hasKey(name)) {
-            return true;
-        }
-        if (parent != null && parent.hasKey(name)) {
-            return true;
-        }
-        switch (name) {
-            case "console":
-            case "parseInt":
-            case "undefined":
-            case "Array":
-            case "Date":
-            case "Error":
-            case "Infinity":
-            case "Java":
-            case "JSON":
-            case "Math":
-            case "NaN":
-            case "Number":
-            case "Object":
-            case "RegExp":
-            case "String":
-            case "TypeError":
-                return true;
-        }
-        return false;
-    }
-
-    void put(String name, Object value) {
-        if (value instanceof JsFunction && !"this".equals(name)) {
-            ((JsFunction) value).setName(name);
-        }
-        bindings.put(name, value);
-    }
-
-    void update(String name, Object value) {
-        if (bindings.containsKey(name)) {
-            bindings.put(name, value);
-        } else if (caller != null && caller.hasKey(name)) {
-            caller.update(name, value);
-        } else if (parent != null && parent.hasKey(name)) {
-            parent.update(name, value);
-        } else {
-            bindings.put(name, value);
-            if (listener != null) {
-                listener.onVariableWrite(this, name, value);
-            }
-        }
-    }
-
-    void remove(String name) {
-        bindings.remove(name);
-    }
-
-    private ObjectLike createConsole() {
-        return (SimpleObject) name -> {
-            if ("log".equals(name)) {
-                return (Invokable) args -> {
-                    StringBuilder sb = new StringBuilder();
-                    for (int i = 0; i < args.length; i++) {
-                        Object arg = args[i];
-                        if (i > 0) {
-                            sb.append(' ');
-                        }
-                        if (arg instanceof ObjectLike) {
-                            Object toString = ((ObjectLike) arg).get("toString");
-                            if (toString instanceof Invokable) {
-                                sb.append(((Invokable) toString).invoke(arg));
-                            } else {
-                                sb.append(Terms.TO_STRING(arg));
-                            }
-                        } else {
-                            sb.append(Terms.TO_STRING(arg));
-                        }
-                    }
-                    if (onConsoleLog != null) {
-                        onConsoleLog.accept(sb.toString());
-                    } else {
-                        System.out.println(sb);
-                    }
-                    return null;
-                };
-            }
-            return null;
-        };
     }
 
     //==================================================================================================================

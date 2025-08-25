@@ -25,13 +25,23 @@ package io.karatelabs.js;
 
 public interface ContextListener {
 
-    default void onStatementBegin(Context context, Node node) {
+    default void onStatementEnter(Context context, Node node) {
     }
 
-    default void onStatementEnd(Context context, Node node, Object result) {
+    default void onStatementExit(Context context, Node node, Object result) {
     }
 
     default ContextResult onStatementError(Context context, Node node, Exception error) {
+        return null;
+    }
+
+    default void onExpressionEnter(Context context, Node node) {
+    }
+
+    default void onExpressionExit(Context context, Node node, Object result) {
+    }
+
+    default ContextResult onExpressionError(Context context, Node node, Exception error) {
         return null;
     }
 
