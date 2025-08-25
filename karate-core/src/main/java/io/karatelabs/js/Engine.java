@@ -75,7 +75,7 @@ public class Engine {
                 evalContext = context;
             } else {
                 evalContext = new Context(context);
-                evalContext.getBindings().putAll(localVars);
+                evalContext.bindings.putAll(localVars);
             }
             Object result = Interpreter.eval(node, evalContext);
             if (result instanceof JavaMirror) {
@@ -97,10 +97,6 @@ public class Engine {
         }
     }
 
-    public void putRootBinding(String name, Object value) {
-        context.setParent(name, value);
-    }
-
     public void put(String name, Object value) {
         context.put(name, value);
     }
@@ -118,10 +114,6 @@ public class Engine {
             return null;
         }
         return value;
-    }
-
-    public Engine copy() {
-        return new Engine(context.copy());
     }
 
 }

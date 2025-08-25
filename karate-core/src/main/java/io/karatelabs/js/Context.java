@@ -40,7 +40,7 @@ public class Context {
 
     public final Context parent;
     private final Context caller;
-    private final Map<String, Object> bindings;
+    final Map<String, Object> bindings;
 
     Consumer<String> onConsoleLog;
     ContextListener listener;
@@ -54,13 +54,8 @@ public class Context {
         }
     }
 
-    void setParent(String key, Object value) {
-        parent.bindings.put(key, value);
-    }
-
     static Context root() {
-        Context root = new Context(null, new HashMap<>(), null);
-        return new Context(root);
+        return new Context(null, new HashMap<>(), null);
     }
 
     Context(Context parent) {
@@ -71,22 +66,13 @@ public class Context {
         return new Context(this, new HashMap<>(), caller);
     }
 
-    Context copy() {
-        Map<String, Object> map = new HashMap<>(bindings);
-        return new Context(null, map, null);
-    }
-
     public void setOnConsoleLog(Consumer<String> onConsoleLog) {
         this.onConsoleLog = onConsoleLog;
-        parent.bindings.put("console", createConsole());
+        bindings.put("console", createConsole());
     }
 
     public void setListener(ContextListener listener) {
         this.listener = listener;
-    }
-
-    public Map<String, Object> getBindings() {
-        return bindings;
     }
 
     public Object get(String name) {

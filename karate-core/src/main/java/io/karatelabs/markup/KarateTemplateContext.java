@@ -49,8 +49,8 @@ class KarateTemplateContext implements IEngineContext {
     KarateTemplateContext(IEngineContext wrapped, Engine engine) {
         this.wrapped = wrapped;
         this.engine = engine;
-        this.engine.putRootBinding("_", vars);
-        this.engine.putRootBinding("context", new MarkupJs(this));
+        this.engine.put("_", vars);
+        this.engine.put("context", new MarkupJs(this));
     }
 
     void evalGlobal(String src) {

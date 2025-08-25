@@ -50,7 +50,7 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<FullHttpReque
         this.server = server;
         session = Session.inMemory();
         engine = new Engine();
-        engine.putRootBinding("session", session);
+        engine.put("session", session);
     }
 
     @Override
@@ -117,9 +117,9 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<FullHttpReque
     }
 
     private HttpResponse handle(HttpRequest request) {
-        engine.putRootBinding("request", request);
+        engine.put("request", request);
         HttpResponse response = new HttpResponse();
-        engine.putRootBinding("response", response);
+        engine.put("response", response);
         engine.eval(SCRIPT);
         return response;
     }
