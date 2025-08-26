@@ -51,9 +51,9 @@ class JsArray extends JsObject {
                             @Override
                             public Object invoke(Object... args) {
                                 List<Object> results = new ArrayList<>();
-                                Invokable invokable = toInvokable(args);
+                                JsFunction jsFunction = toJsFunction(invokeContext, args);
                                 for (KeyValue kv : this) {
-                                    Object result = invokable.invoke(kv.value, kv.index);
+                                    Object result = jsFunction.invoke(kv.value, kv.index);
                                     results.add(result);
                                 }
                                 return results;
@@ -64,9 +64,9 @@ class JsArray extends JsObject {
                             @Override
                             public Object invoke(Object... args) {
                                 List<Object> results = new ArrayList<>();
-                                Invokable invokable = toInvokable(args);
+                                JsFunction jsFunction = toJsFunction(invokeContext, args);
                                 for (KeyValue kv : this) {
-                                    Object result = invokable.invoke(kv.value, kv.index);
+                                    Object result = jsFunction.invoke(kv.value, kv.index);
                                     if (Terms.isTruthy(result)) {
                                         results.add(kv.value);
                                     }
@@ -98,9 +98,9 @@ class JsArray extends JsObject {
                         return new JsFunction() {
                             @Override
                             public Object invoke(Object... args) {
-                                Invokable invokable = toInvokable(args);
+                                JsFunction jsFunction = toJsFunction(invokeContext, args);
                                 for (KeyValue kv : this) {
-                                    Object result = invokable.invoke(kv.value, kv.index);
+                                    Object result = jsFunction.invoke(kv.value, kv.index);
                                     if (Terms.isTruthy(result)) {
                                         return kv.value;
                                     }
@@ -112,9 +112,9 @@ class JsArray extends JsObject {
                         return new JsFunction() {
                             @Override
                             public Object invoke(Object... args) {
-                                Invokable invokable = toInvokable(args);
+                                JsFunction jsFunction = toJsFunction(invokeContext, args);
                                 for (KeyValue kv : this) {
-                                    Object result = invokable.invoke(kv.value, kv.index);
+                                    Object result = jsFunction.invoke(kv.value, kv.index);
                                     if (Terms.isTruthy(result)) {
                                         return kv.index;
                                     }
@@ -222,10 +222,10 @@ class JsArray extends JsObject {
                         return new JsFunction() {
                             @Override
                             public Object invoke(Object... args) {
-                                Invokable invokable = toInvokable(args);
+                                JsFunction fn = toJsFunction(invokeContext, args);
                                 for (KeyValue kv : this) {
-                                    invokeContext.iterationIndex = kv.index;
-                                    invokable.invoke(kv.value, kv.index, thisObject);
+                                    fn.invokeContext.iterationIndex = kv.index;
+                                    fn.invoke(kv.value, kv.index, thisObject);
                                 }
                                 return Terms.UNDEFINED;
                             }
@@ -257,9 +257,9 @@ class JsArray extends JsObject {
                                 if (thisArray.size() == 0) {
                                     return true;
                                 }
-                                Invokable invokable = toInvokable(args);
+                                JsFunction jsFunction = toJsFunction(invokeContext, args);
                                 for (KeyValue kv : this) {
-                                    Object result = invokable.invoke(kv.value, kv.index, thisArray);
+                                    Object result = jsFunction.invoke(kv.value, kv.index, thisArray);
                                     if (!Terms.isTruthy(result)) {
                                         return false;
                                     }
@@ -275,9 +275,9 @@ class JsArray extends JsObject {
                                 if (thisArray.size() == 0) {
                                     return false;
                                 }
-                                Invokable invokable = toInvokable(args);
+                                JsFunction jsFunction = toJsFunction(invokeContext, args);
                                 for (KeyValue kv : this) {
-                                    Object result = invokable.invoke(kv.value, kv.index, thisArray);
+                                    Object result = jsFunction.invoke(kv.value, kv.index, thisArray);
                                     if (Terms.isTruthy(result)) {
                                         return true;
                                     }
@@ -290,7 +290,7 @@ class JsArray extends JsObject {
                             @Override
                             public Object invoke(Object... args) {
                                 JsArray thisArray = asArray(thisObject);
-                                Invokable callback = toInvokable(args);
+                                JsFunction jsFunction = toJsFunction(invokeContext, args);
                                 if (thisArray.size() == 0 && args.length < 2) {
                                     throw new RuntimeException("reduce() called on empty array with no initial value");
                                 }
@@ -304,7 +304,7 @@ class JsArray extends JsObject {
                                 }
                                 for (int i = startIndex; i < thisArray.size(); i++) {
                                     Object currentValue = thisArray.get(i);
-                                    accumulator = callback.invoke(accumulator, currentValue, i, thisArray);
+                                    accumulator = jsFunction.invoke(accumulator, currentValue, i, thisArray);
                                 }
                                 return accumulator;
                             }
@@ -314,7 +314,7 @@ class JsArray extends JsObject {
                             @Override
                             public Object invoke(Object... args) {
                                 JsArray thisArray = asArray(thisObject);
-                                Invokable callback = toInvokable(args);
+                                JsFunction jsFunction = toJsFunction(invokeContext, args);
                                 if (thisArray.size() == 0 && args.length < 2) {
                                     throw new RuntimeException("reduceRight() called on empty array with no initial value");
                                 }
@@ -328,7 +328,7 @@ class JsArray extends JsObject {
                                 }
                                 for (int i = startIndex; i >= 0; i--) {
                                     Object currentValue = thisArray.get(i);
-                                    accumulator = callback.invoke(accumulator, currentValue, i, thisArray);
+                                    accumulator = jsFunction.invoke(accumulator, currentValue, i, thisArray);
                                 }
                                 return accumulator;
                             }
@@ -356,14 +356,11 @@ class JsArray extends JsObject {
                             @Override
                             public Object invoke(Object... args) {
                                 JsArray thisArray = asArray(thisObject);
-                                Invokable callback = toInvokable(args);
-                                if (callback == null) {
-                                    throw new RuntimeException("flatMap() requires a callback function");
-                                }
+                                JsFunction jsFunction = toJsFunction(invokeContext, args);
                                 List<Object> mappedResult = new ArrayList<>();
                                 int index = 0;
                                 for (Object item : thisArray.toList()) {
-                                    Object mapped = callback.invoke(item, index, thisArray);
+                                    Object mapped = jsFunction.invoke(item, index, thisArray);
                                     if (mapped instanceof List || mapped instanceof JsArray) {
                                         List<Object> nestedList;
                                         if (mapped instanceof JsArray) {
@@ -390,9 +387,9 @@ class JsArray extends JsObject {
                                     return list;
                                 }
                                 if (args.length > 0 && args[0] instanceof Invokable) {
-                                    Invokable compareFn = (Invokable) args[0];
+                                    JsFunction jsFunction = toJsFunction(invokeContext, args);
                                     list.sort((a, b) -> {
-                                        Object result = compareFn.invoke(a, b);
+                                        Object result = jsFunction.invoke(a, b);
                                         if (result instanceof Number) {
                                             return ((Number) result).intValue();
                                         }
@@ -720,10 +717,10 @@ class JsArray extends JsObject {
                                 if (size == 0 || args.length == 0) {
                                     return Terms.UNDEFINED;
                                 }
-                                Invokable invokable = toInvokable(args);
+                                JsFunction jsFunction = toJsFunction(invokeContext, args);
                                 for (int i = size - 1; i >= 0; i--) {
                                     Object value = thisArray.get(i);
-                                    Object result = invokable.invoke(value, i, thisArray);
+                                    Object result = jsFunction.invoke(value, i, thisArray);
                                     if (Terms.isTruthy(result)) {
                                         return value;
                                     }
@@ -740,10 +737,10 @@ class JsArray extends JsObject {
                                 if (size == 0 || args.length == 0) {
                                     return -1;
                                 }
-                                Invokable invokable = toInvokable(args);
+                                JsFunction jsFunction = toJsFunction(invokeContext, args);
                                 for (int i = size - 1; i >= 0; i--) {
                                     Object value = thisArray.get(i);
-                                    Object result = invokable.invoke(value, i, thisArray);
+                                    Object result = jsFunction.invoke(value, i, thisArray);
                                     if (Terms.isTruthy(result)) {
                                         return i;
                                     }
@@ -783,10 +780,10 @@ class JsArray extends JsObject {
                                 if (args.length == 0) {
                                     return new JsObject();
                                 }
-                                Invokable callbackFn = toInvokable(args);
+                                JsFunction jsFunction = toJsFunction(invokeContext, args);
                                 Map<String, List<Object>> groups = new HashMap<>();
                                 for (KeyValue kv : this) {
-                                    Object key = callbackFn.invoke(kv.value, kv.index, thisArray);
+                                    Object key = jsFunction.invoke(kv.value, kv.index, thisArray);
                                     String keyStr = key == null ? "null" : key.toString();
                                     if (!groups.containsKey(keyStr)) {
                                         groups.put(keyStr, new ArrayList<>());
@@ -885,13 +882,6 @@ class JsArray extends JsObject {
             list.add(index, map.get(index + ""));
         }
         return new JsArray(list);
-    }
-
-    static Invokable toInvokable(Object[] args) {
-        if (args.length != 0 && args[0] instanceof Invokable) {
-            return (Invokable) args[0];
-        }
-        throw new RuntimeException("function expected");
     }
 
     @SuppressWarnings("unchecked")

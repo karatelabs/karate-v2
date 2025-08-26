@@ -160,6 +160,7 @@ public class Context {
             return true;
         }
         switch (name) {
+            case "this":
             case "console":
             case "parseInt":
             case "undefined":

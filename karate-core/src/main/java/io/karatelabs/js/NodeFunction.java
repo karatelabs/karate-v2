@@ -57,16 +57,22 @@ class NodeFunction extends JsFunction {
 
     @Override
     public Object invoke(Object... args) {
-        Context childContext = new Context(declaredContext, node) {
+        if (invokeContext == null) { // static methods e.g. Array.from(), Function.call()
+            invokeContext = declaredContext;
+        }
+        Context childContext = new Context(invokeContext, node) {
             @Override
             public Object get(String name) {
                 if ("arguments".equals(name)) {
                     return Arrays.asList(args);
                 }
-                return super.get(name);
+                if (super.hasKey(name)) { // invoke context
+                    return super.get(name);
+                }
+                return declaredContext.get(name);
             }
         };
-        childContext.thisObject = arrow ? declaredContext.thisObject : thisObject;
+        childContext.thisObject = arrow ? invokeContext.thisObject : thisObject;
         int actualArgCount = Math.min(args.length, argCount);
         for (int i = 0; i < actualArgCount; i++) {
             String name = argNames.get(i);
@@ -89,7 +95,7 @@ class NodeFunction extends JsFunction {
         Object result = Interpreter.eval(body, childContext);
         // exit function, only propagate error
         if (childContext.isError()) {
-            declaredContext.updateFrom(childContext);
+            invokeContext.updateFrom(childContext);
         }
         return body.type == NodeType.BLOCK ? childContext.getReturnValue() : result;
     }

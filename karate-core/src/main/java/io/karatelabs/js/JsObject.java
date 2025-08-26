@@ -246,4 +246,26 @@ class JsObject implements ObjectLike, Invokable, Iterable<KeyValue> {
         };
     }
 
+    JsFunction toJsFunction(Context context, Object[] args) {
+        if (args.length == 0) {
+            throw new RuntimeException("function expected");
+        }
+        if (args[0] instanceof JsFunction) {
+            JsFunction fn = (JsFunction) args[0];
+            fn.invokeContext = context;
+            return fn;
+        }
+        if (args[0] instanceof Invokable) {
+            JsFunction fn = new JsFunction() {
+                @Override
+                public Object invoke(Object... invokeArgs) {
+                    return ((Invokable) args[0]).invoke(invokeArgs);
+                }
+            };
+            fn.invokeContext = context;
+            return fn;
+        }
+        throw new RuntimeException("function expected");
+    }
+
 }

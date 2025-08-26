@@ -203,9 +203,9 @@ class Interpreter {
     }
 
     @SuppressWarnings("unchecked")
-    private static Object evalFnCall(Node node, Context context) {
-        Node fnArgsNode = node.children.size() > 1 ? node.children.get(2) : null;
-        node = node.children.get(0);
+    private static Object evalFnCall(Node fnNode, Context context) {
+        Node fnArgsNode = fnNode.children.size() > 1 ? fnNode.children.get(2) : null;
+        Node node = fnNode.children.get(0);
         JsProperty prop = new JsProperty(node, context, true);
         Object o = prop.get();
         if (o == Terms.UNDEFINED) { // optional chaining
@@ -234,22 +234,28 @@ class Interpreter {
             }
         }
         Object[] args = argsList.toArray();
+        JsFunction jsFunction;
+        if (invokable instanceof JsFunction) {
+            jsFunction = (JsFunction) invokable;
+            jsFunction.invokeContext = new Context(context, fnNode);
+            if (prop.object != null) {
+                jsFunction.thisObject = prop.object;
+            }
+        } else {
+            jsFunction = null;
+        }
         if (context.construct) { // new keyword
             context.construct = false;
             Object result = invokable.invoke(args);
             return Terms.isPrimitive(result) ? invokable : result;
         } else { // normal function call
-            if (invokable instanceof JsFunction) {
-                JsFunction jsFunction = (JsFunction) invokable;
-                jsFunction.invokeContext = context;
-                if (prop.object != null) {
-                    jsFunction.thisObject = prop.object;
-                }
-                if (context.listener != null) {
-                    context.listener.onFunctionCallEnter(context, node, jsFunction, args);
-                }
+            if (jsFunction != null && context.listener != null) {
+                context.listener.onFunctionCallEnter(jsFunction.invokeContext, fnNode, jsFunction, args);
             }
             Object result = invokable.invoke(args);
+            if (jsFunction != null) {
+                context.updateFrom(jsFunction.invokeContext);
+            }
             if (result instanceof JavaMirror) {
                 return ((JavaMirror) result).toJava();
             }

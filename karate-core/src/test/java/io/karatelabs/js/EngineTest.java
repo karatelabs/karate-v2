@@ -190,9 +190,9 @@ class EngineTest {
         ContextListener listener = new ContextListener() {
             @Override
             public void onFunctionCallEnter(Context context, Node node, JsFunction fn, Object[] args) {
-                Token token = node.getLastToken();
-                if (token.type == TokenType.IDENT && token.text.equals("push")) {
-                    sb.append(context.parent.getIterationIndex()).append(":").append(args[0]).append("|");
+                Node temp = node.findFirst(NodeType.REF_DOT_EXPR);
+                if (temp != null && "b.push".equals(temp.getText())) {
+                    sb.append(context.parent.parent.getIterationIndex()).append(":").append(args[0]).append("|");
                 }
             }
         };
