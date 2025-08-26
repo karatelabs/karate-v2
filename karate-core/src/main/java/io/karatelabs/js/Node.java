@@ -87,16 +87,7 @@ public class Node {
         if (isToken()) {
             return token.text;
         }
-        StringBuilder sb = new StringBuilder();
-        sb.append(type).append("[");
-        for (int i = 0; i < children.size(); i++) {
-            if (i != 0) {
-                sb.append(' ');
-            }
-            sb.append(children.get(i).toStringWithoutType());
-        }
-        sb.append("]");
-        return sb.toString();
+        return "[" + type + "] " + getTextIncludingWhitespace();
     }
 
     String toStringWithoutType() {
@@ -174,6 +165,16 @@ public class Node {
             sb.append(child.getText());
         }
         return sb.toString();
+    }
+
+    public String getTextIncludingWhitespace() {
+        if (isToken()) {
+            return token.text;
+        }
+        int start = (int) getFirstToken().pos;
+        Token last = getLastToken();
+        int end = ((int) last.pos) + last.text.length();
+        return last.resource.getText().substring(start, end);
     }
 
 }

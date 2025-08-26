@@ -35,13 +35,15 @@ class NodeFunction extends JsFunction {
     static final Logger logger = LoggerFactory.getLogger(NodeFunction.class);
 
     final boolean arrow;
+    final Node node;
     final Node body; // STATEMENT or BLOCK (that may return expr)
     final List<String> argNames;
     final int argCount;
     final Context declaredContext;
 
-    public NodeFunction(boolean arrow, List<String> argNames, Node body, Context context) {
+    public NodeFunction(boolean arrow, Node node, List<String> argNames, Node body, Context context) {
         this.arrow = arrow;
+        this.node = node;
         this.argNames = argNames;
         this.argCount = argNames.size();
         this.body = body;
@@ -49,11 +51,22 @@ class NodeFunction extends JsFunction {
     }
 
     @Override
+    public Node getNode() {
+        return node;
+    }
+
+    @Override
     public Object invoke(Object... args) {
-        Context childContext = declaredContext.merge(invokeContext);
-        if (!childContext.hasKey("arguments")) {
-            childContext.put("arguments", Arrays.asList(args));
-        }
+        Context childContext = new Context(declaredContext, body) {
+            @Override
+            public Object get(String name) {
+                if ("arguments".equals(name)) {
+                    return Arrays.asList(args);
+                }
+                return super.get(name);
+            }
+        };
+        childContext.thisObject = arrow ? declaredContext.thisObject : thisObject;
         int actualArgCount = Math.min(args.length, argCount);
         for (int i = 0; i < actualArgCount; i++) {
             String name = argNames.get(i);
@@ -73,16 +86,7 @@ class NodeFunction extends JsFunction {
                 childContext.put(name, Terms.UNDEFINED);
             }
         }
-        if (!arrow) {
-            childContext.put("this", thisObject);
-        }
-        if (logger.isTraceEnabled()) {
-            logger.trace(">> {}", this);
-        }
         Object result = Interpreter.eval(body, childContext);
-        if (logger.isTraceEnabled()) {
-            logger.trace("<< {} | {}", result, this);
-        }
         // exit function, only propagate error
         if (invokeContext != null && childContext.isError()) {
             invokeContext.updateFrom(childContext);

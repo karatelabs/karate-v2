@@ -34,36 +34,35 @@ public class Context {
 
     static final Logger logger = LoggerFactory.getLogger(Context.class);
 
-    static final Context EMPTY = new Context(null, Collections.emptyMap(), null);
+    static final Context EMPTY = new Context(null, Collections.emptyMap());
 
     static final Object NAN = Double.NaN;
 
     public final Context parent;
-    private final Context caller;
+    Node node;
     final Map<String, Object> bindings;
 
+    Object thisObject = Terms.UNDEFINED;
+    Context child;
     Consumer<String> onConsoleLog;
     ContextListener listener;
 
-    private Context(Context parent, Map<String, Object> bindings, Context caller) {
+    Context(Context parent, Map<String, Object> bindings) {
         this.parent = parent;
         this.bindings = bindings;
-        this.caller = caller;
         if (parent != null) {
             listener = parent.listener;
+            parent.child = this;
         }
     }
 
     static Context root() {
-        return new Context(null, new HashMap<>(), null);
+        return new Context(null, new HashMap<>());
     }
 
-    Context(Context parent) {
-        this(parent, new HashMap<>(), null);
-    }
-
-    Context merge(Context caller) {
-        return new Context(this, new HashMap<>(), caller);
+    Context(Context parent, Node node) {
+        this(parent, new HashMap<>());
+        this.node = node;
     }
 
     public void setOnConsoleLog(Consumer<String> onConsoleLog) {
@@ -75,12 +74,16 @@ public class Context {
         this.listener = listener;
     }
 
+    public Node getNode() {
+        return node;
+    }
+
     public Object get(String name) {
+        if ("this".equals(name)) {
+            return thisObject;
+        }
         if (bindings.containsKey(name)) {
             return bindings.get(name);
-        }
-        if (caller != null && caller.hasKey(name)) {
-            return caller.get(name);
         }
         if (parent != null && parent.hasKey(name)) {
             return parent.get(name);
@@ -103,8 +106,6 @@ public class Context {
     void update(String name, Object value) {
         if (bindings.containsKey(name)) {
             bindings.put(name, value);
-        } else if (caller != null && caller.hasKey(name)) {
-            caller.update(name, value);
         } else if (parent != null && parent.hasKey(name)) {
             parent.update(name, value);
         } else {
@@ -154,9 +155,6 @@ public class Context {
 
     boolean hasKey(String name) {
         if (bindings.containsKey(name)) {
-            return true;
-        }
-        if (caller != null && caller.hasKey(name)) {
             return true;
         }
         if (parent != null && parent.hasKey(name)) {
@@ -322,6 +320,16 @@ public class Context {
         exitType = childContext.exitType;
         errorThrown = childContext.errorThrown;
         returnValue = childContext.returnValue;
+    }
+
+    public String getPath() {
+        String parentPath = parent == null ? null : parent.getPath();
+        return parentPath == null ? node.type.toString() : parentPath + ":" + node.type;
+    }
+
+    @Override
+    public String toString() {
+        return getPath();
     }
 
 }

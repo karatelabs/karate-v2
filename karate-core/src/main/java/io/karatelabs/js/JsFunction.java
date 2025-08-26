@@ -38,6 +38,10 @@ public abstract class JsFunction extends JsObject {
         return name;
     }
 
+    public Node getNode() {
+        return null;
+    }
+
     @Override
     Prototype initPrototype() {
         Prototype wrapped = super.initPrototype();

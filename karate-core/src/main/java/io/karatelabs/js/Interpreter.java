@@ -271,25 +271,25 @@ class Interpreter {
 
     private static Object evalFnExpr(Node node, Context context) {
         if (node.children.get(1).token.type == IDENT) {
-            NodeFunction nodeFunction = new NodeFunction(false, argNames(node.children.get(3)), node.children.get(5), context);
+            NodeFunction nodeFunction = new NodeFunction(false, node, argNames(node.children.get(3)), node.children.get(5), context);
             context.put(node.children.get(1).getText(), nodeFunction);
             return nodeFunction;
         } else {
-            return new NodeFunction(false, argNames(node.children.get(2)), node.children.get(4), context);
+            return new NodeFunction(false, node, argNames(node.children.get(2)), node.children.get(4), context);
         }
     }
 
     private static Object evalFnArrowExpr(Node node, Context context) {
         if (node.children.get(0).token.type == IDENT) {
             String argName = node.children.get(0).getText();
-            return new NodeFunction(true, Collections.singletonList(argName), node.children.get(2), context);
+            return new NodeFunction(true, node, Collections.singletonList(argName), node.children.get(2), context);
         } else {
-            return new NodeFunction(true, argNames(node.children.get(1)), node.children.get(4), context);
+            return new NodeFunction(true, node, argNames(node.children.get(1)), node.children.get(4), context);
         }
     }
 
     private static Object evalForStmt(Node node, Context context) {
-        Context forContext = new Context(context);
+        Context forContext = new Context(context, node);
         Node forBody = node.children.get(node.children.size() - 1);
         Object forResult = null;
         if (node.children.get(2).token.type == SEMI) {
@@ -687,7 +687,7 @@ class Interpreter {
                 finallyBlock = node.children.get(8);
             }
             if (context.isError()) {
-                Context catchContext = new Context(context);
+                Context catchContext = new Context(context, node);
                 if (node.children.get(3).token.type == L_PAREN) {
                     String errorName = node.children.get(4).getText();
                     catchContext.put(errorName, context.getErrorThrown());
@@ -704,7 +704,7 @@ class Interpreter {
             finallyBlock = node.children.get(3);
         }
         if (finallyBlock != null) {
-            Context finallyContext = new Context(context);
+            Context finallyContext = new Context(context, node);
             eval(finallyBlock, finallyContext);
             if (finallyContext.isError()) {
                 throw new RuntimeException("finally block threw error: " + finallyContext.getErrorThrown());
@@ -744,7 +744,7 @@ class Interpreter {
     }
 
     private static Object evalWhileStmt(Node node, Context context) {
-        Context whileContext = new Context(context);
+        Context whileContext = new Context(context, node);
         Node whileBody = node.children.get(node.children.size() - 1);
         Node whileExpr = node.children.get(2);
         Object whileResult = null;
@@ -767,7 +767,7 @@ class Interpreter {
     }
 
     private static Object evalDoWhileStmt(Node node, Context context) {
-        Context doContext = new Context(context);
+        Context doContext = new Context(context, node);
         Node doBody = node.children.get(1);
         Node doExpr = node.children.get(4);
         Object doResult;

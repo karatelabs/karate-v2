@@ -38,12 +38,8 @@ public class Engine {
 
     public final Context context;
 
-    private Engine(Context context) {
-        this.context = context;
-    }
-
     public Engine() {
-        this(Context.root());
+        this.context = Context.root();
     }
 
     public Object eval(Resource resource) {
@@ -70,13 +66,8 @@ public class Engine {
         try {
             JsParser parser = new JsParser(resource);
             Node node = parser.parse();
-            Context evalContext;
-            if (localVars == null) {
-                evalContext = context;
-            } else {
-                evalContext = new Context(context);
-                evalContext.bindings.putAll(localVars);
-            }
+            Context evalContext = localVars == null ? context : new Context(context, localVars);
+            evalContext.node = node;
             Object result = Interpreter.eval(node, evalContext);
             if (result instanceof JavaMirror) {
                 return ((JavaMirror) result).toJava();
