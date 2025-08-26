@@ -36,8 +36,6 @@ public class Context {
 
     static final Context EMPTY = new Context(null, Collections.emptyMap());
 
-    static final Object NAN = Double.NaN;
-
     public final Context parent;
     Node node;
     final Map<String, Object> bindings;

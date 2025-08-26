@@ -44,6 +44,8 @@ public class Terms {
     static final Number POSITIVE_ZERO = 0;
     static final Number NEGATIVE_ZERO = -0.0;
 
+    static final Object NAN = Double.NaN;
+
     final Number lhs;
     final Number rhs;
 
