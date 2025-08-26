@@ -61,6 +61,7 @@ public class Context {
     Context(Context parent, Node node) {
         this(parent, new HashMap<>());
         this.node = node;
+        this.thisObject = parent.thisObject;
     }
 
     public void setOnConsoleLog(Consumer<String> onConsoleLog) {
@@ -322,7 +323,8 @@ public class Context {
 
     public String getPath() {
         String parentPath = parent == null ? null : parent.getPath();
-        return parentPath == null ? node.type.toString() : parentPath + ":" + node.type;
+        String suffix = iterationIndex == -1 ? "" : "[" + iterationIndex + "]";
+        return parentPath == null ? node.type + suffix : parentPath + ":" + node.type + suffix;
     }
 
     @Override

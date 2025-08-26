@@ -142,6 +142,18 @@ class Interpreter {
         return context.stopAndContinue();
     }
 
+    @SuppressWarnings("unchecked")
+    private static Object evalDeleteStmt(Node node, Context context) {
+        JsProperty prop = new JsProperty(node.children.get(1).children.get(0), context);
+        String key = prop.name == null ? prop.index + "" : prop.name;
+        if (prop.object instanceof Map) {
+            ((Map<String, Object>) prop.object).remove(key);
+        } else if (prop.object instanceof ObjectLike) {
+            ((ObjectLike) prop.object).remove(key);
+        }
+        return true;
+    }
+
     private static Object evalExpr(Node node, Context context) {
         node = node.children.get(0);
         if (context.listener != null) {
@@ -172,18 +184,6 @@ class Interpreter {
             }
         }
         return result;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Object evalDeleteStmt(Node node, Context context) {
-        JsProperty prop = new JsProperty(node.children.get(1).children.get(0), context);
-        String key = prop.name == null ? prop.index + "" : prop.name;
-        if (prop.object instanceof Map) {
-            ((Map<String, Object>) prop.object).remove(key);
-        } else if (prop.object instanceof ObjectLike) {
-            ((ObjectLike) prop.object).remove(key);
-        }
-        return true;
     }
 
     private static Invokable toInvokable(Object o) {
@@ -234,29 +234,17 @@ class Interpreter {
             }
         }
         Object[] args = argsList.toArray();
-        Object thisObject;
-        JsFunction jsFunction;
-        if (invokable instanceof JsFunction) {
-            jsFunction = (JsFunction) invokable;
-            jsFunction.invokeContext = context;
-        } else {
-            jsFunction = null;
-        }
         if (context.construct) { // new keyword
             context.construct = false;
-            thisObject = invokable;
-            if (jsFunction != null) {
-                jsFunction.thisObject = thisObject;
-            }
             Object result = invokable.invoke(args);
-            if (Terms.isPrimitive(result)) {
-                return thisObject;
-            }
-            return result;
+            return Terms.isPrimitive(result) ? invokable : result;
         } else { // normal function call
-            thisObject = prop.object == null ? invokable : prop.object;
-            if (jsFunction != null) {
-                jsFunction.thisObject = thisObject;
+            if (invokable instanceof JsFunction) {
+                JsFunction jsFunction = (JsFunction) invokable;
+                jsFunction.invokeContext = context;
+                if (prop.object != null) {
+                    jsFunction.thisObject = prop.object;
+                }
                 if (context.listener != null) {
                     context.listener.onFunctionCallEnter(context, node, jsFunction, args);
                 }
@@ -803,10 +791,10 @@ class Interpreter {
                 return evalContinueStmt(node, context);
             case DELETE_STMT:
                 return evalDeleteStmt(node, context);
-            case EXPR_LIST:
-                return evalExprList(node, context);
             case EXPR:
                 return evalExpr(node, context);
+            case EXPR_LIST:
+                return evalExprList(node, context);
             case LIT_EXPR:
                 return eval(node.children.get(0), context);
             case FN_EXPR:

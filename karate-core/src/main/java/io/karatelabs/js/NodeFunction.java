@@ -57,7 +57,7 @@ class NodeFunction extends JsFunction {
 
     @Override
     public Object invoke(Object... args) {
-        Context childContext = new Context(declaredContext, body) {
+        Context childContext = new Context(declaredContext, node) {
             @Override
             public Object get(String name) {
                 if ("arguments".equals(name)) {
@@ -88,8 +88,8 @@ class NodeFunction extends JsFunction {
         }
         Object result = Interpreter.eval(body, childContext);
         // exit function, only propagate error
-        if (invokeContext != null && childContext.isError()) {
-            invokeContext.updateFrom(childContext);
+        if (childContext.isError()) {
+            declaredContext.updateFrom(childContext);
         }
         return body.type == NodeType.BLOCK ? childContext.getReturnValue() : result;
     }
