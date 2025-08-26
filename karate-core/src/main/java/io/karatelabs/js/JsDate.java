@@ -368,7 +368,6 @@ class JsDate extends JsObject implements JavaMirror {
                 int hours = args[3] instanceof Number ? ((Number) args[3]).intValue() : 0;
                 int minutes = args[4] instanceof Number ? ((Number) args[4]).intValue() : 0;
                 int seconds = args[5] instanceof Number ? ((Number) args[5]).intValue() : 0;
-
                 if (args.length >= 7) {
                     int ms = args[6] instanceof Number ? ((Number) args[6]).intValue() : 0;
                     return new JsDate(year, month, day, hours, minutes, seconds, ms);
