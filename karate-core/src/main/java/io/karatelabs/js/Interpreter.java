@@ -294,22 +294,26 @@ class Interpreter {
                 // rare no-condition case: "for(init;;increment)"
             } else {
                 Node forAfter = node.children.get(6).token.type == R_PAREN ? null : node.children.get(6);
+                int index = -1;
                 while (true) {
+                    index++;
+                    forContext.iterationIndex = index;
                     Object forCondition = eval(node.children.get(4), forContext);
-                    if (!Terms.isTruthy(forCondition)) {
-                        break;
-                    }
-                    forResult = eval(forBody, forContext);
-                    if (forContext.isStopped()) {
-                        if (forContext.isContinuing()) {
-                            forContext.reset();
-                        } else { // break, return or throw
-                            context.updateFrom(forContext);
-                            break;
+                    if (Terms.isTruthy(forCondition)) {
+                        forResult = eval(forBody, forContext);
+                        if (forContext.isStopped()) {
+                            if (forContext.isContinuing()) {
+                                forContext.reset();
+                            } else { // break, return or throw
+                                context.updateFrom(forContext);
+                                break;
+                            }
                         }
-                    }
-                    if (forAfter != null) {
-                        eval(forAfter, forContext);
+                        if (forAfter != null) {
+                            eval(forAfter, forContext);
+                        }
+                    } else {
+                        break;
                     }
                 }
             }
@@ -323,7 +327,10 @@ class Interpreter {
             } else {
                 varName = node.children.get(2).getText();
             }
+            int index = -1;
             for (KeyValue kv : iterable) {
+                index++;
+                forContext.iterationIndex = index;
                 if (in) {
                     forContext.put(varName, kv.key);
                 } else {

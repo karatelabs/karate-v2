@@ -215,4 +215,45 @@ class EngineTest {
         assertEquals("0:a|1:b|2:c|", sb.toString());
     }
 
+    @Test
+    void testForLoopIterationTracking() {
+        Engine engine = new Engine();
+        StringBuilder sb = new StringBuilder();
+        ContextListener listener = new ContextListener() {
+            @Override
+            public void onFunctionCallEnter(Context context, Node node, JsFunction fn, Object[] args) {
+                Node temp = node.findFirst(NodeType.REF_DOT_EXPR);
+                if (temp != null && "b.push".equals(temp.getText())) {
+                    sb.append(context.parent.getIterationIndex()).append(":").append(args[0]).append("|");
+                }
+            }
+        };
+        engine.context.setListener(listener);
+        engine.eval( """
+                var a = [1, 2, 3];
+                var b = [];
+                for (var i = 0; i < a.length; i++) b.push(a[i]);
+                """);
+        assertEquals(List.of(1, 2, 3), engine.get("b"));
+        assertEquals("0:1|1:2|2:3|", sb.toString());
+        //====
+        sb.setLength(0);
+        engine.eval("""
+                var a = { a: 1, b: 2, c: 3 };
+                var b = [];
+                for (x in a) b.push(x);
+                """);
+        assertEquals(List.of("a", "b", "c"), engine.get("b"));
+        assertEquals("0:a|1:b|2:c|", sb.toString());
+        //====
+        sb.setLength(0);
+        engine.eval("""
+                var a = { a: 1, b: 2, c: 3 };
+                var b = [];
+                for (x of a) b.push(x);
+                """);
+        assertEquals(List.of(1, 2, 3), engine.get("b"));
+        assertEquals("0:1|1:2|2:3|", sb.toString());
+    }
+
 }
