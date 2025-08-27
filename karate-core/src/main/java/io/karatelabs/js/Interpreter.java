@@ -265,20 +265,20 @@ class Interpreter {
 
     private static Object evalFnExpr(Node node, Context context) {
         if (node.children.get(1).token.type == IDENT) {
-            NodeFunction nodeFunction = new NodeFunction(false, node, argNames(node.children.get(3)), node.children.get(5), context);
-            context.put(node.children.get(1).getText(), nodeFunction);
-            return nodeFunction;
+            JsFunctionNode fn = new JsFunctionNode(false, node, argNames(node.children.get(3)), node.children.get(5), context);
+            context.put(node.children.get(1).getText(), fn);
+            return fn;
         } else {
-            return new NodeFunction(false, node, argNames(node.children.get(2)), node.children.get(4), context);
+            return new JsFunctionNode(false, node, argNames(node.children.get(2)), node.children.get(4), context);
         }
     }
 
     private static Object evalFnArrowExpr(Node node, Context context) {
         if (node.children.get(0).token.type == IDENT) {
             String argName = node.children.get(0).getText();
-            return new NodeFunction(true, node, Collections.singletonList(argName), node.children.get(2), context);
+            return new JsFunctionNode(true, node, Collections.singletonList(argName), node.children.get(2), context);
         } else {
-            return new NodeFunction(true, node, argNames(node.children.get(1)), node.children.get(4), context);
+            return new JsFunctionNode(true, node, argNames(node.children.get(1)), node.children.get(4), context);
         }
     }
 

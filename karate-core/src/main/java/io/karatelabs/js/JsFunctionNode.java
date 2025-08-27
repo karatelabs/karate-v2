@@ -30,9 +30,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-class NodeFunction extends JsFunction {
+class JsFunctionNode extends JsFunction {
 
-    static final Logger logger = LoggerFactory.getLogger(NodeFunction.class);
+    static final Logger logger = LoggerFactory.getLogger(JsFunctionNode.class);
 
     final boolean arrow;
     final Node node;
@@ -41,7 +41,7 @@ class NodeFunction extends JsFunction {
     final int argCount;
     final Context declaredContext;
 
-    public NodeFunction(boolean arrow, Node node, List<String> argNames, Node body, Context context) {
+    public JsFunctionNode(boolean arrow, Node node, List<String> argNames, Node body, Context context) {
         this.arrow = arrow;
         this.node = node;
         this.argNames = argNames;
@@ -102,22 +102,7 @@ class NodeFunction extends JsFunction {
 
     @Override
     public String toString() {
-        String args = String.join(",", argNames);
-        Object name = get("name");
-        StringBuilder sb = new StringBuilder();
-        if (arrow) {
-            if (name != null) {
-                sb.append(name).append(" ");
-            }
-            sb.append("(").append(args).append(") => {}");
-        } else {
-            sb.append("function");
-            if (name != null) {
-                sb.append(" ").append(name);
-            }
-            sb.append("(").append(args).append(") {}");
-        }
-        return sb.toString();
+        return node.toString();
     }
 
 }
