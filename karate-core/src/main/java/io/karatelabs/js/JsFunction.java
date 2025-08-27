@@ -34,10 +34,6 @@ public abstract class JsFunction extends JsObject {
     String name;
     Context invokeContext;
 
-    public String getName() {
-        return name;
-    }
-
     public Node getNode() {
         return null;
     }
