@@ -190,8 +190,7 @@ class EngineTest {
         ContextListener listener = new ContextListener() {
             @Override
             public void onFunctionCallEnter(Context context, Node node, JsFunction fn, Object[] args) {
-                Node temp = node.findFirst(NodeType.REF_DOT_EXPR);
-                if (temp != null && "b.push".equals(temp.getText())) {
+                if (node.type == NodeType.REF_DOT_EXPR && "b.push".equals(node.getText())) {
                     sb.append(context.parent.parent.getIterationIndex()).append(":").append(args[0]).append("|");
                 }
             }
@@ -222,8 +221,7 @@ class EngineTest {
         ContextListener listener = new ContextListener() {
             @Override
             public void onFunctionCallEnter(Context context, Node node, JsFunction fn, Object[] args) {
-                Node temp = node.findFirst(NodeType.REF_DOT_EXPR);
-                if (temp != null && "b.push".equals(temp.getText())) {
+                if (node.type == NodeType.REF_DOT_EXPR && "b.push".equals(node.getText())) {
                     sb.append(context.parent.getIterationIndex()).append(":").append(args[0]).append("|");
                 }
             }

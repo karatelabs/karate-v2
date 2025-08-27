@@ -92,15 +92,9 @@ public class Context {
     }
 
     public String getPath() {
-        String prefix = (parent == null) ? null : parent.getPath();
-        String suffix = node.type == NodeType.PROGRAM ? null : node.type.toString();
-        if (iterationIndex != -1) {
-            suffix += "[" + iterationIndex + "]";
-        }
-        if (prefix == null) {
-            return suffix;
-        }
-        return prefix + "." + suffix;
+        String prefix = (parent == null || parent.node.type == NodeType.PROGRAM) ? null : parent.getPath();
+        String suffix = node.type + (iterationIndex == -1 ? "" : "[" + iterationIndex + "]");
+        return prefix == null ? suffix : prefix + "." + suffix;
     }
 
     @Override
