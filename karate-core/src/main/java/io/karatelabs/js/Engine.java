@@ -66,7 +66,13 @@ public class Engine {
         try {
             JsParser parser = new JsParser(resource);
             Node node = parser.parse();
-            Context evalContext = localVars == null ? context : new Context(context, localVars);
+            Context evalContext;
+            if (localVars == null) {
+                evalContext = context;
+            } else {
+                evalContext = new Context(context);
+                evalContext.setBindings(localVars);
+            }
             evalContext.node = node;
             Object result = Interpreter.eval(node, evalContext);
             if (result instanceof JavaMirror) {

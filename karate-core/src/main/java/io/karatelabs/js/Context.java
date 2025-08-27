@@ -27,27 +27,30 @@ import net.minidev.json.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 public class Context {
 
     static final Logger logger = LoggerFactory.getLogger(Context.class);
 
-    static final Context EMPTY = new Context(null, Collections.emptyMap());
+    static final Context EMPTY = new Context(null);
 
     public final Context parent;
-    Node node;
-    final Map<String, Object> bindings;
 
+    private Map<String, Object> _bindings;
+
+    Node node;
     Object thisObject = Terms.UNDEFINED;
     Context child;
     Consumer<String> onConsoleLog;
     ContextListener listener;
 
-    Context(Context parent, Map<String, Object> bindings) {
+    Context(Context parent) {
         this.parent = parent;
-        this.bindings = bindings;
         if (parent != null) {
             listener = parent.listener;
             parent.child = this;
@@ -55,18 +58,18 @@ public class Context {
     }
 
     static Context root() {
-        return new Context(null, new HashMap<>());
+        return new Context(null);
     }
 
     Context(Context parent, Node node) {
-        this(parent, new HashMap<>());
+        this(parent);
         this.node = node;
         this.thisObject = parent.thisObject;
     }
 
     public void setOnConsoleLog(Consumer<String> onConsoleLog) {
         this.onConsoleLog = onConsoleLog;
-        bindings.put("console", createConsole());
+        putBinding("console", createConsole());
     }
 
     public void setListener(ContextListener listener) {
@@ -77,19 +80,30 @@ public class Context {
         return node;
     }
 
+    void setBindings(Map<String, Object> bindings) {
+        this._bindings = bindings;
+    }
+
+    void putBinding(String key, Object value) {
+        if (_bindings == null) {
+            _bindings = new HashMap<>();
+        }
+        _bindings.put(key, value);
+    }
+
     public Object get(String name) {
         if ("this".equals(name)) {
             return thisObject;
         }
-        if (bindings.containsKey(name)) {
-            return bindings.get(name);
+        if (_bindings != null && _bindings.containsKey(name)) {
+            return _bindings.get(name);
         }
         if (parent != null && parent.hasKey(name)) {
             return parent.get(name);
         }
         Object global = getGlobal(name);
         if (global != null) {
-            bindings.put(name, global);
+            putBinding(name, global);
             return global;
         }
         return Terms.UNDEFINED;
@@ -99,16 +113,16 @@ public class Context {
         if (value instanceof JsFunction) {
             ((JsFunction) value).name = name;
         }
-        bindings.put(name, value);
+        putBinding(name, value);
     }
 
     void update(String name, Object value) {
-        if (bindings.containsKey(name)) {
-            bindings.put(name, value);
+        if (_bindings != null && _bindings.containsKey(name)) {
+            _bindings.put(name, value);
         } else if (parent != null && parent.hasKey(name)) {
             parent.update(name, value);
         } else {
-            bindings.put(name, value);
+            putBinding(name, value);
             if (listener != null) {
                 listener.onVariableWrite(this, name, value);
             }
@@ -116,7 +130,9 @@ public class Context {
     }
 
     void remove(String name) {
-        bindings.remove(name);
+        if (_bindings != null) {
+            _bindings.remove(name);
+        }
     }
 
     private ObjectLike createConsole() {
@@ -153,7 +169,7 @@ public class Context {
     }
 
     boolean hasKey(String name) {
-        if (bindings.containsKey(name)) {
+        if (_bindings != null && _bindings.containsKey(name)) {
             return true;
         }
         if (parent != null && parent.hasKey(name)) {

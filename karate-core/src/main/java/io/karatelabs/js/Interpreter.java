@@ -155,12 +155,11 @@ class Interpreter {
     }
 
     private static Object evalExpr(Node node, Context context) {
-        node = node.children.get(0);
         if (context.listener != null) {
             context.listener.onExpressionEnter(context, node);
         }
         try {
-            Object result = eval(node, context);
+            Object result = eval(node.children.get(0), context);
             if (context.listener != null) {
                 context.listener.onExpressionExit(context, node, result);
             }

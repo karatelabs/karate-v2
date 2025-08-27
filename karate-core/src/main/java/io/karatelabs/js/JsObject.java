@@ -28,14 +28,15 @@ import java.util.*;
 class JsObject implements ObjectLike, Invokable, Iterable<KeyValue> {
 
     Object thisObject = this; // will be updated in Interpreter.evalFnCall()
-    private final Map<String, Object> map;
+
+    private Map<String, Object> _map;
 
     JsObject(Map<String, Object> map) {
-        this.map = map;
+        this._map = map;
     }
 
     JsObject() {
-        this(new LinkedHashMap<>());
+        this(null);
     }
 
     private Prototype _prototype;
@@ -147,8 +148,8 @@ class JsObject implements ObjectLike, Invokable, Iterable<KeyValue> {
 
     @Override
     public Object get(String name) {
-        if (map.containsKey(name)) {
-            return map.get(name);
+        if (_map != null && _map.containsKey(name)) {
+            return _map.get(name);
         }
         if ("prototype".equals(name)) {
             return getPrototype();
@@ -158,17 +159,22 @@ class JsObject implements ObjectLike, Invokable, Iterable<KeyValue> {
 
     @Override
     public void put(String name, Object value) {
-        map.put(name, value);
+        if (_map == null) {
+            _map = new LinkedHashMap<>();
+        }
+        _map.put(name, value);
     }
 
     @Override
     public void remove(String name) {
-        map.remove(name);
+        if (_map != null) {
+            _map.remove(name);
+        }
     }
 
     @Override
     public Map<String, Object> toMap() {
-        return map;
+        return _map == null ? Collections.emptyMap() : _map;
     }
 
     @Override
