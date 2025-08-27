@@ -39,8 +39,6 @@ public class Context {
 
     static final Context EMPTY = new Context(null);
 
-    public final Context parent;
-
     private Map<String, Object> _bindings;
 
     Node node;
@@ -54,6 +52,9 @@ public class Context {
         if (parent != null) {
             listener = parent.listener;
             parent.child = this;
+            depth = parent.depth + 1;
+        } else {
+            depth = 0;
         }
     }
 
@@ -67,6 +68,12 @@ public class Context {
         this.thisObject = parent.thisObject;
     }
 
+    // public api ======================================================================================================
+    //
+    public final Context parent;
+
+    public final int depth;
+
     public void setOnConsoleLog(Consumer<String> onConsoleLog) {
         this.onConsoleLog = onConsoleLog;
         putBinding("console", createConsole());
@@ -76,9 +83,31 @@ public class Context {
         this.listener = listener;
     }
 
+    public int getIterationIndex() {
+        return iterationIndex;
+    }
+
     public Node getNode() {
         return node;
     }
+
+    public String getPath() {
+        String prefix = (parent == null) ? null : parent.getPath();
+        String suffix = node.type == NodeType.PROGRAM ? null : node.type.toString();
+        if (iterationIndex != -1) {
+            suffix += "[" + iterationIndex + "]";
+        }
+        if (prefix == null) {
+            return suffix;
+        }
+        return prefix + "." + suffix;
+    }
+
+    @Override
+    public String toString() {
+        return getPath();
+    }
+    //==================================================================================================================
 
     void setBindings(Map<String, Object> bindings) {
         this._bindings = bindings;
@@ -91,7 +120,7 @@ public class Context {
         _bindings.put(key, value);
     }
 
-    public Object get(String name) {
+    Object get(String name) {
         if ("this".equals(name)) {
             return thisObject;
         }
@@ -266,15 +295,11 @@ public class Context {
     boolean construct;
     int iterationIndex = -1;
 
-    public int getIterationIndex() {
-        return iterationIndex;
-    }
-
     private ExitType exitType;
     private Object returnValue;
     private Object errorThrown;
 
-    public Object stopAndBreak() {
+    Object stopAndBreak() {
         exitType = ExitType.BREAK;
         returnValue = null;
         errorThrown = null;
@@ -295,7 +320,7 @@ public class Context {
         return value;
     }
 
-    public Object stopAndContinue() {
+    Object stopAndContinue() {
         exitType = ExitType.CONTINUE;
         returnValue = null;
         errorThrown = null;
@@ -306,7 +331,7 @@ public class Context {
         return exitType != null;
     }
 
-    public ExitType getExitType() {
+    ExitType getExitType() {
         return exitType;
     }
 
@@ -314,7 +339,7 @@ public class Context {
         return exitType == ExitType.CONTINUE;
     }
 
-    public void reset() {
+    void reset() {
         exitType = null;
         returnValue = null;
         errorThrown = null;
@@ -324,11 +349,11 @@ public class Context {
         return exitType == ExitType.THROW;
     }
 
-    public Object getReturnValue() {
+    Object getReturnValue() {
         return returnValue;
     }
 
-    public Object getErrorThrown() {
+    Object getErrorThrown() {
         return errorThrown;
     }
 
@@ -336,23 +361,6 @@ public class Context {
         exitType = childContext.exitType;
         errorThrown = childContext.errorThrown;
         returnValue = childContext.returnValue;
-    }
-
-    public String getPath() {
-        String prefix = (parent == null) ? null : parent.getPath();
-        String suffix = node.type == NodeType.PROGRAM ? null : node.type.toString();
-        if (iterationIndex != -1) {
-            suffix += "[" + iterationIndex + "]";
-        }
-        if (prefix == null) {
-            return suffix;
-        }
-        return prefix + "." + suffix;
-    }
-
-    @Override
-    public String toString() {
-        return getPath();
     }
 
 }
