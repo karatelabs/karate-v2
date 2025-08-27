@@ -323,9 +323,15 @@ public class Context {
     }
 
     public String getPath() {
-        String parentPath = parent == null ? null : parent.getPath();
-        String suffix = iterationIndex == -1 ? "" : "[" + iterationIndex + "]";
-        return parentPath == null ? node.type + suffix : parentPath + ":" + node.type + suffix;
+        String prefix = (parent == null) ? null : parent.getPath();
+        String suffix = node.type == NodeType.PROGRAM ? null : node.type.toString();
+        if (iterationIndex != -1) {
+            suffix += "[" + iterationIndex + "]";
+        }
+        if (prefix == null) {
+            return suffix;
+        }
+        return prefix + "." + suffix;
     }
 
     @Override
