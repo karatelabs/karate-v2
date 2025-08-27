@@ -184,7 +184,7 @@ class EngineTest {
     }
 
     @Test
-    void testArrayIterationTracking() {
+    void testArrayForEachIterationTracking() {
         Engine engine = new Engine();
         StringBuilder sb = new StringBuilder();
         ContextListener listener = new ContextListener() {
@@ -197,14 +197,22 @@ class EngineTest {
             }
         };
         engine.context.setListener(listener);
-        String js = """
+        engine.eval( """
                 var a = [1, 2, 3];
                 var b = [];
                 a.forEach(x => b.push(x));
-                """;
-        engine.eval(js);
+                """);
         assertEquals(List.of(1, 2, 3), engine.get("b"));
         assertEquals("0:1|1:2|2:3|", sb.toString());
+        //====
+        sb.setLength(0);
+        engine.eval("""
+                var a = { a: 1, b: 2, c: 3 };
+                var b = [];
+                Object.keys(a).forEach(x => b.push(x));
+                """);
+        assertEquals(List.of("a", "b", "c"), engine.get("b"));
+        assertEquals("0:a|1:b|2:c|", sb.toString());
     }
 
 }
