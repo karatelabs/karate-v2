@@ -25,6 +25,14 @@ package io.karatelabs.js;
 
 public interface ContextListener {
 
+    default void onContextEnter(Context context) {
+
+    }
+
+    default void onContextExit(Context context) {
+
+    }
+
     default void onStatementEnter(Context context, Node node) {
     }
 

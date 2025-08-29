@@ -74,7 +74,13 @@ public class Engine {
                 evalContext.setBindings(localVars);
             }
             evalContext.node = node;
+            if (context.listener != null) {
+                context.listener.onContextEnter(evalContext);
+            }
             Object result = Interpreter.eval(node, evalContext);
+            if (context.listener != null) {
+                context.listener.onContextExit(evalContext);
+            }
             if (result instanceof JavaMirror) {
                 return ((JavaMirror) result).toJava();
             }

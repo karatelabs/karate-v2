@@ -60,7 +60,7 @@ class JsFunctionNode extends JsFunction {
         if (invokeContext == null) { // static methods e.g. Array.from(), Function.call()
             invokeContext = declaredContext;
         }
-        Context childContext = new Context(invokeContext, node) {
+        Context functionContext = new Context(invokeContext, node) {
             @Override
             public Object get(String name) {
                 if ("arguments".equals(name)) {
@@ -69,10 +69,13 @@ class JsFunctionNode extends JsFunction {
                 if (super.hasKey(name)) { // invoke context
                     return super.get(name);
                 }
-                return declaredContext.get(name);
+                return declaredContext.get(name); // merge this also
             }
         };
-        childContext.thisObject = arrow ? invokeContext.thisObject : thisObject;
+        if (declaredContext.listener != null) {
+            declaredContext.listener.onContextEnter(functionContext);
+        }
+        functionContext.thisObject = arrow ? invokeContext.thisObject : thisObject;
         int actualArgCount = Math.min(args.length, argCount);
         for (int i = 0; i < actualArgCount; i++) {
             String name = argNames.get(i);
@@ -81,23 +84,26 @@ class JsFunctionNode extends JsFunction {
                 for (int j = i; j < args.length; j++) {
                     remainingArgs.add(args[j]);
                 }
-                childContext.put(name.substring(1), remainingArgs);
+                functionContext.put(name.substring(1), remainingArgs);
             } else {
-                childContext.put(name, args[i]);
+                functionContext.put(name, args[i]);
             }
         }
         if (args.length < argCount) {
             for (int i = args.length; i < argCount; i++) {
                 String name = argNames.get(i);
-                childContext.put(name, Terms.UNDEFINED);
+                functionContext.put(name, Terms.UNDEFINED);
             }
         }
-        Object result = Interpreter.eval(body, childContext);
+        Object result = Interpreter.eval(body, functionContext);
         // exit function, only propagate error
-        if (childContext.isError()) {
-            invokeContext.updateFrom(childContext);
+        if (functionContext.isError()) {
+            invokeContext.updateFrom(functionContext);
         }
-        return body.type == NodeType.BLOCK ? childContext.getReturnValue() : result;
+        if (declaredContext.listener != null) {
+            declaredContext.listener.onContextExit(functionContext);
+        }
+        return body.type == NodeType.BLOCK ? functionContext.getReturnValue() : result;
     }
 
     @Override

@@ -43,7 +43,6 @@ public class Context {
 
     Node node;
     Object thisObject = Terms.UNDEFINED;
-    Context child;
     Consumer<String> onConsoleLog;
     ContextListener listener;
 
@@ -51,7 +50,6 @@ public class Context {
         this.parent = parent;
         if (parent != null) {
             listener = parent.listener;
-            parent.child = this;
             depth = parent.depth + 1;
         } else {
             depth = 0;
@@ -93,7 +91,7 @@ public class Context {
 
     public String getPath() {
         String prefix = (parent == null) ? null : parent.getPath();
-        String suffix = node.type + (iterationIndex == -1 ? "" : "[" + iterationIndex + "]");
+        String suffix = node.type + (iterationIndex == -1 ? "" : "[" + String.format("%02d", iterationIndex) + "]");
         return prefix == null ? suffix : prefix + "." + suffix;
     }
 

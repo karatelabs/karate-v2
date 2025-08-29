@@ -250,11 +250,15 @@ class Interpreter {
             return Terms.isPrimitive(result) ? invokable : result;
         } else { // normal function call
             if (jsFunction != null && context.listener != null) {
+                context.listener.onContextEnter(jsFunction.invokeContext);
                 context.listener.onFunctionCallEnter(jsFunction.invokeContext, node, jsFunction, args);
             }
             Object result = invokable.invoke(args);
             if (jsFunction != null) {
                 context.updateFrom(jsFunction.invokeContext);
+                if (context.listener != null) {
+                    context.listener.onContextExit(jsFunction.invokeContext);
+                }
             }
             if (result instanceof JavaMirror) {
                 return ((JavaMirror) result).toJava();
@@ -284,6 +288,9 @@ class Interpreter {
 
     private static Object evalForStmt(Node node, Context context) {
         Context forContext = new Context(context, node);
+        if (context.listener != null) {
+            context.listener.onContextEnter(forContext);
+        }
         Node forBody = node.children.get(node.children.size() - 1);
         Object forResult = null;
         if (node.children.get(2).token.type == SEMI) {
@@ -346,6 +353,9 @@ class Interpreter {
                     }
                 }
             }
+        }
+        if (context.listener != null) {
+            context.listener.onContextExit(forContext);
         }
         return forResult;
     }
@@ -689,6 +699,9 @@ class Interpreter {
             }
             if (context.isError()) {
                 Context catchContext = new Context(context, node);
+                if (context.listener != null) {
+                    context.listener.onContextEnter(catchContext);
+                }
                 if (node.children.get(3).token.type == L_PAREN) {
                     String errorName = node.children.get(4).getText();
                     catchContext.put(errorName, context.getErrorThrown());
@@ -700,13 +713,22 @@ class Interpreter {
                     tryValue = null;
                 }
                 context.updateFrom(catchContext);
+                if (context.listener != null) {
+                    context.listener.onContextExit(catchContext);
+                }
             }
         } else if (node.children.get(2).token.type == FINALLY) {
             finallyBlock = node.children.get(3);
         }
         if (finallyBlock != null) {
             Context finallyContext = new Context(context, node);
+            if (context.listener != null) {
+                context.listener.onContextEnter(finallyContext);
+            }
             eval(finallyBlock, finallyContext);
+            if (context.listener != null) {
+                context.listener.onContextExit(finallyContext);
+            }
             if (finallyContext.isError()) {
                 throw new RuntimeException("finally block threw error: " + finallyContext.getErrorThrown());
             }
@@ -746,6 +768,9 @@ class Interpreter {
 
     private static Object evalWhileStmt(Node node, Context context) {
         Context whileContext = new Context(context, node);
+        if (context.listener != null) {
+            context.listener.onContextEnter(whileContext);
+        }
         Node whileBody = node.children.get(node.children.size() - 1);
         Node whileExpr = node.children.get(2);
         Object whileResult = null;
@@ -764,11 +789,17 @@ class Interpreter {
                 }
             }
         }
+        if (context.listener != null) {
+            context.listener.onContextExit(whileContext);
+        }
         return whileResult;
     }
 
     private static Object evalDoWhileStmt(Node node, Context context) {
         Context doContext = new Context(context, node);
+        if (context.listener != null) {
+            context.listener.onContextEnter(doContext);
+        }
         Node doBody = node.children.get(1);
         Node doExpr = node.children.get(4);
         Object doResult;
@@ -786,6 +817,9 @@ class Interpreter {
             if (!Terms.isTruthy(doCondition)) {
                 break;
             }
+        }
+        if (context.listener != null) {
+            context.listener.onContextExit(doContext);
         }
         return doResult;
     }
