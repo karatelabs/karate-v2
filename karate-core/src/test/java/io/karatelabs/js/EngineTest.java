@@ -144,7 +144,7 @@ class EngineTest {
                 map.put("value", value);
             }
         };
-        engine.context.setListener(listener);
+        engine.setListener(listener);
         engine.eval("var a = 'a'");
         assertEquals("a", map.get("name"));
         assertEquals("a", map.get("value"));
@@ -157,7 +157,7 @@ class EngineTest {
     void testOnConsoleLog() {
         Engine engine = new Engine();
         Map<String, Object> map = new HashMap<>();
-        engine.context.setOnConsoleLog(text -> map.put("text", text));
+        engine.setOnConsoleLog(text -> map.put("text", text));
         engine.eval("console.log('foo');");
         assertEquals("foo", map.get("text"));
     }
@@ -171,6 +171,13 @@ class EngineTest {
         } catch (Exception e) {
             assertTrue(e.getMessage().contains("a is not a function"));
         }
+    }
+
+    @Test
+    void testGlobalRootContext() {
+        Engine engine = new Engine();
+        engine.eval("console.log('foo');");
+
     }
 
     @Test
@@ -195,7 +202,7 @@ class EngineTest {
                 }
             }
         };
-        engine.context.setListener(listener);
+        engine.setListener(listener);
         engine.eval( """
                 var a = [1, 2, 3];
                 var b = [];
@@ -226,7 +233,7 @@ class EngineTest {
                 }
             }
         };
-        engine.context.setListener(listener);
+        engine.setListener(listener);
         engine.eval( """
                 var a = [1, 2, 3];
                 var b = [];

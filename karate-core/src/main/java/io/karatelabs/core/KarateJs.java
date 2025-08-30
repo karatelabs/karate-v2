@@ -60,7 +60,7 @@ public class KarateJs implements SimpleObject {
         this.root = root;
         this.client = client;
         this.engine = new Engine();
-        engine.context.setOnConsoleLog(logger::info);
+        engine.setOnConsoleLog(logger::info);
         engine.put("karate", this);
     }
 

@@ -23,47 +23,34 @@
  */
 package io.karatelabs.js;
 
-import net.minidev.json.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 
 public class Context {
 
     static final Logger logger = LoggerFactory.getLogger(Context.class);
 
-    static final Context EMPTY = new Context(null);
-
     private Map<String, Object> _bindings;
 
-    Node node;
     Object thisObject = Terms.UNDEFINED;
-    Consumer<String> onConsoleLog;
     ContextListener listener;
 
-    Context(Context parent) {
+    Context(Context parent, int depth, Node node, Map<String, Object> bindings) {
         this.parent = parent;
+        this.depth = depth;
+        this.node = node;
+        this._bindings = bindings;
         if (parent != null) {
             listener = parent.listener;
-            depth = parent.depth + 1;
-        } else {
-            depth = 0;
+            thisObject = parent.thisObject;
         }
     }
 
-    static Context root() {
-        return new Context(null);
-    }
-
     Context(Context parent, Node node) {
-        this(parent);
-        this.node = node;
-        this.thisObject = parent.thisObject;
+        this(parent, parent == null ? 0 : parent.depth + 1, node, null);
     }
 
     // public api ======================================================================================================
@@ -72,25 +59,14 @@ public class Context {
 
     public final int depth;
 
-    public void setOnConsoleLog(Consumer<String> onConsoleLog) {
-        this.onConsoleLog = onConsoleLog;
-        putBinding("console", createConsole());
-    }
-
-    public void setListener(ContextListener listener) {
-        this.listener = listener;
-    }
+    public final Node node;
 
     public int getIterationIndex() {
         return iterationIndex;
     }
 
-    public Node getNode() {
-        return node;
-    }
-
     public String getPath() {
-        String prefix = (parent == null) ? null : parent.getPath();
+        String prefix = (depth == 0) ? null : parent.getPath();
         String suffix = node.type + (iterationIndex == -1 ? "" : "[" + String.format("%02d", iterationIndex) + "]");
         return prefix == null ? suffix : prefix + "." + suffix;
     }
@@ -99,19 +75,9 @@ public class Context {
     public String toString() {
         return getPath();
     }
+
     //==================================================================================================================
-
-    void setBindings(Map<String, Object> bindings) {
-        this._bindings = bindings;
-    }
-
-    void putBinding(String key, Object value) {
-        if (_bindings == null) {
-            _bindings = new HashMap<>();
-        }
-        _bindings.put(key, value);
-    }
-
+    //
     Object get(String name) {
         if ("this".equals(name)) {
             return thisObject;
@@ -119,13 +85,8 @@ public class Context {
         if (_bindings != null && _bindings.containsKey(name)) {
             return _bindings.get(name);
         }
-        if (parent != null && parent.hasKey(name)) {
+        if (parent.hasKey(name)) {
             return parent.get(name);
-        }
-        Object global = getGlobal(name);
-        if (global != null) {
-            putBinding(name, global);
-            return global;
         }
         return Terms.UNDEFINED;
     }
@@ -140,7 +101,7 @@ public class Context {
     void update(String name, Object value) {
         if (_bindings != null && _bindings.containsKey(name)) {
             _bindings.put(name, value);
-        } else if (parent != null && parent.hasKey(name)) {
+        } else if (parent.hasKey(name)) {
             parent.update(name, value);
         } else {
             putBinding(name, value);
@@ -150,136 +111,24 @@ public class Context {
         }
     }
 
-    void remove(String name) {
-        if (_bindings != null) {
-            _bindings.remove(name);
+    private void putBinding(String key, Object value) {
+        if (_bindings == null) {
+            _bindings = new HashMap<>();
         }
-    }
-
-    private ObjectLike createConsole() {
-        return (SimpleObject) name -> {
-            if ("log".equals(name)) {
-                return (Invokable) args -> {
-                    StringBuilder sb = new StringBuilder();
-                    for (int i = 0; i < args.length; i++) {
-                        Object arg = args[i];
-                        if (i > 0) {
-                            sb.append(' ');
-                        }
-                        if (arg instanceof ObjectLike) {
-                            Object toString = ((ObjectLike) arg).get("toString");
-                            if (toString instanceof Invokable) {
-                                sb.append(((Invokable) toString).invoke(arg));
-                            } else {
-                                sb.append(Terms.TO_STRING(arg));
-                            }
-                        } else {
-                            sb.append(Terms.TO_STRING(arg));
-                        }
-                    }
-                    if (onConsoleLog != null) {
-                        onConsoleLog.accept(sb.toString());
-                    } else {
-                        System.out.println(sb);
-                    }
-                    return null;
-                };
-            }
-            return null;
-        };
+        _bindings.put(key, value);
     }
 
     boolean hasKey(String name) {
+        if ("this".equals(name)) {
+            return true;
+        }
         if (_bindings != null && _bindings.containsKey(name)) {
             return true;
         }
-        if (parent != null && parent.hasKey(name)) {
+        if (parent.hasKey(name)) {
             return true;
         }
-        switch (name) {
-            case "this":
-            case "console":
-            case "parseInt":
-            case "undefined":
-            case "Array":
-            case "Date":
-            case "Error":
-            case "Infinity":
-            case "Java":
-            case "JSON":
-            case "Math":
-            case "NaN":
-            case "Number":
-            case "Object":
-            case "RegExp":
-            case "String":
-            case "TypeError":
-                return true;
-        }
         return false;
-    }
-
-    @SuppressWarnings("unchecked")
-    private Object getGlobal(String key) {
-        switch (key) {
-            case "console":
-                return createConsole();
-            case "parseInt":
-                return (Invokable) args -> Terms.toNumber(args[0]);
-            case "undefined":
-                return Terms.UNDEFINED;
-            case "Array":
-                return new JsArray();
-            case "Date":
-                return new JsDate();
-            case "Error":
-                return new JsError("Error");
-            case "Infinity":
-                return Terms.POSITIVE_INFINITY;
-            case "Java":
-                return (SimpleObject) name -> {
-                    if ("type".equals(name)) {
-                        return (Invokable) args -> new JavaClass((String) args[0]);
-                    }
-                    return null;
-                };
-            case "JSON":
-                return (SimpleObject) name -> {
-                    if ("stringify".equals(name)) {
-                        return (Invokable) args -> {
-                            String json = JSONValue.toJSONString(args[0]);
-                            if (args.length == 1) {
-                                return json;
-                            }
-                            List<String> list = (List<String>) args[1];
-                            Map<String, Object> map = (Map<String, Object>) JSONValue.parse(json);
-                            Map<String, Object> result = new LinkedHashMap<>();
-                            for (String k : list) {
-                                result.put(k, map.get(k));
-                            }
-                            return JSONValue.toJSONString(result);
-                        };
-                    } else if ("parse".equals(name)) {
-                        return (Invokable) args -> JSONValue.parse((String) args[0]);
-                    }
-                    return null;
-                };
-            case "Math":
-                return new JsMath();
-            case "NaN":
-                return Double.NaN;
-            case "Number":
-                return new JsNumber();
-            case "Object":
-                return new JsObject();
-            case "RegExp":
-                return new JsRegex();
-            case "String":
-                return new JsString();
-            case "TypeError":
-                return new JsError("TypeError");
-        }
-        return null;
     }
 
     //==================================================================================================================

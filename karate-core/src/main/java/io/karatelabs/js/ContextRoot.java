@@ -1,0 +1,202 @@
+/*
+ * The MIT License
+ *
+ * Copyright 2025 Karate Labs Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+package io.karatelabs.js;
+
+import net.minidev.json.JSONValue;
+
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+
+class ContextRoot extends Context {
+
+    private Map<String, Object> _cache;
+    private Consumer<String> onConsoleLog;
+
+    ContextRoot() {
+        super(null, -1, null, null);
+    }
+
+    void setOnConsoleLog(Consumer<String> onConsoleLog) {
+        this.onConsoleLog = onConsoleLog;
+        put("console", createConsole());
+    }
+
+    @Override
+    Object get(String name) {
+        if (_cache != null && _cache.containsKey(name)) {
+            return _cache.get(name);
+        }
+        Object global = getGlobal(name);
+        if (global != null) {
+            put(name, global);
+            return global;
+        }
+        return Terms.UNDEFINED;
+    }
+
+    @Override
+    void put(String name, Object value) {
+        if (_cache == null) {
+            _cache = new HashMap<>();
+        }
+        _cache.put(name, value);
+    }
+
+    @Override
+    void update(String name, Object value) {
+        put(name, value);
+    }
+
+    @Override
+    boolean hasKey(String name) {
+        if (_cache != null && _cache.containsKey(name)) {
+            return true;
+        }
+        switch (name) {
+            case "console":
+            case "parseInt":
+            case "undefined":
+            case "Array":
+            case "Date":
+            case "Error":
+            case "Infinity":
+            case "Java":
+            case "JSON":
+            case "Math":
+            case "NaN":
+            case "Number":
+            case "Object":
+            case "RegExp":
+            case "String":
+            case "TypeError":
+                return true;
+        }
+        return false;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object getGlobal(String key) {
+        switch (key) {
+            case "console":
+                return createConsole();
+            case "parseInt":
+                return (Invokable) args -> Terms.toNumber(args[0]);
+            case "undefined":
+                return Terms.UNDEFINED;
+            case "Array":
+                return new JsArray();
+            case "Date":
+                return new JsDate();
+            case "Error":
+                return new JsError("Error");
+            case "Infinity":
+                return Terms.POSITIVE_INFINITY;
+            case "Java":
+                return (SimpleObject) name -> {
+                    if ("type".equals(name)) {
+                        return (Invokable) args -> new JavaClass((String) args[0]);
+                    }
+                    return null;
+                };
+            case "JSON":
+                return (SimpleObject) name -> {
+                    if ("stringify".equals(name)) {
+                        return (Invokable) args -> {
+                            String json = JSONValue.toJSONString(args[0]);
+                            if (args.length == 1) {
+                                return json;
+                            }
+                            List<String> list = (List<String>) args[1];
+                            Map<String, Object> map = (Map<String, Object>) JSONValue.parse(json);
+                            Map<String, Object> result = new LinkedHashMap<>();
+                            for (String k : list) {
+                                result.put(k, map.get(k));
+                            }
+                            return JSONValue.toJSONString(result);
+                        };
+                    } else if ("parse".equals(name)) {
+                        return (Invokable) args -> JSONValue.parse((String) args[0]);
+                    }
+                    return null;
+                };
+            case "Math":
+                return new JsMath();
+            case "NaN":
+                return Double.NaN;
+            case "Number":
+                return new JsNumber();
+            case "Object":
+                return new JsObject();
+            case "RegExp":
+                return new JsRegex();
+            case "String":
+                return new JsString();
+            case "TypeError":
+                return new JsError("TypeError");
+        }
+        return null;
+    }
+
+    private ObjectLike createConsole() {
+        return (SimpleObject) name -> {
+            if ("log".equals(name)) {
+                return (Invokable) args -> {
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < args.length; i++) {
+                        Object arg = args[i];
+                        if (i > 0) {
+                            sb.append(' ');
+                        }
+                        if (arg instanceof ObjectLike) {
+                            Object toString = ((ObjectLike) arg).get("toString");
+                            if (toString instanceof Invokable) {
+                                sb.append(((Invokable) toString).invoke(arg));
+                            } else {
+                                sb.append(Terms.TO_STRING(arg));
+                            }
+                        } else {
+                            sb.append(Terms.TO_STRING(arg));
+                        }
+                    }
+                    if (onConsoleLog != null) {
+                        onConsoleLog.accept(sb.toString());
+                    } else {
+                        System.out.println(sb);
+                    }
+                    return null;
+                };
+            }
+            return null;
+        };
+    }
+
+    @Override
+    public String toString() {
+        return "ROOT";
+    }
+
+}

@@ -88,6 +88,8 @@ public class NodeUtils {
         return true;
     }
 
+    static final Context EMPTY = new Context(null, -1, null, null);
+
     public static Object ser(Node node) {
         switch (node.type) {
             case PAREN_EXPR:
@@ -123,7 +125,7 @@ public class NodeUtils {
                     case NULL:
                     case TRUE:
                     case FALSE:
-                        return Interpreter.eval(node, Context.EMPTY);
+                        return Interpreter.eval(node, EMPTY);
                     default:
                         return node.token.text;
                 }

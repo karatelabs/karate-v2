@@ -26,7 +26,9 @@ package io.karatelabs.js;
 import io.karatelabs.common.Resource;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class Engine {
 
@@ -36,11 +38,9 @@ public class Engine {
 
     public static boolean DEBUG = false;
 
-    public final Context context;
+    final ContextRoot root = new ContextRoot();
 
-    public Engine() {
-        this.context = Context.root();
-    }
+    final Map<String, Object> bindings = new HashMap<>();
 
     public Object eval(Resource resource) {
         return evalInternal(resource);
@@ -58,6 +58,36 @@ public class Engine {
         return evalInternal(Resource.text(text), vars);
     }
 
+    public Object get(String name) {
+        return toJava(bindings.get(name));
+    }
+
+    public void put(String name, Object value) {
+        bindings.put(name, value);
+    }
+
+    public void remove(String name) {
+        bindings.remove(name);
+    }
+
+    public void setOnConsoleLog(Consumer<String> onConsoleLog) {
+        root.setOnConsoleLog(onConsoleLog);
+    }
+
+    public void setListener(ContextListener listener) {
+        root.listener = listener;
+    }
+
+    static Object toJava(Object value) {
+        if (value instanceof JavaMirror) {
+            return ((JavaMirror) value).toJava();
+        }
+        if (value == Terms.UNDEFINED) {
+            return null;
+        }
+        return value;
+    }
+
     private Object evalInternal(Resource resource) {
         return evalInternal(resource, null);
     }
@@ -66,28 +96,21 @@ public class Engine {
         try {
             JsParser parser = new JsParser(resource);
             Node node = parser.parse();
-            Context evalContext;
+            Context context;
             if (localVars == null) {
-                evalContext = context;
+                context = new Context(root, 0, node, bindings);
             } else {
-                evalContext = new Context(context);
-                evalContext.setBindings(localVars);
+                Context subRoot = new Context(root, -1, null, bindings);
+                context = new Context(subRoot, 0, node, localVars);
             }
-            evalContext.node = node;
             if (context.listener != null) {
-                context.listener.onContextEnter(evalContext);
+                context.listener.onContextEnter(context);
             }
-            Object result = Interpreter.eval(node, evalContext);
+            Object result = Interpreter.eval(node, context);
             if (context.listener != null) {
-                context.listener.onContextExit(evalContext);
+                context.listener.onContextExit(context);
             }
-            if (result instanceof JavaMirror) {
-                return ((JavaMirror) result).toJava();
-            }
-            if (result == Terms.UNDEFINED) {
-                return null;
-            }
-            return result;
+            return toJava(result);
         } catch (Throwable e) {
             String message = e.getMessage();
             if (message == null) {
@@ -98,25 +121,6 @@ public class Engine {
             }
             throw new RuntimeException(message);
         }
-    }
-
-    public void put(String name, Object value) {
-        context.put(name, value);
-    }
-
-    public void remove(String name) {
-        context.remove(name);
-    }
-
-    public Object get(String name) {
-        Object value = context.get(name);
-        if (value instanceof JavaMirror) {
-            return ((JavaMirror) value).toJava();
-        }
-        if (value == Terms.UNDEFINED) {
-            return null;
-        }
-        return value;
     }
 
 }
