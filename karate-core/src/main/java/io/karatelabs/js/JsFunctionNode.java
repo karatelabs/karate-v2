@@ -51,6 +51,11 @@ class JsFunctionNode extends JsFunction {
     }
 
     @Override
+    public Object invoke(Object... args) {
+        return call(declaredContext, args);
+    }
+
+    @Override
     public Object call(Context callerContext, Object... args) {
         if (callerContext == null) { // static methods e.g. Array.from(), Function.call()
             callerContext = declaredContext;
@@ -67,9 +72,7 @@ class JsFunctionNode extends JsFunction {
                 return declaredContext.get(name); // merge this also
             }
         };
-        if (callerContext.listener != null) {
-            callerContext.listener.onContextEnter(functionContext);
-        }
+        functionContext.event(Event.Type.CONTEXT_ENTER, node);
         int actualArgCount = Math.min(args.length, argCount);
         for (int i = 0; i < actualArgCount; i++) {
             String name = argNames.get(i);
@@ -94,9 +97,7 @@ class JsFunctionNode extends JsFunction {
         if (functionContext.isError()) {
             callerContext.updateFrom(functionContext);
         }
-        if (callerContext.listener != null) {
-            callerContext.listener.onContextExit(functionContext);
-        }
+        functionContext.event(Event.Type.CONTEXT_EXIT, node);
         return body.type == NodeType.BLOCK ? functionContext.getReturnValue() : result;
     }
 

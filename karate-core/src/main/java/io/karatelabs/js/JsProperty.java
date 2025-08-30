@@ -63,10 +63,10 @@ class JsProperty {
                     optional = node.children.get(1).token.type == TokenType.QUES_DOT;
                     name = node.children.get(2).getText();
                     try {
-                        tempObject = Interpreter.eval(node.children.get(0), context);
+                        tempObject = Interpreter.eval(node.children.getFirst(), context);
                     } catch (Exception e) {
                         // try java interop
-                        String base = node.children.get(0).getText();
+                        String base = node.children.getFirst().getText();
                         String path = base + "." + name;
                         if (Engine.JAVA_BRIDGE.typeExists(path)) {
                             tempObject = new JavaClass(path);
@@ -83,7 +83,7 @@ class JsProperty {
                         tempObject = Interpreter.eval(node.children.get(0), context);
                         index = Interpreter.eval(node.children.get(1).children.get(2), context);
                     } else { // optional function call
-                        tempObject = Interpreter.eval(node.children.get(0), context); // evalFnCall
+                        tempObject = Interpreter.eval(node.children.getFirst(), context); // evalFnCall
                     }
                 }
                 object = tempObject;
@@ -93,7 +93,7 @@ class JsProperty {
                 index = Interpreter.eval(node.children.get(2), context);
                 break;
             case LIT_EXPR: // so MATH_PRE_EXP can call set() to update variable value
-                object = Interpreter.eval(node.children.get(0), context);
+                object = Interpreter.eval(node.children.getFirst(), context);
                 break;
             case PAREN_EXPR: // expression wrapped in round brackets that is invoked as a function, e.g. iife
                 object = Interpreter.eval(node.children.get(1), context);
@@ -107,8 +107,7 @@ class JsProperty {
     }
 
     void set(Object value) {
-        if (index instanceof Number) {
-            Number num = (Number) index;
+        if (index instanceof Number num) {
             if (object instanceof List) { // most common case
                 ((List<Object>) object).set(num.intValue(), value);
             } else if (object instanceof JsArray) {
@@ -161,10 +160,9 @@ class JsProperty {
                     return map.get(key);
                 }
             }
-            if (object instanceof ObjectLike) {
-                ObjectLike map = (ObjectLike) object;
+            if (object instanceof ObjectLike objectLike) {
                 String key = num + "";
-                Object value = map.get(key);
+                Object value = objectLike.get(key);
                 if (value != null) {
                     return value;
                 }

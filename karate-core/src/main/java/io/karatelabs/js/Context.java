@@ -26,6 +26,7 @@ package io.karatelabs.js;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -37,7 +38,7 @@ public class Context {
 
     Object thisObject = Terms.UNDEFINED;
 
-    ContextListener listener;
+    Event.Listener listener;
 
     Context(Context parent, int depth, Node node, Map<String, Object> bindings) {
         this.parent = parent;
@@ -54,6 +55,14 @@ public class Context {
         this(parent, parent == null ? 0 : parent.depth + 1, node, null);
     }
 
+
+    void event(Event.Type type, Node node) {
+        if (listener != null) {
+            Event event = new Event(type, this, node);
+            listener.onEvent(event);
+        }
+    }
+
     // public api ======================================================================================================
     //
     public final Context parent;
@@ -64,6 +73,10 @@ public class Context {
 
     public int getIterationIndex() {
         return iterationIndex;
+    }
+
+    public Event.ExitType getExitType() {
+        return exitType;
     }
 
     public String getPath() {
@@ -107,7 +120,7 @@ public class Context {
         } else {
             putBinding(name, value);
             if (listener != null) {
-                listener.onVariableWrite(this, name, value);
+                listener.onVariableWrite(this, Event.VariableType.VAR, name, value); // TODO var types
             }
         }
     }
@@ -137,33 +150,33 @@ public class Context {
     boolean construct;
     int iterationIndex = -1;
 
-    private ExitType exitType;
+    private Event.ExitType exitType;
     private Object returnValue;
     private Object errorThrown;
 
     Object stopAndBreak() {
-        exitType = ExitType.BREAK;
+        exitType = Event.ExitType.BREAK;
         returnValue = null;
         errorThrown = null;
         return null;
     }
 
     Object stopAndThrow(Object error) {
-        exitType = ExitType.THROW;
+        exitType = Event.ExitType.THROW;
         returnValue = null;
         errorThrown = error;
         return error;
     }
 
     Object stopAndReturn(Object value) {
-        exitType = ExitType.RETURN;
+        exitType = Event.ExitType.RETURN;
         returnValue = value;
         errorThrown = null;
         return value;
     }
 
     Object stopAndContinue() {
-        exitType = ExitType.CONTINUE;
+        exitType = Event.ExitType.CONTINUE;
         returnValue = null;
         errorThrown = null;
         return null;
@@ -173,12 +186,8 @@ public class Context {
         return exitType != null;
     }
 
-    ExitType getExitType() {
-        return exitType;
-    }
-
     boolean isContinuing() {
-        return exitType == ExitType.CONTINUE;
+        return exitType == Event.ExitType.CONTINUE;
     }
 
     void reset() {
@@ -188,7 +197,7 @@ public class Context {
     }
 
     boolean isError() {
-        return exitType == ExitType.THROW;
+        return exitType == Event.ExitType.THROW;
     }
 
     Object getReturnValue() {

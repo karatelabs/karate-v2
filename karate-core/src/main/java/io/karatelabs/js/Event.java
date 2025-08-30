@@ -23,20 +23,16 @@
  */
 package io.karatelabs.js;
 
-import java.util.Map;
-
 public class Event {
 
     public final Type type;
     public final Context context;
     public final Node node;
-    public final Map<String, Object> attributes;
 
-    Event(Type type, Context context, Node node, Map<String, Object> attributes) {
+    Event(Type type, Context context, Node node) {
         this.type = type;
         this.context = context;
         this.node = node;
-        this.attributes = attributes;
     }
 
     public enum Type {
@@ -46,17 +42,26 @@ public class Event {
         STATEMENT_ENTER,
         STATEMENT_EXIT,
         EXPRESSION_ENTER,
-        EXPRESSION_EXIT,
-        VARIABLE_WRITE
+        EXPRESSION_EXIT
 
     }
 
     public interface Listener {
 
-        void onEvent(Event event);
+        default void onEvent(Event event) {
+
+        }
 
         default Result onError(Event event, Exception e) {
             return null;
+        }
+
+        default void onFunctionCall(Context context, Object[] args) {
+
+        }
+
+        default void onVariableWrite(Context context, VariableType type, String name, Object value) {
+
         }
 
     }
@@ -80,6 +85,14 @@ public class Event {
         RETURN,
         THROW,
         ALL_ITERATIONS_COMPLETED
+
+    }
+
+    public enum VariableType {
+
+        VAR,
+        LET,
+        CONST
 
     }
 

@@ -74,7 +74,7 @@ public class Engine {
         root.setOnConsoleLog(onConsoleLog);
     }
 
-    public void setListener(ContextListener listener) {
+    public void setListener(Event.Listener listener) {
         root.listener = listener;
     }
 
@@ -103,13 +103,9 @@ public class Engine {
                 Context subRoot = new Context(root, -1, null, bindings);
                 context = new Context(subRoot, 0, node, localVars);
             }
-            if (context.listener != null) {
-                context.listener.onContextEnter(context);
-            }
+            context.event(Event.Type.CONTEXT_ENTER, node);
             Object result = Interpreter.eval(node, context);
-            if (context.listener != null) {
-                context.listener.onContextExit(context);
-            }
+            context.event(Event.Type.CONTEXT_EXIT, node);
             return toJava(result);
         } catch (Throwable e) {
             String message = e.getMessage();

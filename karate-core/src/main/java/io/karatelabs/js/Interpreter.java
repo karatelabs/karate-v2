@@ -155,21 +155,20 @@ class Interpreter {
     }
 
     private static Object evalExpr(Node node, Context context) {
-        node = node.children.get(0);
-        if (context.listener != null) {
-            context.listener.onExpressionEnter(context, node);
-        }
+        node = node.children.getFirst();
+        context.event(Event.Type.EXPRESSION_ENTER, node);
         try {
             Object result = eval(node, context);
             if (context.listener != null) {
-                context.listener.onExpressionExit(context, node, result);
+                context.event(Event.Type.EXPRESSION_EXIT, node);
             }
             return result;
         } catch (Exception e) {
             if (context.listener != null) {
-                ContextResult contextResult = context.listener.onExpressionError(context, node, e);
-                if (contextResult != null && contextResult.ignoreError) {
-                    return contextResult.returnValue;
+                Event event = new Event(Event.Type.EXPRESSION_EXIT, context, node);
+                Event.Result eventResult = context.listener.onError(event, e);
+                if (eventResult != null && eventResult.ignoreError) {
+                    return eventResult.returnValue;
                 }
             }
             throw e;
@@ -231,13 +230,12 @@ class Interpreter {
         Object[] args = argsList.toArray();
         Context callContext = new Context(context, node);
         callContext.thisObject = prop.object == null ? callable : prop.object;
-        if (context.listener != null) {
-            context.listener.onContextEnter(callContext);
+        callContext.event(Event.Type.CONTEXT_ENTER, node);
+        if (callContext.listener != null) {
+            callContext.listener.onFunctionCall(callContext, args);
         }
         Object result = callable.call(callContext, args);
-        if (context.listener != null) {
-            context.listener.onContextExit(callContext);
-        }
+        callContext.event(Event.Type.CONTEXT_EXIT, node);
         context.updateFrom(callContext);
         if (context.construct) { // new keyword
             context.construct = false;
@@ -270,9 +268,7 @@ class Interpreter {
 
     private static Object evalForStmt(Node node, Context context) {
         Context forContext = new Context(context, node);
-        if (context.listener != null) {
-            context.listener.onContextEnter(forContext);
-        }
+        forContext.event(Event.Type.CONTEXT_ENTER, node);
         Node forBody = node.children.get(node.children.size() - 1);
         Object forResult = null;
         if (node.children.get(2).token.type == SEMI) {
@@ -336,9 +332,7 @@ class Interpreter {
                 }
             }
         }
-        if (context.listener != null) {
-            context.listener.onContextExit(forContext);
-        }
+        forContext.event(Event.Type.CONTEXT_EXIT, node);
         return forResult;
     }
 
@@ -613,9 +607,7 @@ class Interpreter {
         if (node.token.type == SEMI) { // ignore empty statements
             return null;
         }
-        if (context.listener != null) {
-            context.listener.onStatementEnter(context, node);
-        }
+        context.event(Event.Type.STATEMENT_ENTER, node);
         try {
             Object statementResult = eval(node, context);
             if (logger.isTraceEnabled() || Engine.DEBUG) {
@@ -628,15 +620,14 @@ class Interpreter {
                     }
                 }
             }
-            if (context.listener != null) {
-                context.listener.onStatementExit(context, node, context);
-            }
+            context.event(Event.Type.STATEMENT_EXIT, node);
             return statementResult;
         } catch (Exception e) {
             if (context.listener != null) {
-                ContextResult contextResult = context.listener.onStatementError(context, node, e);
-                if (contextResult != null && contextResult.ignoreError) {
-                    return contextResult.returnValue;
+                Event event = new Event(Event.Type.STATEMENT_EXIT, context, node);
+                Event.Result eventResult = context.listener.onError(event, e);
+                if (eventResult != null && eventResult.ignoreError) {
+                    return eventResult.returnValue;
                 }
             }
             Token first = node.getFirstToken();
@@ -681,9 +672,7 @@ class Interpreter {
             }
             if (context.isError()) {
                 Context catchContext = new Context(context, node);
-                if (context.listener != null) {
-                    context.listener.onContextEnter(catchContext);
-                }
+                catchContext.event(Event.Type.CONTEXT_ENTER, node);
                 if (node.children.get(3).token.type == L_PAREN) {
                     String errorName = node.children.get(4).getText();
                     catchContext.put(errorName, context.getErrorThrown());
@@ -695,22 +684,16 @@ class Interpreter {
                     tryValue = null;
                 }
                 context.updateFrom(catchContext);
-                if (context.listener != null) {
-                    context.listener.onContextExit(catchContext);
-                }
+                catchContext.event(Event.Type.CONTEXT_EXIT, node);
             }
         } else if (node.children.get(2).token.type == FINALLY) {
             finallyBlock = node.children.get(3);
         }
         if (finallyBlock != null) {
             Context finallyContext = new Context(context, node);
-            if (context.listener != null) {
-                context.listener.onContextEnter(finallyContext);
-            }
+            finallyContext.event(Event.Type.CONTEXT_ENTER, node);
             eval(finallyBlock, finallyContext);
-            if (context.listener != null) {
-                context.listener.onContextExit(finallyContext);
-            }
+            finallyContext.event(Event.Type.CONTEXT_EXIT, node);
             if (finallyContext.isError()) {
                 throw new RuntimeException("finally block threw error: " + finallyContext.getErrorThrown());
             }
@@ -740,9 +723,10 @@ class Interpreter {
         List<Node> varNames = node.children.get(1).findAll(IDENT);
         // TODO let & const
         for (Node varName : varNames) {
-            context.put(varName.getText(), varValue);
+            String name = varName.getText();
+            context.put(name, varValue);
             if (context.listener != null) {
-                context.listener.onVariableWrite(context, varName.getText(), varValue);
+                context.listener.onVariableWrite(context, Event.VariableType.VAR, name, varValue);
             }
         }
         return varValue;
@@ -750,9 +734,7 @@ class Interpreter {
 
     private static Object evalWhileStmt(Node node, Context context) {
         Context whileContext = new Context(context, node);
-        if (context.listener != null) {
-            context.listener.onContextEnter(whileContext);
-        }
+        whileContext.event(Event.Type.CONTEXT_ENTER, node);
         Node whileBody = node.children.getLast();
         Node whileExpr = node.children.get(2);
         Object whileResult = null;
@@ -771,17 +753,13 @@ class Interpreter {
                 }
             }
         }
-        if (context.listener != null) {
-            context.listener.onContextExit(whileContext);
-        }
+        whileContext.event(Event.Type.CONTEXT_EXIT, node);
         return whileResult;
     }
 
     private static Object evalDoWhileStmt(Node node, Context context) {
         Context doContext = new Context(context, node);
-        if (context.listener != null) {
-            context.listener.onContextEnter(doContext);
-        }
+        doContext.event(Event.Type.CONTEXT_ENTER, node);
         Node doBody = node.children.get(1);
         Node doExpr = node.children.get(4);
         Object doResult;
@@ -800,9 +778,7 @@ class Interpreter {
                 break;
             }
         }
-        if (context.listener != null) {
-            context.listener.onContextExit(doContext);
-        }
+        doContext.event(Event.Type.CONTEXT_EXIT, node);
         return doResult;
     }
 

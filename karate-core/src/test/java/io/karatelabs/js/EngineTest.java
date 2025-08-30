@@ -137,9 +137,9 @@ class EngineTest {
     void testOnAssign() {
         Engine engine = new Engine();
         Map<String, Object> map = new HashMap<>();
-        ContextListener listener = new ContextListener() {
+        Event.Listener listener = new Event.Listener() {
             @Override
-            public void onVariableWrite(Context context, String name, Object value) {
+            public void onVariableWrite(Context context, Event.VariableType type, String name, Object value) {
                 map.put("name", name);
                 map.put("value", value);
             }
@@ -190,20 +190,20 @@ class EngineTest {
         assertEquals("parent", engine.eval("foo"));
     }
 
-    // @Test
+    @Test
     void testArrayForEachIterationTracking() {
         Engine engine = new Engine();
         StringBuilder sb = new StringBuilder();
-        ContextListener listener = new ContextListener() {
+        Event.Listener listener = new Event.Listener() {
             @Override
-            public void onContextEnter(Context context) {
-//                if (context.node.type == NodeType.REF_DOT_EXPR && "b.push".equals(context.node.getText())) {
-//                    sb.append(context.parent.parent.getIterationIndex()).append(":").append(args[0]).append("|");
-//                }
+            public void onFunctionCall(Context context, Object... args) {
+                if (context.node.type == NodeType.REF_DOT_EXPR && "b.push".equals(context.node.getText())) {
+                    sb.append(context.parent.parent.getIterationIndex()).append(":").append(args[0]).append("|");
+                }
             }
         };
         engine.setListener(listener);
-        engine.eval( """
+        engine.eval("""
                 var a = [1, 2, 3];
                 var b = [];
                 a.forEach(x => b.push(x));
@@ -221,20 +221,20 @@ class EngineTest {
         assertEquals("0:a|1:b|2:c|", sb.toString());
     }
 
-    // @Test
+    @Test
     void testForLoopIterationTracking() {
         Engine engine = new Engine();
         StringBuilder sb = new StringBuilder();
-        ContextListener listener = new ContextListener() {
+        Event.Listener listener = new Event.Listener() {
             @Override
-            public void onContextEnter(Context context) {
-//                if (context.node.type == NodeType.REF_DOT_EXPR && "b.push".equals(context.node.getText())) {
-//                    sb.append(context.parent.getIterationIndex()).append(":").append(args[0]).append("|");
-//                }
+            public void onFunctionCall(Context context, Object... args) {
+                if (context.node.type == NodeType.REF_DOT_EXPR && "b.push".equals(context.node.getText())) {
+                    sb.append(context.parent.getIterationIndex()).append(":").append(args[0]).append("|");
+                }
             }
         };
         engine.setListener(listener);
-        engine.eval( """
+        engine.eval("""
                 var a = [1, 2, 3];
                 var b = [];
                 for (var i = 0; i < a.length; i++) b.push(a[i]);

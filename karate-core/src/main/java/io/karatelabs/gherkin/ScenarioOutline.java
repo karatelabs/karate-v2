@@ -131,7 +131,7 @@ public class ScenarioOutline {
     }
 
     public List<Map<String, Object>> getAllExampleData() {
-        List<Map<String, Object>> exampleData = new ArrayList();
+        List<Map<String, Object>> exampleData = new ArrayList<>();
         examplesTables.forEach(table -> exampleData.add(table.toKarateJson()));
         return exampleData;
     }

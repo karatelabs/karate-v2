@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-abstract class JsFunction extends JsObject implements JsCallable {
+public abstract class JsFunction extends JsObject implements JsCallable {
 
     private static final Object[] EMPTY = new Object[0];
 
