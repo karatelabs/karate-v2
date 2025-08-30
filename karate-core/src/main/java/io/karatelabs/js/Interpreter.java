@@ -186,16 +186,12 @@ class Interpreter {
         return result;
     }
 
-    private static Invokable toInvokable(Object o) {
-        if (o instanceof Invokable) {
-            return (Invokable) o;
-        } else if (o instanceof Prototype) {
-            Prototype prototype = (Prototype) o;
-            return (Invokable) prototype.get("constructor");
-        } else if (o instanceof JavaClass) {
-            JavaClass jc = (JavaClass) o;
-            return jc::construct;
-        } else if (JavaFunction.isFunction(o)) {
+    private static JsCallable toCallable(Object o) {
+        if (o instanceof JsCallable callable) {
+            return callable;
+        } else if (o instanceof Invokable invokable) {
+            return (c, args) -> invokable.invoke(args);
+        } else if (Terms.isJavaFunction(o)) {
             return new JavaFunction(o);
         } else {
             return null;
@@ -211,8 +207,8 @@ class Interpreter {
         if (o == Terms.UNDEFINED) { // optional chaining
             return o;
         }
-        Invokable invokable = toInvokable(o);
-        if (invokable == null) {
+        JsCallable callable = toCallable(o);
+        if (callable == null) {
             throw new RuntimeException(node.toStringWithoutType() + " is not a function");
         }
         List<Object> argsList = new ArrayList<>();
@@ -224,9 +220,8 @@ class Interpreter {
                 Object arg = eval(fnArgNode.children.get(1), context);
                 if (arg instanceof List) {
                     argsList.addAll((List<Object>) arg);
-                } else if (arg instanceof JsArray) {
-                    JsArray arrayLike = (JsArray) arg;
-                    argsList.addAll(arrayLike.toList());
+                } else if (arg instanceof JsArray array) {
+                    argsList.addAll(array.toList());
                 }
             } else {
                 Object arg = eval(argNode, context);
@@ -234,37 +229,24 @@ class Interpreter {
             }
         }
         Object[] args = argsList.toArray();
-        JsFunction jsFunction;
-        if (invokable instanceof JsFunction) {
-            jsFunction = (JsFunction) invokable;
-            jsFunction.invokeContext = new Context(context, node);
-            if (prop.object != null) {
-                jsFunction.thisObject = prop.object;
-            }
-        } else {
-            jsFunction = null;
+        Context callContext = new Context(context, node);
+        callContext.thisObject = prop.object == null ? callable : prop.object;
+        if (context.listener != null) {
+            context.listener.onContextEnter(callContext);
         }
+        Object result = callable.call(callContext, args);
+        if (context.listener != null) {
+            context.listener.onContextExit(callContext);
+        }
+        context.updateFrom(callContext);
         if (context.construct) { // new keyword
             context.construct = false;
-            Object result = invokable.invoke(args);
-            return Terms.isPrimitive(result) ? invokable : result;
-        } else { // normal function call
-            if (jsFunction != null && context.listener != null) {
-                context.listener.onContextEnter(jsFunction.invokeContext);
-                context.listener.onFunctionCallEnter(jsFunction.invokeContext, node, jsFunction, args);
-            }
-            Object result = invokable.invoke(args);
-            if (jsFunction != null) {
-                context.updateFrom(jsFunction.invokeContext);
-                if (context.listener != null) {
-                    context.listener.onContextExit(jsFunction.invokeContext);
-                }
-            }
-            if (result instanceof JavaMirror) {
-                return ((JavaMirror) result).toJava();
-            }
-            return result;
+            return Terms.isPrimitive(result) ? callable : result;
         }
+        if (result instanceof JavaMirror) {
+            return ((JavaMirror) result).toJava();
+        }
+        return result;
     }
 
     private static Object evalFnExpr(Node node, Context context) {
@@ -409,7 +391,7 @@ class Interpreter {
         Map<String, Object> map = new LinkedHashMap<>(last - 1);
         for (int i = 1; i < last; i++) {
             Node elem = node.children.get(i);
-            Node keyNode = elem.children.get(0);
+            Node keyNode = elem.children.getFirst();
             TokenType token = keyNode.token.type;
             String key;
             if (token == DOT_DOT_DOT) {
@@ -771,7 +753,7 @@ class Interpreter {
         if (context.listener != null) {
             context.listener.onContextEnter(whileContext);
         }
-        Node whileBody = node.children.get(node.children.size() - 1);
+        Node whileBody = node.children.getLast();
         Node whileExpr = node.children.get(2);
         Object whileResult = null;
         while (true) {

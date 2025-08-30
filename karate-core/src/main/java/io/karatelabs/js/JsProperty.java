@@ -221,6 +221,16 @@ class JsProperty {
             }
             throw new RuntimeException("cannot read properties of " + object + " (reading '" + name + "')");
         }
+        if (object instanceof JsCallable callable) {
+            // e.g. [].map.call([1, 2, 3], x => x * 2)
+            // we convert to a JsFunction, so that prototype methods can be looked-up by name
+            return new JsFunction() {
+                @Override
+                public Object call(Context context, Object... args) {
+                    return callable.call(context, args);
+                }
+            }.get(name);
+        }
         if (functionCall && object instanceof JavaMethods) {
             return new JavaInvokable(name, (JavaMethods) object);
         }

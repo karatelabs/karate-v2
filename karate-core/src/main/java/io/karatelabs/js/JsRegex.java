@@ -212,24 +212,24 @@ class JsRegex extends JsObject {
             public Object getProperty(String propName) {
                 switch (propName) {
                     case "test":
-                        return (Invokable) args -> {
+                        return (JsCallable) (context, args) -> {
                             if (args.length == 0 || args[0] == null) {
                                 return false;
                             }
                             JsRegex regex = JsRegex.this;
-                            if (thisObject instanceof JsRegex) {
-                                regex = (JsRegex) thisObject;
+                            if (context.thisObject instanceof JsRegex) {
+                                regex = (JsRegex) context.thisObject;
                             }
                             return regex.test(args[0].toString());
                         };
                     case "exec":
-                        return (Invokable) args -> {
+                        return (JsCallable) (context, args) -> {
                             if (args.length == 0 || args[0] == null) {
                                 return null;
                             }
                             JsRegex regex = JsRegex.this;
-                            if (thisObject instanceof JsRegex) {
-                                regex = (JsRegex) thisObject;
+                            if (context.thisObject instanceof JsRegex) {
+                                regex = (JsRegex) context.thisObject;
                             }
                             return regex.exec(args[0].toString());
                         };

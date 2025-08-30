@@ -26,11 +26,9 @@ package io.karatelabs.js;
 public interface ContextListener {
 
     default void onContextEnter(Context context) {
-
     }
 
     default void onContextExit(Context context) {
-
     }
 
     default void onStatementEnter(Context context, Node node) {
@@ -51,10 +49,6 @@ public interface ContextListener {
 
     default ContextResult onExpressionError(Context context, Node node, Exception error) {
         return null;
-    }
-
-    default void onFunctionCallEnter(Context context, Node node, JsFunction fn, Object[] args) {
-
     }
 
     default void onVariableWrite(Context context, String name, Object value) {

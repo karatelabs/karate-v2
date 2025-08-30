@@ -27,8 +27,6 @@ import java.util.*;
 
 class JsObject implements ObjectLike, Invokable, Iterable<KeyValue> {
 
-    Object thisObject = this; // will be updated in Interpreter.evalFnCall()
-
     private Map<String, Object> _map;
 
     JsObject(Map<String, Object> map) {
@@ -55,21 +53,20 @@ class JsObject implements ObjectLike, Invokable, Iterable<KeyValue> {
             public Object getProperty(String propName) {
                 switch (propName) {
                     case "toString":
-                        return (Invokable) args -> Terms.TO_STRING(thisObject);
+                        return (JsCallable) (context, args) -> Terms.TO_STRING(context.thisObject);
                     case "valueOf":
-                        return (Invokable) args -> thisObject;
+                        return (JsCallable) (context, args) -> context.thisObject;
                     case "hasOwnProperty":
-                        return (Invokable) args -> {
+                        return (JsCallable) (context, args) -> {
                             if (args.length == 0 || args[0] == null) {
                                 return false;
                             }
                             String prop = args[0].toString();
-                            if (thisObject instanceof ObjectLike) {
-                                ObjectLike objLike = (ObjectLike) thisObject;
-                                Map<String, Object> map = objLike.toMap();
+                            if (context.thisObject instanceof ObjectLike objectLike) {
+                                Map<String, Object> map = objectLike.toMap();
                                 return map != null && map.containsKey(prop);
-                            } else if (thisObject instanceof Map) {
-                                Map<String, Object> map = (Map<String, Object>) thisObject;
+                            } else if (context.thisObject instanceof Map) {
+                                Map<String, Object> map = (Map<String, Object>) context.thisObject;
                                 return map.containsKey(prop);
                             }
                             return false;
@@ -184,7 +181,7 @@ class JsObject implements ObjectLike, Invokable, Iterable<KeyValue> {
 
     @Override
     public Iterator<KeyValue> iterator() {
-        return toIterable(thisObject).iterator();
+        return toIterable(this).iterator();
     }
 
     @SuppressWarnings("unchecked")
@@ -252,24 +249,15 @@ class JsObject implements ObjectLike, Invokable, Iterable<KeyValue> {
         };
     }
 
-    JsFunction toJsFunction(Context context, Object[] args) {
+    JsCallable toCallable(Context context, Object[] args) {
         if (args.length == 0) {
             throw new RuntimeException("function expected");
         }
-        if (args[0] instanceof JsFunction) {
-            JsFunction fn = (JsFunction) args[0];
-            fn.invokeContext = context;
-            return fn;
+        if (args[0] instanceof JsCallable) {
+            return (JsCallable) args[0];
         }
         if (args[0] instanceof Invokable) {
-            JsFunction fn = new JsFunction() {
-                @Override
-                public Object invoke(Object... invokeArgs) {
-                    return ((Invokable) args[0]).invoke(invokeArgs);
-                }
-            };
-            fn.invokeContext = context;
-            return fn;
+            return (callContext, callArgs) -> ((Invokable) args[0]).invoke(callArgs);
         }
         throw new RuntimeException("function expected");
     }

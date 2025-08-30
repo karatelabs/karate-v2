@@ -27,16 +27,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public abstract class JsFunction extends JsObject {
+abstract class JsFunction extends JsObject implements JsCallable {
 
     private static final Object[] EMPTY = new Object[0];
 
     String name;
-    Context invokeContext;
-
-    public Node getNode() {
-        return null;
-    }
 
     @Override
     Prototype initPrototype() {
@@ -46,10 +41,10 @@ public abstract class JsFunction extends JsObject {
             public Object getProperty(String propName) {
                 switch (propName) {
                     case "call":
-                        return (Invokable) args -> {
+                        return (JsCallable) (context, args) -> {
                             ShiftArgs shifted = new ShiftArgs(args);
-                            thisObject = shifted.thisObject;
-                            return invoke(shifted.args);
+                            context.thisObject = shifted.thisObject;
+                            return call(context, shifted.args);
                         };
                     case "constructor":
                         return JsFunction.this;

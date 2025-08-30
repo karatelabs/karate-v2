@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2024 Karate Labs Inc.
+ * Copyright 2025 Karate Labs Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,40 +23,9 @@
  */
 package io.karatelabs.js;
 
-public class JavaClass implements JavaMethods, JavaFields, Invokable {
+@FunctionalInterface
+public interface JsCallable {
 
-    private final String className;
-
-    public JavaClass(Class<?> clazz) {
-        className = clazz.getName();
-    }
-
-    public JavaClass(String className) {
-        this.className = className;
-    }
-
-    @Override
-    public Object invoke(Object... args) {
-        return construct(args);
-    }
-
-    public Object construct(Object[] args) {
-        return Engine.JAVA_BRIDGE.construct(className, args);
-    }
-
-    @Override
-    public Object call(String name, Object[] args) {
-        return JavaBridge.convertIfArray(Engine.JAVA_BRIDGE.invokeStatic(className, name, args));
-    }
-
-    @Override
-    public Object read(String name) {
-        return JavaBridge.convertIfArray(Engine.JAVA_BRIDGE.getStatic(className, name));
-    }
-
-    @Override
-    public void update(String name, Object value) {
-        Engine.JAVA_BRIDGE.setStatic(className, name, value);
-    }
+    Object call(Context context, Object... args);
 
 }

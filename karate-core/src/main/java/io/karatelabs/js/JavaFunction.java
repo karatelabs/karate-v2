@@ -29,21 +29,21 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-public class JavaFunction implements Invokable {
+public class JavaFunction implements JsCallable {
 
-    final Invokable invokable;
+    final JsCallable callable;
 
     @SuppressWarnings("unchecked")
     JavaFunction(Object o) {
         if (o instanceof Function) {
-            invokable = args -> ((Function<Object, Object>) o).apply(args[0]);
+            callable = (c, args) -> ((Function<Object, Object>) o).apply(args[0]);
         } else if (o instanceof Runnable) {
-            invokable = args -> {
+            callable = (c, args) -> {
                 ((Runnable) o).run();
                 return null;
             };
         } else if (o instanceof Callable) {
-            invokable = args -> {
+            callable = (c, args) -> {
                 try {
                     return ((Callable<Object>) o).call();
                 } catch (Exception e) {
@@ -51,31 +51,22 @@ public class JavaFunction implements Invokable {
                 }
             };
         } else if (o instanceof Consumer) {
-            invokable = args -> {
+            callable = (c, args) -> {
                 ((Consumer<Object>) o).accept(args[0]);
                 return null;
             };
         } else if (o instanceof Supplier) {
-            invokable = args -> ((Supplier<Object>) o).get();
+            callable = (c, args) -> ((Supplier<Object>) o).get();
         } else if (o instanceof Predicate) {
-            invokable = args -> ((Predicate<Object>) o).test(args[0]);
+            callable = (c, args) -> ((Predicate<Object>) o).test(args[0]);
         } else {
             throw new RuntimeException("cannot convert to java function: " + o);
         }
     }
 
-    static boolean isFunction(Object o) {
-        return o instanceof Function
-                || o instanceof Runnable
-                || o instanceof Callable
-                || o instanceof Consumer
-                || o instanceof Supplier
-                || o instanceof Predicate;
-    }
-
     @Override
-    public Object invoke(Object... args) {
-        return invokable.invoke(args);
+    public Object call(Context context, Object... args) {
+        return callable.call(context, args);
     }
 
 }

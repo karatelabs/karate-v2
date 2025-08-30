@@ -36,6 +36,7 @@ public class Context {
     private Map<String, Object> _bindings;
 
     Object thisObject = Terms.UNDEFINED;
+
     ContextListener listener;
 
     Context(Context parent, int depth, Node node, Map<String, Object> bindings) {

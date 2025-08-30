@@ -28,6 +28,10 @@ import net.minidev.json.JSONValue;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 public class Terms {
 
@@ -236,6 +240,15 @@ public class Terms {
             return (long) d;
         }
         return d;
+    }
+
+    static boolean isJavaFunction(Object o) {
+        return o instanceof Function
+                || o instanceof Runnable
+                || o instanceof JsCallable
+                || o instanceof Consumer
+                || o instanceof Supplier
+                || o instanceof Predicate;
     }
 
     public static boolean isTruthy(Object value) {

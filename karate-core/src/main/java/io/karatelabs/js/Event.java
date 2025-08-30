@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2024 Karate Labs Inc.
+ * Copyright 2025 Karate Labs Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,40 +23,64 @@
  */
 package io.karatelabs.js;
 
-public class JavaClass implements JavaMethods, JavaFields, Invokable {
+import java.util.Map;
 
-    private final String className;
+public class Event {
 
-    public JavaClass(Class<?> clazz) {
-        className = clazz.getName();
+    public final Type type;
+    public final Context context;
+    public final Node node;
+    public final Map<String, Object> attributes;
+
+    Event(Type type, Context context, Node node, Map<String, Object> attributes) {
+        this.type = type;
+        this.context = context;
+        this.node = node;
+        this.attributes = attributes;
     }
 
-    public JavaClass(String className) {
-        this.className = className;
+    public enum Type {
+
+        CONTEXT_ENTER,
+        CONTEXT_EXIT,
+        STATEMENT_ENTER,
+        STATEMENT_EXIT,
+        EXPRESSION_ENTER,
+        EXPRESSION_EXIT,
+        VARIABLE_WRITE
+
     }
 
-    @Override
-    public Object invoke(Object... args) {
-        return construct(args);
+    public interface Listener {
+
+        void onEvent(Event event);
+
+        default Result onError(Event event, Exception e) {
+            return null;
+        }
+
     }
 
-    public Object construct(Object[] args) {
-        return Engine.JAVA_BRIDGE.construct(className, args);
+    public static class Result {
+
+        final public boolean ignoreError = true;
+        final public Object returnValue;
+
+        Result(Object returnValue) {
+            this.returnValue = returnValue;
+        }
+
     }
 
-    @Override
-    public Object call(String name, Object[] args) {
-        return JavaBridge.convertIfArray(Engine.JAVA_BRIDGE.invokeStatic(className, name, args));
-    }
+    public enum ExitType {
 
-    @Override
-    public Object read(String name) {
-        return JavaBridge.convertIfArray(Engine.JAVA_BRIDGE.getStatic(className, name));
-    }
+        CONDITION_FALSE,
+        BREAK,
+        CONTINUE,
+        RETURN,
+        THROW,
+        ALL_ITERATIONS_COMPLETED
 
-    @Override
-    public void update(String name, Object value) {
-        Engine.JAVA_BRIDGE.setStatic(className, name, value);
     }
 
 }
