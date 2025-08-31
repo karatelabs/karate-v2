@@ -482,33 +482,34 @@ public class Json {
         return s.charAt(0) == '{' || s.charAt(0) == '[';
     }
 
-    @SuppressWarnings("unchecked")
-    public static <T> T copy(T o, boolean deep) {
+    public static Object copy(Object o, boolean deep, boolean dropCircularReferences) {
         if (!deep) {
             if (o instanceof List<?> list) {
-                return (T) new ArrayList<>(list);
+                return new ArrayList<>(list);
             } else if (o instanceof Map<?, ?> map) {
-                return (T) new LinkedHashMap<>(map);
+                return new LinkedHashMap<>(map);
             } else {
                 return o;
             }
         }
         // anti recursion / back-references
         Set<Object> seen = Collections.newSetFromMap(new IdentityHashMap<>());
-        return (T) copyDeep(o, seen);
+        return copyDeep(o, seen, dropCircularReferences);
     }
 
     @SuppressWarnings("unchecked")
-    private static Object copyDeep(Object o, Set<Object> seen) {
+    private static Object copyDeep(Object o, Set<Object> seen, boolean dropCircularReferences) {
         if (o instanceof List) {
             List<Object> list = (List<Object>) o;
             if (seen.add(o)) {
                 int count = list.size();
                 List<Object> listCopy = new ArrayList<>(count);
                 for (Object value : list) {
-                    listCopy.add(copyDeep(value, seen));
+                    listCopy.add(copyDeep(value, seen, dropCircularReferences));
                 }
                 return listCopy;
+            } else if (dropCircularReferences) {
+                return "#" + o.getClass().getName();
             } else {
                 return o;
             }
@@ -517,23 +518,16 @@ public class Json {
                 Map<String, Object> map = (Map<String, Object>) o;
                 Map<String, Object> mapCopy = new LinkedHashMap<>(map.size());
                 map.forEach((k, v) -> {
-                    mapCopy.put(k, copyDeep(v, seen));
+                    mapCopy.put(k, copyDeep(v, seen, dropCircularReferences));
                 });
                 return mapCopy;
+            } else if (dropCircularReferences) {
+                return "#" + o.getClass().getName();
             } else {
                 return o;
             }
         } else {
             return o;
-        }
-    }
-
-    public static Object parseStrict(String json) {
-        JSONParser parser = new JSONParser(JSONParser.MODE_RFC4627);
-        try {
-            return parser.parse(json.trim(), defaultReader.DEFAULT_ORDERED);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
         }
     }
 
@@ -552,9 +546,19 @@ public class Json {
         }
     }
 
-    public static String toJson(Object o) {
+    public static Object parseStrict(String json) {
+        try {
+            return new JSONParser(JSONParser.MODE_RFC4627).parse(json, defaultReader.DEFAULT_ORDERED);
+        } catch (Exception e) {
+            throw new RuntimeException("invalid json: " + e.getMessage(), e);
+        }
+    }
+
+    private static final JSONStyle JSON_STYLE = new JSONStyle(JSONStyle.FLAG_PROTECT_4WEB);
+
+    public static String stringifyStrict(Object o) {
         if (o instanceof Map || o instanceof List) {
-            return JSONValue.toJSONString(o);
+            return JSONValue.toJSONString(o, JSON_STYLE);
         } else {
             return o == null ? "" : o.toString();
         }

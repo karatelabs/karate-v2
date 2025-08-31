@@ -508,7 +508,7 @@ public class HttpRequestBuilder implements SimpleObject {
             sb.append(multiPart.toCurlCommand());
         } else if (body != null) {
             sb.append(" \\\n");
-            String raw = Json.toJson(body);
+            String raw = Json.stringifyStrict(body);
             sb.append("-d '").append(raw).append("'");
         } else if (params != null && !params.isEmpty() && !method.equals("GET")) {
             // For non-GET requests with parameters but no body or multipart, add parameters as form fields

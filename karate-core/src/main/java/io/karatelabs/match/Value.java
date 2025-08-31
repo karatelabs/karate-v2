@@ -159,7 +159,7 @@ public class Value {
         switch (type) {
             case LIST:
             case MAP:
-                return Json.toJson(value);
+                return Json.stringifyStrict(value);
             case XML:
                 return Xml.toString(getValue());
             default:

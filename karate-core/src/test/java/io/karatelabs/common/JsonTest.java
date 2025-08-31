@@ -1,14 +1,14 @@
 package io.karatelabs.common;
 
-import java.util.*;
-
-import static org.junit.jupiter.api.Assertions.*;
-
 import io.karatelabs.match.Match;
 import io.karatelabs.match.Result;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.*;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 class JsonTest {
 
@@ -94,14 +94,14 @@ class JsonTest {
     }
 
     @Test
-    void testSetMultipleNestedArray(){
+    void testSetMultipleNestedArray() {
         Json json = Json.object();
-        json.set("first.second[0].third[0].fourth[0]","hello");
+        json.set("first.second[0].third[0].fourth[0]", "hello");
         match(json, "{ first :{ second :[{ third :[{ fourth :[ hello ]}]}]}}");
-        json.set("first.fifth[0].sixth[1].seventh[2]","hello");
-        match(json,"{ first :{ second :[{ third :[{ fourth :[ 'hello' ]}]}], fifth :[{ sixth :[null,{ seventh :[null,null, hello ]}]}]}}");
+        json.set("first.fifth[0].sixth[1].seventh[2]", "hello");
+        match(json, "{ first :{ second :[{ third :[{ fourth :[ 'hello' ]}]}], fifth :[{ sixth :[null,{ seventh :[null,null, hello ]}]}]}}");
     }
-    
+
     @Test
     void testJsonApi() {
         Json json = Json.of("{ a: 1, b: { c: 2 } }");
@@ -116,25 +116,62 @@ class JsonTest {
             assertTrue(e instanceof NoSuchElementException);
         }
     }
-    
+
     @Test
     void testGetAsJson() {
-        Json json = Json.of("{ a: { b: [1, 2], c: { d: 1, e: 2 } } }");       
+        Json json = Json.of("{ a: { b: [1, 2], c: { d: 1, e: 2 } } }");
         Json child1 = json.getJson("a.b");
         assertTrue(child1.isArray());
         assertEquals(Arrays.asList(1, 2), child1.asList());
         Json child2 = json.getJson("a.c");
         assertFalse(child2.isArray());
         Map expected = Json.of("{ d: 1, e: 2 }").asMap();
-        assertEquals(expected, child2.asMap());        
+        assertEquals(expected, child2.asMap());
     }
-    
+
     @Test
     void testGetAsJava() {
         Map<String, Object> map = Json.of("{ a: 1 }").value();
         assertEquals(map, Collections.singletonMap("a", 1));
         List<Object> list = Json.of("[ 1, 2 ]").value();
         assertEquals(list, Arrays.asList(1, 2));
+    }
+
+    @Test
+    void testJsonParseStrict() {
+        Exception e = assertThrows(RuntimeException.class, () -> {
+            Json.parseStrict("{ hello: 'world' }");
+        });
+        assertTrue(e.getMessage().startsWith("invalid json"));
+        Object o = Json.parseStrict("""
+                    { "hello": "world" }
+                """);
+        assertEquals(Map.of("hello", "world"), o);
+    }
+
+    @Test
+    void testJsonStringifyStrict() {
+        Object o = Json.of("{redirect:{url:'/index'}}").value();
+        String s = Json.stringifyStrict(o);
+        assertEquals("{\"redirect\":{\"url\":\"/index\"}}", s);
+    }
+
+    @Test
+    void testJsonFormat() {
+        Object o = Json.of("{redirect:{url:'/index'}}").value();
+        String s = Json.format(o, false, false, false);
+        assertEquals("{ \"redirect\": { \"url\": \"/index\" } }", s);
+    }
+
+    @Test
+    void testJsonCircularReferences() {
+        Map<String, Object> map1 = new HashMap<>();
+        Map<String, Object> map2 = new HashMap<>();
+        map2.put("b", map1);
+        map1.put("a", map2);
+        Object o = Json.copy(map1, true, true);
+        String s = Json.stringifyStrict(o);
+        assertEquals("{\"a\":{\"b\":\"#java.util.HashMap\"}}", s);
     }
 
 }

@@ -455,7 +455,7 @@ public class Operation {
             for (String key : expMap.keySet()) {
                 diffMap.remove(key);
             }
-            return fail("actual has " + sizeDiff + " more key(s) than expected - " + Json.toJson(diffMap));
+            return fail("actual has " + sizeDiff + " more key(s) than expected - " + Json.stringifyStrict(diffMap));
         }
         Set<String> unMatchedKeysAct = new LinkedHashSet<>(actMap.keySet());
         Set<String> unMatchedKeysExp = new LinkedHashSet<>(expMap.keySet());
