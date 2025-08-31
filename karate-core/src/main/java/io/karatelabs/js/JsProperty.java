@@ -80,7 +80,7 @@ class JsProperty {
                 } else {
                     optional = true;
                     if (node.children.get(1).type == NodeType.REF_BRACKET_EXPR) { // optional bracket
-                        tempObject = Interpreter.eval(node.children.get(0), context);
+                        tempObject = Interpreter.eval(node.children.getFirst(), context);
                         index = Interpreter.eval(node.children.get(1).children.get(2), context);
                     } else { // optional function call
                         tempObject = Interpreter.eval(node.children.getFirst(), context); // evalFnCall
@@ -89,7 +89,7 @@ class JsProperty {
                 object = tempObject;
                 break;
             case REF_BRACKET_EXPR:
-                object = Interpreter.eval(node.children.get(0), context);
+                object = Interpreter.eval(node.children.getFirst(), context);
                 index = Interpreter.eval(node.children.get(2), context);
                 break;
             case LIT_EXPR: // so MATH_PRE_EXP can call set() to update variable value
@@ -110,8 +110,8 @@ class JsProperty {
         if (index instanceof Number num) {
             if (object instanceof List) { // most common case
                 ((List<Object>) object).set(num.intValue(), value);
-            } else if (object instanceof JsArray) {
-                ((JsArray) object).set(num.intValue(), value);
+            } else if (object instanceof JsArray array) {
+                array.set(num.intValue(), value);
             } else {
                 throw new RuntimeException("cannot set by index [" + index + "]:" + value + " on (non-array): " + object);
             }
@@ -126,10 +126,10 @@ class JsProperty {
                 context.update(name, value);
             } else if (object instanceof Map) {
                 ((Map<String, Object>) object).put(name, value);
-            } else if (object instanceof ObjectLike) {
-                ((ObjectLike) object).put(name, value);
-            } else if (object instanceof JavaClass) {
-                ((JavaClass) object).update(name, value);
+            } else if (object instanceof ObjectLike objectLike) {
+                objectLike.put(name, value);
+            } else if (object instanceof JavaClass jc) {
+                jc.update(name, value);
             } else {
                 try {
                     Engine.JAVA_BRIDGE.set(object, name, value);
@@ -142,32 +142,32 @@ class JsProperty {
     }
 
     Object get() {
-        if (!functionCall && index instanceof Number) {
-            int num = ((Number) index).intValue();
+        if (!functionCall && index instanceof Number n) {
+            int i = (n).intValue();
             if (object instanceof List) {
-                return ((List<Object>) object).get(num);
+                return ((List<Object>) object).get(i);
             }
-            if (object instanceof JsArray) {
-                return ((JsArray) object).get(num);
+            if (object instanceof JsArray array) {
+                return array.get(i);
             }
-            if (object instanceof String) {
-                return ((String) object).substring(num, num + 1);
+            if (object instanceof String s) {
+                return s.substring(i, i + 1);
             }
             if (object instanceof Map) {
                 Map<String, Object> map = (Map<String, Object>) object;
-                String key = num + "";
+                String key = i + "";
                 if (map.containsKey(key)) {
                     return map.get(key);
                 }
             }
             if (object instanceof ObjectLike objectLike) {
-                String key = num + "";
+                String key = i + "";
                 Object value = objectLike.get(key);
                 if (value != null) {
                     return value;
                 }
             }
-            throw new RuntimeException("get by index [" + index + "] for non-array: " + object);
+            throw new RuntimeException("get by index [" + i + "] for non-array: " + object);
         }
         if (index != null) {
             name = index + "";
@@ -178,8 +178,8 @@ class JsProperty {
         if (object instanceof List) {
             return (new JsArray((List<Object>) object).get(name));
         }
-        if (object instanceof JsArray) {
-            return ((JsArray) object).get(name);
+        if (object instanceof JsArray array) {
+            return array.get(name);
         }
         if (object instanceof Map) {
             Map<String, Object> map = (Map<String, Object>) object;
@@ -195,20 +195,20 @@ class JsProperty {
             }
             // java interop may have been the intent, will be attempted at the end
         }
-        if (object instanceof ObjectLike) {
-            return ((ObjectLike) object).get(name);
+        if (object instanceof ObjectLike objectLike) {
+            return objectLike.get(name);
         }
-        if (object instanceof String) {
-            return new JsString((String) object).get(name);
+        if (object instanceof String s) {
+            return new JsString(s).get(name);
         }
-        if (object instanceof Number) {
-            return new JsNumber((Number) object).get(name);
+        if (object instanceof Number num) {
+            return new JsNumber(num).get(name);
         }
-        if (object instanceof ZonedDateTime) {
-            return new JsDate((ZonedDateTime) object).get(name);
+        if (object instanceof ZonedDateTime zdt) {
+            return new JsDate(zdt).get(name);
         }
-        if (object instanceof byte[]) {
-            return new JsBytes((byte[]) object).get(name);
+        if (object instanceof byte[] bytes) {
+            return new JsBytes(bytes).get(name);
         }
         if (object == null || object == Terms.UNDEFINED) {
             if (context.hasKey(name)) {
@@ -229,11 +229,11 @@ class JsProperty {
                 }
             }.get(name);
         }
-        if (functionCall && object instanceof JavaMethods) {
-            return new JavaInvokable(name, (JavaMethods) object);
+        if (functionCall && object instanceof JavaMethods jm) {
+            return new JavaInvokable(name, jm);
         }
-        if (!functionCall && object instanceof JavaFields) {
-            return ((JavaFields) object).read(name);
+        if (!functionCall && object instanceof JavaFields jf) {
+            return jf.read(name);
         }
         try { // java interop
             if (functionCall) {

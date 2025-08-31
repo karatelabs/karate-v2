@@ -85,65 +85,49 @@ class ContextRoot extends Context {
 
     @SuppressWarnings("unchecked")
     private Object getGlobal(String key) {
-        switch (key) {
-            case "console":
-                return createConsole();
-            case "parseInt":
-                return (Invokable) args -> Terms.toNumber(args[0]);
-            case "undefined":
-                return Terms.UNDEFINED;
-            case "Array":
-                return new JsArray();
-            case "Date":
-                return new JsDate();
-            case "Error":
-                return new JsError("Error");
-            case "Infinity":
-                return Terms.POSITIVE_INFINITY;
-            case "Java":
-                return (SimpleObject) name -> {
-                    if ("type".equals(name)) {
-                        return (Invokable) args -> new JavaClass((String) args[0]);
-                    }
-                    return null;
-                };
-            case "JSON":
-                return (SimpleObject) name -> {
-                    if ("stringify".equals(name)) {
-                        return (Invokable) args -> {
-                            String json = JSONValue.toJSONString(args[0]);
-                            if (args.length == 1) {
-                                return json;
-                            }
-                            List<String> list = (List<String>) args[1];
-                            Map<String, Object> map = (Map<String, Object>) JSONValue.parse(json);
-                            Map<String, Object> result = new LinkedHashMap<>();
-                            for (String k : list) {
-                                result.put(k, map.get(k));
-                            }
-                            return JSONValue.toJSONString(result);
-                        };
-                    } else if ("parse".equals(name)) {
-                        return (Invokable) args -> JSONValue.parse((String) args[0]);
-                    }
-                    return null;
-                };
-            case "Math":
-                return new JsMath();
-            case "NaN":
-                return Double.NaN;
-            case "Number":
-                return new JsNumber();
-            case "Object":
-                return new JsObject();
-            case "RegExp":
-                return new JsRegex();
-            case "String":
-                return new JsString();
-            case "TypeError":
-                return new JsError("TypeError");
-        }
-        return null;
+        return switch (key) {
+            case "console" -> createConsole();
+            case "parseInt" -> (Invokable) args -> Terms.toNumber(args[0]);
+            case "undefined" -> Terms.UNDEFINED;
+            case "Array" -> new JsArray();
+            case "Date" -> new JsDate();
+            case "Error" -> new JsError("Error");
+            case "Infinity" -> Terms.POSITIVE_INFINITY;
+            case "Java" -> (SimpleObject) name -> {
+                if ("type".equals(name)) {
+                    return (Invokable) args -> new JavaClass((String) args[0]);
+                }
+                return null;
+            };
+            case "JSON" -> (SimpleObject) name -> {
+                if ("stringify".equals(name)) {
+                    return (Invokable) args -> {
+                        String json = JSONValue.toJSONString(args[0]);
+                        if (args.length == 1) {
+                            return json;
+                        }
+                        List<String> list = (List<String>) args[1];
+                        Map<String, Object> map = (Map<String, Object>) JSONValue.parse(json);
+                        Map<String, Object> result = new LinkedHashMap<>();
+                        for (String k : list) {
+                            result.put(k, map.get(k));
+                        }
+                        return JSONValue.toJSONString(result);
+                    };
+                } else if ("parse".equals(name)) {
+                    return (Invokable) args -> JSONValue.parse((String) args[0]);
+                }
+                return null;
+            };
+            case "Math" -> new JsMath();
+            case "NaN" -> Double.NaN;
+            case "Number" -> new JsNumber();
+            case "Object" -> new JsObject();
+            case "RegExp" -> new JsRegex();
+            case "String" -> new JsString();
+            case "TypeError" -> new JsError("TypeError");
+            default -> null;
+        };
     }
 
     private ObjectLike createConsole() {
