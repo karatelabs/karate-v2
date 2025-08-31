@@ -57,13 +57,11 @@ public class Token {
 
     @Override
     public String toString() {
-        switch (type) {
-            case WS:
-                return "_";
-            case WS_LF:
-                return "_\\n_";
-        }
-        return text;
+        return switch (type) {
+            case WS -> "_";
+            case WS_LF -> "_\\n_";
+            default -> text;
+        };
     }
 
 }

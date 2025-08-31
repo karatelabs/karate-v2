@@ -47,7 +47,7 @@ class JsArray extends JsObject {
                     case "length" -> list.size();
                     case "map" -> (JsCallable) (context, args) -> {
                         List<Object> results = new ArrayList<>();
-                        JsCallable callable = toCallable(context, args);
+                        JsCallable callable = toCallable(args);
                         for (KeyValue kv : toIterable(context.thisObject)) {
                             Object result = callable.call(context, kv.value, kv.index);
                             results.add(result);
@@ -56,7 +56,7 @@ class JsArray extends JsObject {
                     };
                     case "filter" -> (JsCallable) (context, args) -> {
                         List<Object> results = new ArrayList<>();
-                        JsCallable callable = toCallable(context, args);
+                        JsCallable callable = toCallable(args);
                         for (KeyValue kv : toIterable(context.thisObject)) {
                             Object result = callable.call(context, kv.value, kv.index);
                             if (Terms.isTruthy(result)) {
@@ -82,7 +82,7 @@ class JsArray extends JsObject {
                         return sb.toString();
                     };
                     case "find" -> (JsCallable) (context, args) -> {
-                        JsCallable callable = toCallable(context, args);
+                        JsCallable callable = toCallable(args);
                         for (KeyValue kv : toIterable(context.thisObject)) {
                             Object result = callable.call(context, kv.value, kv.index);
                             if (Terms.isTruthy(result)) {
@@ -92,7 +92,7 @@ class JsArray extends JsObject {
                         return Terms.UNDEFINED;
                     };
                     case "findIndex" -> (JsCallable) (context, args) -> {
-                        JsCallable callable = toCallable(context, args);
+                        JsCallable callable = toCallable(args);
                         for (KeyValue kv : toIterable(context.thisObject)) {
                             Object result = callable.call(context, kv.value, kv.index);
                             if (Terms.isTruthy(result)) {
@@ -178,7 +178,7 @@ class JsArray extends JsObject {
                         return result;
                     };
                     case "forEach" -> (JsCallable) (context, args) -> {
-                        JsCallable callable = toCallable(context, args);
+                        JsCallable callable = toCallable(args);
                         for (KeyValue kv : toIterable(context.thisObject)) {
                             context.iterationIndex = kv.index;
                             callable.call(context, kv.value, kv.index, context.thisObject);
@@ -204,7 +204,7 @@ class JsArray extends JsObject {
                         if (thisArray.size() == 0) {
                             return true;
                         }
-                        JsCallable callable = toCallable(context, args);
+                        JsCallable callable = toCallable(args);
                         for (KeyValue kv : toIterable(context.thisObject)) {
                             Object result = callable.call(context, kv.value, kv.index, thisArray);
                             if (!Terms.isTruthy(result)) {
@@ -218,7 +218,7 @@ class JsArray extends JsObject {
                         if (thisArray.size() == 0) {
                             return false;
                         }
-                        JsCallable callable = toCallable(context, args);
+                        JsCallable callable = toCallable(args);
                         for (KeyValue kv : toIterable(context.thisObject)) {
                             Object result = callable.call(context, kv.value, kv.index, thisArray);
                             if (Terms.isTruthy(result)) {
@@ -229,7 +229,7 @@ class JsArray extends JsObject {
                     };
                     case "reduce" -> (JsCallable) (context, args) -> {
                         JsArray thisArray = asArray(context.thisObject);
-                        JsCallable callable = toCallable(context, args);
+                        JsCallable callable = toCallable(args);
                         if (thisArray.size() == 0 && args.length < 2) {
                             throw new RuntimeException("reduce() called on empty array with no initial value");
                         }
@@ -249,7 +249,7 @@ class JsArray extends JsObject {
                     };
                     case "reduceRight" -> (JsCallable) (context, args) -> {
                         JsArray thisArray = asArray(context.thisObject);
-                        JsCallable callable = toCallable(context, args);
+                        JsCallable callable = toCallable(args);
                         if (thisArray.size() == 0 && args.length < 2) {
                             throw new RuntimeException("reduceRight() called on empty array with no initial value");
                         }
@@ -282,7 +282,7 @@ class JsArray extends JsObject {
                     };
                     case "flatMap" -> (JsCallable) (context, args) -> {
                         JsArray thisArray = asArray(context.thisObject);
-                        JsCallable callable = toCallable(context, args);
+                        JsCallable callable = toCallable(args);
                         List<Object> mappedResult = new ArrayList<>();
                         int index = 0;
                         for (Object item : thisArray.toList()) {
@@ -309,7 +309,7 @@ class JsArray extends JsObject {
                             return list;
                         }
                         if (args.length > 0 && args[0] instanceof Invokable) {
-                            JsCallable callable = toCallable(context, args);
+                            JsCallable callable = toCallable(args);
                             list.sort((a, b) -> {
                                 Object result = callable.call(context, a, b);
                                 if (result instanceof Number) {
@@ -591,7 +591,7 @@ class JsArray extends JsObject {
                         if (size == 0 || args.length == 0) {
                             return Terms.UNDEFINED;
                         }
-                        JsCallable callable = toCallable(context, args);
+                        JsCallable callable = toCallable(args);
                         for (int i = size - 1; i >= 0; i--) {
                             Object value = thisArray.get(i);
                             Object result = callable.call(context, value, i, thisArray);
@@ -607,7 +607,7 @@ class JsArray extends JsObject {
                         if (size == 0 || args.length == 0) {
                             return -1;
                         }
-                        JsCallable callable = toCallable(context, args);
+                        JsCallable callable = toCallable(args);
                         for (int i = size - 1; i >= 0; i--) {
                             Object value = thisArray.get(i);
                             Object result = callable.call(context, value, i, thisArray);
@@ -642,7 +642,7 @@ class JsArray extends JsObject {
                         if (args.length == 0) {
                             return new JsObject();
                         }
-                        JsCallable callable = toCallable(context, args);
+                        JsCallable callable = toCallable(args);
                         Map<String, List<Object>> groups = new HashMap<>();
                         for (KeyValue kv : toIterable(context.thisObject)) {
                             Object key = callable.call(context, kv.value, kv.index, thisArray);

@@ -162,88 +162,26 @@ public enum TokenType {
     }
 
     private static boolean isCommentOrWhitespace(TokenType type) {
-        switch (type) {
-            case L_COMMENT:
-            case B_COMMENT:
-            case G_COMMENT:
-            case WS:
-            case WS_LF:
-            case EOF:
-                return true;
-        }
-        return false;
+        return switch (type) {
+            case L_COMMENT, B_COMMENT, G_COMMENT, WS, WS_LF, EOF -> true;
+            default -> false;
+        };
     }
 
     private static Boolean isRegexAllowed(TokenType type) {
-        switch (type) {
+        return switch (type) {
             // after these tokens, a regex literal is allowed (rather than division)
-            case L_PAREN:
-            case L_BRACKET:
-            case L_CURLY:
-            case COMMA:
-            case SEMI:
-            case COLON:
-            case EQ:
-            case EQ_EQ:
-            case EQ_EQ_EQ:
-            case NOT_EQ:
-            case NOT_EQ_EQ:
-            case LT:
-            case LT_EQ:
-            case GT:
-            case GT_EQ:
-            case PLUS:
-            case PLUS_EQ:
-            case MINUS:
-            case MINUS_EQ:
-            case STAR:
-            case STAR_EQ:
-            case STAR_STAR:
-            case STAR_STAR_EQ:
-            case SLASH_EQ:
-            case PERCENT:
-            case PERCENT_EQ:
-            case AMP:
-            case AMP_EQ:
-            case AMP_AMP:
-            case AMP_AMP_EQ:
-            case PIPE:
-            case PIPE_EQ:
-            case PIPE_PIPE:
-            case PIPE_PIPE_EQ:
-            case CARET:
-            case CARET_EQ:
-            case QUES:
-            case QUES_QUES:
-            case TILDE:
-            case NOT:
-            case RETURN:
-            case TYPEOF:
-            case DELETE:
-            case INSTANCEOF:
-            case IN:
-            case DO:
-            case IF:
-            case ELSE:
-            case CASE:
-            case DEFAULT:
-            case THROW:
-                return true;
+            case L_PAREN, L_BRACKET, L_CURLY, COMMA, SEMI, COLON, EQ, EQ_EQ, EQ_EQ_EQ, NOT_EQ, NOT_EQ_EQ, LT, LT_EQ, GT,
+                 GT_EQ, PLUS, PLUS_EQ, MINUS, MINUS_EQ, STAR, STAR_EQ, STAR_STAR, STAR_STAR_EQ, SLASH_EQ, PERCENT,
+                 PERCENT_EQ, AMP, AMP_EQ, AMP_AMP, AMP_AMP_EQ, PIPE, PIPE_EQ, PIPE_PIPE, PIPE_PIPE_EQ, CARET, CARET_EQ,
+                 QUES, QUES_QUES, TILDE, NOT, RETURN, TYPEOF, DELETE, INSTANCEOF, IN, DO, IF, ELSE, CASE, DEFAULT,
+                 THROW -> true;
             // after these tokens, a regex literal is not allowed
-            case R_PAREN:
-            case R_BRACKET:
-            case R_CURLY:
-            case IDENT:
-            case NUMBER:
-            case S_STRING:
-            case D_STRING:
-            case TRUE:
-            case FALSE:
-            case NULL:
-                return false;
-        }
-        // for other tokens, keep the current value of regexAllowed
-        return null;
+            case R_PAREN, R_BRACKET, R_CURLY, IDENT, NUMBER, S_STRING, D_STRING, TRUE, FALSE, NULL -> false;
+            default ->
+                // for other tokens, keep the current value of regexAllowed
+                    null;
+        };
     }
 
 }

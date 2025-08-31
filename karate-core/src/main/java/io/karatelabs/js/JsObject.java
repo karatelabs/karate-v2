@@ -180,8 +180,7 @@ class JsObject implements ObjectLike, Invokable, Iterable<KeyValue> {
         if (object instanceof List) {
             object = new JsArray((List<Object>) object);
         }
-        if (object instanceof JsArray) {
-            final JsArray array = (JsArray) object;
+        if (object instanceof JsArray array) {
             return () -> {
                 final int size = array.size();
                 return new Iterator<>() {
@@ -240,7 +239,7 @@ class JsObject implements ObjectLike, Invokable, Iterable<KeyValue> {
         };
     }
 
-    JsCallable toCallable(Context context, Object[] args) {
+    JsCallable toCallable(Object[] args) {
         if (args.length == 0) {
             throw new RuntimeException("function expected");
         }
@@ -248,7 +247,7 @@ class JsObject implements ObjectLike, Invokable, Iterable<KeyValue> {
             return (JsCallable) args[0];
         }
         if (args[0] instanceof Invokable) {
-            return (callContext, callArgs) -> ((Invokable) args[0]).invoke(callArgs);
+            return (context, callArgs) -> ((Invokable) args[0]).invoke(callArgs);
         }
         throw new RuntimeException("function expected");
     }

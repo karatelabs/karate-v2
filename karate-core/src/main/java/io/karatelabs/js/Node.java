@@ -58,7 +58,7 @@ public class Node {
         if (children.isEmpty()) {
             return Token.EMPTY;
         }
-        return children.get(0).getFirstToken();
+        return children.getFirst().getFirstToken();
     }
 
     public Token getLastToken() {
@@ -68,7 +68,7 @@ public class Node {
         if (children.isEmpty()) {
             return Token.EMPTY;
         }
-        return children.get(children.size() - 1).getLastToken();
+        return children.getLast().getLastToken();
     }
 
     public String toStringError(String message) {
