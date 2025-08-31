@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class HttpServerTest {
 
@@ -44,11 +44,13 @@ class HttpServerTest {
         HttpServer server = HttpServer.start(0);
         int port = server.getPort();
         KarateJs context = new KarateJs(Resource.path(""));
-        String js = "var http = karate.http('http://localhost:" + port + "');\n"
-                + "var response = http.path('cats').post({ name: 'Billie' }).body;\n"
-                + "console.log('response 1:', response);\n"
-                + "response = http.path('cats').get();\n"
-                + "console.log('response 2:', response);\n";
+        String js = """
+                var http = karate.http('http://localhost:%s');
+                var response = http.path('cats').post({ name: 'Billie' }).body;
+                console.log('response 1:', response);
+                response = http.path('cats').get();
+                console.log('response 2:', response);
+                """.formatted(port);
         context.engine.eval(js);
         server.stop();
     }
@@ -56,8 +58,10 @@ class HttpServerTest {
     @Test
     void testJsClientNoServerConnection() {
         KarateJs context = new KarateJs(Resource.path(""), new ErrorHttpClient());
-        String js = "var http = karate.http('http://localhost:99');\n"
-                + "var response = http.path('cats').post({ name: 'Billie' }).body;";
+        String js = """
+                var http = karate.http('http://localhost:99');
+                var response = http.path('cats').post({ name: 'Billie' }).body;
+                """;
         try {
             context.engine.eval(js);
         } catch (Exception e) {

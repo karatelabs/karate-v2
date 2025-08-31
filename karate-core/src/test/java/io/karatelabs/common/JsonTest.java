@@ -113,7 +113,7 @@ class JsonTest {
             json.getOptional("b.d").get();
             fail("expected exception");
         } catch (Exception e) {
-            assertTrue(e instanceof NoSuchElementException);
+            assertInstanceOf(NoSuchElementException.class, e);
         }
     }
 

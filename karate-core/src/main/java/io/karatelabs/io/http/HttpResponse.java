@@ -203,29 +203,20 @@ public class HttpResponse implements SimpleObject {
 
     @Override
     public Object get(String key) {
-        switch (key) {
-            case "status":
-                return status;
-            case "statusText":
-                return statusText;
-            case "responseTime":
-                return responseTime;
-            case "headers":
-                return StringUtils.simplify(headers);
-            case "header":
-                return header();
-            case "headerValues":
-                return headerValues();
-            case "body":
-                return getBodyConverted();
-            case "bodyString":
-                return getBodyString();
-            case "bodyBytes":
-                return Json.toBytes(body);
-            default:
+        return switch (key) {
+            case "status" -> status;
+            case "statusText" -> statusText;
+            case "responseTime" -> responseTime;
+            case "headers" -> StringUtils.simplify(headers);
+            case "header" -> header();
+            case "headerValues" -> headerValues();
+            case "body" -> getBodyConverted();
+            case "bodyString" -> getBodyString();
+            case "bodyBytes" -> Json.toBytes(body);
+            default ->
                 // logger.warn("get - unexpected key: {}", key);
-        }
-        return null;
+                    null;
+        };
     }
 
     @SuppressWarnings("unchecked")

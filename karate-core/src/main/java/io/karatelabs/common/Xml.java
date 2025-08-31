@@ -136,7 +136,7 @@ public class Xml {
     public static Document fromObject(String name, Object o) {
         Document doc = newDocument();
         List<Element> list = fromObject(doc, name, o);
-        Element root = list.get(0);
+        Element root = list.getFirst();
         doc.appendChild(root);
         return doc;
     }
@@ -149,7 +149,7 @@ public class Xml {
             Object value = map.get("_");
             if (value != null || attribs != null) {
                 List<Element> elements = fromObject(doc, name, value);
-                addAttributes(elements.get(0), attribs);
+                addAttributes(elements.getFirst(), attribs);
                 return elements;
             } else {
                 Element element = createElement(doc, name, null, null);

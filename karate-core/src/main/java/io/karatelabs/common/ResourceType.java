@@ -90,35 +90,21 @@ public enum ResourceType {
     }
 
     public boolean isVideo() {
-        switch (this) {
-            case MP4:
-                return true;
-            default:
-                return false;
-        }
+        return this == ResourceType.MP4;
     }
 
     public boolean isImage() {
-        switch (this) {
-            case BINARY:
-            case ICO:
-            case PNG:
-            case GIF:
-            case JPG:
-                return true;
-            default:
-                return false;
-        }
+        return switch (this) {
+            case BINARY, ICO, PNG, GIF, JPG -> true;
+            default -> false;
+        };
     }
 
     public boolean isUrlEncodedOrMultipart() {
-        switch (this) {
-            case URLENCODED:
-            case MULTIPART:
-                return true;
-            default:
-                return false;
-        }
+        return switch (this) {
+            case URLENCODED, MULTIPART -> true;
+            default -> false;
+        };
     }
 
     public boolean isHtml() {
@@ -126,21 +112,11 @@ public enum ResourceType {
     }
 
     public boolean isJson() {
-        switch (this) {
-            case JSON:
-                return true;
-            default:
-                return false;
-        }
+        return this == ResourceType.JSON;
     }
 
     public boolean isXml() {
-        switch (this) {
-            case XML:
-                return true;
-            default:
-                return false;
-        }
+        return this == ResourceType.XML;
     }
 
     public boolean isText() {
@@ -148,27 +124,14 @@ public enum ResourceType {
     }
 
     public boolean isBinary() {
-        switch (this) {
-            case BINARY:
-            case ICO:
-            case PNG:
-            case GIF:
-            case JPG:
-            case PDF:
-            case MP4:
-                return true;
-            default:
-                return false;
-        }
+        return switch (this) {
+            case BINARY, ICO, PNG, GIF, JPG, PDF, MP4 -> true;
+            default -> false;
+        };
     }
 
     public boolean isScript() {
-        switch (this) {
-            case JS:
-                return true;
-            default:
-                return false;
-        }
+        return this == ResourceType.JS;
     }
 
     public static ResourceType fromContentType(String ct) {

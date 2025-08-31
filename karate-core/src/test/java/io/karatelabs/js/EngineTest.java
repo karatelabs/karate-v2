@@ -37,19 +37,18 @@ class EngineTest {
 
     @Test
     void testWhiteSpaceTrackingWithinTemplates() {
-        String js =
-                """
-                        var request = {
-                            body: `{
-                                        "RequesterDetails": {
-                                            "InstructingTreasuryId": "000689",
-                                            "ApiRequestReference": "${idempotencyKey}",
-                                            "entity": "000689"
-                                         }
-                                   }`
-                        };
-                        const foo = 'bar';
-                        """;
+        String js = """
+                var request = {
+                    body: `{
+                                "RequesterDetails": {
+                                    "InstructingTreasuryId": "000689",
+                                    "ApiRequestReference": "${idempotencyKey}",
+                                    "entity": "000689"
+                                 }
+                           }`
+                };
+                const foo = 'bar';
+                """;
         JsParser parser = new JsParser(Resource.text(js));
         Node node = parser.parse();
         Node lastLine = node.findFirst(TokenType.CONST);

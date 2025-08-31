@@ -119,15 +119,14 @@ public class KarateJs implements SimpleObject {
                 throw new RuntimeException("read() needs at least one argument");
             }
             Resource resource = root.resolve((args[0] + ""));
-            switch (resource.getExtension()) {
-                case "json":
-                    return Json.of(resource.getText()).value();
-                case "js":
+            return switch (resource.getExtension()) {
+                case "json" -> Json.of(resource.getText()).value();
+                case "js" -> {
                     String js = resource.getText();
-                    return engine.eval(js);
-                default:
-                    return resource.getText();
-            }
+                    yield engine.eval(js);
+                }
+                default -> resource.getText();
+            };
         };
     }
 
@@ -171,21 +170,15 @@ public class KarateJs implements SimpleObject {
 
     @Override
     public Object get(String key) {
-        switch (key) {
-            case "doc":
-                return doc();
-            case "get":
-                return get();
-            case "http":
-                return http();
-            case "read":
-                return read();
-            case "readAsString":
-                return readAsString();
-            case "toStringPretty":
-                return toStringPretty();
-        }
-        return null;
+        return switch (key) {
+            case "doc" -> doc();
+            case "get" -> get();
+            case "http" -> http();
+            case "read" -> read();
+            case "readAsString" -> readAsString();
+            case "toStringPretty" -> toStringPretty();
+            default -> null;
+        };
     }
 
 }
