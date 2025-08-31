@@ -186,13 +186,11 @@ class JsRegex extends JsObject {
                 return new Prototype(wrapped) {
                     @Override
                     public Object getProperty(String propName) {
-                        switch (propName) {
-                            case "index":
-                                return matcher.start();
-                            case "input":
-                                return str;
-                        }
-                        return null;
+                        return switch (propName) {
+                            case "index" -> matcher.start();
+                            case "input" -> str;
+                            default -> null;
+                        };
                     }
                 };
             }
@@ -210,47 +208,37 @@ class JsRegex extends JsObject {
         return new Prototype(wrapped) {
             @Override
             public Object getProperty(String propName) {
-                switch (propName) {
-                    case "test":
-                        return (JsCallable) (context, args) -> {
-                            if (args.length == 0 || args[0] == null) {
-                                return false;
-                            }
-                            JsRegex regex = JsRegex.this;
-                            if (context.thisObject instanceof JsRegex) {
-                                regex = (JsRegex) context.thisObject;
-                            }
-                            return regex.test(args[0].toString());
-                        };
-                    case "exec":
-                        return (JsCallable) (context, args) -> {
-                            if (args.length == 0 || args[0] == null) {
-                                return null;
-                            }
-                            JsRegex regex = JsRegex.this;
-                            if (context.thisObject instanceof JsRegex) {
-                                regex = (JsRegex) context.thisObject;
-                            }
-                            return regex.exec(args[0].toString());
-                        };
-                    case "source":
-                        return pattern;
-                    case "flags":
-                        return flags;
-                    case "lastIndex":
-                        return lastIndex;
-                    case "global":
-                        return global;
-                    case "ignoreCase":
-                        return flags.contains("i");
-                    case "multiline":
-                        return flags.contains("m");
-                    case "dotAll":
-                        return flags.contains("s");
-                    case "toString":
-                        return (Invokable) args -> JsRegex.this.toString();
-                }
-                return null;
+                return switch (propName) {
+                    case "test" -> (JsCallable) (context, args) -> {
+                        if (args.length == 0 || args[0] == null) {
+                            return false;
+                        }
+                        JsRegex regex = JsRegex.this;
+                        if (context.thisObject instanceof JsRegex) {
+                            regex = (JsRegex) context.thisObject;
+                        }
+                        return regex.test(args[0].toString());
+                    };
+                    case "exec" -> (JsCallable) (context, args) -> {
+                        if (args.length == 0 || args[0] == null) {
+                            return null;
+                        }
+                        JsRegex regex = JsRegex.this;
+                        if (context.thisObject instanceof JsRegex) {
+                            regex = (JsRegex) context.thisObject;
+                        }
+                        return regex.exec(args[0].toString());
+                    };
+                    case "source" -> pattern;
+                    case "flags" -> flags;
+                    case "lastIndex" -> lastIndex;
+                    case "global" -> global;
+                    case "ignoreCase" -> flags.contains("i");
+                    case "multiline" -> flags.contains("m");
+                    case "dotAll" -> flags.contains("s");
+                    case "toString" -> (Invokable) args -> JsRegex.this.toString();
+                    default -> null;
+                };
             }
         };
     }

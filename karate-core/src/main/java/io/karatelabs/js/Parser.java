@@ -38,6 +38,37 @@ abstract class Parser {
 
     static final Logger logger = LoggerFactory.getLogger(Parser.class);
 
+    static class Marker {
+
+        final int position;
+        final Marker caller;
+        final Node node;
+        final int depth;
+
+        public Marker(int position, Marker caller, Node node, int depth) {
+            this.position = position;
+            this.caller = caller;
+            this.node = node;
+            this.depth = depth;
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            if (caller != null) {
+                if (caller.caller != null) {
+                    sb.append(caller.caller.node.type).append(" >> ");
+                }
+                sb.append(caller.node.type).append(" >> ");
+            }
+            sb.append('[');
+            sb.append(node.type);
+            sb.append(']');
+            return sb.toString();
+        }
+
+    }
+
     final List<Token> tokens;
     private final int size;
 
@@ -148,15 +179,15 @@ abstract class Parser {
             Node node = marker.node;
             switch (shift) {
                 case LEFT:
-                    Node prev = parent.children.remove(0); // remove previous sibling
-                    node.children.add(0, prev); // and make it the first child
+                    Node prev = parent.children.removeFirst(); // remove previous sibling
+                    node.children.addFirst(prev); // and make it the first child
                     parent.children.add(node);
                     break;
                 case NONE:
                     parent.children.add(node);
                     break;
                 case RIGHT:
-                    Node prevSibling = parent.children.remove(0); // remove previous sibling
+                    Node prevSibling = parent.children.removeFirst(); // remove previous sibling
                     if (prevSibling.type == node.type) {
                         Node newNode = new Node(node.type);
                         parent.children.add(newNode);
@@ -168,7 +199,7 @@ abstract class Parser {
                         newRhs.children.add(node.children.get(0)); // operator
                         newRhs.children.add(node.children.get(1)); // current rhs
                     } else {
-                        node.children.add(0, prevSibling); // move previous sibling to first child
+                        node.children.addFirst(prevSibling); // move previous sibling to first child
                         parent.children.add(node);
                     }
             }

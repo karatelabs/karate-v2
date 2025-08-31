@@ -39,19 +39,16 @@ public abstract class JsFunction extends JsObject implements JsCallable {
         return new Prototype(wrapped) {
             @Override
             public Object getProperty(String propName) {
-                switch (propName) {
-                    case "call":
-                        return (JsCallable) (context, args) -> {
-                            ShiftArgs shifted = new ShiftArgs(args);
-                            context.thisObject = shifted.thisObject;
-                            return call(context, shifted.args);
-                        };
-                    case "constructor":
-                        return JsFunction.this;
-                    case "name":
-                        return name;
-                }
-                return null;
+                return switch (propName) {
+                    case "call" -> (JsCallable) (context, args) -> {
+                        ShiftArgs shifted = new ShiftArgs(args);
+                        context.thisObject = shifted.thisObject;
+                        return call(context, shifted.args);
+                    };
+                    case "constructor" -> JsFunction.this;
+                    case "name" -> name;
+                    default -> null;
+                };
             }
         };
     }
@@ -67,7 +64,7 @@ public abstract class JsFunction extends JsObject implements JsCallable {
                 this.args = EMPTY;
             } else {
                 List<Object> list = new ArrayList<>(Arrays.asList(args));
-                thisObject = list.remove(0);
+                thisObject = list.removeFirst();
                 this.args = list.toArray();
             }
         }

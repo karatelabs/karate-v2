@@ -76,26 +76,11 @@ class ContextRoot extends Context {
         if (_cache != null && _cache.containsKey(name)) {
             return true;
         }
-        switch (name) {
-            case "console":
-            case "parseInt":
-            case "undefined":
-            case "Array":
-            case "Date":
-            case "Error":
-            case "Infinity":
-            case "Java":
-            case "JSON":
-            case "Math":
-            case "NaN":
-            case "Number":
-            case "Object":
-            case "RegExp":
-            case "String":
-            case "TypeError":
-                return true;
-        }
-        return false;
+        return switch (name) {
+            case "console", "parseInt", "undefined", "Array", "Date", "Error", "Infinity", "Java", "JSON", "Math",
+                 "NaN", "Number", "Object", "RegExp", "String", "TypeError" -> true;
+            default -> false;
+        };
     }
 
     @SuppressWarnings("unchecked")

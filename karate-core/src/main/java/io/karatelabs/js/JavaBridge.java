@@ -227,9 +227,8 @@ public interface JavaBridge {
             Object arg = args[i];
             Class<?> argType = types[i];
             if (argType.isArray()) {
-                if (arg instanceof List) {
+                if (arg instanceof List<?> list) {
                     // convert list to array of correct type
-                    List<?> list = (List<?>) arg;
                     Class<?> arrayType = argType.getComponentType();
                     int count = list.size();
                     Object result = Array.newInstance(arrayType, count);

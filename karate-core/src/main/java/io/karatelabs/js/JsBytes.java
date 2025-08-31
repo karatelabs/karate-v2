@@ -36,10 +36,9 @@ class JsBytes extends JsObject {
         Prototype wrapped = super.initPrototype();
         return new Prototype(wrapped) {
             @Override
-            public Object getProperty(String propName) {
-                switch (propName) {
-                    case "length":
-                        return bytes.length;
+            public Object getProperty(String name) {
+                if (name.equals("length")) {
+                    return bytes.length;
                 }
                 return null;
             }

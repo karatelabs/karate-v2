@@ -36,10 +36,9 @@ class JsError extends JsObject {
         Prototype wrapped = super.initPrototype();
         return new Prototype(wrapped) {
             @Override
-            public Object getProperty(String propName) {
-                switch (propName) {
-                    case "message":
-                        return message;
+            public Object getProperty(String name) {
+                if (name.equals("message")) {
+                    return message;
                 }
                 return null;
             }

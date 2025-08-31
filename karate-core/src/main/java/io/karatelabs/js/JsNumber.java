@@ -55,29 +55,27 @@ class JsNumber extends JsObject implements JavaMirror {
         return new Prototype(wrapped) {
             @Override
             public Object getProperty(String propName) {
-                switch (propName) {
-                    case "toFixed":
-                        return (Invokable) args -> {
-                            int digits = 0;
-                            if (args.length > 0) {
-                                digits = Terms.toNumber(args[0]).intValue();
-                            }
-                            double doubleValue = value.doubleValue();
-                            BigDecimal bd = BigDecimal.valueOf(doubleValue);
-                            bd = bd.setScale(digits, RoundingMode.HALF_UP);
-                            StringBuilder pattern = new StringBuilder("0");
-                            if (digits > 0) {
-                                pattern.append(".");
-                                pattern.append("0".repeat(digits));
-                            }
-                            DecimalFormat df = new DecimalFormat(pattern.toString());
-                            return df.format(bd.doubleValue());
-                        };
+                return switch (propName) {
+                    case "toFixed" -> (Invokable) args -> {
+                        int digits = 0;
+                        if (args.length > 0) {
+                            digits = Terms.toNumber(args[0]).intValue();
+                        }
+                        double doubleValue = value.doubleValue();
+                        BigDecimal bd = BigDecimal.valueOf(doubleValue);
+                        bd = bd.setScale(digits, RoundingMode.HALF_UP);
+                        StringBuilder pattern = new StringBuilder("0");
+                        if (digits > 0) {
+                            pattern.append(".");
+                            pattern.append("0".repeat(digits));
+                        }
+                        DecimalFormat df = new DecimalFormat(pattern.toString());
+                        return df.format(bd.doubleValue());
+                    };
                     // static ==========================================================================================
-                    case "valueOf":
-                        return (Invokable) args -> value;
-                }
-                return null;
+                    case "valueOf" -> (Invokable) args -> value;
+                    default -> null;
+                };
             }
         };
     }

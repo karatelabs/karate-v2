@@ -63,17 +63,21 @@ public class Terms {
     }
 
     public static Number toNumber(Object value) {
-        if (value == null) {
-            return 0;
-        }
-        if (value instanceof Number) {
-            return (Number) value;
-        }
-        if (value instanceof Boolean) {
-            return ((Boolean) value) ? 1 : 0;
-        }
-        if (value instanceof JsDate) {
-            return ((JsDate) value).getTime();
+        switch (value) {
+            case null -> {
+                return 0;
+            }
+            case Number number -> {
+                return number;
+            }
+            case Boolean b -> {
+                return b ? 1 : 0;
+            }
+            case JsDate keyValues -> {
+                return keyValues.getTime();
+            }
+            default -> {
+            }
         }
         String text = value.toString().trim();
         if (text.isEmpty()) {
@@ -217,11 +221,9 @@ public class Terms {
     }
 
     static Object add(Object lhs, Object rhs) {
-        if (!(lhs instanceof Number) || !(rhs instanceof Number)) {
+        if (!(lhs instanceof Number lhsNum) || !(rhs instanceof Number rhsNum)) {
             return lhs + "" + rhs;
         }
-        Number lhsNum = (Number) lhs;
-        Number rhsNum = (Number) rhs;
         double result = lhsNum.doubleValue() + rhsNum.doubleValue();
         return narrow(result);
     }
@@ -255,16 +257,12 @@ public class Terms {
         if (value == null || value.equals(UNDEFINED) || value.equals(Double.NaN)) {
             return false;
         }
-        if (value instanceof Boolean) {
-            return (Boolean) value;
-        }
-        if (value instanceof Number) {
-            return ((Number) value).doubleValue() != 0;
-        }
-        if (value instanceof String) {
-            return !((String) value).isEmpty();
-        }
-        return true;
+        return switch (value) {
+            case Boolean b -> b;
+            case Number number -> number.doubleValue() != 0;
+            case String s -> !s.isEmpty();
+            default -> true;
+        };
     }
 
     public static boolean isPrimitive(Object value) {
@@ -299,16 +297,14 @@ public class Terms {
     }
 
     public static boolean instanceOf(Object lhs, Object rhs) {
-        if (lhs instanceof JsObject && rhs instanceof JsObject) {
+        if (lhs instanceof JsObject objectLhs && rhs instanceof JsObject objectRhs) {
             if (lhs instanceof JavaMirror && rhs instanceof JavaMirror) {
                 return lhs.getClass().equals(rhs.getClass());
             }
-            JsObject objectLhs = (JsObject) lhs;
             Prototype prototypeLhs = objectLhs.getPrototype();
             if (prototypeLhs != null) {
                 Object constructorLhs = prototypeLhs.get("constructor");
                 if (constructorLhs != null) {
-                    JsObject objectRhs = (JsObject) rhs;
                     Object constructorRhs = objectRhs.get("constructor");
                     return constructorLhs == constructorRhs;
                 }
@@ -324,17 +320,21 @@ public class Terms {
         if (Terms.isPrimitive(o) || o instanceof JavaMirror) {
             return o.toString();
         }
-        if (o instanceof JsArray) {
-            List<Object> list = ((JsArray) o).toList();
-            return JSONValue.toJSONString(list);
-        }
-        if (o instanceof JsFunction) {
-            return "[object Object]";
-        }
-        if (o instanceof ObjectLike) {
-            Map<String, Object> map = ((ObjectLike) o).toMap();
-            if (map != null) {
-                return JSONValue.toJSONString(map);
+        switch (o) {
+            case JsArray keyValues -> {
+                List<Object> list = keyValues.toList();
+                return JSONValue.toJSONString(list);
+            }
+            case JsFunction ignored -> {
+                return "[object Object]";
+            }
+            case ObjectLike objectLike -> {
+                Map<String, Object> map = objectLike.toMap();
+                if (map != null) {
+                    return JSONValue.toJSONString(map);
+                }
+            }
+            default -> {
             }
         }
         if (o instanceof Map || o instanceof List) {

@@ -3,6 +3,8 @@ package io.karatelabs.js;
 import io.karatelabs.common.Resource;
 import org.junit.jupiter.api.Test;
 
+import java.util.NoSuchElementException;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -342,8 +344,8 @@ class JsParserTest {
 
     @Test
     void testRegexEofEdgeCases() {
-        error("<x>x</", IndexOutOfBoundsException.class);
-        error("<foo>foo</foo>\n", IndexOutOfBoundsException.class);
+        error("<x>x</", NoSuchElementException.class);
+        error("<foo>foo</foo>\n", NoSuchElementException.class);
     }
 
 }

@@ -110,220 +110,197 @@ class JsDate extends JsObject implements JavaMirror {
         return new Prototype(wrapped) {
             @Override
             public Object getProperty(String propName) {
-                switch (propName) {
-                    case "now":
-                        return (Invokable) args -> System.currentTimeMillis();
-                    case "parse":
-                        return (Invokable) args -> {
-                            if (args.length == 0 || args[0] == null) {
-                                return Double.NaN;
-                            }
-                            try {
-                                String dateStr = args[0].toString();
-                                return new JsDate(dateStr).getTime();
-                            } catch (Exception e) {
-                                return Double.NaN;
-                            }
-                        };
-                    case "getTime":
-                    case "valueOf":
-                        return (JsCallable) (context, args) -> {
-                            if (context.thisObject instanceof JsDate) {
-                                return ((JsDate) context.thisObject).getTime();
-                            }
-                            return getTime();
-                        };
-                    case "toString":
-                        return (JsCallable) (context, args) -> {
-                            if (context.thisObject instanceof JsDate) {
-                                return (context.thisObject).toString();
-                            }
-                            return toString();
-                        };
-                    case "toISOString":
-                        return (JsCallable) (context, args) -> {
-                            ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                            return dt.withZoneSameInstant(UTC).format(ISO_FORMATTER);
-                        };
-                    case "toUTCString":
-                        return (JsCallable) (context, args) -> {
-                            ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                            // Format: "Fri, 01 Jan 2021 00:00:00 GMT"
-                            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss 'GMT'");
-                            return dt.withZoneSameInstant(UTC).format(formatter);
-                        };
-                    case "getFullYear":
-                        return (JsCallable) (context, args) -> {
-                            ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                            return dt.getYear();
-                        };
-                    case "getMonth":
-                        return (JsCallable) (context, args) -> {
-                            ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                            // JavaScript months are 0-indexed
-                            return dt.getMonthValue() - 1;
-                        };
-                    case "getDate":
-                        return (JsCallable) (context, args) -> {
-                            ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                            return dt.getDayOfMonth();
-                        };
-                    case "getDay":
-                        return (JsCallable) (context, args) -> {
-                            ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                            // Convert Java's 1-7 (Mon-Sun) to JavaScript's 0-6 (Sun-Sat)
-                            return dt.getDayOfWeek().getValue() % 7;
-                        };
-                    case "getHours":
-                        return (JsCallable) (context, args) -> {
-                            ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                            return dt.getHour();
-                        };
-                    case "getMinutes":
-                        return (JsCallable) (context, args) -> {
-                            ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                            return dt.getMinute();
-                        };
-                    case "getSeconds":
-                        return (JsCallable) (context, args) -> {
-                            ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                            return dt.getSecond();
-                        };
-                    case "getMilliseconds":
-                        return (JsCallable) (context, args) -> {
-                            ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                            return dt.get(ChronoField.MILLI_OF_SECOND);
-                        };
+                return switch (propName) {
+                    case "now" -> (Invokable) args -> System.currentTimeMillis();
+                    case "parse" -> (Invokable) args -> {
+                        if (args.length == 0 || args[0] == null) {
+                            return Double.NaN;
+                        }
+                        try {
+                            String dateStr = args[0].toString();
+                            return new JsDate(dateStr).getTime();
+                        } catch (Exception e) {
+                            return Double.NaN;
+                        }
+                    };
+                    case "getTime", "valueOf" -> (JsCallable) (context, args) -> {
+                        if (context.thisObject instanceof JsDate) {
+                            return ((JsDate) context.thisObject).getTime();
+                        }
+                        return getTime();
+                    };
+                    case "toString" -> (JsCallable) (context, args) -> {
+                        if (context.thisObject instanceof JsDate) {
+                            return (context.thisObject).toString();
+                        }
+                        return toString();
+                    };
+                    case "toISOString" -> (JsCallable) (context, args) -> {
+                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
+                        return dt.withZoneSameInstant(UTC).format(ISO_FORMATTER);
+                    };
+                    case "toUTCString" -> (JsCallable) (context, args) -> {
+                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
+                        // Format: "Fri, 01 Jan 2021 00:00:00 GMT"
+                        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss 'GMT'");
+                        return dt.withZoneSameInstant(UTC).format(formatter);
+                    };
+                    case "getFullYear" -> (JsCallable) (context, args) -> {
+                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
+                        return dt.getYear();
+                    };
+                    case "getMonth" -> (JsCallable) (context, args) -> {
+                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
+                        // JavaScript months are 0-indexed
+                        return dt.getMonthValue() - 1;
+                    };
+                    case "getDate" -> (JsCallable) (context, args) -> {
+                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
+                        return dt.getDayOfMonth();
+                    };
+                    case "getDay" -> (JsCallable) (context, args) -> {
+                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
+                        // Convert Java's 1-7 (Mon-Sun) to JavaScript's 0-6 (Sun-Sat)
+                        return dt.getDayOfWeek().getValue() % 7;
+                    };
+                    case "getHours" -> (JsCallable) (context, args) -> {
+                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
+                        return dt.getHour();
+                    };
+                    case "getMinutes" -> (JsCallable) (context, args) -> {
+                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
+                        return dt.getMinute();
+                    };
+                    case "getSeconds" -> (JsCallable) (context, args) -> {
+                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
+                        return dt.getSecond();
+                    };
+                    case "getMilliseconds" -> (JsCallable) (context, args) -> {
+                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
+                        return dt.get(ChronoField.MILLI_OF_SECOND);
+                    };
                     // Setters
-                    case "setDate":
-                        return (JsCallable) (context, args) -> {
-                            if (args.length == 0 || !(args[0] instanceof Number)) {
-                                return Double.NaN;
-                            }
-                            int day = ((Number) args[0]).intValue();
-                            ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                            ZonedDateTime newDt = dt.withDayOfMonth(day);
-                            if (context.thisObject instanceof JsDate) {
-                                ((JsDate) context.thisObject).setValue(newDt);
-                            }
-                            return newDt.toInstant().toEpochMilli();
-                        };
-                    case "setMonth":
-                        return (JsCallable) (context, args) -> {
-                            if (args.length == 0 || !(args[0] instanceof Number)) {
-                                return Double.NaN;
-                            }
-                            // JavaScript months are 0-indexed
-                            int month = ((Number) args[0]).intValue() + 1;
-                            ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                            ZonedDateTime newDt = dt.withMonth(month);
-                            if (context.thisObject instanceof JsDate) {
-                                ((JsDate) context.thisObject).setValue(newDt);
-                            }
-                            return newDt.toInstant().toEpochMilli();
-                        };
-                    case "setFullYear":
-                        return (JsCallable) (context, args) -> {
-                            if (args.length == 0 || !(args[0] instanceof Number)) {
-                                return Double.NaN;
-                            }
-                            int year = ((Number) args[0]).intValue();
-                            ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                            ZonedDateTime newDt = dt.withYear(year);
-                            if (context.thisObject instanceof JsDate) {
-                                ((JsDate) context.thisObject).setValue(newDt);
-                            }
-                            return newDt.toInstant().toEpochMilli();
-                        };
-                    case "setHours":
-                        return (JsCallable) (context, args) -> {
-                            if (args.length == 0 || !(args[0] instanceof Number)) {
-                                return Double.NaN;
-                            }
-                            int hours = ((Number) args[0]).intValue();
-                            ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                            ZonedDateTime newDt = dt.withHour(hours);
-                            // Handle optional minute, second, and millisecond parameters
-                            if (args.length > 1 && args[1] instanceof Number) {
-                                newDt = newDt.withMinute(((Number) args[1]).intValue());
-                            }
-                            if (args.length > 2 && args[2] instanceof Number) {
-                                newDt = newDt.withSecond(((Number) args[2]).intValue());
-                            }
-                            if (args.length > 3 && args[3] instanceof Number) {
-                                newDt = newDt.with(ChronoField.MILLI_OF_SECOND, ((Number) args[3]).intValue());
-                            }
-                            if (context.thisObject instanceof JsDate) {
-                                ((JsDate) context.thisObject).setValue(newDt);
-                            }
-                            return newDt.toInstant().toEpochMilli();
-                        };
-                    case "setMinutes":
-                        return (JsCallable) (context, args) -> {
-                            if (args.length == 0 || !(args[0] instanceof Number)) {
-                                return Double.NaN;
-                            }
-                            int minutes = ((Number) args[0]).intValue();
-                            ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                            ZonedDateTime newDt = dt.withMinute(minutes);
-                            // Handle optional second and millisecond parameters
-                            if (args.length > 1 && args[1] instanceof Number) {
-                                newDt = newDt.withSecond(((Number) args[1]).intValue());
-                            }
-                            if (args.length > 2 && args[2] instanceof Number) {
-                                newDt = newDt.with(ChronoField.MILLI_OF_SECOND, ((Number) args[2]).intValue());
-                            }
-                            if (context.thisObject instanceof JsDate) {
-                                ((JsDate) context.thisObject).setValue(newDt);
-                            }
-                            return newDt.toInstant().toEpochMilli();
-                        };
-                    case "setSeconds":
-                        return (JsCallable) (context, args) -> {
-                            if (args.length == 0 || !(args[0] instanceof Number)) {
-                                return Double.NaN;
-                            }
-                            int seconds = ((Number) args[0]).intValue();
-                            ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                            ZonedDateTime newDt = dt.withSecond(seconds);
-                            // Handle optional millisecond parameter
-                            if (args.length > 1 && args[1] instanceof Number) {
-                                newDt = newDt.with(ChronoField.MILLI_OF_SECOND, ((Number) args[1]).intValue());
-                            }
-                            if (context.thisObject instanceof JsDate) {
-                                ((JsDate) context.thisObject).setValue(newDt);
-                            }
-                            return newDt.toInstant().toEpochMilli();
-                        };
-                    case "setMilliseconds":
-                        return (JsCallable) (context, args) -> {
-                            if (args.length == 0 || !(args[0] instanceof Number)) {
-                                return Double.NaN;
-                            }
-                            int ms = ((Number) args[0]).intValue();
-                            ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                            ZonedDateTime newDt = dt.with(ChronoField.MILLI_OF_SECOND, ms);
-                            if (context.thisObject instanceof JsDate) {
-                                ((JsDate) context.thisObject).setValue(newDt);
-                            }
-                            return newDt.toInstant().toEpochMilli();
-                        };
-                    case "setTime":
-                        return (JsCallable) (context, args) -> {
-                            if (args.length == 0 || !(args[0] instanceof Number)) {
-                                return Double.NaN;
-                            }
-                            long timestamp = ((Number) args[0]).longValue();
-                            ZonedDateTime newDt = ZonedDateTime.ofInstant(
-                                    Instant.ofEpochMilli(timestamp),
-                                    ZoneId.systemDefault());
-                            if (context.thisObject instanceof JsDate) {
-                                ((JsDate) context.thisObject).setValue(newDt);
-                            }
-                            return timestamp;
-                        };
-                }
-                return null;
+                    case "setDate" -> (JsCallable) (context, args) -> {
+                        if (args.length == 0 || !(args[0] instanceof Number)) {
+                            return Double.NaN;
+                        }
+                        int day = ((Number) args[0]).intValue();
+                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
+                        ZonedDateTime newDt = dt.withDayOfMonth(day);
+                        if (context.thisObject instanceof JsDate) {
+                            ((JsDate) context.thisObject).setValue(newDt);
+                        }
+                        return newDt.toInstant().toEpochMilli();
+                    };
+                    case "setMonth" -> (JsCallable) (context, args) -> {
+                        if (args.length == 0 || !(args[0] instanceof Number)) {
+                            return Double.NaN;
+                        }
+                        // JavaScript months are 0-indexed
+                        int month = ((Number) args[0]).intValue() + 1;
+                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
+                        ZonedDateTime newDt = dt.withMonth(month);
+                        if (context.thisObject instanceof JsDate) {
+                            ((JsDate) context.thisObject).setValue(newDt);
+                        }
+                        return newDt.toInstant().toEpochMilli();
+                    };
+                    case "setFullYear" -> (JsCallable) (context, args) -> {
+                        if (args.length == 0 || !(args[0] instanceof Number)) {
+                            return Double.NaN;
+                        }
+                        int year = ((Number) args[0]).intValue();
+                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
+                        ZonedDateTime newDt = dt.withYear(year);
+                        if (context.thisObject instanceof JsDate) {
+                            ((JsDate) context.thisObject).setValue(newDt);
+                        }
+                        return newDt.toInstant().toEpochMilli();
+                    };
+                    case "setHours" -> (JsCallable) (context, args) -> {
+                        if (args.length == 0 || !(args[0] instanceof Number)) {
+                            return Double.NaN;
+                        }
+                        int hours = ((Number) args[0]).intValue();
+                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
+                        ZonedDateTime newDt = dt.withHour(hours);
+                        // Handle optional minute, second, and millisecond parameters
+                        if (args.length > 1 && args[1] instanceof Number) {
+                            newDt = newDt.withMinute(((Number) args[1]).intValue());
+                        }
+                        if (args.length > 2 && args[2] instanceof Number) {
+                            newDt = newDt.withSecond(((Number) args[2]).intValue());
+                        }
+                        if (args.length > 3 && args[3] instanceof Number) {
+                            newDt = newDt.with(ChronoField.MILLI_OF_SECOND, ((Number) args[3]).intValue());
+                        }
+                        if (context.thisObject instanceof JsDate) {
+                            ((JsDate) context.thisObject).setValue(newDt);
+                        }
+                        return newDt.toInstant().toEpochMilli();
+                    };
+                    case "setMinutes" -> (JsCallable) (context, args) -> {
+                        if (args.length == 0 || !(args[0] instanceof Number)) {
+                            return Double.NaN;
+                        }
+                        int minutes = ((Number) args[0]).intValue();
+                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
+                        ZonedDateTime newDt = dt.withMinute(minutes);
+                        // Handle optional second and millisecond parameters
+                        if (args.length > 1 && args[1] instanceof Number) {
+                            newDt = newDt.withSecond(((Number) args[1]).intValue());
+                        }
+                        if (args.length > 2 && args[2] instanceof Number) {
+                            newDt = newDt.with(ChronoField.MILLI_OF_SECOND, ((Number) args[2]).intValue());
+                        }
+                        if (context.thisObject instanceof JsDate) {
+                            ((JsDate) context.thisObject).setValue(newDt);
+                        }
+                        return newDt.toInstant().toEpochMilli();
+                    };
+                    case "setSeconds" -> (JsCallable) (context, args) -> {
+                        if (args.length == 0 || !(args[0] instanceof Number)) {
+                            return Double.NaN;
+                        }
+                        int seconds = ((Number) args[0]).intValue();
+                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
+                        ZonedDateTime newDt = dt.withSecond(seconds);
+                        // Handle optional millisecond parameter
+                        if (args.length > 1 && args[1] instanceof Number) {
+                            newDt = newDt.with(ChronoField.MILLI_OF_SECOND, ((Number) args[1]).intValue());
+                        }
+                        if (context.thisObject instanceof JsDate) {
+                            ((JsDate) context.thisObject).setValue(newDt);
+                        }
+                        return newDt.toInstant().toEpochMilli();
+                    };
+                    case "setMilliseconds" -> (JsCallable) (context, args) -> {
+                        if (args.length == 0 || !(args[0] instanceof Number)) {
+                            return Double.NaN;
+                        }
+                        int ms = ((Number) args[0]).intValue();
+                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
+                        ZonedDateTime newDt = dt.with(ChronoField.MILLI_OF_SECOND, ms);
+                        if (context.thisObject instanceof JsDate) {
+                            ((JsDate) context.thisObject).setValue(newDt);
+                        }
+                        return newDt.toInstant().toEpochMilli();
+                    };
+                    case "setTime" -> (JsCallable) (context, args) -> {
+                        if (args.length == 0 || !(args[0] instanceof Number)) {
+                            return Double.NaN;
+                        }
+                        long timestamp = ((Number) args[0]).longValue();
+                        ZonedDateTime newDt = ZonedDateTime.ofInstant(
+                                Instant.ofEpochMilli(timestamp),
+                                ZoneId.systemDefault());
+                        if (context.thisObject instanceof JsDate) {
+                            ((JsDate) context.thisObject).setValue(newDt);
+                        }
+                        return timestamp;
+                    };
+                    default -> null;
+                };
             }
         };
     }

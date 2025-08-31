@@ -139,10 +139,7 @@ public class Context {
         if (_bindings != null && _bindings.containsKey(name)) {
             return true;
         }
-        if (parent.hasKey(name)) {
-            return true;
-        }
-        return false;
+        return parent.hasKey(name);
     }
 
     //==================================================================================================================

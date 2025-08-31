@@ -41,7 +41,7 @@ class Interpreter {
             if (first.token.type == DOT_DOT_DOT) { // varargs
                 list.add("." + fnArg.children.get(1).getText());
             } else {
-                list.add(fnArg.children.get(0).getText());
+                list.add(fnArg.children.getFirst().getText());
             }
         }
         return list;
@@ -144,7 +144,7 @@ class Interpreter {
 
     @SuppressWarnings("unchecked")
     private static Object evalDeleteStmt(Node node, Context context) {
-        JsProperty prop = new JsProperty(node.children.get(1).children.get(0), context);
+        JsProperty prop = new JsProperty(node.children.get(1).children.getFirst(), context);
         String key = prop.name == null ? prop.index + "" : prop.name;
         if (prop.object instanceof Map) {
             ((Map<String, Object>) prop.object).remove(key);
@@ -269,7 +269,7 @@ class Interpreter {
     private static Object evalForStmt(Node node, Context context) {
         Context forContext = new Context(context, node);
         forContext.event(Event.Type.CONTEXT_ENTER, node);
-        Node forBody = node.children.get(node.children.size() - 1);
+        Node forBody = node.children.getLast();
         Object forResult = null;
         if (node.children.get(2).token.type == SEMI) {
             // rare case: "for(;;)"
@@ -363,9 +363,8 @@ class Interpreter {
                 if (value instanceof List) {
                     List<Object> temp = (List<Object>) value;
                     list.addAll(temp);
-                } else if (value instanceof String) {
-                    String temp = (String) value;
-                    for (char c : temp.toCharArray()) {
+                } else if (value instanceof String s) {
+                    for (char c : s.toCharArray()) {
                         list.add(Character.toString(c));
                     }
                 }
@@ -430,22 +429,15 @@ class Interpreter {
     }
 
     private static Object evalLogicBitExpr(Node node, Context context) {
-        switch (node.children.get(1).token.type) {
-            case AMP:
-                return terms(node, context).bitAnd();
-            case PIPE:
-                return terms(node, context).bitOr();
-            case CARET:
-                return terms(node, context).bitXor();
-            case GT_GT:
-                return terms(node, context).bitShiftRight();
-            case LT_LT:
-                return terms(node, context).bitShiftLeft();
-            case GT_GT_GT:
-                return terms(node, context).bitShiftRightUnsigned();
-            default:
-                throw new RuntimeException("unexpected operator: " + node.children.get(1));
-        }
+        return switch (node.children.get(1).token.type) {
+            case AMP -> terms(node, context).bitAnd();
+            case PIPE -> terms(node, context).bitOr();
+            case CARET -> terms(node, context).bitXor();
+            case GT_GT -> terms(node, context).bitShiftRight();
+            case LT_LT -> terms(node, context).bitShiftLeft();
+            case GT_GT_GT -> terms(node, context).bitShiftRightUnsigned();
+            default -> throw new RuntimeException("unexpected operator: " + node.children.get(1));
+        };
     }
 
     private static boolean evalLogicExpr(Node node, Context context) {
@@ -458,39 +450,27 @@ class Interpreter {
             }
             return false;
         }
-        switch (logicOp) {
-            case EQ_EQ:
-                return Terms.eq(lhs, rhs, false);
-            case EQ_EQ_EQ:
-                return Terms.eq(lhs, rhs, true);
-            case NOT_EQ:
-                return !Terms.eq(lhs, rhs, false);
-            case NOT_EQ_EQ:
-                return !Terms.eq(lhs, rhs, true);
-            case LT:
-                return Terms.lt(lhs, rhs);
-            case GT:
-                return Terms.gt(lhs, rhs);
-            case LT_EQ:
-                return Terms.ltEq(lhs, rhs);
-            case GT_EQ:
-                return Terms.gtEq(lhs, rhs);
-            default:
-                throw new RuntimeException("unexpected operator: " + node.children.get(1));
-        }
+        return switch (logicOp) {
+            case EQ_EQ -> Terms.eq(lhs, rhs, false);
+            case EQ_EQ_EQ -> Terms.eq(lhs, rhs, true);
+            case NOT_EQ -> !Terms.eq(lhs, rhs, false);
+            case NOT_EQ_EQ -> !Terms.eq(lhs, rhs, true);
+            case LT -> Terms.lt(lhs, rhs);
+            case GT -> Terms.gt(lhs, rhs);
+            case LT_EQ -> Terms.ltEq(lhs, rhs);
+            case GT_EQ -> Terms.gtEq(lhs, rhs);
+            default -> throw new RuntimeException("unexpected operator: " + node.children.get(1));
+        };
     }
 
     private static Object evalLogicAndExpr(Node node, Context context) {
         Object andOrLhs = eval(node.children.get(0), context);
         Object andOrRhs = eval(node.children.get(2), context);
-        switch (node.children.get(1).token.type) {
-            case AMP_AMP:
-                return Terms.and(andOrLhs, andOrRhs);
-            case PIPE_PIPE:
-                return Terms.or(andOrLhs, andOrRhs);
-            default:
-                throw new RuntimeException("unexpected operator: " + node.children.get(1));
-        }
+        return switch (node.children.get(1).token.type) {
+            case AMP_AMP -> Terms.and(andOrLhs, andOrRhs);
+            case PIPE_PIPE -> Terms.or(andOrLhs, andOrRhs);
+            default -> throw new RuntimeException("unexpected operator: " + node.children.get(1));
+        };
     }
 
     private static Object evalLogicTernExpr(Node node, Context context) {
@@ -502,27 +482,20 @@ class Interpreter {
     }
 
     private static Object evalMathAddExpr(Node node, Context context) {
-        switch (node.children.get(1).token.type) {
-            case PLUS:
-                return Terms.add(eval(node.children.get(0), context), eval(node.children.get(2), context));
-            case MINUS:
-                return terms(node, context).min();
-            default:
-                throw new RuntimeException("unexpected operator: " + node.children.get(1));
-        }
+        return switch (node.children.get(1).token.type) {
+            case PLUS -> Terms.add(eval(node.children.get(0), context), eval(node.children.get(2), context));
+            case MINUS -> terms(node, context).min();
+            default -> throw new RuntimeException("unexpected operator: " + node.children.get(1));
+        };
     }
 
     private static Object evalMathMulExpr(Node node, Context context) {
-        switch (node.children.get(1).token.type) {
-            case STAR:
-                return terms(node, context).mul();
-            case SLASH:
-                return terms(node, context).div();
-            case PERCENT:
-                return terms(node, context).mod();
-            default:
-                throw new RuntimeException("unexpected operator: " + node.children.get(1));
-        }
+        return switch (node.children.get(1).token.type) {
+            case STAR -> terms(node, context).mul();
+            case SLASH -> terms(node, context).div();
+            case PERCENT -> terms(node, context).mod();
+            default -> throw new RuntimeException("unexpected operator: " + node.children.get(1));
+        };
     }
 
     private static Object evalMathPostExpr(Node node, Context context) {
@@ -542,22 +515,21 @@ class Interpreter {
     }
 
     private static Object evalMathPreExpr(Node node, Context context) {
-        JsProperty prop = new JsProperty(node.children.get(1).children.get(0), context);
+        JsProperty prop = new JsProperty(node.children.get(1).children.getFirst(), context);
         final Object value = prop.get();
-        switch (node.children.get(0).token.type) {
-            case PLUS_PLUS:
+        return switch (node.children.get(0).token.type) {
+            case PLUS_PLUS -> {
                 prop.set(Terms.add(value, 1));
-                return prop.get();
-            case MINUS_MINUS:
+                yield prop.get();
+            }
+            case MINUS_MINUS -> {
                 prop.set(terms(value, 1).min());
-                return prop.get();
-            case MINUS:
-                return terms(value, -1).mul();
-            case PLUS:
-                return Terms.toNumber(value);
-            default:
-                throw new RuntimeException("unexpected operator: " + node.children.get(0));
-        }
+                yield prop.get();
+            }
+            case MINUS -> terms(value, -1).mul();
+            case PLUS -> Terms.toNumber(value);
+            default -> throw new RuntimeException("unexpected operator: " + node.children.getFirst());
+        };
     }
 
     private static Object evalNewExpr(Node node, Context context) {
@@ -566,7 +538,7 @@ class Interpreter {
         if (node.children.get(0).type == NodeType.REF_EXPR) {
             // rare case where there were no parentheses for constructor e.g. "new String"
             Node wrapper = new Node(NodeType.FN_CALL_EXPR);
-            wrapper.children.add(node.children.get(0));
+            wrapper.children.add(node.children.getFirst());
             return eval(wrapper, context);
         } else {
             return eval(node, context);
@@ -580,9 +552,8 @@ class Interpreter {
             if (context.isError()) {
                 Object errorThrown = context.getErrorThrown();
                 String errorMessage = null;
-                if (errorThrown instanceof JsObject) {
-                    JsObject error = (JsObject) errorThrown;
-                    Object message = error.get("message");
+                if (errorThrown instanceof JsObject jsError) {
+                    Object message = jsError.get("message");
                     if (message instanceof String) {
                         errorMessage = (String) message;
                     }
@@ -603,7 +574,7 @@ class Interpreter {
     }
 
     private static Object evalStatement(Node node, Context context) {
-        node = node.children.get(0); // go straight to relevant node
+        node = node.children.getFirst(); // go straight to relevant node
         if (node.token.type == SEMI) { // ignore empty statements
             return null;
         }
@@ -658,7 +629,7 @@ class Interpreter {
         }
         List<Node> defaultNodes = node.findChildrenOfType(NodeType.DEFAULT_BLOCK);
         if (!defaultNodes.isEmpty()) {
-            return evalBlock(defaultNodes.get(0), context);
+            return evalBlock(defaultNodes.getFirst(), context);
         }
         return null;
     }
@@ -703,14 +674,11 @@ class Interpreter {
 
     private static Object evalUnaryExpr(Node node, Context context) {
         Object unaryValue = eval(node.children.get(1), context);
-        switch (node.children.get(0).token.type) {
-            case NOT:
-                return !Terms.isTruthy(unaryValue);
-            case TILDE:
-                return Terms.bitNot(unaryValue);
-            default:
-                throw new RuntimeException("unexpected operator: " + node.children.get(0));
-        }
+        return switch (node.children.get(0).token.type) {
+            case NOT -> !Terms.isTruthy(unaryValue);
+            case TILDE -> Terms.bitNot(unaryValue);
+            default -> throw new RuntimeException("unexpected operator: " + node.children.getFirst());
+        };
     }
 
     private static Object evalVarStmt(Node node, Context context) {
@@ -783,97 +751,52 @@ class Interpreter {
     }
 
     static Object eval(Node node, Context context) {
-        switch (node.type) {
-            case TOKEN:
-                return evalToken(node, context);
-            case ASSIGN_EXPR:
-                return evalAssignExpr(node, context);
-            case BLOCK:
-                return evalBlock(node, context);
-            case BREAK_STMT:
-                return evalBreakStmt(node, context);
-            case CONTINUE_STMT:
-                return evalContinueStmt(node, context);
-            case DELETE_STMT:
-                return evalDeleteStmt(node, context);
-            case EXPR:
-                return evalExpr(node, context);
-            case EXPR_LIST:
-                return evalExprList(node, context);
-            case LIT_EXPR:
-                return eval(node.children.get(0), context);
-            case FN_EXPR:
-                return evalFnExpr(node, context);
-            case FN_ARROW_EXPR:
-                return evalFnArrowExpr(node, context);
-            case FN_CALL_EXPR:
-                return evalFnCall(node, context);
-            case FOR_STMT:
-                return evalForStmt(node, context);
-            case IF_STMT:
-                return evalIfStmt(node, context);
-            case INSTANCEOF_EXPR:
-                return evalInstanceOfExpr(node, context);
-            case LIT_ARRAY:
-                return evalLitArray(node, context);
-            case LIT_OBJECT:
-                return evalLitObject(node, context);
-            case LIT_TEMPLATE:
-                return evalLitTemplate(node, context);
-            case REGEX_LITERAL:
-                return new JsRegex(node.children.get(0).token.text);
-            case LOGIC_EXPR:
-                return evalLogicExpr(node, context);
-            case LOGIC_AND_EXPR:
-                return evalLogicAndExpr(node, context);
-            case LOGIC_BIT_EXPR:
-                return evalLogicBitExpr(node, context);
-            case LOGIC_TERN_EXPR:
-                return evalLogicTernExpr(node, context);
-            case MATH_ADD_EXPR:
-                return evalMathAddExpr(node, context);
-            case MATH_EXP_EXPR:
-                return terms(node, context).exp();
-            case MATH_MUL_EXPR:
-                return evalMathMulExpr(node, context);
-            case MATH_POST_EXPR:
-                return evalMathPostExpr(node, context);
-            case MATH_PRE_EXPR:
-                return evalMathPreExpr(node, context);
-            case NEW_EXPR:
-                return evalNewExpr(node, context);
-            case PAREN_EXPR:
-                return eval(node.children.get(1), context);
-            case PROGRAM:
-                return evalProgram(node, context);
-            case REF_EXPR:
-                return context.get(node.getText());
-            case REF_BRACKET_EXPR:
-            case REF_DOT_EXPR:
-                return new JsProperty(node, context).get();
-            case RETURN_STMT:
-                return evalReturnStmt(node, context);
-            case STATEMENT:
-                return evalStatement(node, context);
-            case SWITCH_STMT:
-                return evalSwitchStmt(node, context);
-            case THROW_STMT:
-                return context.stopAndThrow(eval(node.children.get(1), context));
-            case TRY_STMT:
-                return evalTryStmt(node, context);
-            case TYPEOF_EXPR:
-                return Terms.typeOf(eval(node.children.get(1), context));
-            case UNARY_EXPR:
-                return evalUnaryExpr(node, context);
-            case VAR_STMT:
-                return evalVarStmt(node, context);
-            case WHILE_STMT:
-                return evalWhileStmt(node, context);
-            case DO_WHILE_STMT:
-                return evalDoWhileStmt(node, context);
-            default:
-                throw new RuntimeException(node.toStringError("eval - unexpected node"));
-        }
+        return switch (node.type) {
+            case TOKEN -> evalToken(node, context);
+            case ASSIGN_EXPR -> evalAssignExpr(node, context);
+            case BLOCK -> evalBlock(node, context);
+            case BREAK_STMT -> evalBreakStmt(node, context);
+            case CONTINUE_STMT -> evalContinueStmt(node, context);
+            case DELETE_STMT -> evalDeleteStmt(node, context);
+            case EXPR -> evalExpr(node, context);
+            case EXPR_LIST -> evalExprList(node, context);
+            case LIT_EXPR -> eval(node.children.getFirst(), context);
+            case FN_EXPR -> evalFnExpr(node, context);
+            case FN_ARROW_EXPR -> evalFnArrowExpr(node, context);
+            case FN_CALL_EXPR -> evalFnCall(node, context);
+            case FOR_STMT -> evalForStmt(node, context);
+            case IF_STMT -> evalIfStmt(node, context);
+            case INSTANCEOF_EXPR -> evalInstanceOfExpr(node, context);
+            case LIT_ARRAY -> evalLitArray(node, context);
+            case LIT_OBJECT -> evalLitObject(node, context);
+            case LIT_TEMPLATE -> evalLitTemplate(node, context);
+            case REGEX_LITERAL -> new JsRegex(node.children.getFirst().token.text);
+            case LOGIC_EXPR -> evalLogicExpr(node, context);
+            case LOGIC_AND_EXPR -> evalLogicAndExpr(node, context);
+            case LOGIC_BIT_EXPR -> evalLogicBitExpr(node, context);
+            case LOGIC_TERN_EXPR -> evalLogicTernExpr(node, context);
+            case MATH_ADD_EXPR -> evalMathAddExpr(node, context);
+            case MATH_EXP_EXPR -> terms(node, context).exp();
+            case MATH_MUL_EXPR -> evalMathMulExpr(node, context);
+            case MATH_POST_EXPR -> evalMathPostExpr(node, context);
+            case MATH_PRE_EXPR -> evalMathPreExpr(node, context);
+            case NEW_EXPR -> evalNewExpr(node, context);
+            case PAREN_EXPR -> eval(node.children.get(1), context);
+            case PROGRAM -> evalProgram(node, context);
+            case REF_EXPR -> context.get(node.getText());
+            case REF_BRACKET_EXPR, REF_DOT_EXPR -> new JsProperty(node, context).get();
+            case RETURN_STMT -> evalReturnStmt(node, context);
+            case STATEMENT -> evalStatement(node, context);
+            case SWITCH_STMT -> evalSwitchStmt(node, context);
+            case THROW_STMT -> context.stopAndThrow(eval(node.children.get(1), context));
+            case TRY_STMT -> evalTryStmt(node, context);
+            case TYPEOF_EXPR -> Terms.typeOf(eval(node.children.get(1), context));
+            case UNARY_EXPR -> evalUnaryExpr(node, context);
+            case VAR_STMT -> evalVarStmt(node, context);
+            case WHILE_STMT -> evalWhileStmt(node, context);
+            case DO_WHILE_STMT -> evalDoWhileStmt(node, context);
+            default -> throw new RuntimeException(node.toStringError("eval - unexpected node"));
+        };
     }
 
 }
