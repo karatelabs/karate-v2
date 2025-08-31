@@ -244,7 +244,19 @@ public class Terms {
         return d;
     }
 
-    static boolean isJavaFunction(Object o) {
+    static JsCallable toCallable(Object o) {
+        if (o instanceof JsCallable callable) {
+            return callable;
+        } else if (o instanceof Invokable invokable) {
+            return (c, args) -> invokable.invoke(args);
+        } else if (isJavaFunction(o)) {
+            return new JavaFunction(o);
+        } else {
+            return null;
+        }
+    }
+
+    private static boolean isJavaFunction(Object o) {
         return o instanceof Function
                 || o instanceof Runnable
                 || o instanceof JsCallable

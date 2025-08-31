@@ -79,9 +79,9 @@ public class Context {
     }
 
     public String getPath() {
-        String prefix = (depth == 0) ? null : parent.getPath();
-        String suffix = node.type + (iterationIndex == -1 ? "" : "[" + String.format("%02d", iterationIndex) + "]");
-        return prefix == null ? suffix : prefix + "." + suffix;
+        String parentPath = parent.getPath();
+        String suffix = iterationIndex == -1 ? "" : "[" + iterationIndex + "]";
+        return parentPath == null ? node.type + suffix : parentPath + "." + node.type + suffix;
     }
 
     @Override

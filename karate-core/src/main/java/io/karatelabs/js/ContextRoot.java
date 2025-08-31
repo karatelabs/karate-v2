@@ -33,7 +33,7 @@ import java.util.function.Consumer;
 
 class ContextRoot extends Context {
 
-    private Map<String, Object> _cache;
+    private Map<String, Object> _globals;
     private Consumer<String> onConsoleLog;
 
     ContextRoot() {
@@ -46,11 +46,16 @@ class ContextRoot extends Context {
     }
 
     @Override
+    public String getPath() {
+        return null;
+    }
+
+    @Override
     Object get(String name) {
-        if (_cache != null && _cache.containsKey(name)) {
-            return _cache.get(name);
+        if (_globals != null && _globals.containsKey(name)) {
+            return _globals.get(name);
         }
-        Object global = getGlobal(name);
+        Object global = initGlobal(name);
         if (global != null) {
             put(name, global);
             return global;
@@ -60,10 +65,10 @@ class ContextRoot extends Context {
 
     @Override
     void put(String name, Object value) {
-        if (_cache == null) {
-            _cache = new HashMap<>();
+        if (_globals == null) {
+            _globals = new HashMap<>();
         }
-        _cache.put(name, value);
+        _globals.put(name, value);
     }
 
     @Override
@@ -73,7 +78,7 @@ class ContextRoot extends Context {
 
     @Override
     boolean hasKey(String name) {
-        if (_cache != null && _cache.containsKey(name)) {
+        if (_globals != null && _globals.containsKey(name)) {
             return true;
         }
         return switch (name) {
@@ -84,7 +89,7 @@ class ContextRoot extends Context {
     }
 
     @SuppressWarnings("unchecked")
-    private Object getGlobal(String key) {
+    private Object initGlobal(String key) {
         return switch (key) {
             case "console" -> createConsole();
             case "parseInt" -> (Invokable) args -> Terms.toNumber(args[0]);
@@ -140,9 +145,9 @@ class ContextRoot extends Context {
                         if (i > 0) {
                             sb.append(' ');
                         }
-                        if (arg instanceof ObjectLike) {
-                            Object toString = ((ObjectLike) arg).get("toString");
-                            if (toString instanceof Invokable) {
+                        if (arg instanceof ObjectLike objectLike) {
+                            Object toString = objectLike.get("toString");
+                            if (toString instanceof Invokable invokable) {
                                 sb.append(((Invokable) toString).invoke(arg));
                             } else {
                                 sb.append(Terms.TO_STRING(arg));

@@ -185,18 +185,6 @@ class Interpreter {
         return result;
     }
 
-    private static JsCallable toCallable(Object o) {
-        if (o instanceof JsCallable callable) {
-            return callable;
-        } else if (o instanceof Invokable invokable) {
-            return (c, args) -> invokable.invoke(args);
-        } else if (Terms.isJavaFunction(o)) {
-            return new JavaFunction(o);
-        } else {
-            return null;
-        }
-    }
-
     @SuppressWarnings("unchecked")
     private static Object evalFnCall(Node node, Context context) {
         Node fnArgsNode = node.children.size() > 1 ? node.children.get(2) : null;
@@ -206,7 +194,7 @@ class Interpreter {
         if (o == Terms.UNDEFINED) { // optional chaining
             return o;
         }
-        JsCallable callable = toCallable(o);
+        JsCallable callable = Terms.toCallable(o);
         if (callable == null) {
             throw new RuntimeException(node.toStringWithoutType() + " is not a function");
         }

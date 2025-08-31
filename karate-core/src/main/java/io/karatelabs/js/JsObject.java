@@ -243,13 +243,7 @@ class JsObject implements ObjectLike, Invokable, Iterable<KeyValue> {
         if (args.length == 0) {
             throw new RuntimeException("function expected");
         }
-        if (args[0] instanceof JsCallable) {
-            return (JsCallable) args[0];
-        }
-        if (args[0] instanceof Invokable) {
-            return (context, callArgs) -> ((Invokable) args[0]).invoke(callArgs);
-        }
-        throw new RuntimeException("function expected");
+        return Terms.toCallable(args[0]);
     }
 
 }
