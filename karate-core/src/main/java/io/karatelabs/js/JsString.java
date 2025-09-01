@@ -69,7 +69,8 @@ class JsString extends JsObject implements JavaMirror {
                         return text.startsWith((String) args[0]);
                     };
                     case "length" -> text.length();
-                    case "getBytes" -> (Invokable) args -> text.getBytes(StandardCharsets.UTF_8);
+                    // intentional javascript spec deviation
+                    case "getBytes" -> (Invokable) args -> new JsBytes(text.getBytes(StandardCharsets.UTF_8));
                     case "split" -> (Invokable) args -> Arrays.asList(text.split((String) args[0]));
                     case "charAt" -> (Invokable) args -> {
                         int index = ((Number) args[0]).intValue();

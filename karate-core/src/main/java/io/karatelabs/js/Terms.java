@@ -26,6 +26,7 @@ package io.karatelabs.js;
 import net.minidev.json.JSONValue;
 
 import java.math.BigDecimal;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -244,6 +245,17 @@ public class Terms {
         return d;
     }
 
+    static JavaMirror toJavaMirror(Object o) {
+        return switch (o) {
+            case String s -> new JsString(s);
+            case Number n -> new JsNumber(n);
+            case Boolean b -> new JsBoolean(b);
+            case ZonedDateTime zdt -> new JsDate(zdt);
+            case byte[] bytes -> new JsBytes(bytes);
+            case null, default -> null;
+        };
+    }
+
     static JsCallable toCallable(Object o) {
         if (o instanceof JsCallable callable) {
             return callable;
@@ -269,6 +281,9 @@ public class Terms {
         if (value == null || value.equals(UNDEFINED) || value.equals(Double.NaN)) {
             return false;
         }
+        if (value instanceof JavaMirror mirror) {
+            value = mirror.toJava();
+        }
         return switch (value) {
             case Boolean b -> b;
             case Number number -> number.doubleValue() != 0;
@@ -277,7 +292,7 @@ public class Terms {
         };
     }
 
-    public static boolean isPrimitive(Object value) {
+    static boolean isPrimitive(Object value) {
         if (value == null) {
             return true;
         }
@@ -289,7 +304,7 @@ public class Terms {
         return value == UNDEFINED;
     }
 
-    public static String typeOf(Object value) {
+    static String typeOf(Object value) {
         if (value instanceof String) {
             return "string";
         }
@@ -308,7 +323,7 @@ public class Terms {
         return "object";
     }
 
-    public static boolean instanceOf(Object lhs, Object rhs) {
+    static boolean instanceOf(Object lhs, Object rhs) {
         if (lhs instanceof JsObject objectLhs && rhs instanceof JsObject objectRhs) {
             if (lhs instanceof JavaMirror && rhs instanceof JavaMirror) {
                 return lhs.getClass().equals(rhs.getClass());

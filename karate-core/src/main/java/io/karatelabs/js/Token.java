@@ -52,7 +52,7 @@ public class Token {
     }
 
     public String getPositionDisplay() {
-        return "[" + (line + 1) + ":" + (col + 1) + "]";
+        return (line + 1) + ":" + (col + 1);
     }
 
     @Override

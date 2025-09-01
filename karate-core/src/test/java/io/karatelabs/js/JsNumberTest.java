@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class JsNumberTest extends EvalBase {
 
     @Test
-    void testNumberConstructor() {
+    void testConstructor() {
         assertEquals(0, eval("Number()"));
         assertEquals(100, eval("Number(100)"));
         assertEquals(100, eval("Number('100')"));

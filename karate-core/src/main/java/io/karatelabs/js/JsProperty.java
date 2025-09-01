@@ -26,7 +26,6 @@ package io.karatelabs.js;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -198,17 +197,9 @@ class JsProperty {
         if (object instanceof ObjectLike objectLike) {
             return objectLike.get(name);
         }
-        if (object instanceof String s) {
-            return new JsString(s).get(name);
-        }
-        if (object instanceof Number num) {
-            return new JsNumber(num).get(name);
-        }
-        if (object instanceof ZonedDateTime zdt) {
-            return new JsDate(zdt).get(name);
-        }
-        if (object instanceof byte[] bytes) {
-            return new JsBytes(bytes).get(name);
+        JavaMirror mirror = Terms.toJavaMirror(object);
+        if (mirror != null) {
+            return mirror.get(name);
         }
         if (object == null || object == Terms.UNDEFINED) {
             if (context.hasKey(name)) {

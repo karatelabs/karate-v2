@@ -56,6 +56,85 @@ class JsDateTest extends EvalBase {
     }
 
     @Test
+    void testDateOverflowHandling() {
+        // Test that setDate handles overflow correctly (should roll to next month)
+        eval("var date = new Date(2025, 0, 31);"
+                + "date.setDate(32);"
+                + "var month = date.getMonth();"
+                + "var day = date.getDate();");
+        // In standard JavaScript, setting date to 32 in January should roll to February 1st
+        assertEquals(1, get("month")); // February (0-indexed)
+        assertEquals(1, get("day"));
+        
+        // Test underflow
+        eval("var date2 = new Date(2025, 2, 1);"
+                + "date2.setDate(0);"
+                + "var month2 = date2.getMonth();"
+                + "var day2 = date2.getDate();");
+        // Setting date to 0 should go to last day of previous month
+        assertEquals(1, get("month2")); // February
+        assertEquals(28, get("day2")); // 2025 is not a leap year
+        
+        // Test setMonth overflow
+        eval("var date3 = new Date(2025, 11, 15);"
+                + "date3.setMonth(12);"
+                + "var year3 = date3.getFullYear();"
+                + "var month3 = date3.getMonth();");
+        assertEquals(2026, get("year3"));
+        assertEquals(0, get("month3")); // January
+        
+        // Test setHours overflow
+        eval("var date4 = new Date(2025, 0, 31, 23, 0, 0);"
+                + "date4.setHours(25);"
+                + "var day4 = date4.getDate();"
+                + "var hour4 = date4.getHours();");
+        assertEquals(1, get("day4")); // Next day
+        assertEquals(1, get("hour4")); // 25 - 24 = 1
+    }
+
+    @Test
+    void testDateArithmeticUsingTimestamp() {
+        // Test the recommended workaround for date arithmetic using timestamps
+        eval("var startDate = new Date(2025, 0, 31);"
+                + "var msPerDay = 24 * 60 * 60 * 1000;"
+                + "var startTime = startDate.getTime();"
+                + "var nextDayTime = startTime + msPerDay;"
+                + "var nextDay = new Date(nextDayTime);"
+                + "var month = nextDay.getMonth();"
+                + "var day = nextDay.getDate();");
+        // This should correctly give us February 1st
+        assertEquals(1, get("month")); // February (0-indexed)
+        assertEquals(1, get("day"));
+        
+        // Test adding multiple days across month boundary
+        eval("var date = new Date(2025, 1, 28);"
+                + "var msPerDay = 24 * 60 * 60 * 1000;"
+                + "var newTime = date.getTime() + (3 * msPerDay);"
+                + "var newDate = new Date(newTime);"
+                + "var newMonth = newDate.getMonth();"
+                + "var newDay = newDate.getDate();");
+        // February 28 + 3 days = March 3 (2025 is not a leap year)
+        assertEquals(2, get("newMonth")); // March (0-indexed)
+        assertEquals(3, get("newDay"));
+    }
+
+    @Test
+    void testDateLoopIteration() {
+        // Test iterating through dates (common pattern in business logic)
+        eval("var startDate = new Date(2025, 1, 26);"
+                + "var dates = [];"
+                + "var msPerDay = 24 * 60 * 60 * 1000;"
+                + "for (var i = 0; i < 5; i++) {"
+                + "    var currentTime = startDate.getTime() + (i * msPerDay);"
+                + "    var currentDate = new Date(currentTime);"
+                + "    dates.push(currentDate.getDate());"
+                + "}"
+                + "var dateArray = dates.join(',');");
+        // Should iterate from Feb 26 through March 2
+        assertEquals("26,27,28,1,2", get("dateArray"));
+    }
+
+    @Test
     void testDateObject() {
         // Test date construction
         eval("var date = new Date()");

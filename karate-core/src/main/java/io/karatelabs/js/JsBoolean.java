@@ -23,31 +23,30 @@
  */
 package io.karatelabs.js;
 
-class JsBytes extends JsObject implements JavaMirror {
+public class JsBoolean extends JsObject implements JavaMirror {
 
-    final byte[] bytes;
+    final boolean value;
 
-    public JsBytes(byte[] bytes) {
-        this.bytes = bytes;
+    JsBoolean() {
+        this(false);
+    }
+
+    JsBoolean(boolean value) {
+        this.value = value;
     }
 
     @Override
-    Prototype initPrototype() {
-        Prototype wrapped = super.initPrototype();
-        return new Prototype(wrapped) {
-            @Override
-            public Object getProperty(String name) {
-                if (name.equals("length")) {
-                    return bytes.length;
-                }
-                return null;
-            }
-        };
+    public Object invoke(Object... args) {
+        boolean temp = false;
+        if (args.length > 0) {
+            temp = Terms.isTruthy(args[0]);
+        }
+        return new JsBoolean(temp);
     }
 
     @Override
     public Object toJava() {
-        return bytes;
+        return value;
     }
 
 }

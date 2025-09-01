@@ -23,7 +23,7 @@
  */
 package io.karatelabs.js;
 
-interface JavaMirror {
+interface JavaMirror extends ObjectLike {
 
     Object toJava();
 

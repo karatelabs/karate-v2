@@ -598,7 +598,9 @@ class Interpreter {
             }
             message = message + e.getMessage();
             message = message.trim() + "\n----------\n";
-            logger.error(message);
+            if (first.resource.isFile()) {
+                System.err.println("file://" + first.resource.getUri().getPath() + ":" + first.getPositionDisplay() + " " + e);
+            }
             throw new RuntimeException(message, e);
         }
     }

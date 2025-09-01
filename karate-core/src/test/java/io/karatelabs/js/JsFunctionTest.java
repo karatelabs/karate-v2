@@ -109,4 +109,12 @@ class JsFunctionTest extends EvalBase {
         matchEval("(function(){ return 'hello' })()", "'hello'");
     }
 
+    @Test
+    void testGetReferenceAndInvoke() {
+        eval("var a = function(name){ return 'hello ' + name }");
+        Invokable fn = (Invokable) get("a");
+        Object result = fn.invoke("world");
+        assertEquals("hello world", result);
+    }
+
 }

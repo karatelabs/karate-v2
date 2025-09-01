@@ -186,7 +186,11 @@ class JsDate extends JsObject implements JavaMirror {
                         }
                         int day = ((Number) args[0]).intValue();
                         ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                        ZonedDateTime newDt = dt.withDayOfMonth(day);
+                        // JavaScript allows overflow/underflow - e.g., setDate(32) in January rolls to February
+                        // Use plusDays to handle this correctly
+                        int currentDay = dt.getDayOfMonth();
+                        int dayDifference = day - currentDay;
+                        ZonedDateTime newDt = dt.plusDays(dayDifference);
                         if (context.thisObject instanceof JsDate) {
                             ((JsDate) context.thisObject).setValue(newDt);
                         }
@@ -196,10 +200,34 @@ class JsDate extends JsObject implements JavaMirror {
                         if (args.length == 0 || !(args[0] instanceof Number)) {
                             return Double.NaN;
                         }
-                        // JavaScript months are 0-indexed
-                        int month = ((Number) args[0]).intValue() + 1;
+                        int monthValue = ((Number) args[0]).intValue();
                         ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                        ZonedDateTime newDt = dt.withMonth(month);
+                        
+                        // JavaScript allows month overflow/underflow
+                        // Calculate year and month adjustments
+                        int yearAdjustment = 0;
+                        int finalMonth = monthValue;
+                        
+                        if (monthValue < 0) {
+                            // Handle negative months
+                            yearAdjustment = (monthValue / 12) - 1;
+                            finalMonth = 12 + (monthValue % 12);
+                        } else if (monthValue > 11) {
+                            // Handle months > 11
+                            yearAdjustment = monthValue / 12;
+                            finalMonth = monthValue % 12;
+                        }
+                        
+                        // JavaScript months are 0-indexed, Java months are 1-indexed
+                        ZonedDateTime newDt = dt.plusYears(yearAdjustment).withMonth(finalMonth + 1);
+                        
+                        // Handle optional day parameter
+                        if (args.length > 1 && args[1] instanceof Number) {
+                            int day = ((Number) args[1]).intValue();
+                            int currentDay = newDt.getDayOfMonth();
+                            newDt = newDt.plusDays(day - currentDay);
+                        }
+                        
                         if (context.thisObject instanceof JsDate) {
                             ((JsDate) context.thisObject).setValue(newDt);
                         }
@@ -212,6 +240,32 @@ class JsDate extends JsObject implements JavaMirror {
                         int year = ((Number) args[0]).intValue();
                         ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
                         ZonedDateTime newDt = dt.withYear(year);
+                        
+                        // Handle optional month parameter
+                        if (args.length > 1 && args[1] instanceof Number) {
+                            int monthValue = ((Number) args[1]).intValue();
+                            // Handle month overflow/underflow
+                            int yearAdjustment = 0;
+                            int finalMonth = monthValue;
+                            
+                            if (monthValue < 0) {
+                                yearAdjustment = (monthValue / 12) - 1;
+                                finalMonth = 12 + (monthValue % 12);
+                            } else if (monthValue > 11) {
+                                yearAdjustment = monthValue / 12;
+                                finalMonth = monthValue % 12;
+                            }
+                            
+                            newDt = newDt.plusYears(yearAdjustment).withMonth(finalMonth + 1);
+                        }
+                        
+                        // Handle optional day parameter
+                        if (args.length > 2 && args[2] instanceof Number) {
+                            int day = ((Number) args[2]).intValue();
+                            int currentDay = newDt.getDayOfMonth();
+                            newDt = newDt.plusDays(day - currentDay);
+                        }
+                        
                         if (context.thisObject instanceof JsDate) {
                             ((JsDate) context.thisObject).setValue(newDt);
                         }
@@ -223,16 +277,24 @@ class JsDate extends JsObject implements JavaMirror {
                         }
                         int hours = ((Number) args[0]).intValue();
                         ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                        ZonedDateTime newDt = dt.withHour(hours);
+                        // JavaScript allows hour overflow/underflow
+                        int currentHour = dt.getHour();
+                        ZonedDateTime newDt = dt.plusHours(hours - currentHour);
                         // Handle optional minute, second, and millisecond parameters
                         if (args.length > 1 && args[1] instanceof Number) {
-                            newDt = newDt.withMinute(((Number) args[1]).intValue());
+                            int minutes = ((Number) args[1]).intValue();
+                            int currentMinute = newDt.getMinute();
+                            newDt = newDt.plusMinutes(minutes - currentMinute);
                         }
                         if (args.length > 2 && args[2] instanceof Number) {
-                            newDt = newDt.withSecond(((Number) args[2]).intValue());
+                            int seconds = ((Number) args[2]).intValue();
+                            int currentSecond = newDt.getSecond();
+                            newDt = newDt.plusSeconds(seconds - currentSecond);
                         }
                         if (args.length > 3 && args[3] instanceof Number) {
-                            newDt = newDt.with(ChronoField.MILLI_OF_SECOND, ((Number) args[3]).intValue());
+                            int ms = ((Number) args[3]).intValue();
+                            int currentMs = newDt.get(ChronoField.MILLI_OF_SECOND);
+                            newDt = newDt.plusNanos((ms - currentMs) * 1000000);
                         }
                         if (context.thisObject instanceof JsDate) {
                             ((JsDate) context.thisObject).setValue(newDt);
@@ -245,13 +307,19 @@ class JsDate extends JsObject implements JavaMirror {
                         }
                         int minutes = ((Number) args[0]).intValue();
                         ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                        ZonedDateTime newDt = dt.withMinute(minutes);
+                        // JavaScript allows minute overflow/underflow
+                        int currentMinute = dt.getMinute();
+                        ZonedDateTime newDt = dt.plusMinutes(minutes - currentMinute);
                         // Handle optional second and millisecond parameters
                         if (args.length > 1 && args[1] instanceof Number) {
-                            newDt = newDt.withSecond(((Number) args[1]).intValue());
+                            int seconds = ((Number) args[1]).intValue();
+                            int currentSecond = newDt.getSecond();
+                            newDt = newDt.plusSeconds(seconds - currentSecond);
                         }
                         if (args.length > 2 && args[2] instanceof Number) {
-                            newDt = newDt.with(ChronoField.MILLI_OF_SECOND, ((Number) args[2]).intValue());
+                            int ms = ((Number) args[2]).intValue();
+                            int currentMs = newDt.get(ChronoField.MILLI_OF_SECOND);
+                            newDt = newDt.plusNanos((ms - currentMs) * 1000000);
                         }
                         if (context.thisObject instanceof JsDate) {
                             ((JsDate) context.thisObject).setValue(newDt);
@@ -264,10 +332,14 @@ class JsDate extends JsObject implements JavaMirror {
                         }
                         int seconds = ((Number) args[0]).intValue();
                         ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                        ZonedDateTime newDt = dt.withSecond(seconds);
+                        // JavaScript allows second overflow/underflow
+                        int currentSecond = dt.getSecond();
+                        ZonedDateTime newDt = dt.plusSeconds(seconds - currentSecond);
                         // Handle optional millisecond parameter
                         if (args.length > 1 && args[1] instanceof Number) {
-                            newDt = newDt.with(ChronoField.MILLI_OF_SECOND, ((Number) args[1]).intValue());
+                            int ms = ((Number) args[1]).intValue();
+                            int currentMs = newDt.get(ChronoField.MILLI_OF_SECOND);
+                            newDt = newDt.plusNanos((ms - currentMs) * 1000000);
                         }
                         if (context.thisObject instanceof JsDate) {
                             ((JsDate) context.thisObject).setValue(newDt);
@@ -280,7 +352,9 @@ class JsDate extends JsObject implements JavaMirror {
                         }
                         int ms = ((Number) args[0]).intValue();
                         ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                        ZonedDateTime newDt = dt.with(ChronoField.MILLI_OF_SECOND, ms);
+                        // JavaScript allows millisecond overflow/underflow
+                        int currentMs = dt.get(ChronoField.MILLI_OF_SECOND);
+                        ZonedDateTime newDt = dt.plusNanos((ms - currentMs) * 1000000);
                         if (context.thisObject instanceof JsDate) {
                             ((JsDate) context.thisObject).setValue(newDt);
                         }

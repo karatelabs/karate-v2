@@ -83,7 +83,7 @@ class ContextRoot extends Context {
         }
         return switch (name) {
             case "console", "parseInt", "undefined", "Array", "Date", "Error", "Infinity", "Java", "JSON", "Math",
-                 "NaN", "Number", "Object", "RegExp", "String", "TypeError" -> true;
+                 "NaN", "Number", "Boolean", "Object", "RegExp", "String", "TypeError" -> true;
             default -> false;
         };
     }
@@ -127,6 +127,7 @@ class ContextRoot extends Context {
             case "Math" -> new JsMath();
             case "NaN" -> Double.NaN;
             case "Number" -> new JsNumber();
+            case "Boolean" -> new JsBoolean();
             case "Object" -> new JsObject();
             case "RegExp" -> new JsRegex();
             case "String" -> new JsString();
