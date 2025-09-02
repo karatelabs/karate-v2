@@ -25,6 +25,9 @@ package io.karatelabs.js;
 
 import io.karatelabs.common.Resource;
 
+import java.util.Collections;
+import java.util.List;
+
 public class Token {
 
     static final Token EMPTY = new Token(Resource.text(""), TokenType.EOF, 0, 0, 0, "");
@@ -35,6 +38,8 @@ public class Token {
     public final int col;
     public final TokenType type;
     public final String text;
+
+    List<Token> comments;
     Token prev;
     Token next;
 
@@ -53,6 +58,10 @@ public class Token {
 
     public String getPositionDisplay() {
         return (line + 1) + ":" + (col + 1);
+    }
+
+    public List<Token> getComments() {
+        return comments == null ? Collections.emptyList() : comments;
     }
 
     @Override

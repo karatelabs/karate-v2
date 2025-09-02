@@ -69,6 +69,7 @@ abstract class Parser {
 
     }
 
+
     final List<Token> tokens;
     private final int size;
 
@@ -216,6 +217,7 @@ abstract class Parser {
         if (gherkin) {
             lexer.yybegin(Lexer.GHERKIN);
         }
+        List<Token> comments = new ArrayList<>();
         List<Token> list = new ArrayList<>();
         Token prev = null;
         int line = 0;
@@ -232,7 +234,7 @@ abstract class Parser {
                 Token token = new Token(resource, type, pos, line, col, text);
                 int length = lexer.yylength();
                 pos += length;
-                if (type == WS_LF || type == B_COMMENT || type == T_STRING) {
+                if (type == WS_LF || type == T_STRING || type == B_COMMENT) {
                     for (int i = 0; i < length; i++) {
                         if (text.charAt(i) == '\n') {
                             col = 0;
@@ -251,6 +253,12 @@ abstract class Parser {
                 prev = token;
                 if (type.primary) {
                     list.add(token);
+                    if (!comments.isEmpty()) {
+                        token.comments = comments;
+                        comments = new ArrayList<>();
+                    }
+                } else if (type == L_COMMENT || type == G_COMMENT || type == B_COMMENT) {
+                    comments.add(token);
                 }
             }
         } catch (Throwable e) {

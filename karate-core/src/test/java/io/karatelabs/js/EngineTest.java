@@ -254,8 +254,35 @@ class EngineTest {
     }
 
     @Test
+    void testCommentExtraction() {
+        String js = """
+                console.log('foo');
+                // hello world
+                console.log('bar');
+                """;
+        Resource resource = Resource.text(js);
+        JsParser parser = new JsParser(resource);
+        Node node = parser.parse();
+        assertTrue(node.getFirstToken().getComments().isEmpty());
+        Node secondStatement = node.children.get(1);
+        Token thenFirst = secondStatement.getFirstToken();
+        assertEquals("// hello world", thenFirst.comments.getFirst().text);
+    }
+
+    @Test
     void testJsDocCommentExtraction() {
-        Engine engine = new Engine();
+        String js = """
+                /**
+                 * @schema schema
+                 */
+                 
+                 console.log('hello world');
+                """;
+        Resource resource = Resource.text(js);
+        JsParser parser = new JsParser(resource);
+        Node node = parser.parse();
+        String comment = node.getFirstToken().getComments().getFirst().text;
+        assertTrue(comment.startsWith("/**"));
     }
 
 }
