@@ -159,14 +159,14 @@ class Interpreter {
         context.event(Event.Type.EXPRESSION_ENTER, node);
         try {
             Object result = eval(node, context);
-            if (context.listener != null) {
+            if (context.root.listener != null) {
                 context.event(Event.Type.EXPRESSION_EXIT, node);
             }
             return result;
         } catch (Exception e) {
-            if (context.listener != null) {
+            if (context.root.listener != null) {
                 Event event = new Event(Event.Type.EXPRESSION_EXIT, context, node);
-                Event.Result eventResult = context.listener.onError(event, e);
+                Event.Result eventResult = context.root.listener.onError(event, e);
                 if (eventResult != null && eventResult.ignoreError) {
                     return eventResult.returnValue;
                 }
@@ -219,8 +219,8 @@ class Interpreter {
         Context callContext = new Context(context, node);
         callContext.thisObject = prop.object == null ? callable : prop.object;
         callContext.event(Event.Type.CONTEXT_ENTER, node);
-        if (callContext.listener != null) {
-            callContext.listener.onFunctionCall(callContext, args);
+        if (callContext.root.listener != null) {
+            callContext.root.listener.onFunctionCall(callContext, args);
         }
         Object result = callable.call(callContext, args);
         callContext.event(Event.Type.CONTEXT_EXIT, node);
@@ -582,9 +582,9 @@ class Interpreter {
             context.event(Event.Type.STATEMENT_EXIT, node);
             return statementResult;
         } catch (Exception e) {
-            if (context.listener != null) {
+            if (context.root.listener != null) {
                 Event event = new Event(Event.Type.STATEMENT_EXIT, context, node);
-                Event.Result eventResult = context.listener.onError(event, e);
+                Event.Result eventResult = context.root.listener.onError(event, e);
                 if (eventResult != null && eventResult.ignoreError) {
                     return eventResult.returnValue;
                 }
@@ -683,8 +683,8 @@ class Interpreter {
         for (Node varName : varNames) {
             String name = varName.getText();
             context.put(name, varValue);
-            if (context.listener != null) {
-                context.listener.onVariableWrite(context, Event.VariableType.VAR, name, varValue);
+            if (context.root.listener != null) {
+                context.root.listener.onVariableWrite(context, Event.VariableType.VAR, name, varValue);
             }
         }
         return varValue;

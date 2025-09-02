@@ -34,31 +34,30 @@ public class Context {
     static final Logger logger = LoggerFactory.getLogger(Context.class);
 
     private Map<String, Object> _bindings;
+    final ContextRoot root;
 
     Object thisObject = Terms.UNDEFINED;
 
-    Event.Listener listener;
-
-    Context(Context parent, int depth, Node node, Map<String, Object> bindings) {
+    Context(ContextRoot root, Context parent, int depth, Node node, Map<String, Object> bindings) {
+        this.root = root;
         this.parent = parent;
         this.depth = depth;
         this.node = node;
         this._bindings = bindings;
         if (parent != null) {
-            listener = parent.listener;
             thisObject = parent.thisObject;
         }
     }
 
     Context(Context parent, Node node) {
-        this(parent, parent == null ? 0 : parent.depth + 1, node, null);
+        this(parent.root, parent, parent.depth + 1, node, null);
     }
 
 
     void event(Event.Type type, Node node) {
-        if (listener != null) {
+        if (root.listener != null) {
             Event event = new Event(type, this, node);
-            listener.onEvent(event);
+            root.listener.onEvent(event);
         }
     }
 
@@ -118,8 +117,8 @@ public class Context {
             parent.update(name, value);
         } else {
             putBinding(name, value);
-            if (listener != null) {
-                listener.onVariableWrite(this, Event.VariableType.VAR, name, value); // TODO var types
+            if (root.listener != null) {
+                root.listener.onVariableWrite(this, Event.VariableType.VAR, name, value); // TODO var types
             }
         }
     }

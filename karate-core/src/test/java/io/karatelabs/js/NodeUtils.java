@@ -88,7 +88,7 @@ public class NodeUtils {
         return true;
     }
 
-    static final Context EMPTY = new Context(null, -1, null, null);
+    static final Context EMPTY = new Context(null, null, -1, null, null);
 
     public static Object ser(Node node) {
         switch (node.type) {

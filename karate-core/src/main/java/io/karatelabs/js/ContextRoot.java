@@ -36,8 +36,11 @@ class ContextRoot extends Context {
     private Map<String, Object> _globals;
     private Consumer<String> onConsoleLog;
 
+    Event.Listener listener;
+    JavaBridge javaBridge;
+
     ContextRoot() {
-        super(null, -1, null, null);
+        super(null, null, -1, null, null);
     }
 
     void setOnConsoleLog(Consumer<String> onConsoleLog) {
@@ -99,8 +102,11 @@ class ContextRoot extends Context {
             case "Error" -> new JsError("Error");
             case "Infinity" -> Terms.POSITIVE_INFINITY;
             case "Java" -> (SimpleObject) name -> {
+                if (javaBridge == null) {
+                    throw new RuntimeException("java interop not enabled");
+                }
                 if ("type".equals(name)) {
-                    return (Invokable) args -> new JavaClass((String) args[0]);
+                    return (Invokable) args -> new JavaClass(javaBridge, (String) args[0]);
                 }
                 return null;
             };

@@ -155,10 +155,10 @@ class EngineTest {
     @Test
     void testOnConsoleLog() {
         Engine engine = new Engine();
-        Map<String, Object> map = new HashMap<>();
-        engine.setOnConsoleLog(text -> map.put("text", text));
+        StringBuilder sb = new StringBuilder();
+        engine.setOnConsoleLog(sb::append);
         engine.eval("console.log('foo');");
-        assertEquals("foo", map.get("text"));
+        assertEquals("foo", sb.toString());
     }
 
     @Test
@@ -170,13 +170,6 @@ class EngineTest {
         } catch (Exception e) {
             assertTrue(e.getMessage().contains("a is not a function"));
         }
-    }
-
-    @Test
-    void testGlobalRootContext() {
-        Engine engine = new Engine();
-        engine.eval("console.log('foo');");
-
     }
 
     @Test
@@ -258,6 +251,11 @@ class EngineTest {
                 """);
         assertEquals(List.of(1, 2, 3), engine.get("b"));
         assertEquals("0:1|1:2|2:3|", sb.toString());
+    }
+
+    @Test
+    void testJsDocCommentExtraction() {
+        Engine engine = new Engine();
     }
 
 }

@@ -25,13 +25,16 @@ package io.karatelabs.js;
 
 public class JavaClass implements JavaMethods, JavaFields, Invokable {
 
+    private final JavaBridge bridge;
     private final String className;
 
-    public JavaClass(Class<?> clazz) {
+    public JavaClass(JavaBridge bridge, Class<?> clazz) {
+        this.bridge = bridge;
         className = clazz.getName();
     }
 
-    public JavaClass(String className) {
+    public JavaClass(JavaBridge bridge, String className) {
+        this.bridge = bridge;
         this.className = className;
     }
 
@@ -41,22 +44,22 @@ public class JavaClass implements JavaMethods, JavaFields, Invokable {
     }
 
     public Object construct(Object[] args) {
-        return Engine.JAVA_BRIDGE.construct(className, args);
+        return bridge.construct(className, args);
     }
 
     @Override
     public Object call(String name, Object[] args) {
-        return JavaBridge.convertIfArray(Engine.JAVA_BRIDGE.invokeStatic(className, name, args));
+        return JavaBridge.convertIfArray(bridge.invokeStatic(className, name, args));
     }
 
     @Override
     public Object read(String name) {
-        return JavaBridge.convertIfArray(Engine.JAVA_BRIDGE.getStatic(className, name));
+        return JavaBridge.convertIfArray(bridge.getStatic(className, name));
     }
 
     @Override
     public void update(String name, Object value) {
-        Engine.JAVA_BRIDGE.setStatic(className, name, value);
+        bridge.setStatic(className, name, value);
     }
 
 }

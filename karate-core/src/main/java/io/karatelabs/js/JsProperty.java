@@ -64,16 +64,23 @@ class JsProperty {
                     try {
                         tempObject = Interpreter.eval(node.children.getFirst(), context);
                     } catch (Exception e) {
-                        // try java interop
-                        String base = node.children.getFirst().getText();
-                        String path = base + "." + name;
-                        if (Engine.JAVA_BRIDGE.typeExists(path)) {
-                            tempObject = new JavaClass(path);
-                            name = null;
-                        } else if (Engine.JAVA_BRIDGE.typeExists(base)) {
-                            tempObject = new JavaClass(base);
+                        if (context.root.javaBridge != null) {
+                            // try java interop
+                            String base = node.children.getFirst().getText();
+                            String path = base + "." + name;
+                            if (context.root.javaBridge.typeExists(path)) {
+                                tempObject = new JavaClass(context.root.javaBridge, path);
+                                name = null;
+                            } else if (context.root.javaBridge.typeExists(base)) {
+                                tempObject = new JavaClass(context.root.javaBridge, base);
+                            } else {
+                                tempObject = null;
+                            }
                         } else {
-                            throw new RuntimeException("expression: " + base + " - " + e.getMessage());
+                            tempObject = null;
+                        }
+                        if (tempObject == null) {
+                            throw new RuntimeException("expression: " + node.children.getFirst().getText() + " - " + e.getMessage());
                         }
                     }
                 } else {
@@ -129,13 +136,15 @@ class JsProperty {
                 objectLike.put(name, value);
             } else if (object instanceof JavaClass jc) {
                 jc.update(name, value);
-            } else {
+            } else if (context.root.javaBridge != null) {
                 try {
-                    Engine.JAVA_BRIDGE.set(object, name, value);
+                    context.root.javaBridge.set(object, name, value);
                 } catch (Exception e) {
                     logger.error("java bridge error: {}", e.getMessage());
                     throw new RuntimeException("cannot set '" + name + "'");
                 }
+            } else {
+                throw new RuntimeException("cannot set '" + name + "' - " + node.getText());
             }
         }
     }
@@ -226,15 +235,18 @@ class JsProperty {
         if (!functionCall && object instanceof JavaFields jf) {
             return jf.read(name);
         }
-        try { // java interop
-            if (functionCall) {
-                return new JavaInvokable(name, new JavaObject(object));
-            } else {
-                return new JavaObject(object).get(name);
+        if (context.root.javaBridge != null) {
+            try {
+                if (functionCall) {
+                    return new JavaInvokable(name, new JavaObject(context.root.javaBridge, object));
+                } else {
+                    return new JavaObject(context.root.javaBridge, object).get(name);
+                }
+            } catch (Exception e) {
+                // ignore java reflection failure
             }
-        } catch (Exception e) { // java reflection failed on this object + name
-            return Terms.UNDEFINED;
         }
+        return Terms.UNDEFINED;
     }
 
 }

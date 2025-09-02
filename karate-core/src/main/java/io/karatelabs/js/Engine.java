@@ -32,10 +32,6 @@ import java.util.function.Consumer;
 
 public class Engine {
 
-    public static JavaBridge JAVA_BRIDGE = new JavaBridge() {
-        // non-final default that you can over-ride
-    };
-
     public static boolean DEBUG = false;
 
     final ContextRoot root = new ContextRoot();
@@ -78,6 +74,14 @@ public class Engine {
         root.listener = listener;
     }
 
+    public void enableJavaBridge() {
+        root.javaBridge = new JavaBridge();
+    }
+
+    public void setJavaBridge(JavaBridge javaBridge) {
+        root.javaBridge = javaBridge;
+    }
+
     static Object toJava(Object value) {
         if (value instanceof JavaMirror) {
             return ((JavaMirror) value).toJava();
@@ -98,10 +102,10 @@ public class Engine {
             Node node = parser.parse();
             Context context;
             if (localVars == null) {
-                context = new Context(root, 0, node, bindings);
+                context = new Context(root, root, 0, node, bindings);
             } else {
-                Context subRoot = new Context(root, -1, null, bindings);
-                context = new Context(subRoot, 0, node, localVars);
+                Context subRoot = new Context(root, root, -1, null, bindings);
+                context = new Context(root, subRoot, 0, node, localVars);
             }
             context.event(Event.Type.CONTEXT_ENTER, node);
             Object result = Interpreter.eval(node, context);

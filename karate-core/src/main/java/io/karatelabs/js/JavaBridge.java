@@ -28,9 +28,9 @@ import net.minidev.json.JSONValue;
 import java.lang.reflect.*;
 import java.util.*;
 
-public interface JavaBridge {
+public class JavaBridge {
 
-    default boolean typeExists(String className) {
+    public boolean typeExists(String className) {
         try {
             Class.forName(className);
             return true;
@@ -39,7 +39,7 @@ public interface JavaBridge {
         }
     }
 
-    default Object construct(String className, Object[] args) {
+    public Object construct(String className, Object[] args) {
         try {
             Class<?> clazz = Class.forName(className);
             Constructor<?> constructor = findConstructor(clazz, args);
@@ -49,7 +49,7 @@ public interface JavaBridge {
         }
     }
 
-    default Object invokeStatic(String className, String name, Object[] args) {
+    public Object invokeStatic(String className, String name, Object[] args) {
         try {
             Class<?> clazz = Class.forName(className);
             Method method = findMethod(clazz, name, args);
@@ -62,7 +62,7 @@ public interface JavaBridge {
         }
     }
 
-    default Object invoke(Object object, String name, Object[] args) {
+    public Object invoke(Object object, String name, Object[] args) {
         try {
             Method method = findMethod(object.getClass(), name, args);
             if (method == null) {
@@ -74,7 +74,7 @@ public interface JavaBridge {
         }
     }
 
-    default Object getStatic(String className, String name) {
+    public Object getStatic(String className, String name) {
         Class<?> clazz = null;
         try {
             clazz = Class.forName(className);
@@ -84,7 +84,7 @@ public interface JavaBridge {
             if (clazz != null) {
                 for (Method m : clazz.getMethods()) {
                     if (m.getName().equals(name)) {
-                        JavaClass jc = new JavaClass(clazz);
+                        JavaClass jc = new JavaClass(this, clazz);
                         return new JavaInvokable(name, jc);
                     }
                 }
@@ -93,26 +93,18 @@ public interface JavaBridge {
         }
     }
 
-    default void setStatic(String className, String name, Object value) {
-        Class<?> clazz = null;
+    public void setStatic(String className, String name, Object value) {
+        Class<?> clazz;
         try {
             clazz = Class.forName(className);
             Field field = clazz.getField(name);
             field.set(null, value);
         } catch (Exception e) {
-            if (clazz != null) {
-                for (Method m : clazz.getMethods()) {
-                    if (m.getName().equals(name)) {
-                        JavaClass jc = new JavaClass(clazz);
-
-                    }
-                }
-            }
             throw new RuntimeException("cannot set static field " + className + "#" + name + ": " + e);
         }
     }
 
-    default Object get(Object object, String name) {
+    public Object get(Object object, String name) {
         Method method = findGetter(object, name);
         if (method == null) {
             try {
@@ -121,7 +113,7 @@ public interface JavaBridge {
             } catch (Exception e) {
                 for (Method m : object.getClass().getMethods()) {
                     if (m.getName().equals(name)) {
-                        JavaObject jo = new JavaObject(object);
+                        JavaObject jo = new JavaObject(this, object);
                         return new JavaInvokable(name, jo);
                     }
                 }
@@ -135,7 +127,7 @@ public interface JavaBridge {
         }
     }
 
-    default void set(Object object, String name, Object value) {
+    public void set(Object object, String name, Object value) {
         String setterName = "set" + name.substring(0, 1).toUpperCase() + name.substring(1);
         Object[] args = new Object[]{value};
         try {
@@ -151,9 +143,9 @@ public interface JavaBridge {
 
     //==================================================================================================================
     //
-    Object[] EMPTY = new Object[0];
+    static final Object[] EMPTY = new Object[0];
 
-    static Class<?>[] paramTypes(Object[] args) {
+    private static Class<?>[] paramTypes(Object[] args) {
         Class<?>[] paramTypes = new Class[args.length];
         for (int i = 0; i < args.length; i++) {
             Object arg = args[i];
@@ -180,7 +172,7 @@ public interface JavaBridge {
         }
     }
 
-    static Method findGetter(Object object, String name) {
+    private static Method findGetter(Object object, String name) {
         String getterSuffix = name.substring(0, 1).toUpperCase() + name.substring(1);
         Method method = findMethod(object.getClass(), "get" + getterSuffix, EMPTY);
         if (method == null) {
@@ -189,7 +181,7 @@ public interface JavaBridge {
         return method;
     }
 
-    static Constructor<?> findConstructor(Class<?> clazz, Object[] args) {
+    private static Constructor<?> findConstructor(Class<?> clazz, Object[] args) {
         try {
             return clazz.getConstructor(paramTypes(args));
         } catch (Exception e) {
@@ -203,7 +195,7 @@ public interface JavaBridge {
         throw new RuntimeException(clazz + " constructor not found, param types: " + Arrays.asList(paramTypes(args)));
     }
 
-    static Method findMethod(Class<?> clazz, String name, Object[] args) {
+    private static Method findMethod(Class<?> clazz, String name, Object[] args) {
         try {
             return clazz.getMethod(name, paramTypes(args));
         } catch (Exception e) {

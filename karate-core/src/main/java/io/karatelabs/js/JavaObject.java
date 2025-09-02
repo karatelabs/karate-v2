@@ -27,35 +27,37 @@ import java.util.Map;
 
 public class JavaObject implements JavaMethods, JavaFields, ObjectLike {
 
+    private final JavaBridge bridge;
     private final Object object;
 
-    public JavaObject(Object object) {
+    public JavaObject(JavaBridge bridge, Object object) {
+        this.bridge = bridge;
         this.object = object;
     }
 
     @Override
     public Object call(String name, Object... args) {
-        return JavaBridge.convertIfArray(Engine.JAVA_BRIDGE.invoke(object, name, args));
+        return JavaBridge.convertIfArray(bridge.invoke(object, name, args));
     }
 
     @Override
     public Object read(String name) {
-        return JavaBridge.convertIfArray(Engine.JAVA_BRIDGE.getStatic(object.getClass().getName(), name));
+        return JavaBridge.convertIfArray(bridge.getStatic(object.getClass().getName(), name));
     }
 
     @Override
     public void update(String name, Object value) {
-        Engine.JAVA_BRIDGE.setStatic(object.getClass().getName(), name, value);
+        bridge.setStatic(object.getClass().getName(), name, value);
     }
 
     @Override
     public Object get(String name) {
-        return JavaBridge.convertIfArray(Engine.JAVA_BRIDGE.get(object, name));
+        return JavaBridge.convertIfArray(bridge.get(object, name));
     }
 
     @Override
     public void put(String name, Object value) {
-        Engine.JAVA_BRIDGE.set(object, name, value);
+        bridge.set(object, name, value);
     }
 
     @Override
