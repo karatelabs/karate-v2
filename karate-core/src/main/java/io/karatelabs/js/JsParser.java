@@ -88,9 +88,7 @@ public class JsParser extends Parser {
             } else {
                 break;
             }
-            if (consumeIf(COMMA)) {
-                // continue;
-            } else {
+            if (!consumeIf(COMMA)) {
                 break;
             }
         }
@@ -163,9 +161,7 @@ public class JsParser extends Parser {
                 if (consumeIf(FINALLY)) {
                     block(true);
                 }
-            } else if (block(false)) { // catch without exception variable
-                // ok
-            } else {
+            } else if (!block(false)) { // catch without exception variable
                 error(CATCH);
             }
         } else if (consumeIf(FINALLY)) {
@@ -181,17 +177,13 @@ public class JsParser extends Parser {
             return false;
         }
         consume(L_PAREN);
-        if (peekIf(SEMI) || var_stmt() || expr(-1, false)) {
-            // ok
-        } else {
+        if (!(peekIf(SEMI) || var_stmt() || expr(-1, false))) {
             error(NodeType.VAR_STMT, NodeType.EXPR);
         }
         if (consumeIf(SEMI)) {
             if (peekIf(SEMI) || expr(-1, false)) {
                 if (consumeIf(SEMI)) {
-                    if (peekIf(R_PAREN) || expr(-1, false)) {
-                        // ok
-                    } else {
+                    if (!(peekIf(R_PAREN) || expr(-1, false))) {
                         error(NodeType.EXPR);
                     }
                 } else {
@@ -265,9 +257,9 @@ public class JsParser extends Parser {
         return exit();
     }
 
-    private boolean default_block() {
+    private void default_block() {
         if (!enter(NodeType.DEFAULT_BLOCK, DEFAULT)) {
-            return false;
+            return;
         }
         consume(COLON);
         while (true) {
@@ -275,7 +267,7 @@ public class JsParser extends Parser {
                 break;
             }
         }
-        return exit();
+        exit();
     }
 
     private boolean break_stmt() {
@@ -366,15 +358,12 @@ public class JsParser extends Parser {
                 expr(6, true);
                 exit(Shift.LEFT);
             } else if (priority < 7 && peekIf(STAR_STAR)) {
-                while (true) {
+                do {
                     enter(NodeType.MATH_EXP_EXPR);
                     consumeNext();
                     expr(7, true);
                     exit(Shift.RIGHT);
-                    if (!peekIf(STAR_STAR)) {
-                        break;
-                    }
-                }
+                } while (peekIf(STAR_STAR));
             } else if (enter(NodeType.FN_CALL_EXPR, L_PAREN)) {
                 fn_call_args();
                 consume(R_PAREN);
@@ -463,7 +452,7 @@ public class JsParser extends Parser {
         return exit(result, false);
     }
 
-    private boolean fn_call_args() {
+    private void fn_call_args() {
         enter(NodeType.FN_CALL_ARGS);
         while (true) {
             if (peekIf(R_PAREN)) {
@@ -473,7 +462,7 @@ public class JsParser extends Parser {
                 break;
             }
         }
-        return exit();
+        exit();
     }
 
     private boolean fn_call_arg() {
@@ -548,9 +537,7 @@ public class JsParser extends Parser {
         if (!enter(NodeType.MATH_PRE_EXPR, PLUS_PLUS, MINUS_MINUS, MINUS, PLUS)) {
             return false;
         }
-        if (expr(8, false) || consumeIf(NUMBER)) {
-            // ok
-        } else {
+        if (!(expr(8, false) || consumeIf(NUMBER))) {
             error(NodeType.EXPR);
         }
         return exit();
@@ -594,9 +581,7 @@ public class JsParser extends Parser {
         if (!spread) {
             expr(-1, true);
         }
-        if (consumeIf(COMMA) || peekIf(R_CURLY)) {
-            // ok
-        } else {
+        if (!(consumeIf(COMMA) || peekIf(R_CURLY))) {
             error(COMMA, R_CURLY);
         }
         return exit();
@@ -622,9 +607,7 @@ public class JsParser extends Parser {
         enter(NodeType.ARRAY_ELEM);
         consumeIf(DOT_DOT_DOT); // spread operator
         expr(-1, false); // optional for sparse array
-        if (consumeIf(COMMA) || peekIf(R_BRACKET)) {
-            // ok
-        } else {
+        if (!(consumeIf(COMMA) || peekIf(R_BRACKET))) {
             error(COMMA, R_BRACKET);
         }
         return exit();
