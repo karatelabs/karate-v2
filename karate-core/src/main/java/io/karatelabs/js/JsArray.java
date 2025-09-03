@@ -724,7 +724,7 @@ class JsArray extends JsObject {
             if (length instanceof Number) {
                 int size = ((Number) length).intValue();
                 for (int i = 0; i < size; i++) {
-                    list.addFirst(Terms.UNDEFINED);
+                    list.add(Terms.UNDEFINED);
                 }
             }
         }

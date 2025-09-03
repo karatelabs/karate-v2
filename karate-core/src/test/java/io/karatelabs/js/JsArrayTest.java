@@ -64,6 +64,8 @@ class JsArrayTest extends EvalBase {
         match(eval("Array.from([1, 2, 3])"), "[1, 2, 3]");
         match(eval("Array.from([1, 2, 3], x => x * 2)"), "[2, 4, 6]");
         match(eval("Array.from({ length: 3 }, (v, i) => i)"), "[0, 1, 2]");
+        // todo prevent leaking undefined like this
+        match(eval("Array.from({ length: 3 })"), "[undefined, undefined, undefined]");
         assertEquals(2, eval("[1, 2, 3].find(x => x % 2 === 0)"));
         assertNull(eval("[1, 2, 3].find(x => x % 5 === 0)"));
         assertEquals(1, eval("[1, 2, 3].findIndex(x => x % 2 === 0)"));
