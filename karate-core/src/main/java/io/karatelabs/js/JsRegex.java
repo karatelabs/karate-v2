@@ -244,7 +244,7 @@ class JsRegex extends JsObject {
     }
 
     @Override
-    public Object invoke(Object... args) {
+    public Object call(Context context, Object... args) {
         if (args.length == 0) {
             return new JsRegex(); // empty regex in JS
         }

@@ -308,7 +308,7 @@ class JsArray extends JsObject {
                         if (list.isEmpty()) {
                             return list;
                         }
-                        if (args.length > 0 && args[0] instanceof Invokable) {
+                        if (args.length > 0 && args[0] instanceof JsCallable) {
                             JsCallable callable = toCallable(args);
                             list.sort((a, b) -> {
                                 Object result = callable.call(context, a, b);
@@ -319,8 +319,8 @@ class JsArray extends JsObject {
                             });
                         } else {
                             list.sort((a, b) -> {
-                                String strA = a != null ? a.toString() : "undefined";
-                                String strB = b != null ? b.toString() : "undefined";
+                                String strA = a != null ? a.toString() : "";
+                                String strB = b != null ? b.toString() : "";
                                 return strA.compareTo(strB);
                             });
                         }

@@ -112,8 +112,8 @@ class JsFunctionTest extends EvalBase {
     @Test
     void testGetReferenceAndInvoke() {
         eval("var a = function(name){ return 'hello ' + name }");
-        Invokable fn = (Invokable) get("a");
-        Object result = fn.invoke("world");
+        JsCallable fn = (JsCallable) get("a");
+        Object result = fn.call(null, "world");
         assertEquals("hello world", result);
     }
 

@@ -134,11 +134,13 @@ class JsProperty {
                 ((Map<String, Object>) object).put(name, value);
             } else if (object instanceof ObjectLike objectLike) {
                 objectLike.put(name, value);
-            } else if (object instanceof JavaClass jc) {
-                jc.update(name, value);
             } else if (context.root.javaBridge != null) {
                 try {
-                    context.root.javaBridge.set(object, name, value);
+                    if (object instanceof JavaClass jc) {
+                        jc.update(name, value);
+                    } else {
+                        context.root.javaBridge.set(object, name, value);
+                    }
                 } catch (Exception e) {
                     logger.error("java bridge error: {}", e.getMessage());
                     throw new RuntimeException("cannot set '" + name + "'");
@@ -151,7 +153,7 @@ class JsProperty {
 
     Object get() {
         if (!functionCall && index instanceof Number n) {
-            int i = (n).intValue();
+            int i = n.intValue();
             if (object instanceof List) {
                 return ((List<Object>) object).get(i);
             }
@@ -161,20 +163,6 @@ class JsProperty {
             if (object instanceof String s) {
                 return s.substring(i, i + 1);
             }
-            if (object instanceof Map) {
-                Map<String, Object> map = (Map<String, Object>) object;
-                String key = i + "";
-                if (map.containsKey(key)) {
-                    return map.get(key);
-                }
-            }
-            if (object instanceof ObjectLike objectLike) {
-                String key = i + "";
-                Object value = objectLike.get(key);
-                if (value != null) {
-                    return value;
-                }
-            }
             throw new RuntimeException("get by index [" + i + "] for non-array: " + object);
         }
         if (index != null) {
@@ -183,11 +171,14 @@ class JsProperty {
         if (name == null) {
             return object;
         }
-        if (object instanceof List) {
-            return (new JsArray((List<Object>) object).get(name));
-        }
-        if (object instanceof JsArray array) {
-            return array.get(name);
+        if (object == null || object == Terms.UNDEFINED) {
+            if (context.hasKey(name)) {
+                return context.get(name);
+            }
+            if (optional) {
+                return Terms.UNDEFINED;
+            }
+            throw new RuntimeException("cannot read properties of " + object + " (reading '" + name + "')");
         }
         if (object instanceof Map) {
             Map<String, Object> map = (Map<String, Object>) object;
@@ -203,25 +194,21 @@ class JsProperty {
             }
             // java interop may have been the intent, will be attempted at the end
         }
+        // covers js objects and java interop
         if (object instanceof ObjectLike objectLike) {
             return objectLike.get(name);
         }
+        if (object instanceof List) {
+            return (new JsArray((List<Object>) object).get(name));
+        }
+        // primitives: string, number, boolean, etc.
         JavaMirror mirror = Terms.toJavaMirror(object);
         if (mirror != null) {
             return mirror.get(name);
         }
-        if (object == null || object == Terms.UNDEFINED) {
-            if (context.hasKey(name)) {
-                return context.get(name);
-            }
-            if (optional) {
-                return Terms.UNDEFINED;
-            }
-            throw new RuntimeException("cannot read properties of " + object + " (reading '" + name + "')");
-        }
         if (object instanceof JsCallable callable) {
             // e.g. [].map.call([1, 2, 3], x => x * 2)
-            // we convert to a JsFunction, so that prototype methods can be looked-up by name
+            // we wrap in a JsFunction, so that prototype methods can be looked-up by get(name)
             return new JsFunction() {
                 @Override
                 public Object call(Context context, Object... args) {
@@ -229,17 +216,18 @@ class JsProperty {
                 }
             }.get(name);
         }
-        if (functionCall && object instanceof JavaMethods jm) {
-            return new JavaInvokable(name, jm);
-        }
-        if (!functionCall && object instanceof JavaFields jf) {
-            return jf.read(name);
-        }
         if (context.root.javaBridge != null) {
             try {
                 if (functionCall) {
-                    return new JavaInvokable(name, new JavaObject(context.root.javaBridge, object));
+                    if (object instanceof JavaMethods jm) {
+                        return new JavaInvokable(name, jm);
+                    } else {
+                        return new JavaInvokable(name, new JavaObject(context.root.javaBridge, object));
+                    }
                 } else {
+                    if (object instanceof JavaFields jf) {
+                        return jf.read(name);
+                    }
                     return new JavaObject(context.root.javaBridge, object).get(name);
                 }
             } catch (Exception e) {

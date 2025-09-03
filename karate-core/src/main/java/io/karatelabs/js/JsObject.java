@@ -25,7 +25,7 @@ package io.karatelabs.js;
 
 import java.util.*;
 
-class JsObject implements ObjectLike, Invokable, Iterable<KeyValue> {
+class JsObject implements ObjectLike, JsCallable, Iterable<KeyValue> {
 
     private Map<String, Object> _map;
 
@@ -166,8 +166,8 @@ class JsObject implements ObjectLike, Invokable, Iterable<KeyValue> {
     }
 
     @Override
-    public Object invoke(Object... args) {
-        return new JsObject(); // todo string, number, date
+    public Object call(Context context, Object... args) {
+        return new JsObject();
     }
 
     @Override

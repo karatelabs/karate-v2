@@ -8,7 +8,7 @@ class JsArrayTest extends EvalBase {
 
     @Test
     void testDev() {
-        match(eval("Array.from([1, 2, 3], x => x * 2)"), "[2, 4, 6]");
+
     }
 
     @Test

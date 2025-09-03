@@ -51,14 +51,6 @@ class JsFunctionNode extends JsFunction {
     }
 
     @Override
-    public Object invoke(Object... args) {
-        // this entry point will be used only if user got a reference to
-        // a previous evaluation result and invoked it as an Invokable
-        // useful for using javascript defined functions in a java program
-        return call(declaredContext, args);
-    }
-
-    @Override
     public Object call(Context callerContext, Object... args) {
         if (callerContext == null) { // static methods e.g. Array.from(), Function.call()
             callerContext = declaredContext;
