@@ -104,7 +104,7 @@ public class Engine {
             if (localVars == null) {
                 context = new Context(root, root, 0, node, bindings);
             } else {
-                Context subRoot = new Context(root, root, -1, null, bindings);
+                Context subRoot = new Context(root, root, -1, new Node(NodeType.ROOT), bindings);
                 context = new Context(root, subRoot, 0, node, localVars);
             }
             context.event(Event.Type.CONTEXT_ENTER, node);

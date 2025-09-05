@@ -78,7 +78,7 @@ public class Context {
     }
 
     public String getPath() {
-        String parentPath = parent.getPath();
+        String parentPath = depth == 0 ? null : parent.getPath();
         String suffix = iterationIndex == -1 ? "" : "[" + iterationIndex + "]";
         return parentPath == null ? node.type + suffix : parentPath + "." + node.type + suffix;
     }

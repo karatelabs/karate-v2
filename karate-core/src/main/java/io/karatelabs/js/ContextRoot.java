@@ -49,11 +49,6 @@ class ContextRoot extends Context {
     }
 
     @Override
-    public String getPath() {
-        return null;
-    }
-
-    @Override
     Object get(String name) {
         if (_globals != null && _globals.containsKey(name)) {
             return _globals.get(name);
@@ -89,6 +84,11 @@ class ContextRoot extends Context {
                  "NaN", "Number", "Boolean", "Object", "RegExp", "String", "TypeError" -> true;
             default -> false;
         };
+    }
+
+    @Override
+    public String getPath() {
+        return "ROOT";
     }
 
     @SuppressWarnings("unchecked")
@@ -173,11 +173,6 @@ class ContextRoot extends Context {
             }
             return null;
         };
-    }
-
-    @Override
-    public String toString() {
-        return "ROOT";
     }
 
 }
