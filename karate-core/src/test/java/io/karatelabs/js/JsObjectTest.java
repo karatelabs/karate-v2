@@ -89,6 +89,7 @@ class JsObjectTest extends EvalBase {
         // assertEquals(false, eval("Object.is(0, -0)"));
         matchEval("{}.valueOf()", "{}");
         matchEval("var obj = { a: 1, b: 2 }; obj.valueOf()", "{ a: 1, b: 2 }");
+        matchEval("var x = { a: 0.5 }; Object.entries(x).map(y => [y[0], y[1], typeof y[1]])", "[[a, 0.5, number]]");
     }
 
     @Test

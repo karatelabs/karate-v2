@@ -275,7 +275,7 @@ class EngineTest {
                 /**
                  * @schema schema
                  */
-                 
+                
                  console.log('hello world');
                 """;
         Resource resource = Resource.text(js);

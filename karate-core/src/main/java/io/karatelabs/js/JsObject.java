@@ -118,7 +118,19 @@ class JsObject implements ObjectLike, JsCallable, Iterable<KeyValue> {
                         }
                         Map<String, Object> result = new LinkedHashMap<>();
                         for (KeyValue kv : toIterable(args[0])) {
-                            result.put(kv.key, kv.value);
+                            if (kv.value instanceof List) {
+                                List<Object> list = (List<Object>) kv.value;
+                                if (!list.isEmpty()) {
+                                    Object key = list.getFirst();
+                                    if (key != null) {
+                                        Object value = null;
+                                        if (list.size() > 1) {
+                                            value = list.get(1);
+                                        }
+                                        result.put(key.toString(), value);
+                                    }
+                                }
+                            }
                         }
                         return result;
                     };
@@ -194,21 +206,7 @@ class JsObject implements ObjectLike, JsCallable, Iterable<KeyValue> {
                     @Override
                     public KeyValue next() {
                         int i = index++;
-                        Object value = array.get(i);
-                        if (value instanceof List) {
-                            List<Object> list = (List<Object>) value;
-                            String k = null;
-                            Object v = null;
-                            if (!list.isEmpty()) {
-                                k = list.getFirst() == null ? null : list.getFirst().toString();
-                            }
-                            if (list.size() > 1) {
-                                v = list.get(1);
-                            }
-                            return new KeyValue(array, i, k, v);
-                        } else {
-                            return new KeyValue(array, i, i + "", array.get(i));
-                        }
+                        return new KeyValue(array, i, i + "", array.get(i));
                     }
                 };
             };
