@@ -72,4 +72,25 @@ class MarkupTest {
         assertTrue(rendered.contains("<script src=\"temp.js?ts=" + resource.getLastModified() + "\"></script>"));
     }
 
+    static String MY_COLON = "my:";
+
+    @Test
+    void testCustomResolverAndThis() {
+        Engine js = new Engine();
+        UrlResourceResolver resolver = new UrlResourceResolver("src/test/resources/markup") {
+            @Override
+            public Resource resolve(String path, Resource caller) {
+                if (path.startsWith(MY_COLON)) {
+                    path = "custom/" + path.substring(MY_COLON.length());
+                    return super.resolve(path, caller);
+                }
+                return super.resolve(path, caller);
+            }
+        };
+        Markup markup = Markup.init(js, resolver);
+        String rendered = markup.processPath("custom", null);
+        assertEquals("<div><div>caller</div>\n<div><div>called</div></div></div>", rendered);
+    }
+
+
 }

@@ -23,6 +23,7 @@
  */
 package io.karatelabs.markup;
 
+import io.karatelabs.common.StringUtils;
 import io.karatelabs.js.Engine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,18 +99,19 @@ public class Markup {
                 throw new TemplateOutputException("error flushing output writer", content, -1, -1, e);
             }
         } catch (Exception e) {
+            logger.error("template error: {}", StringUtils.throwableToString(e));
             throw new RuntimeException(e);
         }
     }
 
-    private static Markup initInternal(Engine engine, ResourceResolver resolver, String contextPath) {
-        return new Markup(engine, new KarateProcessorDialect(resolver, contextPath));
+    public static Markup init(Engine engine, ResourceResolver resolver) {
+        return init(engine, resolver, null);
     }
 
-    public static Markup init(Engine je, ResourceResolver resolver) {
-        Markup engine = initInternal(je, resolver, null);
-        engine.wrapped.setTemplateResolver(new HtmlTemplateResolver(resolver));
-        return engine;
+    public static Markup init(Engine engine, ResourceResolver resolver, String contextPath) {
+        Markup markup = new Markup(engine, new KarateProcessorDialect(resolver, contextPath));
+        markup.wrapped.setTemplateResolver(new HtmlTemplateResolver(resolver));
+        return markup;
     }
 
     public static Markup init(Engine je, String root) {

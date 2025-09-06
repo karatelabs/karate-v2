@@ -28,6 +28,6 @@ import io.karatelabs.common.Resource;
 @FunctionalInterface
 public interface ResourceResolver {
 
-    Resource resolve(String path, String caller);
+    Resource resolve(String path, Resource caller);
 
 }

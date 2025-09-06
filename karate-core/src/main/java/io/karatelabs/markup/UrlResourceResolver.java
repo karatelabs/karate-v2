@@ -30,15 +30,13 @@ public class UrlResourceResolver implements ResourceResolver {
     private final boolean classpath;
     final String root;
 
-    private static final String EMPTY = "";
-    private static final String SLASH = "/";
-
     public UrlResourceResolver(String root) {
         if (root == null) {
-            root = EMPTY;
+            root = "";
         }
         classpath = root.startsWith(Resource.CLASSPATH_COLON);
         root = Resource.removePrefix(root);
+        String SLASH = "/";
         if (!root.isEmpty() && !root.endsWith(SLASH)) {
             root = root + SLASH;
         }
@@ -46,13 +44,13 @@ public class UrlResourceResolver implements ResourceResolver {
     }
 
     @Override
-    public Resource resolve(String path, String caller) {
+    public Resource resolve(String path, Resource caller) {
         if (path.startsWith(Resource.CLASSPATH_COLON)) {
             return Resource.path(path);
         }
         String basePath = classpath ? Resource.CLASSPATH_COLON + root : root;
         if (path.startsWith(Resource.THIS_COLON) && caller != null) {
-            return Resource.path(basePath + Resource.getParentPath(caller) + path.substring(5));
+            return caller.resolve(path.substring(Resource.THIS_COLON.length()));
         }
         return Resource.path(basePath + (path.charAt(0) == '/' ? path.substring(1) : path));
     }

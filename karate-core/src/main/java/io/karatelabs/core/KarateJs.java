@@ -33,6 +33,7 @@ import io.karatelabs.js.Engine;
 import io.karatelabs.js.Invokable;
 import io.karatelabs.js.SimpleObject;
 import io.karatelabs.markup.Markup;
+import io.karatelabs.markup.ResourceResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Node;
@@ -49,6 +50,7 @@ public class KarateJs implements SimpleObject {
     public final Engine engine;
     private final HttpClient client;
 
+    private ResourceResolver resolver;
     private Markup _markup;
     private Consumer<String> onDoc;
 
@@ -66,13 +68,21 @@ public class KarateJs implements SimpleObject {
 
     private Markup markup() {
         if (_markup == null) {
-            _markup = Markup.init(engine, root.getPrefixedPath());
+            if (resolver != null) {
+                _markup = Markup.init(engine, resolver);
+            } else {
+                _markup = Markup.init(engine, root.getPrefixedPath());
+            }
         }
         return _markup;
     }
 
     public void setOnDoc(Consumer<String> onDoc) {
         this.onDoc = onDoc;
+    }
+
+    public void setResourceResolver(ResourceResolver resolver) {
+        this.resolver = resolver;
     }
 
     @SuppressWarnings("unchecked")
