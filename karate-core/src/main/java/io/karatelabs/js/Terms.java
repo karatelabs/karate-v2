@@ -214,9 +214,11 @@ public class Terms {
     }
 
     static Object add(Object lhs, Object rhs) {
-        if (!(lhs instanceof Number lhsNum) || !(rhs instanceof Number rhsNum)) {
+        if (lhs instanceof String || rhs instanceof String) {
             return lhs + "" + rhs;
         }
+        Number lhsNum = toNumber(lhs);
+        Number rhsNum = toNumber(rhs);
         double result = lhsNum.doubleValue() + rhsNum.doubleValue();
         return narrow(result);
     }

@@ -30,6 +30,9 @@ class JsMathTest extends EvalBase {
     void testMathSpecial() {
         assertEquals(Terms.POSITIVE_INFINITY, eval("5 / 0"));
         assertEquals(0, eval("5 / Infinity"));
+        assertEquals(3, eval("true + 2"));
+        assertEquals(5, eval("null + 5"));
+        assertEquals(Double.NaN, eval("undefined + 5"));
     }
 
     @Test
