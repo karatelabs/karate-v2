@@ -55,30 +55,15 @@ class Interpreter {
         return new Terms(lhs, rhs);
     }
 
-    private static Object evalToken(Node node, Context context) {
-        switch (node.token.type) {
-            case IDENT:
-                String varName = node.getText();
-                if (!context.hasKey(varName)) {
-                    throw new RuntimeException("unknown identifier: " + varName);
-                }
-                return context.get(varName);
-            case S_STRING:
-            case D_STRING:
-                return node.token.text.substring(1, node.token.text.length() - 1);
-            case NUMBER:
-                return Terms.toNumber(node.token.text);
-            case NULL:
-                return null;
-            case TRUE:
-                return true;
-            case FALSE:
-                return false;
-            case REGEX:
-                return new JsRegex(node.token.text);
-            default:
-                throw new RuntimeException(node.toStringError("eval - unexpected token"));
-        }
+    private static Object evalTokenLiteral(Node node) {
+        return switch (node.token.type) {
+            case S_STRING, D_STRING -> node.token.text.substring(1, node.token.text.length() - 1);
+            case NUMBER -> Terms.toNumber(node.token.text);
+            case NULL -> null;
+            case TRUE -> true;
+            case FALSE -> false;
+            default -> throw new RuntimeException(node.toStringError("eval - unexpected token"));
+        };
     }
 
     private static Object evalAssignExpr(Node node, Context context) {
@@ -416,6 +401,20 @@ class Interpreter {
         return sb.toString();
     }
 
+    private static Object evalLitExpr(Node node, Context context) {
+        node = node.children.getFirst();
+        if (node.isToken()) {
+            return evalTokenLiteral(node);
+        }
+        return switch (node.type) {
+            case NodeType.LIT_ARRAY -> evalLitArray(node, context);
+            case NodeType.LIT_OBJECT -> evalLitObject(node, context);
+            case NodeType.LIT_TEMPLATE -> evalLitTemplate(node, context);
+            case NodeType.LIT_REGEX -> new JsRegex(node.getFirstToken().text);
+            default -> throw new RuntimeException("unexpected lit expr: " + node);
+        };
+    }
+
     private static Object evalLogicBitExpr(Node node, Context context) {
         return switch (node.children.get(1).token.type) {
             case AMP -> terms(node, context).bitAnd();
@@ -742,7 +741,7 @@ class Interpreter {
 
     static Object eval(Node node, Context context) {
         return switch (node.type) {
-            case TOKEN -> evalToken(node, context);
+            case TOKEN -> evalTokenLiteral(node);
             case ASSIGN_EXPR -> evalAssignExpr(node, context);
             case BLOCK -> evalBlock(node, context);
             case BREAK_STMT -> evalBreakStmt(node, context);
@@ -750,17 +749,13 @@ class Interpreter {
             case DELETE_STMT -> evalDeleteStmt(node, context);
             case EXPR -> evalExpr(node, context);
             case EXPR_LIST -> evalExprList(node, context);
-            case LIT_EXPR -> eval(node.children.getFirst(), context);
+            case LIT_EXPR -> evalLitExpr(node, context);
             case FN_EXPR -> evalFnExpr(node, context);
             case FN_ARROW_EXPR -> evalFnArrowExpr(node, context);
             case FN_CALL_EXPR -> evalFnCall(node, context);
             case FOR_STMT -> evalForStmt(node, context);
             case IF_STMT -> evalIfStmt(node, context);
             case INSTANCEOF_EXPR -> evalInstanceOfExpr(node, context);
-            case LIT_ARRAY -> evalLitArray(node, context);
-            case LIT_OBJECT -> evalLitObject(node, context);
-            case LIT_TEMPLATE -> evalLitTemplate(node, context);
-            case REGEX_LITERAL -> new JsRegex(node.children.getFirst().token.text);
             case LOGIC_EXPR -> evalLogicExpr(node, context);
             case LOGIC_AND_EXPR -> evalLogicAndExpr(node, context);
             case LOGIC_BIT_EXPR -> evalLogicBitExpr(node, context);

@@ -81,6 +81,6 @@ public enum NodeType {
     PAREN_EXPR,
     LIT_TEMPLATE,
     PLACEHOLDER,
-    REGEX_LITERAL
+    LIT_REGEX
 
 }

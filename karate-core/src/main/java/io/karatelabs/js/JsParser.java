@@ -391,7 +391,7 @@ public class JsParser extends Parser {
             } else if (enter(NodeType.MATH_POST_EXPR, PLUS_PLUS, MINUS_MINUS)) {
                 exit(Shift.LEFT);
             } else if (enter(NodeType.INSTANCEOF_EXPR, INSTANCEOF)) {
-                consume(IDENT);
+                expr(-1, true);
                 exit(Shift.LEFT);
             } else {
                 break;
@@ -500,7 +500,7 @@ public class JsParser extends Parser {
         enter(NodeType.LIT_EXPR);
         boolean result = lit_object() || lit_array();
         result = result || anyOf(S_STRING, D_STRING, NUMBER, TRUE, FALSE, NULL);
-        result = result || lit_template() || regex_literal();
+        result = result || lit_template() || lit_regex();
         return exit(result, false);
     }
 
@@ -613,8 +613,8 @@ public class JsParser extends Parser {
         return exit();
     }
 
-    private boolean regex_literal() {
-        if (!enter(NodeType.REGEX_LITERAL, REGEX)) {
+    private boolean lit_regex() {
+        if (!enter(NodeType.LIT_REGEX, REGEX)) {
             return false;
         }
         return exit();

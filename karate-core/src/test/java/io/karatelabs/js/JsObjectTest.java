@@ -63,6 +63,7 @@ class JsObjectTest extends EvalBase {
         assertEquals("foo", eval(js + "dog.toString()"));
         assertEquals(true, eval(js + "dog.constructor === Dog"));
         assertEquals(true, eval(js + "dog instanceof Dog"));
+        assertEquals(true, eval(js + "dog instanceof dog.constructor"));
     }
 
     @Test
