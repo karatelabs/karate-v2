@@ -314,14 +314,14 @@ public class JsParser extends Parser {
     private boolean expr(int priority, boolean mandatory) {
         enter(NodeType.EXPR);
         boolean result = fn_arrow_expr();
-        result = result || fn_expr();
-        result = result || new_expr();
-        result = result || typeof_expr();
         result = result || ref_expr();
         result = result || lit_expr();
+        result = result || fn_expr();
         result = result || paren_expr();
         result = result || unary_expr();
         result = result || math_pre_expr();
+        result = result || new_expr();
+        result = result || typeof_expr();
         expr_rhs(priority);
         return exit(result, mandatory);
     }
@@ -498,9 +498,8 @@ public class JsParser extends Parser {
 
     private boolean lit_expr() {
         enter(NodeType.LIT_EXPR);
-        boolean result = lit_object() || lit_array();
-        result = result || anyOf(S_STRING, D_STRING, NUMBER, TRUE, FALSE, NULL);
-        result = result || lit_template() || lit_regex();
+        boolean result = anyOf(S_STRING, D_STRING, NUMBER, TRUE, FALSE, NULL)
+                || lit_object() || lit_array() || lit_template() || lit_regex();
         return exit(result, false);
     }
 

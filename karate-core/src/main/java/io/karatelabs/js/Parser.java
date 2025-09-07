@@ -223,13 +223,10 @@ abstract class Parser {
         int line = 0;
         int col = 0;
         long pos = 0;
+        TokenType type;
         try {
-            while (true) {
-                TokenType type = lexer.yylex();
-                if (type == EOF) {
-                    list.add(new Token(resource, type, pos, line, col, ""));
-                    break;
-                }
+            do {
+                type = lexer.yylex();
                 String text = lexer.yytext();
                 Token token = new Token(resource, type, pos, line, col, text);
                 int length = lexer.yylength();
@@ -260,7 +257,7 @@ abstract class Parser {
                 } else if (type == L_COMMENT || type == G_COMMENT || type == B_COMMENT) {
                     comments.add(token);
                 }
-            }
+            } while (type != EOF);
         } catch (Throwable e) {
             String message = "lexer failed at [" + (line + 1) + ":" + (col + 1) + "] prev: " + prev;
             if (resource.isUrlResource()) {
