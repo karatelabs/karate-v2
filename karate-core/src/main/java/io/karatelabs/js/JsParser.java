@@ -313,10 +313,10 @@ public class JsParser extends Parser {
     //
     private boolean expr(int priority, boolean mandatory) {
         enter(NodeType.EXPR);
-        boolean result = fn_arrow_expr()
-                || ref_expr()
+        boolean result = ref_expr() // also handles single-arg arrow functions without parentheses
                 || lit_expr()
                 || fn_expr()
+                || fn_arrow_expr()
                 || paren_expr()
                 || unary_expr()
                 || math_pre_expr()
@@ -402,40 +402,19 @@ public class JsParser extends Parser {
     }
 
     private boolean fn_arrow_expr() {
-        // this is deliberately complicated as a micro-optimization
-        // since this is always entered at the start of expr()
-        // arrow-functions can start out looking like ref_expr() or paren_expr()
-        Token nextToken = peekToken();
-        if (nextToken.type == IDENT) {
-            // for the common case of IDENT at the start, we look ahead and decide if we need to exit early
-            if (nextToken.getNextPrimary().type == EQ_GT) {
-                enter(NodeType.FN_ARROW_EXPR);
-                consumeNext(); // IDENT
-                consumeNext(); // EQ_GT
+        enter(NodeType.FN_ARROW_EXPR);
+        // what started out looking like arrow function args may not be
+        // e.g: "(function(){})", so fn_decl_args() will re-wind
+        // and paren_expr() is next in line in expr() to handle
+        if (fn_decl_args()) {
+            if (consumeIf(EQ_GT)) {
                 if (block(false) || expr(-1, false)) {
                     return exit();
                 }
                 error(NodeType.BLOCK, NodeType.EXPR);
-                return exit(false, false);
-            } else {
-                return false;
             }
-        } else if (nextToken.type == L_PAREN) {
-            enter(NodeType.FN_ARROW_EXPR);
-            // what started out looking like arrow function args may not be
-            // e.g: "(function(){})", so fn_decl_args() will re-wind in those cases
-            if (fn_decl_args()) {
-                if (consumeIf(EQ_GT)) {
-                    if (block(false) || expr(-1, false)) {
-                        return exit();
-                    }
-                    error(NodeType.BLOCK, NodeType.EXPR);
-                }
-            }
-            return exit(false, false);
-        } else {
-            return false;
         }
+        return exit(false, false);
     }
 
     private boolean fn_expr() {
@@ -517,6 +496,13 @@ public class JsParser extends Parser {
     private boolean ref_expr() {
         if (!enter(NodeType.REF_EXPR, IDENT)) {
             return false;
+        }
+        if (enter(NodeType.FN_ARROW_EXPR, EQ_GT)) {
+            if (block(false) || expr(-1, false)) {
+                exit(Shift.LEFT); // change the node type
+            } else {
+                error(NodeType.BLOCK, NodeType.EXPR);
+            }
         }
         return exit();
     }

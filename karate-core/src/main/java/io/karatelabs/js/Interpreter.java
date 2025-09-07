@@ -556,6 +556,14 @@ class Interpreter {
         return progResult;
     }
 
+    private static Object evalRefExpr(Node node, Context context) {
+        if (node.children.getFirst().type == NodeType.FN_ARROW_EXPR) { // arrow function
+            return evalFnArrowExpr(node.children.getFirst(), context);
+        } else {
+            return context.get(node.getText());
+        }
+    }
+
     private static Object evalReturnStmt(Node node, Context context) {
         if (node.children.size() > 1) {
             return context.stopAndReturn(eval(node.children.get(1), context));
@@ -772,7 +780,7 @@ class Interpreter {
             case NEW_EXPR -> evalNewExpr(node, context);
             case PAREN_EXPR -> eval(node.children.get(1), context);
             case PROGRAM -> evalProgram(node, context);
-            case REF_EXPR -> context.get(node.getText());
+            case REF_EXPR -> evalRefExpr(node, context);
             case REF_BRACKET_EXPR, REF_DOT_EXPR -> new JsProperty(node, context).get();
             case RETURN_STMT -> evalReturnStmt(node, context);
             case STATEMENT -> evalStatement(node, context);
