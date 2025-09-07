@@ -51,7 +51,7 @@ public class JsParser extends Parser {
     private boolean statement(boolean mandatory) {
         enter(NodeType.STATEMENT);
         boolean result = if_stmt()
-                || (var_stmt() && eos())
+                || (var_stmt(false) && eos())
                 || (return_stmt() && eos())
                 || (throw_stmt() && eos())
                 || try_stmt()
@@ -109,7 +109,7 @@ public class JsParser extends Parser {
         return exit();
     }
 
-    private boolean var_stmt() {
+    private boolean var_stmt(boolean forLoop) {
         if (!enter(NodeType.VAR_STMT, VAR, CONST, LET)) {
             return false;
         }
@@ -119,7 +119,7 @@ public class JsParser extends Parser {
         }
         if (consumeIf(EQ)) {
             expr(-1, true);
-        } else if (varType == CONST) {
+        } else if (varType == CONST && !forLoop) {
             error(EQ);
         }
         return exit();
@@ -177,7 +177,7 @@ public class JsParser extends Parser {
             return false;
         }
         consume(L_PAREN);
-        if (!(peekIf(SEMI) || var_stmt() || expr(-1, false))) {
+        if (!(peekIf(SEMI) || var_stmt(true) || expr(-1, false))) {
             error(NodeType.VAR_STMT, NodeType.EXPR);
         }
         if (consumeIf(SEMI)) {

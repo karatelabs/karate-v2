@@ -121,6 +121,9 @@ abstract class Parser {
         } else {
             token = tokens.get(position);
         }
+        if (token.resource.isFile()) {
+            System.err.println("file://" + token.resource.getUri().getPath() + ":" + token.getPositionDisplay() + " " + message);
+        }
         throw new ParserException(message + "\n"
                 + token.getPositionDisplay()
                 + " " + token + "\nparser state: " + this);

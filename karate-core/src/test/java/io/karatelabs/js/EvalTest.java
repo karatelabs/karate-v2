@@ -255,6 +255,8 @@ class EvalTest extends EvalBase {
         match(get("a"), "[1]");
         eval("var a = []; var x; for (x of [1, 2, 3]) { if (x == 2) continue; a.push(x) }");
         match(get("a"), "[1, 3]");
+        eval("var a = []; for (const x of {a: 1, b: 2, c: 3}) a.push(x)");
+        match(get("a"), "[1, 2, 3]");
     }
 
     @Test
