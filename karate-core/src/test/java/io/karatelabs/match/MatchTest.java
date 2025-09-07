@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import static io.karatelabs.match.Match.Type.*;
@@ -28,6 +29,7 @@ class MatchTest {
     }
 
     String message;
+    boolean pass;
 
     private void message(String expected) {
         assertEquals(expected, message);
@@ -42,18 +44,20 @@ class MatchTest {
     }
 
     private void match(Object actual, Match.Type mt, Object expected, boolean fails) {
-        Result mr = Match.evaluate(actual).is(mt, expected);
-        message = mr.message;
+        Map<String, Object> mr = Match.evaluate(actual).is(mt, expected);
+        pass = (Boolean) mr.get("pass");
+        message = (String) mr.get("message");
         if (!fails) {
-            assertTrue(mr.pass, mr.message);
+            assertTrue(pass, message);
         } else {
-            assertFalse(mr.pass);
+            assertFalse(pass);
         }
     }
 
     @Test
     void testApi() {
-        assertTrue(Match.that(null).isEqualTo(null).pass);
+        Map<String, Object> result = Match.that(null)._equals(null);
+        assertEquals(true, result.get("pass"));
     }
 
     @Test
@@ -135,7 +139,7 @@ class MatchTest {
         String[] strArray = new String[]{"foo", "bar"};
         Match.that(strArray).containsOnly("['foo', 'bar']");
         int[] intArray = new int[]{1, 2, 3};
-        Match.that(intArray).isEqualTo("[1, 2, 3]");
+        Match.that(intArray)._equals("[1, 2, 3]");
     }
 
     @Test
@@ -595,7 +599,7 @@ class MatchTest {
     @Test
     void testApiUsage() {
         Match.that("[1, 2, 3]").contains(2);
-        Match.that("[1, 2, 3]").isEachEqualTo("#number");
+        Match.that("[1, 2, 3]").eachEquals("#number");
         Match.that("[1, 2, 3]").containsOnly("[3, 2, 1]");
         Match.that("{ a: 1, b: 2 }").contains("{ b: 2 }");
         Match.that("{ a: 1, b: 2, c: { d: 3, e: 4} }").containsDeep("{ b: 2, c: { e: 4 } }");

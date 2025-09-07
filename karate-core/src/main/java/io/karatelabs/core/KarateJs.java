@@ -34,6 +34,7 @@ import io.karatelabs.js.Invokable;
 import io.karatelabs.js.SimpleObject;
 import io.karatelabs.markup.Markup;
 import io.karatelabs.markup.ResourceResolver;
+import io.karatelabs.match.Match;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Node;
@@ -54,6 +55,8 @@ public class KarateJs implements SimpleObject {
     private Markup _markup;
     private Consumer<String> onDoc;
 
+    private final Invokable read;
+
     public KarateJs(Resource root) {
         this(root, new ApacheHttpClient());
     }
@@ -63,7 +66,23 @@ public class KarateJs implements SimpleObject {
         this.client = client;
         this.engine = new Engine();
         engine.setOnConsoleLog(logger::info);
+        read = args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("read() needs at least one argument");
+            }
+            Resource resource = root.resolve((args[0] + ""));
+            return switch (resource.getExtension()) {
+                case "json" -> Json.of(resource.getText()).value();
+                case "js" -> {
+                    String js = resource.getText();
+                    yield engine.eval(js);
+                }
+                default -> resource.getText();
+            };
+        };
         engine.put("karate", this);
+        engine.put("read", read);
+        engine.put("match", match(true));
     }
 
     private Markup markup() {
@@ -123,23 +142,6 @@ public class KarateJs implements SimpleObject {
         };
     }
 
-    private Invokable read() {
-        return args -> {
-            if (args.length == 0) {
-                throw new RuntimeException("read() needs at least one argument");
-            }
-            Resource resource = root.resolve((args[0] + ""));
-            return switch (resource.getExtension()) {
-                case "json" -> Json.of(resource.getText()).value();
-                case "js" -> {
-                    String js = resource.getText();
-                    yield engine.eval(js);
-                }
-                default -> resource.getText();
-            };
-        };
-    }
-
     private Invokable readAsString() {
         return args -> {
             if (args.length == 0) {
@@ -160,6 +162,15 @@ public class KarateJs implements SimpleObject {
                 return args[1];
             }
             return result;
+        };
+    }
+
+    private Invokable match(boolean exceptionOnMatchFailure) {
+        return args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("match() needs at least one argument");
+            }
+            return exceptionOnMatchFailure ? Match.that(args[0]) : Match.evaluate(args[0]);
         };
     }
 
@@ -184,7 +195,8 @@ public class KarateJs implements SimpleObject {
             case "doc" -> doc();
             case "get" -> get();
             case "http" -> http();
-            case "read" -> read();
+            case "match" -> match(false);
+            case "read" -> read;
             case "readAsString" -> readAsString();
             case "toStringPretty" -> toStringPretty();
             default -> null;

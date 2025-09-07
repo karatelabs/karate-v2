@@ -1,7 +1,6 @@
 package io.karatelabs.common;
 
 import io.karatelabs.match.Match;
-import io.karatelabs.match.Result;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,8 +14,10 @@ class JsonTest {
     static final Logger logger = LoggerFactory.getLogger(JsonTest.class);
 
     private void match(Json json, String expected) {
-        Result mr = Match.evaluate(json.value()).isEqualTo(expected);
-        assertTrue(mr.pass, mr.message);
+        Map<String, Object> mr = Match.evaluate(json.value())._equals(expected);
+        boolean pass = (Boolean) mr.get("pass");
+        String message = (String) mr.get("message");
+        assertTrue(pass, message);
     }
 
     @Test

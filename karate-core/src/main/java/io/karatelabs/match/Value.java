@@ -25,12 +25,14 @@ package io.karatelabs.match;
 
 import io.karatelabs.common.Json;
 import io.karatelabs.common.Xml;
+import io.karatelabs.js.Invokable;
+import io.karatelabs.js.SimpleObject;
 import org.w3c.dom.Node;
 
 import java.lang.reflect.Array;
 import java.util.*;
 
-public class Value {
+public class Value implements SimpleObject {
 
     public enum Type {
         NULL,
@@ -202,16 +204,16 @@ public class Value {
         return "[type: " + type + ", value: " + value + "]";
     }
 
-    public Result is(Match.Type matchType, Object expected) {
+    public Map<String, Object> is(Match.Type matchType, Object expected) {
         Operation op = new Operation(matchType, this, new Value(parseIfJsonOrXmlString(expected), exceptionOnMatchFailure));
         op.execute();
         if (op.pass) {
-            return Result.PASS;
+            return Result.PASS.toMap();
         } else {
             if (exceptionOnMatchFailure) {
                 throw new RuntimeException(op.getFailureReasons());
             }
-            return Result.fail(op.getFailureReasons());
+            return Result.fail(op.getFailureReasons()).toMap();
         }
     }
 
@@ -234,64 +236,86 @@ public class Value {
 
     //======================================================================
     //
-    public Result isEqualTo(Object expected) {
+    public Map<String, Object> _equals(Object expected) {
         return is(Match.Type.EQUALS, expected);
     }
 
-    public Result contains(Object expected) {
+    public Map<String, Object> contains(Object expected) {
         return is(Match.Type.CONTAINS, expected);
     }
 
-    public Result containsDeep(Object expected) {
+    public Map<String, Object> containsDeep(Object expected) {
         return is(Match.Type.CONTAINS_DEEP, expected);
     }
 
-    public Result containsOnly(Object expected) {
+    public Map<String, Object> containsOnly(Object expected) {
         return is(Match.Type.CONTAINS_ONLY, expected);
     }
 
-    public Result containsOnlyDeep(Object expected) {
+    public Map<String, Object> containsOnlyDeep(Object expected) {
         return is(Match.Type.CONTAINS_ONLY_DEEP, expected);
     }
 
-    public Result containsAny(Object expected) {
+    public Map<String, Object> containsAny(Object expected) {
         return is(Match.Type.CONTAINS_ANY, expected);
     }
 
-    public Result isNotEqualTo(Object expected) {
+    public Map<String, Object> notEquals(Object expected) {
         return is(Match.Type.NOT_EQUALS, expected);
     }
 
-    public Result isNotContaining(Object expected) {
+    public Map<String, Object> notContains(Object expected) {
         return is(Match.Type.NOT_CONTAINS, expected);
     }
 
-    public Result isEachEqualTo(Object expected) {
+    public Map<String, Object> eachEquals(Object expected) {
         return is(Match.Type.EACH_EQUALS, expected);
     }
 
-    public Result isEachNotEqualTo(Object expected) {
+    public Map<String, Object> eachNotEquals(Object expected) {
         return is(Match.Type.EACH_NOT_EQUALS, expected);
     }
 
-    public Result isEachContaining(Object expected) {
+    public Map<String, Object> eachContains(Object expected) {
         return is(Match.Type.EACH_CONTAINS, expected);
     }
 
-    public Result isEachNotContaining(Object expected) {
+    public Map<String, Object> eachNotContains(Object expected) {
         return is(Match.Type.EACH_NOT_CONTAINS, expected);
     }
 
-    public Result isEachContainingDeep(Object expected) {
+    public Map<String, Object> eachContainsDeep(Object expected) {
         return is(Match.Type.EACH_CONTAINS_DEEP, expected);
     }
 
-    public Result isEachContainingOnly(Object expected) {
+    public Map<String, Object> eachContainsOnly(Object expected) {
         return is(Match.Type.EACH_CONTAINS_ONLY, expected);
     }
 
-    public Result isEachContainingAny(Object expected) {
+    public Map<String, Object> eachContainsAny(Object expected) {
         return is(Match.Type.EACH_CONTAINS_ANY, expected);
+    }
+
+    @Override
+    public Object get(String name) {
+        return switch (name) {
+            case "equals" -> (Invokable) args -> _equals(args[0]);
+            case "contains" -> (Invokable) args -> contains(args[0]);
+            case "containsDeep" -> (Invokable) args -> containsDeep(args[0]);
+            case "containsOnly" -> (Invokable) args -> containsOnly(args[0]);
+            case "containsOnlyDeep" -> (Invokable) args -> containsOnlyDeep(args[0]);
+            case "containsAny" -> (Invokable) args -> containsAny(args[0]);
+            case "notEquals" -> (Invokable) args -> notEquals(args[0]);
+            case "eachEquals" -> (Invokable) args -> eachEquals(args[0]);
+            case "notContains" -> (Invokable) args -> notContains(args[0]);
+            case "eachNotEquals" -> (Invokable) args -> eachNotEquals(args[0]);
+            case "eachContains" -> (Invokable) args -> eachContains(args[0]);
+            case "eachNotContains" -> (Invokable) args -> eachNotContains(args[0]);
+            case "eachContainsDeep" -> (Invokable) args -> eachContainsDeep(args[0]);
+            case "eachContainsOnly" -> (Invokable) args -> eachContainsOnly(args[0]);
+            case "eachContainsAny" -> (Invokable) args -> eachContainsAny(args[0]);
+            default -> throw new RuntimeException("no such match api: " + name);
+        };
     }
 
 }
