@@ -98,14 +98,6 @@ public class Terms {
         }
     }
 
-    static Object or(Object lhs, Object rhs) {
-        return isTruthy(lhs) ? lhs : rhs;
-    }
-
-    static Object and(Object lhs, Object rhs) {
-        return isTruthy(lhs) ? rhs : lhs;
-    }
-
     static boolean eq(Object lhs, Object rhs, boolean strict) {
         if (lhs == null) {
             return rhs == null || !strict && rhs == UNDEFINED;

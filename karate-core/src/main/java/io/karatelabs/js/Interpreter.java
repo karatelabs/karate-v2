@@ -455,13 +455,23 @@ class Interpreter {
     }
 
     private static Object evalLogicAndExpr(Node node, Context context) {
-        Object andOrLhs = eval(node.children.get(0), context);
-        Object andOrRhs = eval(node.children.get(2), context);
-        return switch (node.children.get(1).token.type) {
-            case AMP_AMP -> Terms.and(andOrLhs, andOrRhs);
-            case PIPE_PIPE -> Terms.or(andOrLhs, andOrRhs);
-            default -> throw new RuntimeException("unexpected operator: " + node.children.get(1));
-        };
+        Object lhsValue = eval(node.children.get(0), context);
+        boolean lhs = Terms.isTruthy(lhsValue);
+        if (node.children.get(1).token.type == AMP_AMP) {
+            if (lhs) {
+                Object rhsValue = eval(node.children.get(2), context);
+                return Terms.isTruthy(rhsValue) ? rhsValue : lhsValue;
+            } else {
+                return lhsValue;
+            }
+        } else { // PIPE_PIPE
+            if (lhs) {
+                return lhsValue;
+            } else {
+                Object rhsValue = eval(node.children.get(2), context);
+                return Terms.isTruthy(rhsValue) ? rhsValue : lhsValue;
+            }
+        }
     }
 
     private static Object evalLogicTernExpr(Node node, Context context) {

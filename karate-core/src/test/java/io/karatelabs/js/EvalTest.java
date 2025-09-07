@@ -179,6 +179,15 @@ class EvalTest extends EvalBase {
     }
 
     @Test
+    void testLogicShortCircuit() {
+        assertEquals(null, eval("var a = {}; a.b && a.b.c"));
+        assertEquals(0, eval("var a = { b: 0 }; a.b && a.b.c"));
+        assertEquals(2, eval("var a = { b: 1, c: 2 }; a.b && a.c"));
+        assertEquals(1, eval("var a = { b: 1 }; a.b || a.x.y"));
+        assertEquals(2, eval("var a = { b: 0, c: 2 }; a.b || a.c"));
+    }
+
+    @Test
     void testUnary() {
         assertEquals(true, eval("!false"));
         assertEquals(-6, eval("~5"));
