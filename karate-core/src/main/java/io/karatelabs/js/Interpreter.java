@@ -37,6 +37,9 @@ class Interpreter {
     private static List<String> argNames(Node fnArgs) {
         List<String> list = new ArrayList<>(fnArgs.children.size());
         for (Node fnArg : fnArgs.children) {
+            if (fnArg.type != NodeType.FN_DECL_ARG) {
+                continue;
+            }
             Node first = fnArg.children.get(0);
             if (first.token.type == DOT_DOT_DOT) { // varargs
                 list.add("." + fnArg.children.get(1).getText());
@@ -62,7 +65,7 @@ class Interpreter {
             case NULL -> null;
             case TRUE -> true;
             case FALSE -> false;
-            default -> throw new RuntimeException(node.toStringError("eval - unexpected token"));
+            default -> throw new RuntimeException("unexpected token: " + node);
         };
     }
 
@@ -222,21 +225,22 @@ class Interpreter {
 
     private static Object evalFnExpr(Node node, Context context) {
         if (node.children.get(1).token.type == IDENT) {
-            JsFunctionNode fn = new JsFunctionNode(false, node, argNames(node.children.get(3)), node.children.get(5), context);
+            JsFunctionNode fn = new JsFunctionNode(false, node, argNames(node.children.get(2)), node.children.getLast(), context);
             context.put(node.children.get(1).getText(), fn);
             return fn;
         } else {
-            return new JsFunctionNode(false, node, argNames(node.children.get(2)), node.children.get(4), context);
+            return new JsFunctionNode(false, node, argNames(node.children.get(1)), node.children.getLast(), context);
         }
     }
 
     private static Object evalFnArrowExpr(Node node, Context context) {
-        if (node.children.get(0).token.type == IDENT) {
-            String argName = node.children.get(0).getText();
-            return new JsFunctionNode(true, node, Collections.singletonList(argName), node.children.get(2), context);
+        List<String> argNames;
+        if (node.children.getFirst().token.type == IDENT) {
+            argNames = Collections.singletonList(node.children.getFirst().getText());
         } else {
-            return new JsFunctionNode(true, node, argNames(node.children.get(1)), node.children.get(4), context);
+            argNames = argNames(node.children.getFirst());
         }
+        return new JsFunctionNode(true, node, argNames, node.children.getLast(), context);
     }
 
     private static Object evalForStmt(Node node, Context context) {

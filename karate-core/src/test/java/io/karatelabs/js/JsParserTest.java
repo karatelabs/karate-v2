@@ -204,11 +204,11 @@ class JsParserTest {
 
     @Test
     void testFnExpr() {
-        expr("function(){}", "[function,'(',[],')',['{','}']]");
-        expr("function(){ return true }", "[function,'(',[],')',['{',['return',true],'}']]");
-        expr("function(a){ return a }", "[function,'(',$a,')',['{',['return',$a],'}']]");
-        expr("function(a){ return { a } }", "[function,'(',$a,')',['{',['return',['{',$a,'}']],'}']]");
-        expr("function(a){ return { a, b } }", "[function,'(',$a,')',['{',['return',['{',$a,$b,'}']],'}']]");
+        expr("function(){}", "[function,['(',')'],['{','}']]");
+        expr("function(){ return true }", "[function,['(',')'],['{',['return',true],'}']]");
+        expr("function(a){ return a }", "[function,['(',$a,')'],['{',['return',$a],'}']]");
+        expr("function(a){ return { a } }", "[function,['(',$a,')'],['{',['return',['{',$a,'}']],'}']]");
+        expr("function(a){ return { a, b } }", "[function,['(',$a,')'],['{',['return',['{',$a,$b,'}']],'}']]");
     }
 
     @Test
@@ -220,11 +220,11 @@ class JsParserTest {
 
     @Test
     void testFnExprArrow() {
-        expr("() => true", "['(',[],')','=>',true]");
-        expr("() => {}", "['(',[],')','=>',['{','}']]");
+        expr("() => true", "[['(',')'],'=>',true]");
+        expr("() => {}", "[['(',')'],'=>',['{','}']]");
         expr("a => true", "[$a,'=>',true]");
-        expr("(a) => true", "['(',$a,')','=>',true]");
-        expr("(a, b) => true", "['(',[[$a,','],$b],')','=>',true]");
+        expr("(a) => true", "[['(',$a,')'],'=>',true]");
+        expr("(a, b) => true", "[['(',[$a,','],$b,')'],'=>',true]");
         expr("a => { return true }", "[$a,'=>',['{',['return',true],'}']]");
     }
 
@@ -249,7 +249,7 @@ class JsParserTest {
         expr("a.b.c = 1", "[[[$a,'.',$b],'.',$c],'=',1]");
         expr("a = 1 + 2", "[$a,'=',[1,'+',2]]");
         expr("a = 2 * 3", "[$a,'=',[2,'*',3]]");
-        expr("a = function(){ return true }", "[$a,'=',[function,'(',[],')',['{',['return',true],'}']]]");
+        expr("a = function(){ return true }", "[$a,'=',[function,['(',')'],['{',['return',true],'}']]]");
     }
 
     @Test

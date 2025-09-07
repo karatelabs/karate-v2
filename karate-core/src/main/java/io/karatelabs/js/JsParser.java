@@ -50,21 +50,21 @@ public class JsParser extends Parser {
 
     private boolean statement(boolean mandatory) {
         enter(NodeType.STATEMENT);
-        boolean result = if_stmt();
-        result = result || (var_stmt() && eos());
-        result = result || (return_stmt() && eos());
-        result = result || (throw_stmt() && eos());
-        result = result || try_stmt();
-        result = result || for_stmt();
-        result = result || while_stmt();
-        result = result || do_while_stmt();
-        result = result || switch_stmt();
-        result = result || (break_stmt() && eos());
-        result = result || (continue_stmt() && eos());
-        result = result || (delete_stmt() && eos());
-        result = result || (expr_list() && eos());
-        result = result || block(false);
-        result = result || consumeIf(SEMI); // empty statement
+        boolean result = if_stmt()
+                || (var_stmt() && eos())
+                || (return_stmt() && eos())
+                || (throw_stmt() && eos())
+                || try_stmt()
+                || for_stmt()
+                || while_stmt()
+                || do_while_stmt()
+                || switch_stmt()
+                || (break_stmt() && eos())
+                || (continue_stmt() && eos())
+                || (delete_stmt() && eos())
+                || (expr_list() && eos())
+                || block(false)
+                || consumeIf(SEMI); // empty statement
         return exit(result, mandatory);
     }
 
@@ -313,15 +313,15 @@ public class JsParser extends Parser {
     //
     private boolean expr(int priority, boolean mandatory) {
         enter(NodeType.EXPR);
-        boolean result = fn_arrow_expr();
-        result = result || ref_expr();
-        result = result || lit_expr();
-        result = result || fn_expr();
-        result = result || paren_expr();
-        result = result || unary_expr();
-        result = result || math_pre_expr();
-        result = result || new_expr();
-        result = result || typeof_expr();
+        boolean result = fn_arrow_expr()
+                || ref_expr()
+                || lit_expr()
+                || fn_expr()
+                || paren_expr()
+                || unary_expr()
+                || math_pre_expr()
+                || new_expr()
+                || typeof_expr();
         expr_rhs(priority);
         return exit(result, mandatory);
     }
@@ -401,7 +401,7 @@ public class JsParser extends Parser {
 
     private boolean fn_arrow_expr() {
         enter(NodeType.FN_ARROW_EXPR);
-        if (consumeIf(IDENT) || (consumeIf(L_PAREN) && fn_decl_args() && consumeIf(R_PAREN))) {
+        if (consumeIf(IDENT) || fn_decl_args()) {
             if (consumeIf(EQ_GT)) {
                 if (block(false) || expr(-1, false)) {
                     return exit();
@@ -418,15 +418,15 @@ public class JsParser extends Parser {
             return false;
         }
         consumeIf(IDENT);
-        consume(L_PAREN);
         fn_decl_args();
-        consume(R_PAREN);
         block(true);
         return exit();
     }
 
     private boolean fn_decl_args() {
-        enter(NodeType.FN_DECL_ARGS);
+        if (!enter(NodeType.FN_DECL_ARGS, L_PAREN)) {
+            return false;
+        }
         while (true) {
             if (peekIf(R_PAREN)) {
                 break;
@@ -435,7 +435,9 @@ public class JsParser extends Parser {
                 break;
             }
         }
-        return exit();
+        // what started out looking like arrow function args may not be
+        // e.g: "(function(){})", so rewind in those cases
+        return exit(consumeIf(R_PAREN), false);
     }
 
     private boolean fn_decl_arg() {
@@ -499,7 +501,10 @@ public class JsParser extends Parser {
     private boolean lit_expr() {
         enter(NodeType.LIT_EXPR);
         boolean result = anyOf(S_STRING, D_STRING, NUMBER, TRUE, FALSE, NULL)
-                || lit_object() || lit_array() || lit_template() || lit_regex();
+                || lit_object()
+                || lit_array()
+                || lit_template()
+                || lit_regex();
         return exit(result, false);
     }
 
