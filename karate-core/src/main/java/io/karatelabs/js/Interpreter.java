@@ -468,8 +468,7 @@ class Interpreter {
             if (lhs) {
                 return lhsValue;
             } else {
-                Object rhsValue = eval(node.children.get(2), context);
-                return Terms.isTruthy(rhsValue) ? rhsValue : lhsValue;
+                return eval(node.children.get(2), context);
             }
         }
     }

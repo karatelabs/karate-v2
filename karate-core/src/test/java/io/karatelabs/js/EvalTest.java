@@ -185,6 +185,8 @@ class EvalTest extends EvalBase {
         assertEquals(2, eval("var a = { b: 1, c: 2 }; a.b && a.c"));
         assertEquals(1, eval("var a = { b: 1 }; a.b || a.x.y"));
         assertEquals(2, eval("var a = { b: 0, c: 2 }; a.b || a.c"));
+        assertEquals(0, eval("var a = { b: undefined, c: 0 }; a.b || a.c"));
+        assertEquals(2, eval("var a = { b: undefined, c: 2 }; a.b || a.c"));
     }
 
     @Test
