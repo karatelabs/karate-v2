@@ -410,8 +410,8 @@ public class JsParser extends Parser {
             // for the common case of IDENT at the start, we look ahead and decide if we need to exit early
             if (nextToken.getNextPrimary().type == EQ_GT) {
                 enter(NodeType.FN_ARROW_EXPR);
-                consume(IDENT);
-                consume(EQ_GT);
+                consumeNext(); // IDENT
+                consumeNext(); // EQ_GT
                 if (block(false) || expr(-1, false)) {
                     return exit();
                 }
