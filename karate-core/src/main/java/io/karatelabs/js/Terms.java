@@ -63,6 +63,65 @@ public class Terms {
         this(Interpreter.eval(children.get(0), context), Interpreter.eval(children.get(2), context));
     }
 
+    static Number parseFloat(String str, boolean asInt) {
+        if (str == null) {
+            return Double.NaN;
+        }
+        str = str.trim();
+        if (str.isEmpty()) {
+            return Double.NaN;
+        }
+        int index = 0;
+        boolean negative = false;
+        if (str.charAt(index) == '-') {
+            negative = true;
+            index++;
+        } else if (str.charAt(index) == '+') {
+            index++;
+        }
+        Number hex = fromHex(str);
+        if (hex != null) {
+            return narrow(asInt ? hex.intValue() : hex.doubleValue());
+        }
+        long intPart = 0;
+        double fracPart = 0;
+        double divisor = 1.0;
+        boolean foundDigit = false;
+        boolean seenDot = false;
+        while (index < str.length()) {
+            char ch = str.charAt(index);
+            if (ch == '.' && !asInt && !seenDot) {
+                seenDot = true;
+                index++;
+                continue;
+            }
+            if (ch < '0' || ch > '9') {
+                break; // stop at first invalid char
+            }
+            int digit = ch - '0';
+            if (!seenDot) {
+                intPart = intPart * 10 + digit;
+            } else {
+                divisor *= 10;
+                fracPart += digit / divisor;
+            }
+            foundDigit = true;
+            index++;
+        }
+        if (!foundDigit) {
+            return Double.NaN;
+        }
+        double value = intPart + fracPart;
+        if (negative) {
+            value = -value;
+        }
+        if (asInt) {
+            return narrow((long) value); // truncates like parseInt
+        } else {
+            return narrow(value);
+        }
+    }
+
     public static Number toNumber(Object value) {
         switch (value) {
             case null -> {
@@ -87,15 +146,20 @@ public class Terms {
         try {
             return narrow(Double.parseDouble(text));
         } catch (Exception e) {
-            if (text.charAt(0) == '0') {
-                char second = text.charAt(1);
-                if (second == 'x' || second == 'X') { // hex
-                    long longValue = Long.parseLong(text.substring(2), 16);
-                    return narrow(longValue);
-                }
-            }
-            return Double.NaN;
+            Number hex = fromHex(text);
+            return hex == null ? Double.NaN : narrow(hex.doubleValue());
         }
+    }
+
+    static Number fromHex(String text) {
+        if (text.charAt(0) == '0') {
+            char second = text.charAt(1);
+            if (second == 'x' || second == 'X') { // hex
+                long longValue = Long.parseLong(text.substring(2), 16);
+                return narrow(longValue);
+            }
+        }
+        return null;
     }
 
     static boolean eq(Object lhs, Object rhs, boolean strict) {

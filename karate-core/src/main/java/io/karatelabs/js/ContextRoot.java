@@ -80,7 +80,8 @@ class ContextRoot extends Context {
             return true;
         }
         return switch (name) {
-            case "console", "parseInt", "undefined", "Array", "Date", "Error", "Infinity", "Java", "JSON", "Math",
+            case "console", "parseInt", "parseFloat", "undefined", "Array", "Date", "Error", "Infinity", "Java", "JSON",
+                 "Math",
                  "NaN", "Number", "Boolean", "Object", "RegExp", "String", "TypeError" -> true;
             default -> false;
         };
@@ -95,7 +96,8 @@ class ContextRoot extends Context {
     private Object initGlobal(String key) {
         return switch (key) {
             case "console" -> createConsole();
-            case "parseInt" -> (Invokable) args -> Terms.toNumber(args[0]);
+            case "parseInt" -> (Invokable) args -> Terms.parseFloat(args[0] + "", true);
+            case "parseFloat" -> (Invokable) args -> Terms.parseFloat(args[0] + "", false);
             case "undefined" -> Terms.UNDEFINED;
             case "Array" -> new JsArray();
             case "Date" -> new JsDate();

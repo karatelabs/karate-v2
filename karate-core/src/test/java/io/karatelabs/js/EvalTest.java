@@ -205,7 +205,22 @@ class EvalTest extends EvalBase {
 
     @Test
     void testParseInt() {
+        assertEquals(42, eval("parseInt('42')"));
         assertEquals(42, eval("parseInt('042')"));
+        assertEquals(42, eval("parseInt('42px')"));
+        assertEquals(3, eval("parseInt('3.14')"));
+        assertEquals(255, eval("parseInt('0xFF')"));
+        assertEquals(Double.NaN, eval("parseInt('abc')"));
+        // assertEquals(5, eval("parseInt('101', 2)")); TODO
+    }
+
+    @Test
+    void testParseFloat() {
+        assertEquals( 3.14, eval("parseFloat('3.14')"));
+        assertEquals( 42, eval("parseFloat('42')"));
+        assertEquals( 42.99, eval("parseFloat('42.99px')"));
+        assertEquals(Double.NaN, eval("parseFloat('abc')"));
+        // assertEquals( 1000, eval("parseFloat('1e3')")); TODO
     }
 
     @Test
