@@ -52,6 +52,16 @@ public class Token {
         this.text = text;
     }
 
+    public Token getNextPrimary() {
+        Token temp = this;
+        do {
+            temp = temp.next;
+        } while (!temp.type.primary);
+        // this will never be null, because the last token is always EOF
+        // and EOF is considered "primary" unlike white-space or comments
+        return temp;
+    }
+
     public String getLineText() {
         return resource.getLine(line);
     }

@@ -76,7 +76,7 @@ public class JsParser extends Parser {
         if (next.type == R_CURLY || next.type == EOF) {
             return true;
         }
-        return next.prev != null && next.prev.type == WS_LF;
+        return next.prev.type == WS_LF;
     }
 
     private boolean expr_list() {
@@ -322,7 +322,9 @@ public class JsParser extends Parser {
                 || math_pre_expr()
                 || new_expr()
                 || typeof_expr();
-        expr_rhs(priority);
+        if (result) {
+            expr_rhs(priority);
+        }
         return exit(result, mandatory);
     }
 
@@ -400,17 +402,40 @@ public class JsParser extends Parser {
     }
 
     private boolean fn_arrow_expr() {
-        enter(NodeType.FN_ARROW_EXPR);
-        if (consumeIf(IDENT) || fn_decl_args()) {
-            if (consumeIf(EQ_GT)) {
+        // this is deliberately complicated as a micro-optimization
+        // since this is always entered at the start of expr()
+        // arrow-functions can start out looking like ref_expr() or paren_expr()
+        Token nextToken = peekToken();
+        if (nextToken.type == IDENT) {
+            // for the common case of IDENT at the start, we look ahead and decide if we need to exit early
+            if (nextToken.getNextPrimary().type == EQ_GT) {
+                enter(NodeType.FN_ARROW_EXPR);
+                consume(IDENT);
+                consume(EQ_GT);
                 if (block(false) || expr(-1, false)) {
                     return exit();
-                } else {
+                }
+                error(NodeType.BLOCK, NodeType.EXPR);
+                return exit(false, false);
+            } else {
+                return false;
+            }
+        } else if (nextToken.type == L_PAREN) {
+            enter(NodeType.FN_ARROW_EXPR);
+            // what started out looking like arrow function args may not be
+            // e.g: "(function(){})", so fn_decl_args() will re-wind in those cases
+            if (fn_decl_args()) {
+                if (consumeIf(EQ_GT)) {
+                    if (block(false) || expr(-1, false)) {
+                        return exit();
+                    }
                     error(NodeType.BLOCK, NodeType.EXPR);
                 }
             }
+            return exit(false, false);
+        } else {
+            return false;
         }
-        return exit(false, false);
     }
 
     private boolean fn_expr() {
@@ -435,8 +460,6 @@ public class JsParser extends Parser {
                 break;
             }
         }
-        // what started out looking like arrow function args may not be
-        // e.g: "(function(){})", so rewind in those cases
         return exit(consumeIf(R_PAREN), false);
     }
 

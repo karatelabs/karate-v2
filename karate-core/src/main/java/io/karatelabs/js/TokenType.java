@@ -163,7 +163,8 @@ public enum TokenType {
 
     private static boolean isCommentOrWhitespace(TokenType type) {
         return switch (type) {
-            case L_COMMENT, B_COMMENT, G_COMMENT, WS, WS_LF, EOF -> true;
+            // note that EOF is "primary" for parsing and not considered white-space
+            case L_COMMENT, B_COMMENT, G_COMMENT, WS, WS_LF -> true;
             default -> false;
         };
     }

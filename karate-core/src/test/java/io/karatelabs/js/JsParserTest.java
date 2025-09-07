@@ -344,8 +344,8 @@ class JsParserTest {
 
     @Test
     void testRegexEofEdgeCases() {
-        error("<x>x</", NoSuchElementException.class);
-        error("<foo>foo</foo>\n", NoSuchElementException.class);
+        error("<x>x</", ParserException.class);
+        error("<foo>foo</foo>\n", ParserException.class);
     }
 
 }
