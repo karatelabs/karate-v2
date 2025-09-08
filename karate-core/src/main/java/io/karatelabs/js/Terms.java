@@ -81,7 +81,7 @@ public class Terms {
         }
         Number hex = fromHex(str);
         if (hex != null) {
-            return narrow(asInt ? hex.intValue() : hex.doubleValue());
+            return narrow(hex.doubleValue());
         }
         long intPart = 0;
         double fracPart = 0;
@@ -115,11 +115,7 @@ public class Terms {
         if (negative) {
             value = -value;
         }
-        if (asInt) {
-            return narrow((long) value); // truncates like parseInt
-        } else {
-            return narrow(value);
-        }
+        return narrow(value);
     }
 
     public static Number toNumber(Object value) {
