@@ -459,8 +459,7 @@ class Interpreter {
         boolean lhs = Terms.isTruthy(lhsValue);
         if (node.children.get(1).token.type == AMP_AMP) {
             if (lhs) {
-                Object rhsValue = eval(node.children.get(2), context);
-                return Terms.isTruthy(rhsValue) ? rhsValue : lhsValue;
+                return eval(node.children.get(2), context);
             } else {
                 return lhsValue;
             }

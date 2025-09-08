@@ -181,6 +181,7 @@ class EvalTest extends EvalBase {
     @Test
     void testLogicShortCircuit() {
         assertEquals(null, eval("var a = {}; a.b && a.b.c"));
+        assertEquals(0, eval("var a = { b: 0 }; a && a.b"));
         assertEquals(0, eval("var a = { b: 0 }; a.b && a.b.c"));
         assertEquals(2, eval("var a = { b: 1, c: 2 }; a.b && a.c"));
         assertEquals(1, eval("var a = { b: 1 }; a.b || a.x.y"));
@@ -318,6 +319,9 @@ class EvalTest extends EvalBase {
         assertEquals("foo", get("b"));
         eval("a = 5; b = a < 3 ? 'foo' : 4 + 5");
         assertEquals(9, get("b"));
+        match(eval("1 && 0 ? 'foo' : 'bar'"), "bar");
+        match(eval("0 && 1 ? 'foo' : 'bar'"), "bar");
+        match(eval("var a = { b: false }; a && a.b ? 1 : 2"), "2");
     }
 
     @Test
