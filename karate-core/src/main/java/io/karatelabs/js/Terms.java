@@ -25,8 +25,7 @@ package io.karatelabs.js;
 
 import net.minidev.json.JSONValue;
 
-import java.math.BigDecimal;
-import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -122,7 +121,7 @@ public class Terms {
         return switch (o) {
             case Number n -> n;
             case Boolean b -> b ? 1 : 0;
-            case JsDate date -> date.getTime();
+            case Date d -> d.getTime();
             case String s -> toNumber(s.trim());
             case null -> 0;
             // includes undefined
@@ -299,7 +298,7 @@ public class Terms {
             case String s -> new JsString(s);
             case Number n -> new JsNumber(n);
             case Boolean b -> new JsBoolean(b);
-            // case ZonedDateTime zdt -> new JsDate(zdt);
+            case Date d -> new JsDate(d);
             case byte[] bytes -> new JsBytes(bytes);
             case null, default -> null;
         };

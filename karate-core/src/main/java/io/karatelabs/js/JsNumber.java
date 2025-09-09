@@ -81,7 +81,7 @@ class JsNumber extends JsObject implements JavaMirror {
     }
 
     @Override
-    public Object call(Context context, Object... args) {
+    public Number call(Context context, Object... args) {
         Number temp = 0;
         if (args.length > 0) {
             temp = Terms.objectToNumber(args[0]);

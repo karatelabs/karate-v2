@@ -185,7 +185,7 @@ class Interpreter {
         }
         Object[] args = argsList.toArray();
         Context callContext = new Context(context, node);
-        callContext.thisObject = prop.object == null ? callable : prop.object;;
+        callContext.thisObject = prop.object == null ? callable : prop.object;
         callContext.event(Event.Type.CONTEXT_ENTER, node);
         if (callContext.root.listener != null) {
             callContext.root.listener.onFunctionCall(callContext, args);

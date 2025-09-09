@@ -178,11 +178,6 @@ class JsObject implements ObjectLike, JsCallable, Iterable<KeyValue> {
     }
 
     @Override
-    public Object call(Context context, Object... args) {
-        return new JsObject();
-    }
-
-    @Override
     public Iterator<KeyValue> iterator() {
         return toIterable(this).iterator();
     }
@@ -242,6 +237,11 @@ class JsObject implements ObjectLike, JsCallable, Iterable<KeyValue> {
             throw new RuntimeException("function expected");
         }
         return Terms.toCallable(args[0]);
+    }
+
+    @Override
+    public Object call(Context context, Object... args) {
+        return new JsObject();
     }
 
 }

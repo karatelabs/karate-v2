@@ -92,6 +92,12 @@ class JsProperty {
                         tempObject = Interpreter.eval(node.children.getFirst(), context); // evalFnCall
                     }
                 }
+                if (functionCall) {
+                    Object tempMirror = Terms.toJavaMirror(tempObject);
+                    if (tempMirror != null) {
+                        tempObject = tempMirror;
+                    }
+                }
                 object = tempObject;
                 break;
             case REF_BRACKET_EXPR:
@@ -101,10 +107,10 @@ class JsProperty {
             case LIT_EXPR: // so MATH_PRE_EXP can call set() to update variable value
                 object = Interpreter.eval(node.children.getFirst(), context);
                 break;
-            case PAREN_EXPR: // expression wrapped in round brackets that is invoked as a function, e.g. iife
+            case PAREN_EXPR: // expression wrapped in round brackets that is invoked as a function, e.g., iife
                 object = Interpreter.eval(node.children.get(1), context);
                 break;
-            case FN_CALL_EXPR:
+            case FN_CALL_EXPR: // currying
                 object = Interpreter.eval(node, context);
                 break;
             default:

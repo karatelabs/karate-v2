@@ -102,14 +102,12 @@ class JsArray extends JsObject {
                         return -1;
                     };
                     case "push" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
-                        for (Object o : args) {
-                            thisArray.add(o);
-                        }
+                        List<Object> thisArray = cast(context);
+                        thisArray.addAll(Arrays.asList(args));
                         return thisArray.size();
                     };
                     case "reverse" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         int size = thisArray.size();
                         List<Object> result = new ArrayList<>();
                         for (int i = size; i > 0; i--) {
@@ -126,7 +124,7 @@ class JsArray extends JsObject {
                         return false;
                     };
                     case "indexOf" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         int size = thisArray.size();
                         if (size == 0) {
                             return -1;
@@ -153,7 +151,7 @@ class JsArray extends JsObject {
                         return -1;
                     };
                     case "slice" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         int size = thisArray.size();
                         int start = 0;
                         int end = size;
@@ -186,8 +184,8 @@ class JsArray extends JsObject {
                         return Terms.UNDEFINED;
                     };
                     case "concat" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
-                        List<Object> result = new ArrayList<>(thisArray.toList());
+                        List<Object> thisArray = cast(context);
+                        List<Object> result = new ArrayList<>(thisArray);
                         for (Object arg : args) {
                             if (arg instanceof List) {
                                 result.addAll((List<Object>) arg);
@@ -200,8 +198,8 @@ class JsArray extends JsObject {
                         return result;
                     };
                     case "every" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
-                        if (thisArray.size() == 0) {
+                        List<Object> thisArray = cast(context);
+                        if (thisArray.isEmpty()) {
                             return true;
                         }
                         JsCallable callable = toCallable(args);
@@ -214,8 +212,8 @@ class JsArray extends JsObject {
                         return true;
                     };
                     case "some" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
-                        if (thisArray.size() == 0) {
+                        List<Object> thisArray = cast(context);
+                        if (thisArray.isEmpty()) {
                             return false;
                         }
                         JsCallable callable = toCallable(args);
@@ -228,9 +226,9 @@ class JsArray extends JsObject {
                         return false;
                     };
                     case "reduce" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         JsCallable callable = toCallable(args);
-                        if (thisArray.size() == 0 && args.length < 2) {
+                        if (thisArray.isEmpty() && args.length < 2) {
                             throw new RuntimeException("reduce() called on empty array with no initial value");
                         }
                         int startIndex = 0;
@@ -238,7 +236,7 @@ class JsArray extends JsObject {
                         if (args.length >= 2) {
                             accumulator = args[1];
                         } else {
-                            accumulator = thisArray.get(0);
+                            accumulator = thisArray.getFirst();
                             startIndex = 1;
                         }
                         for (int i = startIndex; i < thisArray.size(); i++) {
@@ -248,9 +246,9 @@ class JsArray extends JsObject {
                         return accumulator;
                     };
                     case "reduceRight" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         JsCallable callable = toCallable(args);
-                        if (thisArray.size() == 0 && args.length < 2) {
+                        if (thisArray.isEmpty() && args.length < 2) {
                             throw new RuntimeException("reduceRight() called on empty array with no initial value");
                         }
                         int startIndex = thisArray.size() - 1;
@@ -268,7 +266,7 @@ class JsArray extends JsObject {
                         return accumulator;
                     };
                     case "flat" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         int depth = 1;
                         if (args.length > 0 && args[0] != null) {
                             Number depthNum = Terms.objectToNumber(args[0]);
@@ -277,15 +275,15 @@ class JsArray extends JsObject {
                             }
                         }
                         List<Object> result = new ArrayList<>();
-                        flatten(thisArray.toList(), result, depth);
+                        flatten(thisArray, result, depth);
                         return result;
                     };
                     case "flatMap" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         JsCallable callable = toCallable(args);
                         List<Object> mappedResult = new ArrayList<>();
                         int index = 0;
-                        for (Object item : thisArray.toList()) {
+                        for (Object item : thisArray) {
                             Object mapped = callable.call(context, item, index, thisArray);
                             if (mapped instanceof List || mapped instanceof JsArray) {
                                 List<Object> nestedList;
@@ -303,8 +301,8 @@ class JsArray extends JsObject {
                         return mappedResult;
                     };
                     case "sort" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
-                        List<Object> list = new ArrayList<>(thisArray.toList());
+                        List<Object> thisArray = cast(context);
+                        List<Object> list = new ArrayList<>(thisArray);
                         if (list.isEmpty()) {
                             return list;
                         }
@@ -333,16 +331,16 @@ class JsArray extends JsObject {
                                 thisArray.add(list.get(i));
                             }
                         }
-                        return thisArray.toList();
+                        return thisArray;
                     };
                     case "fill" -> (JsCallable) (context, args) -> {
                         if (args.length == 0) {
                             return context.thisObject;
                         }
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         int size = thisArray.size();
                         if (size == 0) {
-                            return thisArray.toList();
+                            return thisArray;
                         }
                         Object value = args[0];
                         int start = 0;
@@ -364,13 +362,13 @@ class JsArray extends JsObject {
                         for (int i = start; i < end; i++) {
                             thisArray.set(i, value);
                         }
-                        return thisArray.toList();
+                        return thisArray;
                     };
                     case "splice" -> (JsCallable) (context, args) -> {
                         if (args.length == 0) {
                             return new ArrayList<>();
                         }
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         int size = thisArray.size();
                         if (size == 0) {
                             return new ArrayList<>();
@@ -408,46 +406,41 @@ class JsArray extends JsObject {
                             newList.add(thisArray.get(i));
                         }
                         // update original array
-                        List<Object> originalList = thisArray.toList();
-                        originalList.clear();
-                        originalList.addAll(newList);
+                        thisArray.clear();
+                        thisArray.addAll(newList);
                         return removedElements;
                     };
                     case "shift" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         int size = thisArray.size();
                         if (size == 0) {
                             return Terms.UNDEFINED;
                         }
-                        Object firstElement = thisArray.get(0);
+                        Object firstElement = thisArray.getFirst();
                         List<Object> newList = new ArrayList<>(size - 1);
                         for (int i = 1; i < size; i++) {
                             newList.add(thisArray.get(i));
                         }
                         // update original array
-                        List<Object> originalList = thisArray.toList();
-                        originalList.clear();
-                        originalList.addAll(newList);
+                        thisArray.clear();
+                        thisArray.addAll(newList);
                         return firstElement;
                     };
                     case "unshift" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         if (args.length == 0) {
                             return thisArray.size();
                         }
                         List<Object> newList = new ArrayList<>(thisArray.size() + args.length);
                         newList.addAll(Arrays.asList(args));
-                        for (int i = 0; i < thisArray.size(); i++) {
-                            newList.add(thisArray.get(i));
-                        }
+                        newList.addAll(thisArray);
                         // update original array
-                        List<Object> originalList = thisArray.toList();
-                        originalList.clear();
-                        originalList.addAll(newList);
-                        return originalList.size();
+                        thisArray.clear();
+                        thisArray.addAll(newList);
+                        return thisArray.size();
                     };
                     case "lastIndexOf" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         int size = thisArray.size();
                         if (size == 0) {
                             return -1;
@@ -481,7 +474,7 @@ class JsArray extends JsObject {
                         return -1;
                     };
                     case "pop" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         int size = thisArray.size();
                         if (size == 0) {
                             return Terms.UNDEFINED;
@@ -492,13 +485,12 @@ class JsArray extends JsObject {
                             newList.add(thisArray.get(i));
                         }
                         // update original array
-                        List<Object> originalList = thisArray.toList();
-                        originalList.clear();
-                        originalList.addAll(newList);
+                        thisArray.clear();
+                        thisArray.addAll(newList);
                         return lastElement;
                     };
                     case "at" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         int size = thisArray.size();
                         if (size == 0 || args.length == 0 || args[0] == null) {
                             return Terms.UNDEFINED;
@@ -513,10 +505,10 @@ class JsArray extends JsObject {
                         return thisArray.get(index);
                     };
                     case "copyWithin" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         int size = thisArray.size();
                         if (size == 0 || args.length == 0) {
-                            return thisArray.toList();
+                            return thisArray;
                         }
                         int target = Terms.objectToNumber(args[0]).intValue();
                         if (target < 0) {
@@ -539,29 +531,27 @@ class JsArray extends JsObject {
                         start = Math.min(start, size);
                         end = Math.min(end, size);
                         target = Math.min(target, size);
-                        // The elements to be copied
                         List<Object> toCopy = new ArrayList<>();
                         for (int i = start; i < end; i++) {
                             toCopy.add(thisArray.get(i));
                         }
                         if (toCopy.isEmpty()) {
-                            return thisArray.toList();
+                            return thisArray;
                         }
-                        // Create a copy of the list to avoid concurrent modification issues
-                        List<Object> list = new ArrayList<>(thisArray.toList());
-                        // Copy elements over
+                        // avoid concurrent modification issues
+                        List<Object> list = new ArrayList<>(thisArray);
+                        // copy elements over
                         int copyCount = 0;
                         for (int i = target; i < size && copyCount < toCopy.size(); i++) {
                             list.set(i, toCopy.get(copyCount++));
                         }
-                        // Update the original array
-                        List<Object> originalList = thisArray.toList();
-                        originalList.clear();
-                        originalList.addAll(list);
-                        return thisArray.toList();
+                        // update original array
+                        thisArray.clear();
+                        thisArray.addAll(list);
+                        return thisArray;
                     };
                     case "keys" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         List<Object> result = new ArrayList<>();
                         int size = thisArray.size();
                         for (int i = 0; i < size; i++) {
@@ -569,12 +559,9 @@ class JsArray extends JsObject {
                         }
                         return result;
                     };
-                    case "values" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
-                        return thisArray.toList();
-                    };
+                    case "values" -> (JsCallable) (context, args) -> cast(context);
                     case "entries" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         List<Object> result = new ArrayList<>();
                         int size = thisArray.size();
                         for (int i = 0; i < size; i++) {
@@ -586,7 +573,7 @@ class JsArray extends JsObject {
                         return result;
                     };
                     case "findLast" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         int size = thisArray.size();
                         if (size == 0 || args.length == 0) {
                             return Terms.UNDEFINED;
@@ -602,7 +589,7 @@ class JsArray extends JsObject {
                         return Terms.UNDEFINED;
                     };
                     case "findLastIndex" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         int size = thisArray.size();
                         if (size == 0 || args.length == 0) {
                             return -1;
@@ -618,27 +605,27 @@ class JsArray extends JsObject {
                         return -1;
                     };
                     case "with" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         int size = thisArray.size();
                         if (size == 0 || args.length < 2) {
-                            return thisArray.toList();
+                            return thisArray;
                         }
                         int index = Terms.objectToNumber(args[0]).intValue();
                         if (index < 0) {
                             index = size + index;
                         }
                         if (index < 0 || index >= size) {
-                            return thisArray.toList(); // If index is out of bounds, return a copy of the array
+                            return thisArray; // If index is out of bounds, return a copy of the array
                         }
                         Object value = args[1];
                         // Create a copy of the original array
-                        List<Object> result = new ArrayList<>(thisArray.toList());
+                        List<Object> result = new ArrayList<>(thisArray);
                         // Replace the value at the specified index
                         result.set(index, value);
                         return result;
                     };
                     case "group" -> (JsCallable) (context, args) -> {
-                        JsArray thisArray = asArray(context.thisObject);
+                        List<Object> thisArray = cast(context);
                         if (args.length == 0) {
                             return new JsObject();
                         }
@@ -665,15 +652,21 @@ class JsArray extends JsObject {
                         if (args.length > 1 && args[1] instanceof JsCallable) {
                             callable = (JsCallable) args[1];
                         }
-                        JsArray array = asArray(args[0]);
+                        JsArray array;
+                        if (args[0] instanceof Map) {
+                            array = toArray((Map<String, Object>) args[0]);
+                        } else if (args[0] instanceof List) {
+                            array = new JsArray((List<Object>) args[0]);
+                        } else {
+                            array = JsArray.this;
+                        }
                         for (KeyValue kv : toIterable(array)) {
                             Object result = callable == null ? kv.value : callable.call(context, kv.value, kv.index);
                             results.add(result);
                         }
                         return results;
                     };
-                    case "isArray" ->
-                            (JsCallable) (context, args) -> args[0] instanceof List || args[0] instanceof JsArray;
+                    case "isArray" -> (JsCallable) (context, args) -> args[0] instanceof List;
                     case "of" -> (JsCallable) (context, args) -> Arrays.asList(args);
                     default -> null;
                 };
@@ -706,15 +699,11 @@ class JsArray extends JsObject {
     }
 
     @SuppressWarnings("unchecked")
-    static JsArray asArray(Object instance) {
-        if (instance instanceof List) {
-            return new JsArray((List<Object>) instance);
-        } else if (instance instanceof JsArray) {
-            return (JsArray) instance;
-        } else if (instance instanceof Map) {
-            return toArray((Map<String, Object>) instance);
+    List<Object> cast(Context context) {
+        if (context.thisObject instanceof List) {
+            return (List<Object>) context.thisObject;
         }
-        throw new RuntimeException("not an array: " + instance);
+        return list;
     }
 
     static JsArray toArray(Map<String, Object> map) {
@@ -734,7 +723,7 @@ class JsArray extends JsObject {
                 int index = Integer.parseInt(key);
                 indexes.add(index);
             } catch (Exception e) {
-
+                // ignore
             }
         }
         for (int index : indexes) {
@@ -758,6 +747,19 @@ class JsArray extends JsObject {
                 result.add(item);
             }
         }
+    }
+
+    @Override
+    public List<Object> call(Context context, Object... args) {
+        if (args.length == 1 && args[0] instanceof Number n) {
+            int count = n.intValue();
+            List<Object> list = new ArrayList<>();
+            for (int i = 0; i < count; i++) {
+                list.add(null);
+            }
+            return list;
+        }
+        return Arrays.asList(args);
     }
 
 }

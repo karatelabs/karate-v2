@@ -247,4 +247,10 @@ class JsArrayTest extends EvalBase {
         assertEquals(-1, eval("[1, 2, 3, 2].lastIndexOf(4, 0)"));
     }
 
+    @Test
+    void testArrayConstructor() {
+        match(eval("new Array(1, 2, 3)"), "[1, 2, 3]");
+        match(eval("new Array(3)"), "[null, null, null]");
+    }
+
 }

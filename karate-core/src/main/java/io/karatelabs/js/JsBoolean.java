@@ -36,17 +36,17 @@ public class JsBoolean extends JsObject implements JavaMirror {
     }
 
     @Override
-    public Object call(Context context, Object ... args) {
+    public Object toJava() {
+        return value;
+    }
+
+    @Override
+    public Boolean call(Context context, Object... args) {
         boolean temp = false;
         if (args.length > 0) {
             temp = Terms.isTruthy(args[0]);
         }
-        return new JsBoolean(temp);
-    }
-
-    @Override
-    public Object toJava() {
-        return value;
+        return temp;
     }
 
 }

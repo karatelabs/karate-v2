@@ -2,6 +2,8 @@ package io.karatelabs.js;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Date;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class JsDateTest extends EvalBase {
@@ -14,7 +16,7 @@ class JsDateTest extends EvalBase {
     @Test
     void testDateConstructor() {
         eval("var a = new Date(2025, 2, 15)");
-        // assertEquals(JsDate.parse("2025-03-15"), get("a"));
+        assertEquals(JsDate.parse("2025-03-15"), get("a"));
     }
 
     @Test
@@ -39,7 +41,8 @@ class JsDateTest extends EvalBase {
     void testDateManipulation() {
         assertEquals(1741977000000L, eval("new Date(2025, 2, 15).getTime()"));
         assertEquals(1742841000000L, eval("var date = new Date(2025, 2, 15); date.setDate(date.getDate() + 10)"));
-        // assertEquals(JsDate.parse("2025-03-15"), get("date"));
+        // dates are mutable in js
+        assertEquals(JsDate.parse("2025-03-25"), get("date"));
         assertEquals(25, eval("var date = new Date(2025, 2, 15); date.setDate(date.getDate() + 10); date.getDate()"));
     }
 
@@ -190,7 +193,7 @@ class JsDateTest extends EvalBase {
         assertEquals(2022, get("afterSetYear"));
 
         Object date = eval("Date()");
-        // assertInstanceOf(ZonedDateTime.class, date);
+        assertInstanceOf(Date.class, date);
 
         // Test ability to pass date object to a function that expects a timestamp
         String js = "function getTimestamp(time) {"
