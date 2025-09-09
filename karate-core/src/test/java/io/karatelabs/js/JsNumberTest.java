@@ -8,9 +8,12 @@ class JsNumberTest extends EvalBase {
 
     @Test
     void testConstructor() {
-        assertEquals(0, eval("Number()"));
-        assertEquals(100, eval("Number(100)"));
-        assertEquals(100, eval("Number('100')"));
+        assertEquals(0, eval("var a = Number()"));
+        match(get("a"), "0");
+        assertEquals(100, eval("var a = Number(100)"));
+        match(get("a"), "100");
+        assertEquals(100, eval("var a = Number('100')"));
+        match(get("a"), "100");
     }
 
     @Test

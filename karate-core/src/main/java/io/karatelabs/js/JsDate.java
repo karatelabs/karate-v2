@@ -28,70 +28,64 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoField;
 
-class JsDate extends JsObject implements JavaMirror {
+class JsDate extends JsObject {
 
-    ZonedDateTime value;
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+    private static final ZoneId SYS = ZoneId.systemDefault();
     private static final ZoneId UTC = ZoneId.of("UTC");
 
-    JsDate() {
-        this(ZonedDateTime.now());
-    }
+    private ZonedDateTime value;
 
     JsDate(ZonedDateTime dateTime) {
         this.value = dateTime;
     }
 
+    JsDate() {
+        this(ZonedDateTime.now(SYS));
+    }
+
     JsDate(long timestamp) {
-        this.value = ZonedDateTime.ofInstant(
-                Instant.ofEpochMilli(timestamp),
-                ZoneId.systemDefault());
+        this.value = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), SYS);
     }
 
     JsDate(int year, int month, int date) {
         // JavaScript months are 0-indexed, Java months are 1-indexed
-        this.value = ZonedDateTime.of(year, month + 1, date, 0, 0, 0, 0, ZoneId.systemDefault());
+        this.value = ZonedDateTime.of(year, month + 1, date, 0, 0, 0, 0, SYS);
     }
 
     JsDate(int year, int month, int date, int hours, int minutes, int seconds) {
-        this.value = ZonedDateTime.of(year, month + 1, date, hours, minutes, seconds, 0, ZoneId.systemDefault());
+        this.value = ZonedDateTime.of(year, month + 1, date, hours, minutes, seconds, 0, SYS);
     }
 
     JsDate(int year, int month, int date, int hours, int minutes, int seconds, int ms) {
-        this.value = ZonedDateTime.of(year, month + 1, date, hours, minutes, seconds, ms * 1000000, ZoneId.systemDefault());
-    }
-
-    JsDate(String dateStr) {
-        ZonedDateTime parsedDateTime;
-        try {
-            // Try parsing as ISO format
-            LocalDateTime localDateTime = LocalDateTime.parse(dateStr, DateTimeFormatter.ISO_DATE_TIME);
-            parsedDateTime = ZonedDateTime.of(localDateTime, UTC);
-        } catch (DateTimeParseException e) {
-            try {
-                // Try parsing as ISO date only
-                LocalDate localDate = LocalDate.parse(dateStr, DateTimeFormatter.ISO_DATE);
-                parsedDateTime = localDate.atStartOfDay(UTC);
-            } catch (DateTimeParseException e2) {
-                try {
-                    // Try parsing with offset
-                    OffsetDateTime offsetDateTime = OffsetDateTime.parse(dateStr);
-                    parsedDateTime = offsetDateTime.toZonedDateTime();
-                } catch (DateTimeParseException e3) {
-                    // If all parsing fails, use current time
-                    parsedDateTime = ZonedDateTime.now();
-                }
-            }
-        }
-        this.value = parsedDateTime;
+        this.value = ZonedDateTime.of(year, month + 1, date, hours, minutes, seconds, ms * 1000000, SYS);
     }
 
     long getTime() {
         return value.toInstant().toEpochMilli();
     }
 
-    void setValue(ZonedDateTime newDateTime) {
-        this.value = newDateTime;
+    static ZonedDateTime parse(String date) {
+        try {
+            LocalDateTime localDateTime = LocalDateTime.parse(date, DateTimeFormatter.ISO_DATE_TIME);
+            return ZonedDateTime.of(localDateTime, SYS);
+        } catch (DateTimeParseException e) {
+            try {
+                LocalDate localDate = LocalDate.parse(date, DateTimeFormatter.ISO_DATE);
+                return localDate.atStartOfDay(SYS);
+            } catch (DateTimeParseException ee) {
+                try {
+                    OffsetDateTime offsetDateTime = OffsetDateTime.parse(date);
+                    return offsetDateTime.toZonedDateTime();
+                } catch (DateTimeParseException eee) {
+                    return ZonedDateTime.now(SYS);
+                }
+            }
+        }
+    }
+
+    JsDate(String text) {
+        this.value = parse(text);
     }
 
     @Override
@@ -99,9 +93,12 @@ class JsDate extends JsObject implements JavaMirror {
         return value.toString();
     }
 
-    @Override
-    public Object toJava() {
-        return value;
+    ZonedDateTime cast(Context context) {
+        if (context.thisObject instanceof JsDate date) {
+            return date.value;
+        } else {
+            return value;
+        }
     }
 
     @Override
@@ -123,76 +120,38 @@ class JsDate extends JsObject implements JavaMirror {
                             return Double.NaN;
                         }
                     };
-                    case "getTime", "valueOf" -> (JsCallable) (context, args) -> {
-                        if (context.thisObject instanceof JsDate) {
-                            return ((JsDate) context.thisObject).getTime();
-                        }
-                        return getTime();
-                    };
-                    case "toString" -> (JsCallable) (context, args) -> {
-                        if (context.thisObject instanceof JsDate) {
-                            return (context.thisObject).toString();
-                        }
-                        return toString();
-                    };
-                    case "toISOString" -> (JsCallable) (context, args) -> {
-                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                        return dt.withZoneSameInstant(UTC).format(ISO_FORMATTER);
-                    };
+                    case "getTime", "valueOf" ->
+                            (JsCallable) (context, args) -> cast(context).toInstant().toEpochMilli();
+                    case "toString" -> (JsCallable) (context, args) -> cast(context).toString();
+                    case "toISOString" ->
+                            (JsCallable) (context, args) -> cast(context).withZoneSameInstant(UTC).format(ISO_FORMATTER);
                     case "toUTCString" -> (JsCallable) (context, args) -> {
-                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                        // Format: "Fri, 01 Jan 2021 00:00:00 GMT"
                         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss 'GMT'");
-                        return dt.withZoneSameInstant(UTC).format(formatter);
+                        return cast(context).withZoneSameInstant(UTC).format(formatter);
                     };
-                    case "getFullYear" -> (JsCallable) (context, args) -> {
-                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                        return dt.getYear();
-                    };
-                    case "getMonth" -> (JsCallable) (context, args) -> {
-                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                        // JavaScript months are 0-indexed
-                        return dt.getMonthValue() - 1;
-                    };
-                    case "getDate" -> (JsCallable) (context, args) -> {
-                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                        return dt.getDayOfMonth();
-                    };
-                    case "getDay" -> (JsCallable) (context, args) -> {
-                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                        // Convert Java's 1-7 (Mon-Sun) to JavaScript's 0-6 (Sun-Sat)
-                        return dt.getDayOfWeek().getValue() % 7;
-                    };
-                    case "getHours" -> (JsCallable) (context, args) -> {
-                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                        return dt.getHour();
-                    };
-                    case "getMinutes" -> (JsCallable) (context, args) -> {
-                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                        return dt.getMinute();
-                    };
-                    case "getSeconds" -> (JsCallable) (context, args) -> {
-                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                        return dt.getSecond();
-                    };
-                    case "getMilliseconds" -> (JsCallable) (context, args) -> {
-                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                        return dt.get(ChronoField.MILLI_OF_SECOND);
-                    };
+                    case "getFullYear" -> (JsCallable) (context, args) -> cast(context).getYear();
+                    case "getMonth" -> (JsCallable) (context, args) -> cast(context).getMonthValue() - 1;
+                    case "getDate" -> (JsCallable) (context, args) -> cast(context).getDayOfMonth();
+                    case "getDay" -> (JsCallable) (context, args) -> cast(context).getDayOfWeek().getValue() % 7;
+                    case "getHours" -> (JsCallable) (context, args) -> cast(context).getHour();
+                    case "getMinutes" -> (JsCallable) (context, args) -> cast(context).getMinute();
+                    case "getSeconds" -> (JsCallable) (context, args) -> cast(context).getSecond();
+                    case "getMilliseconds" ->
+                            (JsCallable) (context, args) -> cast(context).get(ChronoField.MILLI_OF_SECOND);
                     // Setters
                     case "setDate" -> (JsCallable) (context, args) -> {
                         if (args.length == 0 || !(args[0] instanceof Number)) {
                             return Double.NaN;
                         }
                         int day = ((Number) args[0]).intValue();
-                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
                         // JavaScript allows overflow/underflow - e.g., setDate(32) in January rolls to February
                         // Use plusDays to handle this correctly
-                        int currentDay = dt.getDayOfMonth();
+                        ZonedDateTime zdt = cast(context);
+                        int currentDay = zdt.getDayOfMonth();
                         int dayDifference = day - currentDay;
-                        ZonedDateTime newDt = dt.plusDays(dayDifference);
-                        if (context.thisObject instanceof JsDate) {
-                            ((JsDate) context.thisObject).setValue(newDt);
+                        ZonedDateTime newDt = zdt.plusDays(dayDifference);
+                        if (context.thisObject instanceof JsDate date) {
+                            date.value = newDt;
                         }
                         return newDt.toInstant().toEpochMilli();
                     };
@@ -201,13 +160,10 @@ class JsDate extends JsObject implements JavaMirror {
                             return Double.NaN;
                         }
                         int monthValue = ((Number) args[0]).intValue();
-                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                        
                         // JavaScript allows month overflow/underflow
                         // Calculate year and month adjustments
                         int yearAdjustment = 0;
                         int finalMonth = monthValue;
-                        
                         if (monthValue < 0) {
                             // Handle negative months
                             yearAdjustment = (monthValue / 12) - 1;
@@ -217,19 +173,16 @@ class JsDate extends JsObject implements JavaMirror {
                             yearAdjustment = monthValue / 12;
                             finalMonth = monthValue % 12;
                         }
-                        
                         // JavaScript months are 0-indexed, Java months are 1-indexed
-                        ZonedDateTime newDt = dt.plusYears(yearAdjustment).withMonth(finalMonth + 1);
-                        
+                        ZonedDateTime newDt = cast(context).plusYears(yearAdjustment).withMonth(finalMonth + 1);
                         // Handle optional day parameter
                         if (args.length > 1 && args[1] instanceof Number) {
                             int day = ((Number) args[1]).intValue();
                             int currentDay = newDt.getDayOfMonth();
                             newDt = newDt.plusDays(day - currentDay);
                         }
-                        
-                        if (context.thisObject instanceof JsDate) {
-                            ((JsDate) context.thisObject).setValue(newDt);
+                        if (context.thisObject instanceof JsDate date) {
+                            date.value = newDt;
                         }
                         return newDt.toInstant().toEpochMilli();
                     };
@@ -238,16 +191,13 @@ class JsDate extends JsObject implements JavaMirror {
                             return Double.NaN;
                         }
                         int year = ((Number) args[0]).intValue();
-                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
-                        ZonedDateTime newDt = dt.withYear(year);
-                        
+                        ZonedDateTime newDt = cast(context).withYear(year);
                         // Handle optional month parameter
                         if (args.length > 1 && args[1] instanceof Number) {
                             int monthValue = ((Number) args[1]).intValue();
                             // Handle month overflow/underflow
                             int yearAdjustment = 0;
                             int finalMonth = monthValue;
-                            
                             if (monthValue < 0) {
                                 yearAdjustment = (monthValue / 12) - 1;
                                 finalMonth = 12 + (monthValue % 12);
@@ -255,19 +205,16 @@ class JsDate extends JsObject implements JavaMirror {
                                 yearAdjustment = monthValue / 12;
                                 finalMonth = monthValue % 12;
                             }
-                            
                             newDt = newDt.plusYears(yearAdjustment).withMonth(finalMonth + 1);
                         }
-                        
                         // Handle optional day parameter
                         if (args.length > 2 && args[2] instanceof Number) {
                             int day = ((Number) args[2]).intValue();
                             int currentDay = newDt.getDayOfMonth();
                             newDt = newDt.plusDays(day - currentDay);
                         }
-                        
-                        if (context.thisObject instanceof JsDate) {
-                            ((JsDate) context.thisObject).setValue(newDt);
+                        if (context.thisObject instanceof JsDate date) {
+                            date.value = newDt;
                         }
                         return newDt.toInstant().toEpochMilli();
                     };
@@ -276,10 +223,10 @@ class JsDate extends JsObject implements JavaMirror {
                             return Double.NaN;
                         }
                         int hours = ((Number) args[0]).intValue();
-                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
                         // JavaScript allows hour overflow/underflow
-                        int currentHour = dt.getHour();
-                        ZonedDateTime newDt = dt.plusHours(hours - currentHour);
+                        ZonedDateTime zdt = cast(context);
+                        int currentHour = zdt.getHour();
+                        ZonedDateTime newDt = zdt.plusHours(hours - currentHour);
                         // Handle optional minute, second, and millisecond parameters
                         if (args.length > 1 && args[1] instanceof Number) {
                             int minutes = ((Number) args[1]).intValue();
@@ -294,10 +241,10 @@ class JsDate extends JsObject implements JavaMirror {
                         if (args.length > 3 && args[3] instanceof Number) {
                             int ms = ((Number) args[3]).intValue();
                             int currentMs = newDt.get(ChronoField.MILLI_OF_SECOND);
-                            newDt = newDt.plusNanos((ms - currentMs) * 1000000);
+                            newDt = newDt.plusNanos((ms - currentMs) * 1000000L);
                         }
-                        if (context.thisObject instanceof JsDate) {
-                            ((JsDate) context.thisObject).setValue(newDt);
+                        if (context.thisObject instanceof JsDate date) {
+                            date.value = newDt;
                         }
                         return newDt.toInstant().toEpochMilli();
                     };
@@ -306,10 +253,10 @@ class JsDate extends JsObject implements JavaMirror {
                             return Double.NaN;
                         }
                         int minutes = ((Number) args[0]).intValue();
-                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
+                        ZonedDateTime zdt = cast(context);
                         // JavaScript allows minute overflow/underflow
-                        int currentMinute = dt.getMinute();
-                        ZonedDateTime newDt = dt.plusMinutes(minutes - currentMinute);
+                        int currentMinute = zdt.getMinute();
+                        ZonedDateTime newDt = zdt.plusMinutes(minutes - currentMinute);
                         // Handle optional second and millisecond parameters
                         if (args.length > 1 && args[1] instanceof Number) {
                             int seconds = ((Number) args[1]).intValue();
@@ -319,10 +266,10 @@ class JsDate extends JsObject implements JavaMirror {
                         if (args.length > 2 && args[2] instanceof Number) {
                             int ms = ((Number) args[2]).intValue();
                             int currentMs = newDt.get(ChronoField.MILLI_OF_SECOND);
-                            newDt = newDt.plusNanos((ms - currentMs) * 1000000);
+                            newDt = newDt.plusNanos((ms - currentMs) * 1000000L);
                         }
-                        if (context.thisObject instanceof JsDate) {
-                            ((JsDate) context.thisObject).setValue(newDt);
+                        if (context.thisObject instanceof JsDate date) {
+                            date.value = newDt;
                         }
                         return newDt.toInstant().toEpochMilli();
                     };
@@ -331,18 +278,18 @@ class JsDate extends JsObject implements JavaMirror {
                             return Double.NaN;
                         }
                         int seconds = ((Number) args[0]).intValue();
-                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
+                        ZonedDateTime zdt = cast(context);
                         // JavaScript allows second overflow/underflow
-                        int currentSecond = dt.getSecond();
-                        ZonedDateTime newDt = dt.plusSeconds(seconds - currentSecond);
+                        int currentSecond = zdt.getSecond();
+                        ZonedDateTime newDt = zdt.plusSeconds(seconds - currentSecond);
                         // Handle optional millisecond parameter
                         if (args.length > 1 && args[1] instanceof Number) {
                             int ms = ((Number) args[1]).intValue();
                             int currentMs = newDt.get(ChronoField.MILLI_OF_SECOND);
-                            newDt = newDt.plusNanos((ms - currentMs) * 1000000);
+                            newDt = newDt.plusNanos((ms - currentMs) * 1000000L);
                         }
-                        if (context.thisObject instanceof JsDate) {
-                            ((JsDate) context.thisObject).setValue(newDt);
+                        if (context.thisObject instanceof JsDate date) {
+                            date.value = newDt;
                         }
                         return newDt.toInstant().toEpochMilli();
                     };
@@ -351,12 +298,12 @@ class JsDate extends JsObject implements JavaMirror {
                             return Double.NaN;
                         }
                         int ms = ((Number) args[0]).intValue();
-                        ZonedDateTime dt = context.thisObject instanceof JsDate ? ((JsDate) context.thisObject).value : value;
+                        ZonedDateTime zdt = cast(context);
                         // JavaScript allows millisecond overflow/underflow
-                        int currentMs = dt.get(ChronoField.MILLI_OF_SECOND);
-                        ZonedDateTime newDt = dt.plusNanos((ms - currentMs) * 1000000);
-                        if (context.thisObject instanceof JsDate) {
-                            ((JsDate) context.thisObject).setValue(newDt);
+                        int currentMs = zdt.get(ChronoField.MILLI_OF_SECOND);
+                        ZonedDateTime newDt = zdt.plusNanos((ms - currentMs) * 1000000L);
+                        if (context.thisObject instanceof JsDate date) {
+                            date.value = newDt;
                         }
                         return newDt.toInstant().toEpochMilli();
                     };
@@ -368,8 +315,8 @@ class JsDate extends JsObject implements JavaMirror {
                         ZonedDateTime newDt = ZonedDateTime.ofInstant(
                                 Instant.ofEpochMilli(timestamp),
                                 ZoneId.systemDefault());
-                        if (context.thisObject instanceof JsDate) {
-                            ((JsDate) context.thisObject).setValue(newDt);
+                        if (context.thisObject instanceof JsDate date) {
+                            date.value = newDt;
                         }
                         return timestamp;
                     };
@@ -385,15 +332,12 @@ class JsDate extends JsObject implements JavaMirror {
             return new JsDate();
         } else if (args.length == 1) {
             Object arg = args[0];
-            if (arg instanceof Number) {
-                // Date(timestamp)
-                return new JsDate(((Number) arg).longValue());
-            } else if (arg instanceof String) {
-                // Date(dateString)
-                return new JsDate((String) arg);
-            } else if (arg instanceof JsDate) {
-                // Date(dateObject)
-                return new JsDate(((JsDate) arg).value);
+            if (arg instanceof Number n) {
+                return new JsDate(n.longValue());
+            } else if (arg instanceof String s) {
+                return new JsDate(s);
+            } else if (arg instanceof JsDate date) {
+                return new JsDate(date.value);
             }
         } else if (args.length >= 3) {
             // Date(year, month, day, [hours, minutes, seconds, ms])

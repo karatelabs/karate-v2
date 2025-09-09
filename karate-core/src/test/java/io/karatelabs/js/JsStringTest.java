@@ -67,7 +67,8 @@ class JsStringTest extends EvalBase {
 
     @Test
     void testStringConstructor() {
-        assertEquals("", eval("String()"));
+        assertEquals("", eval("a = String()"));
+        match(get("a"), "''");
         assertEquals("undefined", eval("String(undefined)"));
         assertEquals("", eval("String(null)"));
         assertEquals("42", eval("String(42)"));
@@ -77,8 +78,9 @@ class JsStringTest extends EvalBase {
         assertEquals("hello", eval("new String('hello').valueOf()"));
         assertEquals("", eval("new String"));
         assertEquals("", eval("new String()"));
-        assertEquals(true, eval("typeof new String() === 'object'"));
-        assertEquals(true, eval("new String('hello') instanceof String"));
+        // intentional js spec non-compliance
+        // assertEquals(true, eval("typeof new String() === 'object'"));
+        // assertEquals(true, eval("new String('hello') instanceof String"));
     }
 
     @Test

@@ -137,7 +137,7 @@ class JsArray extends JsObject {
                         Object searchElement = args[0];
                         int fromIndex = 0;
                         if (args.length > 1 && args[1] != null) {
-                            fromIndex = Terms.toNumber(args[1]).intValue();
+                            fromIndex = Terms.objectToNumber(args[1]).intValue();
                             if (fromIndex < 0) {
                                 fromIndex = Math.max(size + fromIndex, 0);
                             }
@@ -158,13 +158,13 @@ class JsArray extends JsObject {
                         int start = 0;
                         int end = size;
                         if (args.length > 0 && args[0] != null) {
-                            start = Terms.toNumber(args[0]).intValue();
+                            start = Terms.objectToNumber(args[0]).intValue();
                             if (start < 0) {
                                 start = Math.max(size + start, 0);
                             }
                         }
                         if (args.length > 1 && args[1] != null) {
-                            end = Terms.toNumber(args[1]).intValue();
+                            end = Terms.objectToNumber(args[1]).intValue();
                             if (end < 0) {
                                 end = Math.max(size + end, 0);
                             }
@@ -271,7 +271,7 @@ class JsArray extends JsObject {
                         JsArray thisArray = asArray(context.thisObject);
                         int depth = 1;
                         if (args.length > 0 && args[0] != null) {
-                            Number depthNum = Terms.toNumber(args[0]);
+                            Number depthNum = Terms.objectToNumber(args[0]);
                             if (!Double.isNaN(depthNum.doubleValue()) && !Double.isInfinite(depthNum.doubleValue())) {
                                 depth = depthNum.intValue();
                             }
@@ -348,13 +348,13 @@ class JsArray extends JsObject {
                         int start = 0;
                         int end = size;
                         if (args.length > 1 && args[1] != null) {
-                            start = Terms.toNumber(args[1]).intValue();
+                            start = Terms.objectToNumber(args[1]).intValue();
                             if (start < 0) {
                                 start = Math.max(size + start, 0);
                             }
                         }
                         if (args.length > 2 && args[2] != null) {
-                            end = Terms.toNumber(args[2]).intValue();
+                            end = Terms.objectToNumber(args[2]).intValue();
                             if (end < 0) {
                                 end = Math.max(size + end, 0);
                             }
@@ -377,7 +377,7 @@ class JsArray extends JsObject {
                         }
                         int start = 0;
                         if (args[0] != null) {
-                            start = Terms.toNumber(args[0]).intValue();
+                            start = Terms.objectToNumber(args[0]).intValue();
                             if (start < 0) {
                                 start = Math.max(size + start, 0);
                             }
@@ -385,7 +385,7 @@ class JsArray extends JsObject {
                         start = Math.min(start, size);
                         int deleteCount = size - start;
                         if (args.length > 1 && args[1] != null) {
-                            deleteCount = Terms.toNumber(args[1]).intValue();
+                            deleteCount = Terms.objectToNumber(args[1]).intValue();
                             deleteCount = Math.min(Math.max(deleteCount, 0), size - start);
                         }
                         List<Object> elementsToAdd = new ArrayList<>();
@@ -458,7 +458,7 @@ class JsArray extends JsObject {
                         Object searchElement = args[0];
                         int fromIndex = size - 1;
                         if (args.length > 1 && args[1] != null) {
-                            Number n = Terms.toNumber(args[1]);
+                            Number n = Terms.objectToNumber(args[1]);
                             if (Double.isNaN(n.doubleValue())) {
                                 fromIndex = size - 1;
                             } else {
@@ -503,7 +503,7 @@ class JsArray extends JsObject {
                         if (size == 0 || args.length == 0 || args[0] == null) {
                             return Terms.UNDEFINED;
                         }
-                        int index = Terms.toNumber(args[0]).intValue();
+                        int index = Terms.objectToNumber(args[0]).intValue();
                         if (index < 0) {
                             index = size + index;
                         }
@@ -518,20 +518,20 @@ class JsArray extends JsObject {
                         if (size == 0 || args.length == 0) {
                             return thisArray.toList();
                         }
-                        int target = Terms.toNumber(args[0]).intValue();
+                        int target = Terms.objectToNumber(args[0]).intValue();
                         if (target < 0) {
                             target = Math.max(size + target, 0);
                         }
                         int start = 0;
                         if (args.length > 1 && args[1] != null) {
-                            start = Terms.toNumber(args[1]).intValue();
+                            start = Terms.objectToNumber(args[1]).intValue();
                             if (start < 0) {
                                 start = Math.max(size + start, 0);
                             }
                         }
                         int end = size;
                         if (args.length > 2 && args[2] != null) {
-                            end = Terms.toNumber(args[2]).intValue();
+                            end = Terms.objectToNumber(args[2]).intValue();
                             if (end < 0) {
                                 end = Math.max(size + end, 0);
                             }
@@ -623,7 +623,7 @@ class JsArray extends JsObject {
                         if (size == 0 || args.length < 2) {
                             return thisArray.toList();
                         }
-                        int index = Terms.toNumber(args[0]).intValue();
+                        int index = Terms.objectToNumber(args[0]).intValue();
                         if (index < 0) {
                             index = size + index;
                         }

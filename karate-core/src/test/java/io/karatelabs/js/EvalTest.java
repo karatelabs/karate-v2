@@ -91,7 +91,7 @@ class EvalTest extends EvalBase {
     @Test
     void testVarStatement() {
         assertNull(eval("var a"));
-        assertNull(get("a"));
+        assertEquals(Terms.UNDEFINED, get("a"));
         assertEquals(1, eval("var a = 1"));
         assertEquals(1, get("a"));
         assertEquals(2, eval("var a, b = 2"));

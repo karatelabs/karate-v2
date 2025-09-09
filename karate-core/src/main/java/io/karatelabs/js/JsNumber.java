@@ -59,7 +59,7 @@ class JsNumber extends JsObject implements JavaMirror {
                     case "toFixed" -> (Invokable) args -> {
                         int digits = 0;
                         if (args.length > 0) {
-                            digits = Terms.toNumber(args[0]).intValue();
+                            digits = Terms.objectToNumber(args[0]).intValue();
                         }
                         double doubleValue = value.doubleValue();
                         BigDecimal bd = BigDecimal.valueOf(doubleValue);
@@ -84,9 +84,9 @@ class JsNumber extends JsObject implements JavaMirror {
     public Object call(Context context, Object... args) {
         Number temp = 0;
         if (args.length > 0) {
-            temp = Terms.toNumber(args[0]);
+            temp = Terms.objectToNumber(args[0]);
         }
-        return new JsNumber(temp);
+        return temp;
     }
 
 }

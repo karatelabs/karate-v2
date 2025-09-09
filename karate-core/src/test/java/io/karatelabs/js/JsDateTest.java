@@ -2,11 +2,20 @@ package io.karatelabs.js;
 
 import org.junit.jupiter.api.Test;
 
-import java.time.ZonedDateTime;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class JsDateTest extends EvalBase {
+
+    @Test
+    void testDev() {
+
+    }
+
+    @Test
+    void testDateConstructor() {
+        eval("var a = new Date(2025, 2, 15)");
+        // assertEquals(JsDate.parse("2025-03-15"), get("a"));
+    }
 
     @Test
     void testDateCreation() {
@@ -24,6 +33,14 @@ class JsDateTest extends EvalBase {
         assertEquals(45, get("minutes"));
         assertEquals(30, get("seconds"));
         assertEquals(500, get("ms"));
+    }
+
+    @Test
+    void testDateManipulation() {
+        assertEquals(1741977000000L, eval("new Date(2025, 2, 15).getTime()"));
+        assertEquals(1742841000000L, eval("var date = new Date(2025, 2, 15); date.setDate(date.getDate() + 10)"));
+        // assertEquals(JsDate.parse("2025-03-15"), get("date"));
+        assertEquals(25, eval("var date = new Date(2025, 2, 15); date.setDate(date.getDate() + 10); date.getDate()"));
     }
 
     @Test
@@ -65,7 +82,7 @@ class JsDateTest extends EvalBase {
         // In standard JavaScript, setting date to 32 in January should roll to February 1st
         assertEquals(1, get("month")); // February (0-indexed)
         assertEquals(1, get("day"));
-        
+
         // Test underflow
         eval("var date2 = new Date(2025, 2, 1);"
                 + "date2.setDate(0);"
@@ -74,7 +91,7 @@ class JsDateTest extends EvalBase {
         // Setting date to 0 should go to last day of previous month
         assertEquals(1, get("month2")); // February
         assertEquals(28, get("day2")); // 2025 is not a leap year
-        
+
         // Test setMonth overflow
         eval("var date3 = new Date(2025, 11, 15);"
                 + "date3.setMonth(12);"
@@ -82,7 +99,7 @@ class JsDateTest extends EvalBase {
                 + "var month3 = date3.getMonth();");
         assertEquals(2026, get("year3"));
         assertEquals(0, get("month3")); // January
-        
+
         // Test setHours overflow
         eval("var date4 = new Date(2025, 0, 31, 23, 0, 0);"
                 + "date4.setHours(25);"
@@ -105,7 +122,7 @@ class JsDateTest extends EvalBase {
         // This should correctly give us February 1st
         assertEquals(1, get("month")); // February (0-indexed)
         assertEquals(1, get("day"));
-        
+
         // Test adding multiple days across month boundary
         eval("var date = new Date(2025, 1, 28);"
                 + "var msPerDay = 24 * 60 * 60 * 1000;"
@@ -173,7 +190,7 @@ class JsDateTest extends EvalBase {
         assertEquals(2022, get("afterSetYear"));
 
         Object date = eval("Date()");
-        assertInstanceOf(ZonedDateTime.class, date);
+        // assertInstanceOf(ZonedDateTime.class, date);
 
         // Test ability to pass date object to a function that expects a timestamp
         String js = "function getTimestamp(time) {"

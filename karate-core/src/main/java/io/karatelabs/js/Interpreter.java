@@ -72,41 +72,21 @@ class Interpreter {
     private static Object evalAssignExpr(Node node, Context context) {
         JsProperty prop = new JsProperty(node.children.get(0), context);
         Object value = eval(node.children.get(2), context);
-        switch (node.children.get(1).token.type) {
-            case EQ:
-                break;
-            case PLUS_EQ:
-                value = Terms.add(prop.get(), value);
-                break;
-            case MINUS_EQ:
-                value = terms(prop.get(), value).min();
-                break;
-            case STAR_EQ:
-                value = terms(prop.get(), value).mul();
-                break;
-            case SLASH_EQ:
-                value = terms(prop.get(), value).div();
-                break;
-            case PERCENT_EQ:
-                value = terms(prop.get(), value).mod();
-                break;
-            case STAR_STAR_EQ:
-                value = terms(prop.get(), value).exp();
-                break;
-            case GT_GT_EQ:
-                value = terms(prop.get(), value).bitShiftRight();
-                break;
-            case LT_LT_EQ:
-                value = terms(prop.get(), value).bitShiftLeft();
-                break;
-            case GT_GT_GT_EQ:
-                value = terms(prop.get(), value).bitShiftRightUnsigned();
-                break;
-            default:
-                throw new RuntimeException("unexpected assignment operator: " + node.children.get(1));
-        }
-        prop.set(value);
-        return value;
+        Object result = switch (node.children.get(1).token.type) {
+            case EQ -> value;
+            case PLUS_EQ -> Terms.add(prop.get(), value);
+            case MINUS_EQ -> terms(prop.get(), value).min();
+            case STAR_EQ -> terms(prop.get(), value).mul();
+            case SLASH_EQ -> terms(prop.get(), value).div();
+            case PERCENT_EQ -> terms(prop.get(), value).mod();
+            case STAR_STAR_EQ -> terms(prop.get(), value).exp();
+            case GT_GT_EQ -> terms(prop.get(), value).bitShiftRight();
+            case LT_LT_EQ -> terms(prop.get(), value).bitShiftLeft();
+            case GT_GT_GT_EQ -> terms(prop.get(), value).bitShiftRightUnsigned();
+            default -> throw new RuntimeException("unexpected assignment operator: " + node.children.get(1));
+        };
+        prop.set(result);
+        return result;
     }
 
     private static Object evalBlock(Node node, Context context) {
@@ -205,7 +185,7 @@ class Interpreter {
         }
         Object[] args = argsList.toArray();
         Context callContext = new Context(context, node);
-        callContext.thisObject = prop.object == null ? callable : prop.object;
+        callContext.thisObject = prop.object == null ? callable : prop.object;;
         callContext.event(Event.Type.CONTEXT_ENTER, node);
         if (callContext.root.listener != null) {
             callContext.root.listener.onFunctionCall(callContext, args);
@@ -215,10 +195,12 @@ class Interpreter {
         context.updateFrom(callContext);
         if (context.construct) { // new keyword
             context.construct = false;
-            return Terms.isPrimitive(result) ? callable : result;
+            if (result == null) {
+                result = callable;
+            }
         }
-        if (result instanceof JavaMirror) {
-            return ((JavaMirror) result).toJava();
+        if (result instanceof JavaMirror jm) {
+            return jm.toJava();
         }
         return result;
     }
@@ -526,7 +508,7 @@ class Interpreter {
                 yield prop.get();
             }
             case MINUS -> terms(value, -1).mul();
-            case PLUS -> Terms.toNumber(value);
+            case PLUS -> Terms.objectToNumber(value);
             default -> throw new RuntimeException("unexpected operator: " + node.children.getFirst());
         };
     }

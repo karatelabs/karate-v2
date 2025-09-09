@@ -268,7 +268,7 @@ class JsString extends JsObject implements JavaMirror {
         if (args.length > 0 && args[0] != null) {
             temp = args[0].toString();
         }
-        return new JsString(temp);
+        return temp;
     }
 
 }

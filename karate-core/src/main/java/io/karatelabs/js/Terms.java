@@ -55,8 +55,8 @@ public class Terms {
     final Number rhs;
 
     Terms(Object lhsObject, Object rhsObject) {
-        lhs = toNumber(lhsObject);
-        rhs = toNumber(rhsObject);
+        lhs = objectToNumber(lhsObject);
+        rhs = objectToNumber(rhsObject);
     }
 
     Terms(Context context, List<Node> children) {
@@ -118,24 +118,19 @@ public class Terms {
         return narrow(value);
     }
 
-    public static Number toNumber(Object value) {
-        switch (value) {
-            case null -> {
-                return 0;
-            }
-            case Number number -> {
-                return number;
-            }
-            case Boolean b -> {
-                return b ? 1 : 0;
-            }
-            case JsDate keyValues -> {
-                return keyValues.getTime();
-            }
-            default -> {
-            }
-        }
-        String text = value.toString().trim();
+    static Number objectToNumber(Object o) {
+        return switch (o) {
+            case Number n -> n;
+            case Boolean b -> b ? 1 : 0;
+            case JsDate date -> date.getTime();
+            case String s -> toNumber(s.trim());
+            case null -> 0;
+            // includes undefined
+            default -> Double.NaN;
+        };
+    }
+
+    public static Number toNumber(String text) {
         if (text.isEmpty()) {
             return 0;
         }
@@ -232,7 +227,7 @@ public class Terms {
     }
 
     static Object bitNot(Object value) {
-        Number number = toNumber(value);
+        Number number = objectToNumber(value);
         return ~number.intValue();
     }
 
@@ -277,8 +272,8 @@ public class Terms {
         if (lhs instanceof String || rhs instanceof String) {
             return lhs + "" + rhs;
         }
-        Number lhsNum = toNumber(lhs);
-        Number rhsNum = toNumber(rhs);
+        Number lhsNum = objectToNumber(lhs);
+        Number rhsNum = objectToNumber(rhs);
         double result = lhsNum.doubleValue() + rhsNum.doubleValue();
         return narrow(result);
     }
@@ -304,7 +299,7 @@ public class Terms {
             case String s -> new JsString(s);
             case Number n -> new JsNumber(n);
             case Boolean b -> new JsBoolean(b);
-            case ZonedDateTime zdt -> new JsDate(zdt);
+            // case ZonedDateTime zdt -> new JsDate(zdt);
             case byte[] bytes -> new JsBytes(bytes);
             case null, default -> null;
         };
@@ -347,12 +342,12 @@ public class Terms {
     }
 
     static boolean isPrimitive(Object value) {
-        if (value == null) {
+        if (value instanceof String
+                || (value instanceof Number)
+                || value instanceof Boolean) {
             return true;
         }
-        if (value instanceof String
-                || (value instanceof Number && !(value instanceof BigDecimal))
-                || value instanceof Boolean) {
+        if (value == null) {
             return true;
         }
         return value == UNDEFINED;
