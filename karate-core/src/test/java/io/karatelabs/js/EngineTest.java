@@ -159,6 +159,9 @@ class EngineTest {
         engine.setOnConsoleLog(sb::append);
         engine.eval("console.log('foo');");
         assertEquals("foo", sb.toString());
+        sb.setLength(0);
+        engine.eval("var a = function(){ }; a.prototype.toString = function(){ return 'bar' }; console.log(a)");
+        assertEquals("bar", sb.toString());
     }
 
     @Test

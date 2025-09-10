@@ -154,13 +154,12 @@ class ContextRoot extends Context {
                         if (i > 0) {
                             sb.append(' ');
                         }
+                        JsCallable callable = null;
                         if (arg instanceof ObjectLike objectLike) {
-                            Object toString = objectLike.get("toString");
-                            if (toString instanceof Invokable invokable) {
-                                sb.append(((Invokable) toString).invoke(arg));
-                            } else {
-                                sb.append(Terms.TO_STRING(arg));
-                            }
+                            callable = Terms.toCallable(objectLike.get("toString"));
+                        }
+                        if (callable != null) {
+                            sb.append(callable.call(null, arg));
                         } else {
                             sb.append(Terms.TO_STRING(arg));
                         }
