@@ -105,7 +105,7 @@ class JsProperty {
                 index = Interpreter.eval(node.children.get(2), context);
                 break;
             case LIT_EXPR: // so MATH_PRE_EXP can call set() to update variable value
-                object = Interpreter.eval(node.children.getFirst(), context);
+                object = Interpreter.eval(node, context);
                 break;
             case PAREN_EXPR: // expression wrapped in round brackets that is invoked as a function, e.g., iife
                 object = Interpreter.eval(node.children.get(1), context);

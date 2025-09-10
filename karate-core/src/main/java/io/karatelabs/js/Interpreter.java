@@ -58,16 +58,6 @@ class Interpreter {
         return new Terms(lhs, rhs);
     }
 
-    private static Object evalTokenLiteral(Node node) {
-        return switch (node.token.type) {
-            case S_STRING, D_STRING -> node.token.text.substring(1, node.token.text.length() - 1);
-            case NUMBER -> Terms.toNumber(node.token.text);
-            case NULL -> null;
-            case TRUE -> true;
-            case FALSE -> false;
-            default -> throw new RuntimeException("unexpected token: " + node);
-        };
-    }
 
     private static Object evalAssignExpr(Node node, Context context) {
         JsProperty prop = new JsProperty(node.children.get(0), context);
@@ -358,7 +348,7 @@ class Interpreter {
             if (token == DOT_DOT_DOT) {
                 key = elem.children.get(1).getText();
             } else if (token == S_STRING || token == D_STRING) {
-                key = (String) eval(keyNode, context);
+                key = (String) keyNode.token.literalValue();
             } else { // IDENT, NUMBER
                 key = keyNode.getText();
             }
@@ -399,7 +389,7 @@ class Interpreter {
     private static Object evalLitExpr(Node node, Context context) {
         node = node.children.getFirst();
         if (node.isToken()) {
-            return evalTokenLiteral(node);
+            return node.token.literalValue();
         }
         return switch (node.type) {
             case NodeType.LIT_ARRAY -> evalLitArray(node, context);
@@ -739,7 +729,6 @@ class Interpreter {
 
     static Object eval(Node node, Context context) {
         return switch (node.type) {
-            case TOKEN -> evalTokenLiteral(node);
             case ASSIGN_EXPR -> evalAssignExpr(node, context);
             case BLOCK -> evalBlock(node, context);
             case BREAK_STMT -> evalBreakStmt(node, context);

@@ -88,15 +88,13 @@ public class NodeUtils {
         return true;
     }
 
-    static final Context EMPTY = new Context(null, null, -1, null, null);
-
     public static Object ser(Node node) {
         switch (node.type) {
             case PAREN_EXPR:
                 return ser(node.children.get(1));
             case OBJECT_ELEM:
                 if (node.children.size() < 3) { // es6 enhanced object literals
-                    return ser(node.children.get(0));
+                    return ser(node.children.getFirst());
                 } else {
                     return List.of(ser(node.children.get(0)) + ":", ser(node.children.get(2)));
                 }
@@ -125,7 +123,7 @@ public class NodeUtils {
                     case NULL:
                     case TRUE:
                     case FALSE:
-                        return Interpreter.eval(node, EMPTY);
+                        return node.token.literalValue();
                     default:
                         return node.token.text;
                 }

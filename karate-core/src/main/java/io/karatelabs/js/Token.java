@@ -83,4 +83,14 @@ public class Token {
         };
     }
 
+    Object literalValue() {
+        return switch (type) {
+            case S_STRING, D_STRING -> text.substring(1, text.length() - 1);
+            case NUMBER -> Terms.toNumber(text);
+            case TRUE -> true;
+            case FALSE -> false;
+            default -> null; // includes NULL
+        };
+    }
+
 }
