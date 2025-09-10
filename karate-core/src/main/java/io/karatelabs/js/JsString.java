@@ -232,8 +232,8 @@ class JsString extends JsObject implements JavaMirror {
                         }
                         return regex.search(text);
                     };
-                    // static ==========================================================================================
                     case "valueOf" -> (Invokable) args -> text;
+                    // static ==========================================================================================
                     case "fromCharCode" -> (Invokable) args -> {
                         StringBuilder sb = new StringBuilder();
                         for (Object arg : args) {

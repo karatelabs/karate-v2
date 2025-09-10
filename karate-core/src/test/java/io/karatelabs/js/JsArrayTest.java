@@ -57,7 +57,7 @@ class JsArrayTest extends EvalBase {
         match(eval("[1, 2, 3].length"), "3");
         match(eval("[1, 2, 3].map(x => x * 2)"), "[2, 4, 6]");
         match(eval("[].map.call([1, 2, 3], x => x * 2)"), "[2, 4, 6]");
-        // match(eval("[].map.call([1, 2, 3], String)"), "['1', '2', '3']");
+        match(eval("[].map.call([1, 2, 3], String)"), "['1', '2', '3']");
         match(eval("[1, 2, 3].join()"), "1,2,3");
         match(eval("[1, 2, 3].join(', ')"), "1, 2, 3");
         match(eval("[].map.call({0:'a',1:'b'}, (x, i) => x + i)"), "['a0','b1']");

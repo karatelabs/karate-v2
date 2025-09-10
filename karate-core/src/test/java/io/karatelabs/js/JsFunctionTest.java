@@ -67,6 +67,11 @@ class JsFunctionTest extends EvalBase {
     }
 
     @Test
+    void testFunctionNewNoBrackets() {
+        assertEquals("foo", eval("var a = function(){ this.b = 'foo' }; c = new a; c.b"));
+    }
+
+    @Test
     void testFunctionArguments() {
         assertEquals(List.of(1, 2), eval("var a = function(){ return arguments }; a(1, 2)"));
     }

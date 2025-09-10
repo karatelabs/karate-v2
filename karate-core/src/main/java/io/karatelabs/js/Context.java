@@ -142,7 +142,6 @@ public class Context {
 
     //==================================================================================================================
     //
-    boolean construct;
     int iterationIndex = -1;
 
     private Event.ExitType exitType;

@@ -154,9 +154,21 @@ class Interpreter {
     }
 
     @SuppressWarnings("unchecked")
-    private static Object evalFnCall(Node node, Context context) {
-        Node fnArgsNode = node.children.size() > 1 ? node.children.get(2) : null;
-        node = node.children.get(0);
+    private static Object evalFnCall(Node node, Context context, boolean newKeyword) {
+        Node fnArgsNode;
+        if (newKeyword) {
+            node = node.children.getFirst();
+            // check for new keyword with no parentheses for the constructor
+            if (node.children.size() == 1) {
+                fnArgsNode = null;
+            } else {
+                fnArgsNode = node.children.get(2);
+                node = node.children.getFirst();
+            }
+        } else {
+            fnArgsNode = node.children.get(2);
+            node = node.children.getFirst();
+        }
         JsProperty prop = new JsProperty(node, context, true);
         Object o = prop.get();
         if (o == Terms.UNDEFINED) { // optional chaining
@@ -193,11 +205,8 @@ class Interpreter {
         Object result = callable.call(callContext, args);
         callContext.event(Event.Type.CONTEXT_EXIT, node);
         context.updateFrom(callContext);
-        if (context.construct) { // new keyword
-            context.construct = false;
-            if (result == null) {
-                result = callable;
-            }
+        if (newKeyword && result == null) {
+            result = callable;
         }
         if (result instanceof JavaMirror jm) {
             return jm.toJava();
@@ -513,19 +522,6 @@ class Interpreter {
         };
     }
 
-    private static Object evalNewExpr(Node node, Context context) {
-        node = node.children.get(1);
-        context.construct = true;
-        if (node.children.get(0).type == NodeType.REF_EXPR) {
-            // rare case where there were no parentheses for constructor e.g. "new String"
-            Node wrapper = new Node(NodeType.FN_CALL_EXPR);
-            wrapper.children.add(node.children.getFirst());
-            return eval(wrapper, context);
-        } else {
-            return eval(node, context);
-        }
-    }
-
     private static Object evalProgram(Node node, Context context) {
         Object progResult = null;
         for (Node child : node.children) {
@@ -754,7 +750,7 @@ class Interpreter {
             case LIT_EXPR -> evalLitExpr(node, context);
             case FN_EXPR -> evalFnExpr(node, context);
             case FN_ARROW_EXPR -> evalFnArrowExpr(node, context);
-            case FN_CALL_EXPR -> evalFnCall(node, context);
+            case FN_CALL_EXPR -> evalFnCall(node, context, false);
             case FOR_STMT -> evalForStmt(node, context);
             case IF_STMT -> evalIfStmt(node, context);
             case INSTANCEOF_EXPR -> evalInstanceOfExpr(node, context);
@@ -767,8 +763,8 @@ class Interpreter {
             case MATH_MUL_EXPR -> evalMathMulExpr(node, context);
             case MATH_POST_EXPR -> evalMathPostExpr(node, context);
             case MATH_PRE_EXPR -> evalMathPreExpr(node, context);
-            case NEW_EXPR -> evalNewExpr(node, context);
-            case PAREN_EXPR -> eval(node.children.get(1), context);
+            case NEW_EXPR -> evalFnCall(node.children.get(1), context, true);
+            case PAREN_EXPR -> evalExpr(node.children.get(1), context);
             case PROGRAM -> evalProgram(node, context);
             case REF_EXPR -> evalRefExpr(node, context);
             case REF_BRACKET_EXPR, REF_DOT_EXPR -> new JsProperty(node, context).get();
