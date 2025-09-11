@@ -58,10 +58,6 @@ public class Terms {
         rhs = objectToNumber(rhsObject);
     }
 
-    Terms(Context context, List<Node> children) {
-        this(Interpreter.eval(children.get(0), context), Interpreter.eval(children.get(2), context));
-    }
-
     static Number parseFloat(String str, boolean asInt) {
         if (str == null) {
             return Double.NaN;

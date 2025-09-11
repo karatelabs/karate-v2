@@ -52,18 +52,19 @@ class JsObject implements ObjectLike, JsCallable, Iterable<KeyValue> {
             @Override
             public Object getProperty(String propName) {
                 return switch (propName) {
-                    case "toString" -> (JsCallable) (context, args) -> Terms.TO_STRING(context.thisObject);
-                    case "valueOf" -> (JsCallable) (context, args) -> context.thisObject;
+                    case "toString" -> (JsCallable) (context, args) -> Terms.TO_STRING(context.getThisObject());
+                    case "valueOf" -> (JsCallable) (context, args) -> context.getThisObject();
                     case "hasOwnProperty" -> (JsCallable) (context, args) -> {
                         if (args.length == 0 || args[0] == null) {
                             return false;
                         }
                         String prop = args[0].toString();
-                        if (context.thisObject instanceof ObjectLike objectLike) {
+                        Object thisObject = context.getThisObject();
+                        if (thisObject instanceof ObjectLike objectLike) {
                             Map<String, Object> map = objectLike.toMap();
                             return map != null && map.containsKey(prop);
-                        } else if (context.thisObject instanceof Map) {
-                            Map<String, Object> map = (Map<String, Object>) context.thisObject;
+                        } else if (thisObject instanceof Map) {
+                            Map<String, Object> map = (Map<String, Object>) thisObject;
                             return map.containsKey(prop);
                         }
                         return false;

@@ -36,18 +36,18 @@ class JsProperty {
 
     final Node node;
     final Object object;
-    final Context context;
+    final DefaultContext context;
     final boolean functionCall;
 
     boolean optional;
     String name;
     Object index;
 
-    JsProperty(Node node, Context context) {
+    JsProperty(Node node, DefaultContext context) {
         this(node, context, false);
     }
 
-    JsProperty(Node node, Context context, boolean functionCall) {
+    JsProperty(Node node, DefaultContext context, boolean functionCall) {
         this.node = node;
         this.context = context;
         this.functionCall = functionCall;

@@ -100,12 +100,12 @@ public class Engine {
         try {
             JsParser parser = new JsParser(resource);
             Node node = parser.parse();
-            Context context;
+            DefaultContext context;
             if (localVars == null) {
-                context = new Context(root, root, 0, node, bindings);
+                context = new DefaultContext(root, root, 0, node, bindings);
             } else {
-                Context subRoot = new Context(root, root, -1, new Node(NodeType.ROOT), bindings);
-                context = new Context(root, subRoot, 0, node, localVars);
+                DefaultContext parent = new DefaultContext(root, null, -1, new Node(NodeType.ROOT), bindings);
+                context = new DefaultContext(root, parent, 0, node, localVars);
             }
             context.event(Event.Type.CONTEXT_ENTER, node);
             Object result = Interpreter.eval(node, context);

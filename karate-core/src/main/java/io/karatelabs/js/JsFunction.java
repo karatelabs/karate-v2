@@ -42,7 +42,9 @@ public abstract class JsFunction extends JsObject implements JsCallable {
                 return switch (propName) {
                     case "call" -> (JsCallable) (context, args) -> {
                         ShiftArgs shifted = new ShiftArgs(args);
-                        context.thisObject = shifted.thisObject;
+                        if (context instanceof DefaultContext dc) {
+                            dc.thisObject = shifted.thisObject;
+                        }
                         return call(context, shifted.args);
                     };
                     case "constructor" -> JsFunction.this;

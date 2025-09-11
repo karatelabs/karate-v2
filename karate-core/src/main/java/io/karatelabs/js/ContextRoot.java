@@ -25,15 +25,13 @@ package io.karatelabs.js;
 
 import net.minidev.json.JSONValue;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-class ContextRoot extends Context {
+class ContextRoot extends DefaultContext {
 
-    private Map<String, Object> _globals;
     private Consumer<String> onConsoleLog;
 
     Event.Listener listener;
@@ -50,8 +48,8 @@ class ContextRoot extends Context {
 
     @Override
     Object get(String name) {
-        if (_globals != null && _globals.containsKey(name)) {
-            return _globals.get(name);
+        if (_bindings != null && _bindings.containsKey(name)) {
+            return _bindings.get(name);
         }
         Object global = initGlobal(name);
         if (global != null) {
@@ -62,21 +60,8 @@ class ContextRoot extends Context {
     }
 
     @Override
-    void put(String name, Object value) {
-        if (_globals == null) {
-            _globals = new HashMap<>();
-        }
-        _globals.put(name, value);
-    }
-
-    @Override
-    void update(String name, Object value) {
-        put(name, value);
-    }
-
-    @Override
     boolean hasKey(String name) {
-        if (_globals != null && _globals.containsKey(name)) {
+        if (_bindings != null && _bindings.containsKey(name)) {
             return true;
         }
         return switch (name) {
@@ -85,11 +70,6 @@ class ContextRoot extends Context {
                  "NaN", "Number", "Boolean", "Object", "RegExp", "String", "TypeError" -> true;
             default -> false;
         };
-    }
-
-    @Override
-    public String getPath() {
-        return "ROOT";
     }
 
     @SuppressWarnings("unchecked")

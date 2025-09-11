@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -186,14 +187,27 @@ class EngineTest {
     }
 
     @Test
+    void testProgramContextParentIsNotNull() {
+        Engine engine = new Engine();
+        Event.Listener listener = new Event.Listener() {
+            @Override
+            public void onEvent(Event event) {
+                assertNotNull(event.context.getParent());
+            }
+        };
+        engine.setListener(listener);
+        engine.eval("console.log('foo')");
+    }
+
+    @Test
     void testArrayForEachIterationTracking() {
         Engine engine = new Engine();
         StringBuilder sb = new StringBuilder();
         Event.Listener listener = new Event.Listener() {
             @Override
             public void onFunctionCall(Context context, Object... args) {
-                if (context.node.type == NodeType.REF_DOT_EXPR && "b.push".equals(context.node.getText())) {
-                    sb.append(context.parent.parent.getIterationIndex()).append(":").append(args[0]).append("|");
+                if (context.getNode().type == NodeType.REF_DOT_EXPR && "b.push".equals(context.getNode().getText())) {
+                    sb.append(context.getParent().getParent().getIteration()).append(":").append(args[0]).append("|");
                 }
             }
         };
@@ -223,8 +237,8 @@ class EngineTest {
         Event.Listener listener = new Event.Listener() {
             @Override
             public void onFunctionCall(Context context, Object... args) {
-                if (context.node.type == NodeType.REF_DOT_EXPR && "b.push".equals(context.node.getText())) {
-                    sb.append(context.parent.getIterationIndex()).append(":").append(args[0]).append("|");
+                if (context.getNode().type == NodeType.REF_DOT_EXPR && "b.push".equals(context.getNode().getText())) {
+                    sb.append(context.getParent().getIteration()).append(":").append(args[0]).append("|");
                 }
             }
         };

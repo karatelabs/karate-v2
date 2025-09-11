@@ -50,16 +50,15 @@ class Interpreter {
         return list;
     }
 
-    private static Terms terms(Node node, Context context) {
-        return new Terms(context, node.children);
+    private static Terms terms(Node node, DefaultContext context) {
+        return terms(eval(node.children.get(0), context), eval(node.children.get(2), context));
     }
 
     private static Terms terms(Object lhs, Object rhs) {
         return new Terms(lhs, rhs);
     }
 
-
-    private static Object evalAssignExpr(Node node, Context context) {
+    private static Object evalAssignExpr(Node node, DefaultContext context) {
         JsProperty prop = new JsProperty(node.children.get(0), context);
         Object value = eval(node.children.get(2), context);
         Object result = switch (node.children.get(1).token.type) {
@@ -79,7 +78,7 @@ class Interpreter {
         return result;
     }
 
-    private static Object evalBlock(Node node, Context context) {
+    private static Object evalBlock(Node node, DefaultContext context) {
         Object blockResult = null;
         for (Node child : node.children) {
             if (child.type == NodeType.STATEMENT) {
@@ -92,16 +91,16 @@ class Interpreter {
         return context.isStopped() ? context.getReturnValue() : blockResult;
     }
 
-    private static Object evalBreakStmt(Node node, Context context) {
+    private static Object evalBreakStmt(Node node, DefaultContext context) {
         return context.stopAndBreak();
     }
 
-    private static Object evalContinueStmt(Node node, Context context) {
+    private static Object evalContinueStmt(Node node, DefaultContext context) {
         return context.stopAndContinue();
     }
 
     @SuppressWarnings("unchecked")
-    private static Object evalDeleteStmt(Node node, Context context) {
+    private static Object evalDeleteStmt(Node node, DefaultContext context) {
         JsProperty prop = new JsProperty(node.children.get(1).children.getFirst(), context);
         String key = prop.name == null ? prop.index + "" : prop.name;
         if (prop.object instanceof Map) {
@@ -112,7 +111,7 @@ class Interpreter {
         return true;
     }
 
-    private static Object evalExpr(Node node, Context context) {
+    private static Object evalExpr(Node node, DefaultContext context) {
         node = node.children.getFirst();
         context.event(Event.Type.EXPRESSION_ENTER, node);
         try {
@@ -133,7 +132,7 @@ class Interpreter {
         }
     }
 
-    private static Object evalExprList(Node node, Context context) {
+    private static Object evalExprList(Node node, DefaultContext context) {
         Object result = null;
         for (Node child : node.children) {
             if (child.type == NodeType.EXPR) {
@@ -144,7 +143,7 @@ class Interpreter {
     }
 
     @SuppressWarnings("unchecked")
-    private static Object evalFnCall(Node node, Context context, boolean newKeyword) {
+    private static Object evalFnCall(Node node, DefaultContext context, boolean newKeyword) {
         Node fnArgsNode;
         if (newKeyword) {
             node = node.children.getFirst();
@@ -186,7 +185,7 @@ class Interpreter {
             }
         }
         Object[] args = argsList.toArray();
-        Context callContext = new Context(context, node);
+        DefaultContext callContext = new DefaultContext(context, node);
         callContext.thisObject = prop.object == null ? callable : prop.object;
         callContext.event(Event.Type.CONTEXT_ENTER, node);
         if (callContext.root.listener != null) {
@@ -204,7 +203,7 @@ class Interpreter {
         return result;
     }
 
-    private static Object evalFnExpr(Node node, Context context) {
+    private static Object evalFnExpr(Node node, DefaultContext context) {
         if (node.children.get(1).token.type == IDENT) {
             JsFunctionNode fn = new JsFunctionNode(false, node, argNames(node.children.get(2)), node.children.getLast(), context);
             context.put(node.children.get(1).getText(), fn);
@@ -214,7 +213,7 @@ class Interpreter {
         }
     }
 
-    private static Object evalFnArrowExpr(Node node, Context context) {
+    private static Object evalFnArrowExpr(Node node, DefaultContext context) {
         List<String> argNames;
         if (node.children.getFirst().token.type == IDENT) {
             argNames = Collections.singletonList(node.children.getFirst().getText());
@@ -224,8 +223,8 @@ class Interpreter {
         return new JsFunctionNode(true, node, argNames, node.children.getLast(), context);
     }
 
-    private static Object evalForStmt(Node node, Context context) {
-        Context forContext = new Context(context, node);
+    private static Object evalForStmt(Node node, DefaultContext context) {
+        DefaultContext forContext = new DefaultContext(context, node);
         forContext.event(Event.Type.CONTEXT_ENTER, node);
         Node forBody = node.children.getLast();
         Object forResult = null;
@@ -240,7 +239,7 @@ class Interpreter {
                 int index = -1;
                 while (true) {
                     index++;
-                    forContext.iterationIndex = index;
+                    forContext.iteration = index;
                     Object forCondition = eval(node.children.get(4), forContext);
                     if (Terms.isTruthy(forCondition)) {
                         forResult = eval(forBody, forContext);
@@ -273,7 +272,7 @@ class Interpreter {
             int index = -1;
             for (KeyValue kv : iterable) {
                 index++;
-                forContext.iterationIndex = index;
+                forContext.iteration = index;
                 if (in) {
                     forContext.put(varName, kv.key);
                 } else {
@@ -294,7 +293,7 @@ class Interpreter {
         return forResult;
     }
 
-    private static Object evalIfStmt(Node node, Context context) {
+    private static Object evalIfStmt(Node node, DefaultContext context) {
         if (Terms.isTruthy(eval(node.children.get(2), context))) {
             return eval(node.children.get(4), context);
         } else {
@@ -305,12 +304,12 @@ class Interpreter {
         }
     }
 
-    private static Object evalInstanceOfExpr(Node node, Context context) {
+    private static Object evalInstanceOfExpr(Node node, DefaultContext context) {
         return Terms.instanceOf(eval(node.children.get(0), context), eval(node.children.get(2), context));
     }
 
     @SuppressWarnings("unchecked")
-    private static Object evalLitArray(Node node, Context context) {
+    private static Object evalLitArray(Node node, DefaultContext context) {
         int last = node.children.size() - 1;
         List<Object> list = new ArrayList<>();
         for (int i = 1; i < last; i++) {
@@ -337,7 +336,7 @@ class Interpreter {
     }
 
     @SuppressWarnings("unchecked")
-    private static Object evalLitObject(Node node, Context context) {
+    private static Object evalLitObject(Node node, DefaultContext context) {
         int last = node.children.size() - 1;
         Map<String, Object> map = new LinkedHashMap<>(last - 1);
         for (int i = 1; i < last; i++) {
@@ -370,7 +369,7 @@ class Interpreter {
         return map;
     }
 
-    private static String evalLitTemplate(Node node, Context context) {
+    private static String evalLitTemplate(Node node, DefaultContext context) {
         StringBuilder sb = new StringBuilder();
         for (Node child : node.children) {
             if (child.token.type == T_STRING) {
@@ -386,7 +385,7 @@ class Interpreter {
         return sb.toString();
     }
 
-    private static Object evalLitExpr(Node node, Context context) {
+    private static Object evalLitExpr(Node node, DefaultContext context) {
         node = node.children.getFirst();
         if (node.isToken()) {
             return node.token.literalValue();
@@ -400,7 +399,7 @@ class Interpreter {
         };
     }
 
-    private static Object evalLogicBitExpr(Node node, Context context) {
+    private static Object evalLogicBitExpr(Node node, DefaultContext context) {
         return switch (node.children.get(1).token.type) {
             case AMP -> terms(node, context).bitAnd();
             case PIPE -> terms(node, context).bitOr();
@@ -412,7 +411,7 @@ class Interpreter {
         };
     }
 
-    private static boolean evalLogicExpr(Node node, Context context) {
+    private static boolean evalLogicExpr(Node node, DefaultContext context) {
         Object lhs = eval(node.children.get(0), context);
         Object rhs = eval(node.children.get(2), context);
         TokenType logicOp = node.children.get(1).token.type;
@@ -435,7 +434,7 @@ class Interpreter {
         };
     }
 
-    private static Object evalLogicAndExpr(Node node, Context context) {
+    private static Object evalLogicAndExpr(Node node, DefaultContext context) {
         Object lhsValue = eval(node.children.get(0), context);
         boolean lhs = Terms.isTruthy(lhsValue);
         if (node.children.get(1).token.type == AMP_AMP) {
@@ -453,7 +452,7 @@ class Interpreter {
         }
     }
 
-    private static Object evalLogicTernExpr(Node node, Context context) {
+    private static Object evalLogicTernExpr(Node node, DefaultContext context) {
         if (Terms.isTruthy(eval(node.children.get(0), context))) {
             return eval(node.children.get(2), context);
         } else {
@@ -461,7 +460,7 @@ class Interpreter {
         }
     }
 
-    private static Object evalMathAddExpr(Node node, Context context) {
+    private static Object evalMathAddExpr(Node node, DefaultContext context) {
         return switch (node.children.get(1).token.type) {
             case PLUS -> Terms.add(eval(node.children.get(0), context), eval(node.children.get(2), context));
             case MINUS -> terms(node, context).min();
@@ -469,7 +468,7 @@ class Interpreter {
         };
     }
 
-    private static Object evalMathMulExpr(Node node, Context context) {
+    private static Object evalMathMulExpr(Node node, DefaultContext context) {
         return switch (node.children.get(1).token.type) {
             case STAR -> terms(node, context).mul();
             case SLASH -> terms(node, context).div();
@@ -478,7 +477,7 @@ class Interpreter {
         };
     }
 
-    private static Object evalMathPostExpr(Node node, Context context) {
+    private static Object evalMathPostExpr(Node node, DefaultContext context) {
         JsProperty postProp = new JsProperty(node.children.get(0), context);
         Object postValue = postProp.get();
         switch (node.children.get(1).token.type) {
@@ -494,7 +493,7 @@ class Interpreter {
         return postValue;
     }
 
-    private static Object evalMathPreExpr(Node node, Context context) {
+    private static Object evalMathPreExpr(Node node, DefaultContext context) {
         JsProperty prop = new JsProperty(node.children.get(1).children.getFirst(), context);
         final Object value = prop.get();
         return switch (node.children.get(0).token.type) {
@@ -512,7 +511,7 @@ class Interpreter {
         };
     }
 
-    private static Object evalProgram(Node node, Context context) {
+    private static Object evalProgram(Node node, DefaultContext context) {
         Object progResult = null;
         for (Node child : node.children) {
             progResult = eval(child, context);
@@ -532,7 +531,7 @@ class Interpreter {
         return progResult;
     }
 
-    private static Object evalRefExpr(Node node, Context context) {
+    private static Object evalRefExpr(Node node, DefaultContext context) {
         if (node.children.getFirst().type == NodeType.FN_ARROW_EXPR) { // arrow function
             return evalFnArrowExpr(node.children.getFirst(), context);
         } else {
@@ -540,7 +539,7 @@ class Interpreter {
         }
     }
 
-    private static Object evalReturnStmt(Node node, Context context) {
+    private static Object evalReturnStmt(Node node, DefaultContext context) {
         if (node.children.size() > 1) {
             return context.stopAndReturn(eval(node.children.get(1), context));
         } else {
@@ -548,7 +547,7 @@ class Interpreter {
         }
     }
 
-    private static Object evalStatement(Node node, Context context) {
+    private static Object evalStatement(Node node, DefaultContext context) {
         node = node.children.getFirst(); // go straight to relevant node
         if (node.token.type == SEMI) { // ignore empty statements
             return null;
@@ -592,7 +591,7 @@ class Interpreter {
         }
     }
 
-    private static Object evalSwitchStmt(Node node, Context context) {
+    private static Object evalSwitchStmt(Node node, DefaultContext context) {
         Object switchValue = eval(node.children.get(2), context);
         List<Node> caseNodes = node.findChildrenOfType(NodeType.CASE_BLOCK);
         for (Node caseNode : caseNodes) {
@@ -611,7 +610,7 @@ class Interpreter {
         return null;
     }
 
-    private static Object evalTryStmt(Node node, Context context) {
+    private static Object evalTryStmt(Node node, DefaultContext context) {
         Object tryValue = eval(node.children.get(1), context);
         Node finallyBlock = null;
         if (node.children.get(2).token.type == CATCH) {
@@ -619,7 +618,7 @@ class Interpreter {
                 finallyBlock = node.children.get(8);
             }
             if (context.isError()) {
-                Context catchContext = new Context(context, node);
+                DefaultContext catchContext = new DefaultContext(context, node);
                 catchContext.event(Event.Type.CONTEXT_ENTER, node);
                 if (node.children.get(3).token.type == L_PAREN) {
                     String errorName = node.children.get(4).getText();
@@ -628,7 +627,7 @@ class Interpreter {
                 } else { // catch without variable name, 3 is block
                     tryValue = eval(node.children.get(3), context);
                 }
-                if (catchContext.isError()) { // catch threw error,
+                if (context.isError()) { // catch threw error,
                     tryValue = null;
                 }
                 context.updateFrom(catchContext);
@@ -638,7 +637,7 @@ class Interpreter {
             finallyBlock = node.children.get(3);
         }
         if (finallyBlock != null) {
-            Context finallyContext = new Context(context, node);
+            DefaultContext finallyContext = new DefaultContext(context, node);
             finallyContext.event(Event.Type.CONTEXT_ENTER, node);
             eval(finallyBlock, finallyContext);
             finallyContext.event(Event.Type.CONTEXT_EXIT, node);
@@ -649,7 +648,7 @@ class Interpreter {
         return tryValue;
     }
 
-    private static Object evalUnaryExpr(Node node, Context context) {
+    private static Object evalUnaryExpr(Node node, DefaultContext context) {
         Object unaryValue = eval(node.children.get(1), context);
         return switch (node.children.get(0).token.type) {
             case NOT -> !Terms.isTruthy(unaryValue);
@@ -658,7 +657,7 @@ class Interpreter {
         };
     }
 
-    private static Object evalVarStmt(Node node, Context context) {
+    private static Object evalVarStmt(Node node, DefaultContext context) {
         Object varValue;
         if (node.children.size() > 3) {
             varValue = eval(node.children.get(3), context);
@@ -677,8 +676,8 @@ class Interpreter {
         return varValue;
     }
 
-    private static Object evalWhileStmt(Node node, Context context) {
-        Context whileContext = new Context(context, node);
+    private static Object evalWhileStmt(Node node, DefaultContext context) {
+        DefaultContext whileContext = new DefaultContext(context, node);
         whileContext.event(Event.Type.CONTEXT_ENTER, node);
         Node whileBody = node.children.getLast();
         Node whileExpr = node.children.get(2);
@@ -702,8 +701,8 @@ class Interpreter {
         return whileResult;
     }
 
-    private static Object evalDoWhileStmt(Node node, Context context) {
-        Context doContext = new Context(context, node);
+    private static Object evalDoWhileStmt(Node node, DefaultContext context) {
+        DefaultContext doContext = new DefaultContext(context, node);
         doContext.event(Event.Type.CONTEXT_ENTER, node);
         Node doBody = node.children.get(1);
         Node doExpr = node.children.get(4);
@@ -727,7 +726,7 @@ class Interpreter {
         return doResult;
     }
 
-    static Object eval(Node node, Context context) {
+    static Object eval(Node node, DefaultContext context) {
         return switch (node.type) {
             case ASSIGN_EXPR -> evalAssignExpr(node, context);
             case BLOCK -> evalBlock(node, context);

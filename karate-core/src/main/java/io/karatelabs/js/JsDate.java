@@ -115,7 +115,7 @@ class JsDate extends JsObject implements JavaMirror {
     }
 
     Date cast(Context context) {
-        if (context.thisObject instanceof JsDate date) {
+        if (context.getThisObject() instanceof JsDate date) {
             return date.value;
         }
         return value;
@@ -198,7 +198,7 @@ class JsDate extends JsObject implements JavaMirror {
                             return Double.NaN;
                         }
                         int day = ((Number) args[0]).intValue();
-                        if (context.thisObject instanceof JsDate jsDate) {
+                        if (context.getThisObject() instanceof JsDate jsDate) {
                             Calendar cal = Calendar.getInstance();
                             cal.setTime(jsDate.value);
                             // handles overflow automatically!
@@ -213,7 +213,7 @@ class JsDate extends JsObject implements JavaMirror {
                             return Double.NaN;
                         }
                         int month = ((Number) args[0]).intValue();
-                        if (context.thisObject instanceof JsDate jsDate) {
+                        if (context.getThisObject() instanceof JsDate jsDate) {
                             Calendar cal = Calendar.getInstance();
                             cal.setTime(jsDate.value);
                             // handles overflow - month 12 becomes jan of next year
@@ -231,7 +231,7 @@ class JsDate extends JsObject implements JavaMirror {
                             return Double.NaN;
                         }
                         int year = ((Number) args[0]).intValue();
-                        if (context.thisObject instanceof JsDate jsDate) {
+                        if (context.getThisObject() instanceof JsDate jsDate) {
                             Calendar cal = Calendar.getInstance();
                             cal.setTime(jsDate.value);
                             cal.set(Calendar.YEAR, year);
@@ -251,7 +251,7 @@ class JsDate extends JsObject implements JavaMirror {
                             return Double.NaN;
                         }
                         int hours = ((Number) args[0]).intValue();
-                        if (context.thisObject instanceof JsDate jsDate) {
+                        if (context.getThisObject() instanceof JsDate jsDate) {
                             Calendar cal = Calendar.getInstance();
                             cal.setTime(jsDate.value);
                             cal.set(Calendar.HOUR_OF_DAY, hours);
@@ -274,7 +274,7 @@ class JsDate extends JsObject implements JavaMirror {
                             return Double.NaN;
                         }
                         int minutes = ((Number) args[0]).intValue();
-                        if (context.thisObject instanceof JsDate jsDate) {
+                        if (context.getThisObject() instanceof JsDate jsDate) {
                             Calendar cal = Calendar.getInstance();
                             cal.setTime(jsDate.value);
                             cal.set(Calendar.MINUTE, minutes);
@@ -296,7 +296,7 @@ class JsDate extends JsObject implements JavaMirror {
                         }
                         int seconds = ((Number) args[0]).intValue();
 
-                        if (context.thisObject instanceof JsDate jsDate) {
+                        if (context.getThisObject() instanceof JsDate jsDate) {
                             Calendar cal = Calendar.getInstance();
                             cal.setTime(jsDate.value);
                             cal.set(Calendar.SECOND, seconds);
@@ -313,7 +313,7 @@ class JsDate extends JsObject implements JavaMirror {
                             return Double.NaN;
                         }
                         int ms = ((Number) args[0]).intValue();
-                        if (context.thisObject instanceof JsDate jsDate) {
+                        if (context.getThisObject() instanceof JsDate jsDate) {
                             Calendar cal = Calendar.getInstance();
                             cal.setTime(jsDate.value);
                             cal.set(Calendar.MILLISECOND, ms);
@@ -328,7 +328,7 @@ class JsDate extends JsObject implements JavaMirror {
                             return Double.NaN;
                         }
                         long timestamp = ((Number) args[0]).longValue();
-                        if (context.thisObject instanceof JsDate jsDate) {
+                        if (context.getThisObject() instanceof JsDate jsDate) {
                             jsDate.value.setTime(timestamp); // Direct mutation!
                             return timestamp;
                         }

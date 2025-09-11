@@ -39,9 +39,9 @@ class JsFunctionNode extends JsFunction {
     final Node body; // STATEMENT or BLOCK (that may return expr)
     final List<String> argNames;
     final int argCount;
-    final Context declaredContext;
+    final DefaultContext declaredContext;
 
-    public JsFunctionNode(boolean arrow, Node node, List<String> argNames, Node body, Context declaredContext) {
+    public JsFunctionNode(boolean arrow, Node node, List<String> argNames, Node body, DefaultContext declaredContext) {
         this.arrow = arrow;
         this.node = node;
         this.argNames = argNames;
@@ -52,10 +52,13 @@ class JsFunctionNode extends JsFunction {
 
     @Override
     public Object call(Context callerContext, Object... args) {
-        if (callerContext == null) { // static methods e.g. Array.from(), Function.call()
-            callerContext = declaredContext;
+        final DefaultContext mergedContext;
+        if (callerContext instanceof DefaultContext dc) {
+            mergedContext = dc;
+        } else {
+            mergedContext = declaredContext;
         }
-        Context functionContext = new Context(callerContext, node) {
+        DefaultContext functionContext = new DefaultContext(mergedContext, node) {
             @Override
             public Object get(String name) {
                 if ("arguments".equals(name)) {
@@ -90,7 +93,7 @@ class JsFunctionNode extends JsFunction {
         Object result = Interpreter.eval(body, functionContext);
         // exit function, only propagate error
         if (functionContext.isError()) {
-            callerContext.updateFrom(functionContext);
+            mergedContext.updateFrom(functionContext);
         }
         functionContext.event(Event.Type.CONTEXT_EXIT, node);
         return body.type == NodeType.BLOCK ? functionContext.getReturnValue() : result;

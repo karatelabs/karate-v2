@@ -48,7 +48,7 @@ class JsArray extends JsObject {
                     case "map" -> (JsCallable) (context, args) -> {
                         List<Object> results = new ArrayList<>();
                         JsCallable callable = toCallable(args);
-                        for (KeyValue kv : toIterable(context.thisObject)) {
+                        for (KeyValue kv : toIterable(context.getThisObject())) {
                             Object result = callable.call(context, kv.value, kv.index);
                             results.add(result);
                         }
@@ -57,7 +57,7 @@ class JsArray extends JsObject {
                     case "filter" -> (JsCallable) (context, args) -> {
                         List<Object> results = new ArrayList<>();
                         JsCallable callable = toCallable(args);
-                        for (KeyValue kv : toIterable(context.thisObject)) {
+                        for (KeyValue kv : toIterable(context.getThisObject())) {
                             Object result = callable.call(context, kv.value, kv.index);
                             if (Terms.isTruthy(result)) {
                                 results.add(kv.value);
@@ -73,7 +73,7 @@ class JsArray extends JsObject {
                         } else {
                             delimiter = ",";
                         }
-                        for (KeyValue kv : toIterable(context.thisObject)) {
+                        for (KeyValue kv : toIterable(context.getThisObject())) {
                             if (!sb.isEmpty()) {
                                 sb.append(delimiter);
                             }
@@ -83,7 +83,7 @@ class JsArray extends JsObject {
                     };
                     case "find" -> (JsCallable) (context, args) -> {
                         JsCallable callable = toCallable(args);
-                        for (KeyValue kv : toIterable(context.thisObject)) {
+                        for (KeyValue kv : toIterable(context.getThisObject())) {
                             Object result = callable.call(context, kv.value, kv.index);
                             if (Terms.isTruthy(result)) {
                                 return kv.value;
@@ -93,7 +93,7 @@ class JsArray extends JsObject {
                     };
                     case "findIndex" -> (JsCallable) (context, args) -> {
                         JsCallable callable = toCallable(args);
-                        for (KeyValue kv : toIterable(context.thisObject)) {
+                        for (KeyValue kv : toIterable(context.getThisObject())) {
                             Object result = callable.call(context, kv.value, kv.index);
                             if (Terms.isTruthy(result)) {
                                 return kv.index;
@@ -116,7 +116,7 @@ class JsArray extends JsObject {
                         return result;
                     };
                     case "includes" -> (JsCallable) (context, args) -> {
-                        for (KeyValue kv : toIterable(context.thisObject)) {
+                        for (KeyValue kv : toIterable(context.getThisObject())) {
                             if (Terms.eq(kv.value, args[0], false)) {
                                 return true;
                             }
@@ -177,9 +177,11 @@ class JsArray extends JsObject {
                     };
                     case "forEach" -> (JsCallable) (context, args) -> {
                         JsCallable callable = toCallable(args);
-                        for (KeyValue kv : toIterable(context.thisObject)) {
-                            context.iterationIndex = kv.index;
-                            callable.call(context, kv.value, kv.index, context.thisObject);
+                        for (KeyValue kv : toIterable(context.getThisObject())) {
+                            if (context instanceof DefaultContext dc) {
+                                dc.iteration = kv.index;
+                            }
+                            callable.call(context, kv.value, kv.index, context.getThisObject());
                         }
                         return Terms.UNDEFINED;
                     };
@@ -203,7 +205,7 @@ class JsArray extends JsObject {
                             return true;
                         }
                         JsCallable callable = toCallable(args);
-                        for (KeyValue kv : toIterable(context.thisObject)) {
+                        for (KeyValue kv : toIterable(context.getThisObject())) {
                             Object result = callable.call(context, kv.value, kv.index, thisArray);
                             if (!Terms.isTruthy(result)) {
                                 return false;
@@ -217,7 +219,7 @@ class JsArray extends JsObject {
                             return false;
                         }
                         JsCallable callable = toCallable(args);
-                        for (KeyValue kv : toIterable(context.thisObject)) {
+                        for (KeyValue kv : toIterable(context.getThisObject())) {
                             Object result = callable.call(context, kv.value, kv.index, thisArray);
                             if (Terms.isTruthy(result)) {
                                 return true;
@@ -335,7 +337,7 @@ class JsArray extends JsObject {
                     };
                     case "fill" -> (JsCallable) (context, args) -> {
                         if (args.length == 0) {
-                            return context.thisObject;
+                            return context.getThisObject();
                         }
                         List<Object> thisArray = cast(context);
                         int size = thisArray.size();
@@ -631,7 +633,7 @@ class JsArray extends JsObject {
                         }
                         JsCallable callable = toCallable(args);
                         Map<String, List<Object>> groups = new HashMap<>();
-                        for (KeyValue kv : toIterable(context.thisObject)) {
+                        for (KeyValue kv : toIterable(context.getThisObject())) {
                             Object key = callable.call(context, kv.value, kv.index, thisArray);
                             String keyStr = key == null ? "null" : key.toString();
                             if (!groups.containsKey(keyStr)) {
@@ -700,8 +702,9 @@ class JsArray extends JsObject {
 
     @SuppressWarnings("unchecked")
     List<Object> cast(Context context) {
-        if (context.thisObject instanceof List) {
-            return (List<Object>) context.thisObject;
+        Object thisObject = context.getThisObject();
+        if (thisObject instanceof List) {
+            return (List<Object>) thisObject;
         }
         return list;
     }

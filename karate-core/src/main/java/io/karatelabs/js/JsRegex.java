@@ -214,8 +214,8 @@ class JsRegex extends JsObject {
                             return false;
                         }
                         JsRegex regex = JsRegex.this;
-                        if (context.thisObject instanceof JsRegex) {
-                            regex = (JsRegex) context.thisObject;
+                        if (context.getThisObject() instanceof JsRegex jr) {
+                            regex = jr;
                         }
                         return regex.test(args[0].toString());
                     };
@@ -224,8 +224,8 @@ class JsRegex extends JsObject {
                             return null;
                         }
                         JsRegex regex = JsRegex.this;
-                        if (context.thisObject instanceof JsRegex) {
-                            regex = (JsRegex) context.thisObject;
+                        if (context.getThisObject() instanceof JsRegex jr) {
+                            regex = jr;
                         }
                         return regex.exec(args[0].toString());
                     };
