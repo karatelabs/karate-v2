@@ -105,12 +105,15 @@ public class Markup {
     }
 
     public static Markup init(Engine engine, ResourceResolver resolver) {
-        return init(engine, resolver, null);
+        MarkupConfig config = new MarkupConfig();
+        config.setResolver(resolver);
+        config.setDevMode(true);
+        return init(engine, config);
     }
 
-    public static Markup init(Engine engine, ResourceResolver resolver, String contextPath) {
-        Markup markup = new Markup(engine, new KarateProcessorDialect(resolver, contextPath));
-        markup.wrapped.setTemplateResolver(new HtmlTemplateResolver(resolver));
+    public static Markup init(Engine engine, MarkupConfig config) {
+        Markup markup = new Markup(engine, new KarateProcessorDialect(config));
+        markup.wrapped.setTemplateResolver(new HtmlTemplateResolver(config));
         return markup;
     }
 

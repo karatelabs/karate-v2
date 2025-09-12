@@ -65,9 +65,8 @@ class ContextRoot extends DefaultContext {
             return true;
         }
         return switch (name) {
-            case "console", "parseInt", "parseFloat", "undefined", "Array", "Date", "Error", "Infinity", "Java", "JSON",
-                 "Math",
-                 "NaN", "Number", "Boolean", "Object", "RegExp", "String", "TypeError" -> true;
+            case "console", "parseInt", "parseFloat", "undefined", "Array", "Date", "Error", "Infinity", "Java",
+                 "JSON", "Math", "NaN", "Number", "Boolean", "Object", "RegExp", "String", "TypeError" -> true;
             default -> false;
         };
     }

@@ -25,7 +25,7 @@ package io.karatelabs.match;
 
 import io.karatelabs.js.Engine;
 
-public class Context {
+public class MatchContext {
 
     final Engine engine;
     final Operation root;
@@ -35,7 +35,7 @@ public class Context {
     final String name;
     final int index;
 
-    Context(Engine engine, Operation root, boolean xml, int depth, String path, String name, int index) {
+    MatchContext(Engine engine, Operation root, boolean xml, int depth, String path, String name, int index) {
         this.engine = engine;
         this.root = root;
         this.xml = xml;
@@ -45,22 +45,22 @@ public class Context {
         this.index = index;
     }
 
-    Context descend(String name) {
+    MatchContext descend(String name) {
         if (xml) {
             String childPath = path.endsWith("/@") ? path + name : (depth == 0 ? "" : path) + "/" + name;
-            return new Context(engine, root, xml, depth + 1, childPath, name, -1);
+            return new MatchContext(engine, root, xml, depth + 1, childPath, name, -1);
         } else {
             boolean needsQuotes = name.indexOf('-') != -1 || name.indexOf(' ') != -1 || name.indexOf('.') != -1;
             String childPath = needsQuotes ? path + "['" + name + "']" : path + '.' + name;
-            return new Context(engine, root, xml, depth + 1, childPath, name, -1);
+            return new MatchContext(engine, root, xml, depth + 1, childPath, name, -1);
         }
     }
 
-    Context descend(int index) {
+    MatchContext descend(int index) {
         if (xml) {
-            return new Context(engine, root, xml, depth + 1, path + "[" + (index + 1) + "]", name, index);
+            return new MatchContext(engine, root, xml, depth + 1, path + "[" + (index + 1) + "]", name, index);
         } else {
-            return new Context(engine, root, xml, depth + 1, path + "[" + index + "]", name, index);
+            return new MatchContext(engine, root, xml, depth + 1, path + "[" + index + "]", name, index);
         }
     }
 

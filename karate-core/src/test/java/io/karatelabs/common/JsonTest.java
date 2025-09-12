@@ -14,7 +14,7 @@ class JsonTest {
     static final Logger logger = LoggerFactory.getLogger(JsonTest.class);
 
     private void match(Json json, String expected) {
-        Map<String, Object> mr = Match.evaluate(json.value())._equals(expected);
+        Map<String, Object> mr = Match.evaluate(json.value(), null)._equals(expected);
         boolean pass = (Boolean) mr.get("pass");
         String message = (String) mr.get("message");
         assertTrue(pass, message);

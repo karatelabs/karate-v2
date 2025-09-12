@@ -29,18 +29,21 @@ import io.karatelabs.common.Xml;
 import io.karatelabs.io.http.ApacheHttpClient;
 import io.karatelabs.io.http.HttpClient;
 import io.karatelabs.io.http.HttpRequestBuilder;
+import io.karatelabs.js.Context;
 import io.karatelabs.js.Engine;
 import io.karatelabs.js.Invokable;
 import io.karatelabs.js.SimpleObject;
 import io.karatelabs.markup.Markup;
 import io.karatelabs.markup.ResourceResolver;
 import io.karatelabs.match.Match;
+import io.karatelabs.match.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Node;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class KarateJs implements SimpleObject {
@@ -54,6 +57,7 @@ public class KarateJs implements SimpleObject {
     private ResourceResolver resolver;
     private Markup _markup;
     private Consumer<String> onDoc;
+    private BiConsumer<Context, Result> onMatch;
 
     private final Invokable read;
 
@@ -73,10 +77,7 @@ public class KarateJs implements SimpleObject {
             Resource resource = root.resolve((args[0] + ""));
             return switch (resource.getExtension()) {
                 case "json" -> Json.of(resource.getText()).value();
-                case "js" -> {
-                    String js = resource.getText();
-                    yield engine.eval(js);
-                }
+                case "js" -> engine.eval(resource.getText());
                 default -> resource.getText();
             };
         };
@@ -85,7 +86,7 @@ public class KarateJs implements SimpleObject {
         engine.put("match", match(true));
     }
 
-    private Markup markup() {
+    public Markup markup() {
         if (_markup == null) {
             if (resolver != null) {
                 _markup = Markup.init(engine, resolver);
@@ -102,6 +103,10 @@ public class KarateJs implements SimpleObject {
 
     public void setResourceResolver(ResourceResolver resolver) {
         this.resolver = resolver;
+    }
+
+    public void setOnMatch(BiConsumer<Context, Result> onMatch) {
+        this.onMatch = onMatch;
     }
 
     @SuppressWarnings("unchecked")
@@ -126,7 +131,13 @@ public class KarateJs implements SimpleObject {
             if (read == null) {
                 throw new RuntimeException("doc() read arg should not be null");
             }
-            String html = markup().processPath(read, null);
+            Map<String, Object> vars;
+            if (args.length > 1) {
+                vars = (Map<String, Object>) args[1];
+            } else {
+                vars = null;
+            }
+            String html = markup().processPath(read, vars);
             onDoc.accept(html);
             return null;
         };
@@ -165,12 +176,16 @@ public class KarateJs implements SimpleObject {
         };
     }
 
-    private Invokable match(boolean exceptionOnMatchFailure) {
+    private Invokable match(boolean keyword) {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("match() needs at least one argument");
             }
-            return exceptionOnMatchFailure ? Match.that(args[0]) : Match.evaluate(args[0]);
+            return Match.evaluate(args[0], (context, result) -> {
+                if (keyword && onMatch != null) {
+                    onMatch.accept(context, result);
+                }
+            });
         };
     }
 

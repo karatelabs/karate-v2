@@ -51,7 +51,7 @@ class DefaultContext implements Context {
     }
 
     DefaultContext(DefaultContext parent, Node node) {
-        this(parent.root, parent, parent.getDepth() + 1, node, null);
+        this(parent.root, parent, parent.depth + 1, node, null);
     }
 
     void event(Event.Type type, Node node) {

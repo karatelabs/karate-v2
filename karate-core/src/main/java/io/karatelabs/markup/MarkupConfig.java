@@ -23,30 +23,34 @@
  */
 package io.karatelabs.markup;
 
-import org.thymeleaf.dialect.AbstractProcessorDialect;
-import org.thymeleaf.processor.IProcessor;
+public class MarkupConfig {
 
-import java.util.HashSet;
-import java.util.Set;
+    private ResourceResolver resolver;
+    private String contextPath;
+    private boolean devMode;
 
-class KarateProcessorDialect extends AbstractProcessorDialect {
-
-    private final ResourceResolver resolver;
-    private final String contextPath;
-
-    KarateProcessorDialect(MarkupConfig config) {
-        super("karate", "ka", 2000); // has to be processed after standard (default) dialect which is 1000
-        this.resolver = config.getResolver();
-        this.contextPath = config.getContextPath();
+    public void setResolver(ResourceResolver resolver) {
+        this.resolver = resolver;
     }
 
-    @Override
-    public Set<IProcessor> getProcessors(String dialectPrefix) {
-        Set<IProcessor> ps = new HashSet<>();
-        ps.add(new KarateScriptSrcAttributeProcessor(dialectPrefix, resolver, contextPath));
-        ps.add(new KarateScriptBodyProcessor(dialectPrefix));
-        ps.add(new KarateSetAttrProcessor(dialectPrefix));
-        return ps;
+    public ResourceResolver getResolver() {
+        return resolver;
+    }
+
+    public String getContextPath() {
+        return contextPath;
+    }
+
+    public void setContextPath(String contextPath) {
+        this.contextPath = contextPath;
+    }
+
+    public boolean isDevMode() {
+        return devMode;
+    }
+
+    public void setDevMode(boolean devMode) {
+        this.devMode = devMode;
     }
 
 }

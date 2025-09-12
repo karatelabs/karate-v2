@@ -183,28 +183,28 @@ abstract class Parser {
             Node node = marker.node;
             switch (shift) {
                 case LEFT:
-                    Node prev = parent.children.removeFirst(); // remove previous sibling
-                    node.children.addFirst(prev); // and make it the first child
-                    parent.children.add(node);
+                    Node prev = parent.removeFirst(); // remove previous sibling
+                    node.addFirst(prev); // and make it the first child
+                    parent.add(node);
                     break;
                 case NONE:
-                    parent.children.add(node);
+                    parent.add(node);
                     break;
                 case RIGHT:
-                    Node prevSibling = parent.children.removeFirst(); // remove previous sibling
+                    Node prevSibling = parent.removeFirst(); // remove previous sibling
                     if (prevSibling.type == node.type) {
                         Node newNode = new Node(node.type);
-                        parent.children.add(newNode);
-                        newNode.children.add(prevSibling.children.get(0)); // prev lhs
-                        newNode.children.add(prevSibling.children.get(1)); // operator
+                        parent.add(newNode);
+                        newNode.add(prevSibling.get(0)); // prev lhs
+                        newNode.add(prevSibling.get(1)); // operator
                         Node newRhs = new Node(node.type);
-                        newNode.children.add(newRhs);
-                        newRhs.children.add(prevSibling.children.get(2)); // prev rhs becomes current lhs
-                        newRhs.children.add(node.children.get(0)); // operator
-                        newRhs.children.add(node.children.get(1)); // current rhs
+                        newNode.add(newRhs);
+                        newRhs.add(prevSibling.get(2)); // prev rhs becomes current lhs
+                        newRhs.add(node.get(0)); // operator
+                        newRhs.add(node.get(1)); // current rhs
                     } else {
-                        node.children.addFirst(prevSibling); // move previous sibling to first child
-                        parent.children.add(node);
+                        node.addFirst(prevSibling); // move previous sibling to first child
+                        parent.add(node);
                     }
             }
         } else {
@@ -323,11 +323,11 @@ abstract class Parser {
     }
 
     TokenType lastConsumed() {
-        return marker.node.children.getLast().token.type;
+        return marker.node.getLast().token.type;
     }
 
     void consumeNext() {
-        marker.node.children.add(new Node(next()));
+        marker.node.add(new Node(next()));
     }
 
     Token next() {

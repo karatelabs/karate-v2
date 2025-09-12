@@ -58,15 +58,15 @@ class JsProperty {
                 break;
             case REF_DOT_EXPR:
                 Object tempObject;
-                if (node.children.get(1).type == NodeType.TOKEN) { // normal dot or optional
-                    optional = node.children.get(1).token.type == TokenType.QUES_DOT;
-                    name = node.children.get(2).getText();
+                if (node.get(1).type == NodeType.TOKEN) { // normal dot or optional
+                    optional = node.get(1).token.type == TokenType.QUES_DOT;
+                    name = node.get(2).getText();
                     try {
-                        tempObject = Interpreter.eval(node.children.getFirst(), context);
+                        tempObject = Interpreter.eval(node.getFirst(), context);
                     } catch (Exception e) {
                         if (context.root.javaBridge != null) {
                             // try java interop
-                            String base = node.children.getFirst().getText();
+                            String base = node.getFirst().getText();
                             String path = base + "." + name;
                             if (context.root.javaBridge.typeExists(path)) {
                                 tempObject = new JavaClass(context.root.javaBridge, path);
@@ -80,16 +80,16 @@ class JsProperty {
                             tempObject = null;
                         }
                         if (tempObject == null) {
-                            throw new RuntimeException("expression: " + node.children.getFirst().getText() + " - " + e.getMessage());
+                            throw new RuntimeException("expression: " + node.getFirst().getText() + " - " + e.getMessage());
                         }
                     }
                 } else {
                     optional = true;
-                    if (node.children.get(1).type == NodeType.REF_BRACKET_EXPR) { // optional bracket
-                        tempObject = Interpreter.eval(node.children.getFirst(), context);
-                        index = Interpreter.eval(node.children.get(1).children.get(2), context);
+                    if (node.get(1).type == NodeType.REF_BRACKET_EXPR) { // optional bracket
+                        tempObject = Interpreter.eval(node.getFirst(), context);
+                        index = Interpreter.eval(node.get(1).get(2), context);
                     } else { // optional function call
-                        tempObject = Interpreter.eval(node.children.getFirst(), context); // evalFnCall
+                        tempObject = Interpreter.eval(node.getFirst(), context); // evalFnCall
                     }
                 }
                 if (functionCall) {
@@ -101,14 +101,14 @@ class JsProperty {
                 object = tempObject;
                 break;
             case REF_BRACKET_EXPR:
-                object = Interpreter.eval(node.children.getFirst(), context);
-                index = Interpreter.eval(node.children.get(2), context);
+                object = Interpreter.eval(node.getFirst(), context);
+                index = Interpreter.eval(node.get(2), context);
                 break;
             case LIT_EXPR: // so MATH_PRE_EXP can call set() to update variable value
                 object = Interpreter.eval(node, context);
                 break;
             case PAREN_EXPR: // expression wrapped in round brackets that is invoked as a function, e.g., iife
-                object = Interpreter.eval(node.children.get(1), context);
+                object = Interpreter.eval(node.get(1), context);
                 break;
             case FN_CALL_EXPR: // currying
                 object = Interpreter.eval(node, context);

@@ -38,7 +38,7 @@ public class Operation {
 
     static final String REGEX = "regex";
 
-    final Context context;
+    final MatchContext context;
     final Match.Type type;
     final Value actual;
     final Value expected;
@@ -56,11 +56,11 @@ public class Operation {
         this(engine, null, type, actual, expected, false);
     }
 
-    Operation(Context context, Match.Type type, Value actual, Value expected, boolean matchEachEmptyAllowed) {
+    Operation(MatchContext context, Match.Type type, Value actual, Value expected, boolean matchEachEmptyAllowed) {
         this(null, context, type, actual, expected, matchEachEmptyAllowed);
     }
 
-    private Operation(Engine engine, Context context, Match.Type type, Value actual, Value expected, boolean matchEachEmptyAllowed) {
+    private Operation(Engine engine, MatchContext context, Match.Type type, Value actual, Value expected, boolean matchEachEmptyAllowed) {
         this.type = type;
         this.actual = actual;
         this.expected = expected;
@@ -71,9 +71,9 @@ public class Operation {
             }
             this.failures = new ArrayList<>();
             if (actual.isXml()) {
-                this.context = new Context(engine, this, true, 0, "/", "", -1);
+                this.context = new MatchContext(engine, this, true, 0, "/", "", -1);
             } else {
-                this.context = new Context(engine, this, false, 0, "$", "", -1);
+                this.context = new MatchContext(engine, this, false, 0, "$", "", -1);
             }
         } else {
             this.context = context;

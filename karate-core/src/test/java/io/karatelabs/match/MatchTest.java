@@ -44,7 +44,7 @@ class MatchTest {
     }
 
     private void match(Object actual, Match.Type mt, Object expected, boolean fails) {
-        Map<String, Object> mr = Match.evaluate(actual).is(mt, expected);
+        Map<String, Object> mr = Match.evaluate(actual, null).is(mt, expected);
         pass = (Boolean) mr.get("pass");
         message = (String) mr.get("message");
         if (!fails) {

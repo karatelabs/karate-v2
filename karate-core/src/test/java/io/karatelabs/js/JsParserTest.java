@@ -18,7 +18,7 @@ class JsParserTest {
             child = node;
         } else {
             Node found = node.findFirst(type);
-            child = found.children.getFirst();
+            child = found.getFirst();
         }
         NodeUtils.assertEquals(text, child, json);
     }

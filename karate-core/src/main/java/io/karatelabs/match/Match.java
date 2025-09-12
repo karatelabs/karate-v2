@@ -23,6 +23,10 @@
  */
 package io.karatelabs.match;
 
+import io.karatelabs.js.Context;
+
+import java.util.function.BiConsumer;
+
 public class Match {
 
     public enum Type {
@@ -46,12 +50,16 @@ public class Match {
 
     }
 
-    public static Value evaluate(Object actual) {
-        return new Value(Value.parseIfJsonOrXmlString(actual), false);
+    public static Value evaluate(Object actual, BiConsumer<Context, Result> onResult) {
+        return new Value(Value.parseIfJsonOrXmlString(actual), onResult);
     }
 
     public static Value that(Object actual) {
-        return new Value(Value.parseIfJsonOrXmlString(actual), true);
+        return new Value(Value.parseIfJsonOrXmlString(actual), (context, result) -> {
+            if (!result.pass) {
+                throw new RuntimeException(result.message);
+            }
+        });
     }
 
 }

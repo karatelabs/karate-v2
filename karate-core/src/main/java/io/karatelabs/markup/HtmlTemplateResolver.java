@@ -33,7 +33,6 @@ import org.thymeleaf.templatemode.TemplateMode;
 import org.thymeleaf.templateresolver.ITemplateResolver;
 import org.thymeleaf.templateresolver.TemplateResolution;
 
-import java.util.HashMap;
 import java.util.Map;
 
 class HtmlTemplateResolver implements ITemplateResolver {
@@ -41,11 +40,13 @@ class HtmlTemplateResolver implements ITemplateResolver {
     private static final Logger logger = LoggerFactory.getLogger(HtmlTemplateResolver.class);
 
     private final ResourceResolver resolver;
+    private final boolean devMode;
     private boolean doneWithStringTemplate;
     private Resource prevCaller;
 
-    HtmlTemplateResolver(ResourceResolver resolver) {
-        this.resolver = resolver;
+    HtmlTemplateResolver(MarkupConfig config) {
+        resolver = config.getResolver();
+        devMode = config.isDevMode();
     }
 
     @Override
@@ -77,8 +78,8 @@ class HtmlTemplateResolver implements ITemplateResolver {
             Resource resource = resolver.resolve(content, caller);
             prevCaller = resource;
             HtmlTemplateResource templateResource = new HtmlTemplateResource(ownerTemplate, resource);
-            // TODO dev mode non cacheable
-            return new TemplateResolution(templateResource, TemplateMode.HTML, AlwaysValidCacheEntryValidity.INSTANCE);
+            return new TemplateResolution(templateResource, TemplateMode.HTML,
+                    devMode ? NonCacheableCacheEntryValidity.INSTANCE : AlwaysValidCacheEntryValidity.INSTANCE);
         }
     }
 

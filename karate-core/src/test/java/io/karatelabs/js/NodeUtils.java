@@ -91,24 +91,24 @@ public class NodeUtils {
     public static Object ser(Node node) {
         switch (node.type) {
             case PAREN_EXPR:
-                return ser(node.children.get(1));
+                return ser(node.get(1));
             case OBJECT_ELEM:
-                if (node.children.size() < 3) { // es6 enhanced object literals
-                    return ser(node.children.getFirst());
+                if (node.size() < 3) { // es6 enhanced object literals
+                    return ser(node.getFirst());
                 } else {
-                    return List.of(ser(node.children.get(0)) + ":", ser(node.children.get(2)));
+                    return List.of(ser(node.get(0)) + ":", ser(node.get(2)));
                 }
             case ARRAY_ELEM:
-                return ser(node.children.get(0));
+                return ser(node.get(0));
             case PROGRAM:
             case ROOT:
                 // include key in serialized output
                 String key = node.type.name();
-                if (node.children.size() == 1) {
-                    return Collections.singletonMap(key, ser(node.children.get(0)));
+                if (node.size() == 1) {
+                    return Collections.singletonMap(key, ser(node.get(0)));
                 } else {
-                    List<Object> list = new ArrayList<>(node.children.size());
-                    for (Node child : node.children) {
+                    List<Object> list = new ArrayList<>(node.size());
+                    for (Node child : node) {
                         list.add(ser(child));
                     }
                     return Collections.singletonMap(key, list);
@@ -128,11 +128,11 @@ public class NodeUtils {
                         return node.token.text;
                 }
             default:
-                if (node.children.size() == 1) {
-                    return ser(node.children.get(0));
+                if (node.size() == 1) {
+                    return ser(node.get(0));
                 } else {
                     List<Object> list = new ArrayList<>();
-                    for (Node child : node.children) {
+                    for (Node child : node) {
                         list.add(ser(child));
                     }
                     return list;
@@ -163,7 +163,7 @@ public class NodeUtils {
     private static void recurse(StringBuilder sb, int level, Node node) {
         spaces(sb, level);
         sb.append(node).append('\n');
-        for (Node child : node.children) {
+        for (Node child : node) {
             recurse(sb, level + 1, child);
         }
     }

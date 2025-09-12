@@ -73,8 +73,8 @@ class EngineTest {
                 """;
         JsParser parser = new JsParser(Resource.text(js));
         Node node = parser.parse();
-        assertEquals(2, node.children.size());
-        for (Node child : node.children) {
+        assertEquals(2, node.size());
+        for (Node child : node) {
             assertEquals(NodeType.STATEMENT, child.type);
         }
     }
@@ -281,7 +281,7 @@ class EngineTest {
         JsParser parser = new JsParser(resource);
         Node node = parser.parse();
         assertTrue(node.getFirstToken().getComments().isEmpty());
-        Node secondStatement = node.children.get(1);
+        Node secondStatement = node.get(1);
         Token thenFirst = secondStatement.getFirstToken();
         assertEquals("// hello world", thenFirst.comments.getFirst().text);
     }

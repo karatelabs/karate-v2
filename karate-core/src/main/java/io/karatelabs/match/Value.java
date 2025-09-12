@@ -25,12 +25,14 @@ package io.karatelabs.match;
 
 import io.karatelabs.common.Json;
 import io.karatelabs.common.Xml;
-import io.karatelabs.js.Invokable;
+import io.karatelabs.js.Context;
+import io.karatelabs.js.JsCallable;
 import io.karatelabs.js.SimpleObject;
 import org.w3c.dom.Node;
 
 import java.lang.reflect.Array;
 import java.util.*;
+import java.util.function.BiConsumer;
 
 public class Value implements SimpleObject {
 
@@ -47,15 +49,17 @@ public class Value implements SimpleObject {
     }
 
     final Type type;
-    final boolean exceptionOnMatchFailure;
+    final BiConsumer<Context, Result> onResult;
 
     private final Object value;
 
+    private Context context;
+
     Value(Object value) {
-        this(value, false);
+        this(value, null);
     }
 
-    Value(Object value, boolean exceptionOnMatchFailure) {
+    Value(Object value, BiConsumer<Context, Result> onResult) {
         if (value instanceof Set<?> set) {
             value = new ArrayList<Object>(set);
         } else if (value != null && value.getClass().isArray()) {
@@ -67,7 +71,7 @@ public class Value implements SimpleObject {
             value = list;
         }
         this.value = value;
-        this.exceptionOnMatchFailure = exceptionOnMatchFailure;
+        this.onResult = onResult;
         if (value == null) {
             type = Type.NULL;
         } else if (value instanceof Node) {
@@ -193,7 +197,7 @@ public class Value implements SimpleObject {
             for (String key : remainder) {
                 result.put(key, source.get(key));
             }
-            return new Value(result, other.exceptionOnMatchFailure);
+            return new Value(result, other.onResult);
         } else {
             return this;
         }
@@ -205,16 +209,18 @@ public class Value implements SimpleObject {
     }
 
     public Map<String, Object> is(Match.Type matchType, Object expected) {
-        Operation op = new Operation(matchType, this, new Value(parseIfJsonOrXmlString(expected), exceptionOnMatchFailure));
+        Operation op = new Operation(matchType, this, new Value(parseIfJsonOrXmlString(expected), onResult));
         op.execute();
+        Result result;
         if (op.pass) {
-            return Result.PASS.toMap();
+            result = Result.PASS;
         } else {
-            if (exceptionOnMatchFailure) {
-                throw new RuntimeException(op.getFailureReasons());
-            }
-            return Result.fail(op.getFailureReasons()).toMap();
+            result = Result.fail(op.getFailureReasons());
         }
+        if (onResult != null) {
+            onResult.accept(context, result);
+        }
+        return result.toMap();
     }
 
     static Object parseIfJsonOrXmlString(Object o) {
@@ -296,24 +302,31 @@ public class Value implements SimpleObject {
         return is(Match.Type.EACH_CONTAINS_ANY, expected);
     }
 
+    JsCallable call(Match.Type matchType) {
+        return (context, args) -> {
+            Value.this.context = context;
+            return is(matchType, args[0]);
+        };
+    }
+
     @Override
     public Object get(String name) {
         return switch (name) {
-            case "equals" -> (Invokable) args -> _equals(args[0]);
-            case "contains" -> (Invokable) args -> contains(args[0]);
-            case "containsDeep" -> (Invokable) args -> containsDeep(args[0]);
-            case "containsOnly" -> (Invokable) args -> containsOnly(args[0]);
-            case "containsOnlyDeep" -> (Invokable) args -> containsOnlyDeep(args[0]);
-            case "containsAny" -> (Invokable) args -> containsAny(args[0]);
-            case "notEquals" -> (Invokable) args -> notEquals(args[0]);
-            case "eachEquals" -> (Invokable) args -> eachEquals(args[0]);
-            case "notContains" -> (Invokable) args -> notContains(args[0]);
-            case "eachNotEquals" -> (Invokable) args -> eachNotEquals(args[0]);
-            case "eachContains" -> (Invokable) args -> eachContains(args[0]);
-            case "eachNotContains" -> (Invokable) args -> eachNotContains(args[0]);
-            case "eachContainsDeep" -> (Invokable) args -> eachContainsDeep(args[0]);
-            case "eachContainsOnly" -> (Invokable) args -> eachContainsOnly(args[0]);
-            case "eachContainsAny" -> (Invokable) args -> eachContainsAny(args[0]);
+            case "equals" -> call(Match.Type.EQUALS);
+            case "contains" -> call(Match.Type.CONTAINS);
+            case "containsDeep" -> call(Match.Type.CONTAINS_DEEP);
+            case "containsOnly" -> call(Match.Type.CONTAINS_ONLY);
+            case "containsOnlyDeep" -> call(Match.Type.CONTAINS_ONLY_DEEP);
+            case "containsAny" -> call(Match.Type.CONTAINS_ANY);
+            case "notEquals" -> call(Match.Type.NOT_EQUALS);
+            case "eachEquals" -> call(Match.Type.EACH_EQUALS);
+            case "notContains" -> call(Match.Type.NOT_CONTAINS);
+            case "eachNotEquals" -> call(Match.Type.EACH_NOT_EQUALS);
+            case "eachContains" -> call(Match.Type.EACH_CONTAINS);
+            case "eachNotContains" -> call(Match.Type.EACH_NOT_CONTAINS);
+            case "eachContainsDeep" -> call(Match.Type.EACH_CONTAINS_DEEP);
+            case "eachContainsOnly" -> call(Match.Type.EACH_CONTAINS_ONLY);
+            case "eachContainsAny" -> call(Match.Type.EACH_CONTAINS_ANY);
             default -> throw new RuntimeException("no such match api: " + name);
         };
     }

@@ -27,15 +27,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
-public class Node {
+public class Node implements Iterable<Node> {
 
     static final Logger logger = LoggerFactory.getLogger(Node.class);
 
     public final NodeType type;
     public final Token token;
-    public final List<Node> children = new ArrayList<>();
+    private final List<Node> children = new ArrayList<>();
+
+    private Node parent;
 
     public Node(NodeType type) {
         this.type = type;
@@ -45,6 +48,10 @@ public class Node {
     public Node(Token token) {
         this.token = token;
         type = NodeType.TOKEN;
+    }
+
+    public Node getParent() {
+        return parent;
     }
 
     public boolean isToken() {
@@ -175,6 +182,41 @@ public class Node {
         Token last = getLastToken();
         int end = ((int) last.pos) + last.text.length();
         return last.resource.getText().substring(start, end);
+    }
+
+    Node removeFirst() {
+        return children.removeFirst();
+    }
+
+    void addFirst(Node child) {
+        child.parent = this;
+        children.addFirst(child);
+    }
+
+    void add(Node child) {
+        child.parent = this;
+        children.add(child);
+    }
+
+    Node getFirst() {
+        return children.getFirst();
+    }
+
+    Node getLast() {
+        return children.getLast();
+    }
+
+    Node get(int index) {
+        return children.get(index);
+    }
+
+    int size() {
+        return children.size();
+    }
+
+    @Override
+    public Iterator<Node> iterator() {
+        return children.iterator();
     }
 
 }
