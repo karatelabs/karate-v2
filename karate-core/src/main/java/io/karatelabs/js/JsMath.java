@@ -92,7 +92,13 @@ class JsMath extends JsObject {
                     case "random" -> (Invokable) args -> Math.random();
                     case "round" -> (Invokable) args -> {
                         Number x = Terms.objectToNumber(args[0]);
-                        return Terms.narrow(Math.round(x.doubleValue()));
+                        double value = x.doubleValue();
+                        // js Math.round is "half up"
+                        if (value < 0) {
+                            return Terms.narrow(Math.ceil(value - 0.5));
+                        } else {
+                            return Terms.narrow(Math.floor(value + 0.5));
+                        }
                     };
                     case "sign" -> (Invokable) args -> {
                         Number x = Terms.objectToNumber(args[0]);

@@ -31,6 +31,9 @@ class JsNumber extends JsObject implements JavaMirror {
 
     final Number value;
 
+    private static final long MAX_SAFE_INTEGER = 9007199254740991L;
+    private static final long MIN_SAFE_INTEGER = -9007199254740991L;
+
     JsNumber() {
         this(0);
     }
@@ -48,6 +51,7 @@ class JsNumber extends JsObject implements JavaMirror {
     public Object toJava() {
         return value;
     }
+
 
     @Override
     Prototype initPrototype() {
@@ -72,12 +76,82 @@ class JsNumber extends JsObject implements JavaMirror {
                         DecimalFormat df = new DecimalFormat(pattern.toString());
                         return df.format(bd.doubleValue());
                     };
+                    case "toPrecision" -> (Invokable) args -> {
+                        double d = value.doubleValue();
+                        if (args.length == 0) {
+                            // same as toString()
+                            return Double.toString(d);
+                        }
+                        int precision = Terms.objectToNumber(args[0]).intValue();
+                        if (precision < 1 || precision > 100) {
+                            throw new RuntimeException("RangeError: precision must be between 1 and 100");
+                        }
+                        // Use BigDecimal for rounding
+                        BigDecimal bd = new BigDecimal(d);
+                        bd = bd.round(new java.math.MathContext(precision, RoundingMode.HALF_UP));
+                        String result = bd.toString();
+                        // Ensure formatting matches JS behavior
+                        // JS switches between plain and exponential depending on magnitude
+                        if (result.contains("E") || result.contains("e")) {
+                            // Already in scientific notation, return as-is
+                            return result.replace('E', 'e');
+                        } else {
+                            // If scientific notation is needed for very large/small values
+                            if ((d != 0.0 && (Math.abs(d) < 1e-6 || Math.abs(d) >= 1e21))) {
+                                return formatPrecision(d, precision);
+                            }
+                            return result;
+                        }
+                    };
                     // static ==========================================================================================
                     case "valueOf" -> (Invokable) args -> value;
+                    case "isFinite" -> (Invokable) args -> {
+                        if (args.length > 0 && args[0] instanceof Number n) {
+                            return Double.isFinite(n.doubleValue());
+                        }
+                        return false;
+                    };
+                    case "isInteger" -> (Invokable) args -> {
+                        if (args.length > 0 && args[0] instanceof Number n) {
+                            double d = n.doubleValue();
+                            return Double.isFinite(d) && Math.floor(d) == d;
+                        }
+                        return false;
+                    };
+                    case "isNaN" -> (Invokable) args -> {
+                        if (args.length > 0 && args[0] instanceof Number n) {
+                            return Double.isNaN(n.doubleValue());
+                        }
+                        return false;
+                    };
+                    case "isSafeInteger" -> (Invokable) args -> {
+                        if (args.length > 0 && args[0] instanceof Number n) {
+                            double d = n.doubleValue();
+                            if (!Double.isFinite(d)) {
+                                return false;
+                            }
+                            long l = (long) d;
+                            return (d == l) && (l >= MIN_SAFE_INTEGER) && (l <= MAX_SAFE_INTEGER);
+                        }
+                        return false;
+                    };
+                    case "EPSILON" -> Math.ulp(1.0);
+                    case "MAX_VALUE" -> Double.MAX_VALUE;
+                    case "MIN_VALUE" -> Double.MIN_VALUE;
+                    case "MAX_SAFE_INTEGER" -> MAX_SAFE_INTEGER;
+                    case "MIN_SAFE_INTEGER" -> MIN_SAFE_INTEGER;
+                    case "POSITIVE_INFINITY" -> Double.POSITIVE_INFINITY;
+                    case "NEGATIVE_INFINITY" -> Double.NEGATIVE_INFINITY;
+                    case "NaN" -> Double.NaN;
                     default -> null;
                 };
             }
         };
+    }
+
+    @SuppressWarnings("MalformedFormatString")
+    private static String formatPrecision(double value, int precision) {
+        return String.format("%." + (precision - 1) + "e", value);
     }
 
     @Override

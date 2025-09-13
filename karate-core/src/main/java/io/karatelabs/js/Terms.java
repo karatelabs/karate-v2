@@ -42,9 +42,6 @@ public class Terms {
         }
     };
 
-    static final Number POSITIVE_INFINITY = Double.POSITIVE_INFINITY;
-    static final Number NEGATIVE_INFINITY = Double.NEGATIVE_INFINITY;
-
     static final Number POSITIVE_ZERO = 0;
     static final Number NEGATIVE_ZERO = -0.0;
 
@@ -233,15 +230,15 @@ public class Terms {
 
     Object div() {
         if (rhs.equals(POSITIVE_ZERO)) {
-            return lhs.doubleValue() > 0 ? POSITIVE_INFINITY : NEGATIVE_INFINITY;
+            return lhs.doubleValue() > 0 ? Double.POSITIVE_INFINITY : Double.NEGATIVE_INFINITY;
         }
         if (rhs.equals(NEGATIVE_ZERO)) {
-            return lhs.doubleValue() < 0 ? POSITIVE_INFINITY : NEGATIVE_INFINITY;
+            return lhs.doubleValue() < 0 ? Double.POSITIVE_INFINITY : Double.NEGATIVE_INFINITY;
         }
-        if (rhs.equals(POSITIVE_INFINITY)) {
+        if (rhs.equals(Double.POSITIVE_INFINITY)) {
             return lhs.doubleValue() > 0 ? POSITIVE_ZERO : NEGATIVE_ZERO;
         }
-        if (rhs.equals(NEGATIVE_INFINITY)) {
+        if (rhs.equals(Double.NEGATIVE_INFINITY)) {
             return lhs.doubleValue() < 0 ? POSITIVE_ZERO : NEGATIVE_ZERO;
         }
         double result = lhs.doubleValue() / rhs.doubleValue();

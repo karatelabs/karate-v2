@@ -81,7 +81,7 @@ class ContextRoot extends DefaultContext {
             case "Array" -> new JsArray();
             case "Date" -> new JsDate();
             case "Error" -> new JsError("Error");
-            case "Infinity" -> Terms.POSITIVE_INFINITY;
+            case "Infinity" -> Double.POSITIVE_INFINITY;
             case "Java" -> (SimpleObject) name -> {
                 if (javaBridge == null) {
                     throw new RuntimeException("java interop not enabled");
