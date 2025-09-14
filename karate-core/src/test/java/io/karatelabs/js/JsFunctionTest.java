@@ -105,6 +105,15 @@ class JsFunctionTest extends EvalBase {
     }
 
     @Test
+    void testFunctionDeclarationDefault() {
+        assertEquals(3, eval("function foo(a, b = 2) { return a + b }; foo(1)"));
+        assertEquals(2, eval("function foo(a, b = 2) { return a + b }; foo(1, 1)"));
+        assertEquals(1, eval("function foo(a, b = 2) { return a + b }; foo(1, null)"));
+        assertEquals(3, eval("function foo(a, b = 2) { return a + b }; foo(1, undefined)"));
+        assertEquals(2, eval("function foo(a, b = a + 1) { return b }; foo(1)"));
+    }
+
+    @Test
     void testCurrying() {
         matchEval("function multiply(a) { return function(b) { return a * b } }; multiply(4)(7)", "28");
     }

@@ -212,6 +212,11 @@ class JsParserTest {
     }
 
     @Test
+    void testFnExprDefaultParams() {
+        expr("function(a = 1){ return a }", "[function,['(',[$a,'=',1],')'],['{',['return',$a],'}']]");
+    }
+
+    @Test
     void testFnCall() {
         expr("a.b()", "[[$a,'.',$b],'(',[],')']");
         expr("foo()", "[$foo,'(',[],')']");

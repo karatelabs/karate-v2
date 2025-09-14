@@ -34,18 +34,13 @@ class Interpreter {
 
     static final Logger logger = LoggerFactory.getLogger(Interpreter.class);
 
-    private static List<String> argNames(Node fnArgs) {
-        List<String> list = new ArrayList<>(fnArgs.size());
+    private static List<Node> fnArgs(Node fnArgs) {
+        List<Node> list = new ArrayList<>(fnArgs.size() - 2);
         for (Node fnArg : fnArgs) {
             if (fnArg.type != NodeType.FN_DECL_ARG) {
                 continue;
             }
-            Node first = fnArg.get(0);
-            if (first.token.type == DOT_DOT_DOT) { // varargs
-                list.add("." + fnArg.get(1).getText());
-            } else {
-                list.add(fnArg.getFirst().getText());
-            }
+            list.add(fnArg);
         }
         return list;
     }
@@ -205,22 +200,22 @@ class Interpreter {
 
     private static Object evalFnExpr(Node node, DefaultContext context) {
         if (node.get(1).token.type == IDENT) {
-            JsFunctionNode fn = new JsFunctionNode(false, node, argNames(node.get(2)), node.getLast(), context);
+            JsFunctionNode fn = new JsFunctionNode(false, node, fnArgs(node.get(2)), node.getLast(), context);
             context.put(node.get(1).getText(), fn);
             return fn;
         } else {
-            return new JsFunctionNode(false, node, argNames(node.get(1)), node.getLast(), context);
+            return new JsFunctionNode(false, node, fnArgs(node.get(1)), node.getLast(), context);
         }
     }
 
     private static Object evalFnArrowExpr(Node node, DefaultContext context) {
-        List<String> argNames;
+        List<Node> argNodes;
         if (node.getFirst().token.type == IDENT) {
-            argNames = Collections.singletonList(node.getFirst().getText());
+            argNodes = Collections.singletonList(node);
         } else {
-            argNames = argNames(node.getFirst());
+            argNodes = fnArgs(node.getFirst());
         }
-        return new JsFunctionNode(true, node, argNames, node.getLast(), context);
+        return new JsFunctionNode(true, node, argNodes, node.getLast(), context);
     }
 
     private static Object evalForStmt(Node node, DefaultContext context) {

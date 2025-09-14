@@ -37,15 +37,15 @@ class JsFunctionNode extends JsFunction {
     final boolean arrow;
     final Node node;
     final Node body; // STATEMENT or BLOCK (that may return expr)
-    final List<String> argNames;
+    final List<Node> argNodes;
     final int argCount;
     final DefaultContext declaredContext;
 
-    public JsFunctionNode(boolean arrow, Node node, List<String> argNames, Node body, DefaultContext declaredContext) {
+    public JsFunctionNode(boolean arrow, Node node, List<Node> argNodes, Node body, DefaultContext declaredContext) {
         this.arrow = arrow;
         this.node = node;
-        this.argNames = argNames;
-        this.argCount = argNames.size();
+        this.argNodes = argNodes;
+        this.argCount = argNodes.size();
         this.body = body;
         this.declaredContext = declaredContext;
     }
@@ -73,21 +73,39 @@ class JsFunctionNode extends JsFunction {
         functionContext.event(Event.Type.CONTEXT_ENTER, node);
         int actualArgCount = Math.min(args.length, argCount);
         for (int i = 0; i < actualArgCount; i++) {
-            String name = argNames.get(i);
-            if (name.charAt(0) == '.') { // varargs hack
+            Node argNode = argNodes.get(i);
+            if (argNode.getFirst().token.type == TokenType.DOT_DOT_DOT) { // varargs
                 List<Object> remainingArgs = new ArrayList<>();
                 for (int j = i; j < args.length; j++) {
                     remainingArgs.add(args[j]);
                 }
-                functionContext.put(name.substring(1), remainingArgs);
+                String argName = argNode.getLast().getText();
+                functionContext.put(argName, remainingArgs);
             } else {
-                functionContext.put(name, args[i]);
+                String argName = argNode.getFirst().getText();
+                Object argValue = args[i];
+                if (argValue == Terms.UNDEFINED) {
+                    // check if default value expression exists
+                    Node exprNode = argNode.getLast();
+                    if (exprNode.type == NodeType.EXPR) {
+                        argValue = Interpreter.eval(exprNode, functionContext);
+                    }
+                }
+                functionContext.put(argName, argValue);
             }
         }
         if (args.length < argCount) {
             for (int i = args.length; i < argCount; i++) {
-                String name = argNames.get(i);
-                functionContext.put(name, Terms.UNDEFINED);
+                Node argNode = argNodes.get(i);
+                String argName = argNode.getFirst().getText();
+                Node exprNode = argNode.getLast();
+                Object argValue;
+                if (exprNode.type == NodeType.EXPR) { // default value
+                    argValue = Interpreter.eval(exprNode, functionContext);
+                } else {
+                    argValue = Terms.UNDEFINED;
+                }
+                functionContext.put(argName, argValue);
             }
         }
         Object result = Interpreter.eval(body, functionContext);

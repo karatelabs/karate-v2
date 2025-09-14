@@ -93,7 +93,7 @@ class JsMath extends JsObject {
                     case "round" -> (Invokable) args -> {
                         Number x = Terms.objectToNumber(args[0]);
                         double value = x.doubleValue();
-                        // js Math.round is "half up"
+                        // js Math.round is "half-away from zero"
                         if (value < 0) {
                             return Terms.narrow(Math.ceil(value - 0.5));
                         } else {

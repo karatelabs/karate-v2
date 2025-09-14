@@ -452,6 +452,9 @@ public class JsParser extends Parser {
             return exit();
         }
         boolean result = consumeIf(IDENT);
+        if (result && consumeIf(EQ)) {
+            expr(-1, true);
+        }
         result = result && (consumeIf(COMMA) || peekIf(R_PAREN));
         return exit(result, false);
     }
