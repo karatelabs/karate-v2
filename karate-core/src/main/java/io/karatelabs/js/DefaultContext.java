@@ -42,19 +42,20 @@ class DefaultContext implements Context {
     Map<String, Object> _bindings;
     List<BindingInfo> _bindingInfos;
 
-    DefaultContext(ContextRoot root, DefaultContext parent, int depth, Node node, Map<String, Object> bindings) {
+    DefaultContext(ContextRoot root, DefaultContext parent, int depth, Node node, ContextScope scope, Map<String, Object> bindings) {
         this.root = root;
         this.parent = parent;
         this.depth = depth;
         this.node = node;
+        this.scope = scope;
         this._bindings = bindings;
         if (parent != null) {
             thisObject = parent.thisObject;
         }
     }
 
-    DefaultContext(DefaultContext parent, Node node) {
-        this(parent.root, parent, parent.depth + 1, node, null);
+    DefaultContext(DefaultContext parent, Node node, ContextScope scope) {
+        this(parent.root, parent, parent.depth + 1, node, scope, null);
     }
 
     void event(EventType type, Node node) {
@@ -67,12 +68,18 @@ class DefaultContext implements Context {
     // public api ======================================================================================================
     //
     final DefaultContext parent;
+    final ContextScope scope;
     final int depth;
     final Node node;
 
     @Override
     public Context getParent() {
         return parent;
+    }
+
+    @Override
+    public ContextScope getScope() {
+        return scope;
     }
 
     @Override
@@ -133,7 +140,15 @@ class DefaultContext implements Context {
         if (value instanceof JsFunction) {
             ((JsFunction) value).name = key;
         }
-        putBinding(key, value, info);
+        if (info != null && (info.type == BindingType.LET || info.type == BindingType.CONST)) {
+            putBinding(key, value, info); // Current scope
+        } else {
+            DefaultContext targetContext = this;
+            while (targetContext.depth > 0 && targetContext.scope != ContextScope.FUNCTION) {
+                targetContext = targetContext.parent;
+            }
+            targetContext.putBinding(key, value, info);
+        }
     }
 
     void update(String key, Object value) {

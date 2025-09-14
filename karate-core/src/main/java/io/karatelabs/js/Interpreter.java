@@ -74,16 +74,21 @@ class Interpreter {
     }
 
     private static Object evalBlock(Node node, DefaultContext context) {
+        DefaultContext blockContext = new DefaultContext(context, node, ContextScope.BLOCK);
+        blockContext.event(EventType.CONTEXT_ENTER, node);
         Object blockResult = null;
         for (Node child : node) {
             if (child.type == NodeType.STATEMENT) {
-                blockResult = eval(child, context);
-                if (context.isStopped()) {
+                blockResult = eval(child, blockContext);
+                if (blockContext.isStopped()) {
                     break;
                 }
             }
         }
-        return context.isStopped() ? context.getReturnValue() : blockResult;
+        blockContext.event(EventType.CONTEXT_EXIT, node);
+        context.updateFrom(blockContext);
+        // errors would be handled by caller
+        return blockContext.isStopped() ? blockContext.getReturnValue() : blockResult;
     }
 
     private static Object evalBreakStmt(Node node, DefaultContext context) {
@@ -180,7 +185,7 @@ class Interpreter {
             }
         }
         Object[] args = argsList.toArray();
-        DefaultContext callContext = new DefaultContext(context, node);
+        DefaultContext callContext = new DefaultContext(context, node, ContextScope.FUNCTION);
         callContext.thisObject = prop.object == null ? callable : prop.object;
         callContext.event(EventType.CONTEXT_ENTER, node);
         if (callContext.root.listener != null) {
@@ -219,7 +224,7 @@ class Interpreter {
     }
 
     private static Object evalForStmt(Node node, DefaultContext context) {
-        DefaultContext forContext = new DefaultContext(context, node);
+        DefaultContext forContext = new DefaultContext(context, node, ContextScope.LOOP_INIT);
         forContext.event(EventType.CONTEXT_ENTER, node);
         Node forBody = node.getLast();
         Object forResult = null;
@@ -613,7 +618,7 @@ class Interpreter {
                 finallyBlock = node.get(8);
             }
             if (context.isError()) {
-                DefaultContext catchContext = new DefaultContext(context, node);
+                DefaultContext catchContext = new DefaultContext(context, node, ContextScope.CATCH);
                 catchContext.event(EventType.CONTEXT_ENTER, node);
                 if (node.get(3).token.type == L_PAREN) {
                     String errorName = node.get(4).getText();
@@ -632,7 +637,7 @@ class Interpreter {
             finallyBlock = node.get(3);
         }
         if (finallyBlock != null) {
-            DefaultContext finallyContext = new DefaultContext(context, node);
+            DefaultContext finallyContext = new DefaultContext(context, node, ContextScope.BLOCK);
             finallyContext.event(EventType.CONTEXT_ENTER, node);
             eval(finallyBlock, finallyContext);
             finallyContext.event(EventType.CONTEXT_EXIT, node);
@@ -686,7 +691,7 @@ class Interpreter {
     }
 
     private static Object evalWhileStmt(Node node, DefaultContext context) {
-        DefaultContext whileContext = new DefaultContext(context, node);
+        DefaultContext whileContext = new DefaultContext(context, node, ContextScope.LOOP_INIT);
         whileContext.event(EventType.CONTEXT_ENTER, node);
         Node whileBody = node.getLast();
         Node whileExpr = node.get(2);
@@ -711,7 +716,7 @@ class Interpreter {
     }
 
     private static Object evalDoWhileStmt(Node node, DefaultContext context) {
-        DefaultContext doContext = new DefaultContext(context, node);
+        DefaultContext doContext = new DefaultContext(context, node, ContextScope.LOOP_INIT);
         doContext.event(EventType.CONTEXT_ENTER, node);
         Node doBody = node.get(1);
         Node doExpr = node.get(4);

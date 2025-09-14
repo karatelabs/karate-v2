@@ -38,7 +38,12 @@ class ContextRoot extends DefaultContext {
     JavaBridge javaBridge;
 
     ContextRoot() {
-        super(null, null, -1, null, null);
+        super(null, null, -1, null, null, null);
+    }
+
+    @Override
+    public String toString() {
+        return "ROOT";
     }
 
     void setOnConsoleLog(Consumer<String> onConsoleLog) {

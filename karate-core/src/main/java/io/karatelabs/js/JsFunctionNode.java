@@ -58,7 +58,8 @@ class JsFunctionNode extends JsFunction {
         } else {
             parentContext = declaredContext;
         }
-        DefaultContext functionContext = new DefaultContext(parentContext, node) {
+        // Interpreter.evalFnCall() will always spawn function scope
+        DefaultContext functionContext = new DefaultContext(parentContext, node, ContextScope.BLOCK) {
             @Override
             public Object get(String key) {
                 if ("arguments".equals(key)) {
@@ -69,8 +70,12 @@ class JsFunctionNode extends JsFunction {
                 }
                 return declaredContext.get(key);
             }
+
+            @Override
+            boolean hasKey(String key) {
+                return "arguments".equals(key) || super.hasKey(key) || declaredContext.hasKey(key);
+            }
         };
-        functionContext.event(EventType.CONTEXT_ENTER, node);
         int actualArgCount = Math.min(args.length, argCount);
         for (int i = 0; i < actualArgCount; i++) {
             Node argNode = argNodes.get(i);

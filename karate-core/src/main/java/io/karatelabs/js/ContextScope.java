@@ -23,20 +23,13 @@
  */
 package io.karatelabs.js;
 
-public interface Context {
+public enum ContextScope {
 
-    Context getParent();
-
-    ContextScope getScope();
-
-    int getDepth();
-
-    Node getNode();
-
-    String getPath();
-
-    int getIteration();
-
-    Object getThisObject();
+    GLOBAL,
+    FUNCTION,
+    BLOCK,
+    LOOP_INIT,
+    LOOP_BODY,
+    CATCH
 
 }

@@ -450,4 +450,21 @@ class EvalTest extends EvalBase {
         assertEquals(1, get("a"));
     }
 
+    @Test
+    void testConstReassign() {
+        try {
+            eval("const a = 1; a = 2");
+            fail("error expected");
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("assignment to constant: a"));
+        }
+    }
+
+    @Test
+    void testBlockScopeVarHoisting() {
+        eval("{ var a = 1; { var b = 2; } }");
+        assertEquals(1, get("a"));
+        assertEquals(2, get("b"));
+    }
+
 }

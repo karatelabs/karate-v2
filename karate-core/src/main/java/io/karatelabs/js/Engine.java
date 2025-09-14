@@ -102,10 +102,10 @@ public class Engine {
             Node node = parser.parse();
             DefaultContext context;
             if (localVars == null) {
-                context = new DefaultContext(root, root, 0, node, bindings);
+                context = new DefaultContext(root, root, 0, node, ContextScope.GLOBAL, bindings);
             } else {
-                DefaultContext parent = new DefaultContext(root, null, -1, new Node(NodeType.ROOT), bindings);
-                context = new DefaultContext(root, parent, 0, node, localVars);
+                DefaultContext parent = new DefaultContext(root, null, -1, new Node(NodeType.ROOT), ContextScope.GLOBAL, bindings);
+                context = new DefaultContext(root, parent, 0, node, ContextScope.GLOBAL, localVars);
             }
             context.event(EventType.CONTEXT_ENTER, node);
             Object result = Interpreter.eval(node, context);
