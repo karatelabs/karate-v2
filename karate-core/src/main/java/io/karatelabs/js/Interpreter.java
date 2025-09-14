@@ -108,19 +108,19 @@ class Interpreter {
 
     private static Object evalExpr(Node node, DefaultContext context) {
         node = node.getFirst();
-        context.event(Event.Type.EXPRESSION_ENTER, node);
+        context.event(EventType.EXPRESSION_ENTER, node);
         try {
             Object result = eval(node, context);
             if (context.root.listener != null) {
-                context.event(Event.Type.EXPRESSION_EXIT, node);
+                context.event(EventType.EXPRESSION_EXIT, node);
             }
             return result;
         } catch (Exception e) {
             if (context.root.listener != null) {
-                Event event = new Event(Event.Type.EXPRESSION_EXIT, context, node);
-                Event.Result eventResult = context.root.listener.onError(event, e);
-                if (eventResult != null && eventResult.ignoreError) {
-                    return eventResult.returnValue;
+                Event event = new Event(EventType.EXPRESSION_EXIT, context, node);
+                ExitResult exitResult = context.root.listener.onError(event, e);
+                if (exitResult != null && exitResult.ignoreError) {
+                    return exitResult.returnValue;
                 }
             }
             throw e;
@@ -182,12 +182,12 @@ class Interpreter {
         Object[] args = argsList.toArray();
         DefaultContext callContext = new DefaultContext(context, node);
         callContext.thisObject = prop.object == null ? callable : prop.object;
-        callContext.event(Event.Type.CONTEXT_ENTER, node);
+        callContext.event(EventType.CONTEXT_ENTER, node);
         if (callContext.root.listener != null) {
             callContext.root.listener.onFunctionCall(callContext, args);
         }
         Object result = callable.call(callContext, args);
-        callContext.event(Event.Type.CONTEXT_EXIT, node);
+        callContext.event(EventType.CONTEXT_EXIT, node);
         context.updateFrom(callContext);
         if (newKeyword && result == null) {
             result = callable;
@@ -201,7 +201,7 @@ class Interpreter {
     private static Object evalFnExpr(Node node, DefaultContext context) {
         if (node.get(1).token.type == IDENT) {
             JsFunctionNode fn = new JsFunctionNode(false, node, fnArgs(node.get(2)), node.getLast(), context);
-            context.put(node.get(1).getText(), fn);
+            context.put(node.get(1).getText(), fn, null);
             return fn;
         } else {
             return new JsFunctionNode(false, node, fnArgs(node.get(1)), node.getLast(), context);
@@ -220,7 +220,7 @@ class Interpreter {
 
     private static Object evalForStmt(Node node, DefaultContext context) {
         DefaultContext forContext = new DefaultContext(context, node);
-        forContext.event(Event.Type.CONTEXT_ENTER, node);
+        forContext.event(EventType.CONTEXT_ENTER, node);
         Node forBody = node.getLast();
         Object forResult = null;
         if (node.get(2).token.type == SEMI) {
@@ -269,9 +269,9 @@ class Interpreter {
                 index++;
                 forContext.iteration = index;
                 if (in) {
-                    forContext.put(varName, kv.key);
+                    forContext.put(varName, kv.key, null);
                 } else {
-                    forContext.put(varName, kv.value);
+                    forContext.put(varName, kv.value, null);
                 }
                 forResult = eval(forBody, forContext);
                 if (forContext.isStopped()) {
@@ -284,7 +284,7 @@ class Interpreter {
                 }
             }
         }
-        forContext.event(Event.Type.CONTEXT_EXIT, node);
+        forContext.event(EventType.CONTEXT_EXIT, node);
         return forResult;
     }
 
@@ -547,7 +547,7 @@ class Interpreter {
         if (node.token.type == SEMI) { // ignore empty statements
             return null;
         }
-        context.event(Event.Type.STATEMENT_ENTER, node);
+        context.event(EventType.STATEMENT_ENTER, node);
         try {
             Object statementResult = eval(node, context);
             if (logger.isTraceEnabled() || Engine.DEBUG) {
@@ -560,14 +560,14 @@ class Interpreter {
                     }
                 }
             }
-            context.event(Event.Type.STATEMENT_EXIT, node);
+            context.event(EventType.STATEMENT_EXIT, node);
             return statementResult;
         } catch (Exception e) {
             if (context.root.listener != null) {
-                Event event = new Event(Event.Type.STATEMENT_EXIT, context, node);
-                Event.Result eventResult = context.root.listener.onError(event, e);
-                if (eventResult != null && eventResult.ignoreError) {
-                    return eventResult.returnValue;
+                Event event = new Event(EventType.STATEMENT_EXIT, context, node);
+                ExitResult exitResult = context.root.listener.onError(event, e);
+                if (exitResult != null && exitResult.ignoreError) {
+                    return exitResult.returnValue;
                 }
             }
             Token first = node.getFirstToken();
@@ -614,10 +614,10 @@ class Interpreter {
             }
             if (context.isError()) {
                 DefaultContext catchContext = new DefaultContext(context, node);
-                catchContext.event(Event.Type.CONTEXT_ENTER, node);
+                catchContext.event(EventType.CONTEXT_ENTER, node);
                 if (node.get(3).token.type == L_PAREN) {
                     String errorName = node.get(4).getText();
-                    catchContext.put(errorName, context.getErrorThrown());
+                    catchContext.put(errorName, context.getErrorThrown(), null);
                     tryValue = eval(node.get(6), catchContext);
                 } else { // catch without variable name, 3 is block
                     tryValue = eval(node.get(3), context);
@@ -626,16 +626,16 @@ class Interpreter {
                     tryValue = null;
                 }
                 context.updateFrom(catchContext);
-                catchContext.event(Event.Type.CONTEXT_EXIT, node);
+                catchContext.event(EventType.CONTEXT_EXIT, node);
             }
         } else if (node.get(2).token.type == FINALLY) {
             finallyBlock = node.get(3);
         }
         if (finallyBlock != null) {
             DefaultContext finallyContext = new DefaultContext(context, node);
-            finallyContext.event(Event.Type.CONTEXT_ENTER, node);
+            finallyContext.event(EventType.CONTEXT_ENTER, node);
             eval(finallyBlock, finallyContext);
-            finallyContext.event(Event.Type.CONTEXT_EXIT, node);
+            finallyContext.event(EventType.CONTEXT_EXIT, node);
             if (finallyContext.isError()) {
                 throw new RuntimeException("finally block threw error: " + finallyContext.getErrorThrown());
             }
@@ -654,18 +654,32 @@ class Interpreter {
 
     private static Object evalVarStmt(Node node, DefaultContext context) {
         Object varValue;
+        boolean initialized;
         if (node.size() > 3) {
             varValue = eval(node.get(3), context);
+            initialized = true;
         } else {
             varValue = Terms.UNDEFINED;
+            initialized = false;
         }
         List<Node> varNames = node.get(1).findAll(IDENT);
-        // TODO let & const
+        BindingType bindingType = switch (node.getFirstToken().type) {
+            case CONST -> BindingType.CONST;
+            case LET -> BindingType.LET;
+            default -> null;
+        };
         for (Node varName : varNames) {
             String name = varName.getText();
-            context.put(name, varValue);
+            BindingInfo info;
+            if (bindingType != null) {
+                info = new BindingInfo(name, bindingType);
+                info.initialized = initialized;
+            } else {
+                info = null;
+            }
+            context.put(name, varValue, info);
             if (context.root.listener != null) {
-                context.root.listener.onVariableWrite(context, Event.VariableType.VAR, name, varValue);
+                context.root.listener.onVariableWrite(context, bindingType, name, varValue);
             }
         }
         return varValue;
@@ -673,7 +687,7 @@ class Interpreter {
 
     private static Object evalWhileStmt(Node node, DefaultContext context) {
         DefaultContext whileContext = new DefaultContext(context, node);
-        whileContext.event(Event.Type.CONTEXT_ENTER, node);
+        whileContext.event(EventType.CONTEXT_ENTER, node);
         Node whileBody = node.getLast();
         Node whileExpr = node.get(2);
         Object whileResult = null;
@@ -692,13 +706,13 @@ class Interpreter {
                 }
             }
         }
-        whileContext.event(Event.Type.CONTEXT_EXIT, node);
+        whileContext.event(EventType.CONTEXT_EXIT, node);
         return whileResult;
     }
 
     private static Object evalDoWhileStmt(Node node, DefaultContext context) {
         DefaultContext doContext = new DefaultContext(context, node);
-        doContext.event(Event.Type.CONTEXT_ENTER, node);
+        doContext.event(EventType.CONTEXT_ENTER, node);
         Node doBody = node.get(1);
         Node doExpr = node.get(4);
         Object doResult;
@@ -717,7 +731,7 @@ class Interpreter {
                 break;
             }
         }
-        doContext.event(Event.Type.CONTEXT_EXIT, node);
+        doContext.event(EventType.CONTEXT_EXIT, node);
         return doResult;
     }
 

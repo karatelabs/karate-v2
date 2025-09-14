@@ -23,18 +23,13 @@
  */
 package io.karatelabs.js;
 
-public interface Context {
+public enum EventType {
 
-    Context getParent();
-
-    int getDepth();
-
-    Node getNode();
-
-    String getPath();
-
-    int getIteration();
-
-    Object getThisObject();
+    CONTEXT_ENTER,
+    CONTEXT_EXIT,
+    STATEMENT_ENTER,
+    STATEMENT_EXIT,
+    EXPRESSION_ENTER,
+    EXPRESSION_EXIT
 
 }

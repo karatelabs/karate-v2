@@ -23,18 +23,13 @@
  */
 package io.karatelabs.js;
 
-public interface Context {
+public class ExitResult {
 
-    Context getParent();
+    public final boolean ignoreError = true;
+    public final Object returnValue;
 
-    int getDepth();
-
-    Node getNode();
-
-    String getPath();
-
-    int getIteration();
-
-    Object getThisObject();
+    ExitResult(Object returnValue) {
+        this.returnValue = returnValue;
+    }
 
 }

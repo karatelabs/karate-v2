@@ -25,75 +25,14 @@ package io.karatelabs.js;
 
 public class Event {
 
-    public final Type type;
+    public final EventType type;
     public final Context context;
     public final Node node;
 
-    Event(Type type, Context context, Node node) {
+    Event(EventType type, Context context, Node node) {
         this.type = type;
         this.context = context;
         this.node = node;
-    }
-
-    public enum Type {
-
-        CONTEXT_ENTER,
-        CONTEXT_EXIT,
-        STATEMENT_ENTER,
-        STATEMENT_EXIT,
-        EXPRESSION_ENTER,
-        EXPRESSION_EXIT
-
-    }
-
-    public interface Listener {
-
-        default void onEvent(Event event) {
-
-        }
-
-        default Result onError(Event event, Exception e) {
-            return null;
-        }
-
-        default void onFunctionCall(Context context, Object[] args) {
-
-        }
-
-        default void onVariableWrite(Context context, VariableType type, String name, Object value) {
-
-        }
-
-    }
-
-    public static class Result {
-
-        final public boolean ignoreError = true;
-        final public Object returnValue;
-
-        Result(Object returnValue) {
-            this.returnValue = returnValue;
-        }
-
-    }
-
-    public enum ExitType {
-
-        CONDITION_FALSE,
-        BREAK,
-        CONTINUE,
-        RETURN,
-        THROW,
-        ALL_ITERATIONS_COMPLETED
-
-    }
-
-    public enum VariableType {
-
-        VAR,
-        LET,
-        CONST
-
     }
 
 }

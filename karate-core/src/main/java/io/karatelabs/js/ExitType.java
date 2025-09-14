@@ -23,18 +23,13 @@
  */
 package io.karatelabs.js;
 
-public interface Context {
+public enum ExitType {
 
-    Context getParent();
-
-    int getDepth();
-
-    Node getNode();
-
-    String getPath();
-
-    int getIteration();
-
-    Object getThisObject();
+    CONDITION_FALSE,
+    BREAK,
+    CONTINUE,
+    RETURN,
+    THROW,
+    ALL_ITERATIONS_COMPLETED
 
 }

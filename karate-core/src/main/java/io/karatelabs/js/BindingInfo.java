@@ -23,18 +23,21 @@
  */
 package io.karatelabs.js;
 
-public interface Context {
+class BindingInfo {
 
-    Context getParent();
+    final String name;
+    final BindingType type;
 
-    int getDepth();
+    boolean initialized;
 
-    Node getNode();
+    BindingInfo(String name, BindingType type) {
+        this.name = name;
+        this.type = type;
+    }
 
-    String getPath();
-
-    int getIteration();
-
-    Object getThisObject();
+    @Override
+    public String toString() {
+        return type + " " + name;
+    }
 
 }

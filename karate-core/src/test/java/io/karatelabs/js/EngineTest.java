@@ -137,9 +137,9 @@ class EngineTest {
     void testOnAssign() {
         Engine engine = new Engine();
         Map<String, Object> map = new HashMap<>();
-        Event.Listener listener = new Event.Listener() {
+        EventListener listener = new EventListener() {
             @Override
-            public void onVariableWrite(Context context, Event.VariableType type, String name, Object value) {
+            public void onVariableWrite(Context context, BindingType type, String name, Object value) {
                 map.put("name", name);
                 map.put("value", value);
             }
@@ -189,7 +189,7 @@ class EngineTest {
     @Test
     void testProgramContextParentIsNotNull() {
         Engine engine = new Engine();
-        Event.Listener listener = new Event.Listener() {
+        EventListener listener = new EventListener() {
             @Override
             public void onEvent(Event event) {
                 assertNotNull(event.context.getParent());
@@ -203,7 +203,7 @@ class EngineTest {
     void testArrayForEachIterationTracking() {
         Engine engine = new Engine();
         StringBuilder sb = new StringBuilder();
-        Event.Listener listener = new Event.Listener() {
+        EventListener listener = new EventListener() {
             @Override
             public void onFunctionCall(Context context, Object... args) {
                 if (context.getNode().type == NodeType.REF_DOT_EXPR && "b.push".equals(context.getNode().getText())) {
@@ -234,7 +234,7 @@ class EngineTest {
     void testForLoopIterationTracking() {
         Engine engine = new Engine();
         StringBuilder sb = new StringBuilder();
-        Event.Listener listener = new Event.Listener() {
+        EventListener listener = new EventListener() {
             @Override
             public void onFunctionCall(Context context, Object... args) {
                 if (context.getNode().type == NodeType.REF_DOT_EXPR && "b.push".equals(context.getNode().getText())) {

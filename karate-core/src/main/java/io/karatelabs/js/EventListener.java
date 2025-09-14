@@ -23,18 +23,22 @@
  */
 package io.karatelabs.js;
 
-public interface Context {
+public interface EventListener {
 
-    Context getParent();
+    default void onEvent(Event event) {
 
-    int getDepth();
+    }
 
-    Node getNode();
+    default ExitResult onError(Event event, Exception e) {
+        return null;
+    }
 
-    String getPath();
+    default void onFunctionCall(Context context, Object[] args) {
 
-    int getIteration();
+    }
 
-    Object getThisObject();
+    default void onVariableWrite(Context context, BindingType type, String name, Object value) {
+
+    }
 
 }

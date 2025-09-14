@@ -34,7 +34,7 @@ class ContextRoot extends DefaultContext {
 
     private Consumer<String> onConsoleLog;
 
-    Event.Listener listener;
+    EventListener listener;
     JavaBridge javaBridge;
 
     ContextRoot() {
@@ -43,28 +43,28 @@ class ContextRoot extends DefaultContext {
 
     void setOnConsoleLog(Consumer<String> onConsoleLog) {
         this.onConsoleLog = onConsoleLog;
-        put("console", createConsole());
+        put("console", createConsole(), null);
     }
 
     @Override
-    Object get(String name) {
-        if (_bindings != null && _bindings.containsKey(name)) {
-            return _bindings.get(name);
+    Object get(String key) {
+        if (_bindings != null && _bindings.containsKey(key)) {
+            return _bindings.get(key);
         }
-        Object global = initGlobal(name);
+        Object global = initGlobal(key);
         if (global != null) {
-            put(name, global);
+            put(key, global, null);
             return global;
         }
         return Terms.UNDEFINED;
     }
 
     @Override
-    boolean hasKey(String name) {
-        if (_bindings != null && _bindings.containsKey(name)) {
+    boolean hasKey(String key) {
+        if (_bindings != null && _bindings.containsKey(key)) {
             return true;
         }
-        return switch (name) {
+        return switch (key) {
             case "console", "parseInt", "parseFloat", "undefined", "Array", "Date", "Error", "Infinity", "Java",
                  "JSON", "Math", "NaN", "Number", "Boolean", "Object", "RegExp", "String", "TypeError" -> true;
             default -> false;

@@ -60,17 +60,17 @@ class JsFunctionNode extends JsFunction {
         }
         DefaultContext functionContext = new DefaultContext(parentContext, node) {
             @Override
-            public Object get(String name) {
-                if ("arguments".equals(name)) {
+            public Object get(String key) {
+                if ("arguments".equals(key)) {
                     return Arrays.asList(args);
                 }
-                if (super.hasKey(name)) { // typically callerContext
-                    return super.get(name);
+                if (super.hasKey(key)) { // typically callerContext
+                    return super.get(key);
                 }
-                return declaredContext.get(name);
+                return declaredContext.get(key);
             }
         };
-        functionContext.event(Event.Type.CONTEXT_ENTER, node);
+        functionContext.event(EventType.CONTEXT_ENTER, node);
         int actualArgCount = Math.min(args.length, argCount);
         for (int i = 0; i < actualArgCount; i++) {
             Node argNode = argNodes.get(i);
@@ -80,7 +80,7 @@ class JsFunctionNode extends JsFunction {
                     remainingArgs.add(args[j]);
                 }
                 String argName = argNode.getLast().getText();
-                functionContext.put(argName, remainingArgs);
+                functionContext.put(argName, remainingArgs, null);
             } else {
                 String argName = argNode.getFirst().getText();
                 Object argValue = args[i];
@@ -91,7 +91,7 @@ class JsFunctionNode extends JsFunction {
                         argValue = Interpreter.eval(exprNode, functionContext);
                     }
                 }
-                functionContext.put(argName, argValue);
+                functionContext.put(argName, argValue, null);
             }
         }
         if (args.length < argCount) {
@@ -105,7 +105,7 @@ class JsFunctionNode extends JsFunction {
                 } else {
                     argValue = Terms.UNDEFINED;
                 }
-                functionContext.put(argName, argValue);
+                functionContext.put(argName, argValue, null);
             }
         }
         Object result = Interpreter.eval(body, functionContext);
@@ -113,7 +113,7 @@ class JsFunctionNode extends JsFunction {
         if (functionContext.isError()) {
             parentContext.updateFrom(functionContext);
         }
-        functionContext.event(Event.Type.CONTEXT_EXIT, node);
+        functionContext.event(EventType.CONTEXT_EXIT, node);
         return body.type == NodeType.BLOCK ? functionContext.getReturnValue() : result;
     }
 

@@ -70,7 +70,7 @@ public class Engine {
         root.setOnConsoleLog(onConsoleLog);
     }
 
-    public void setListener(Event.Listener listener) {
+    public void setListener(EventListener listener) {
         root.listener = listener;
     }
 
@@ -107,9 +107,9 @@ public class Engine {
                 DefaultContext parent = new DefaultContext(root, null, -1, new Node(NodeType.ROOT), bindings);
                 context = new DefaultContext(root, parent, 0, node, localVars);
             }
-            context.event(Event.Type.CONTEXT_ENTER, node);
+            context.event(EventType.CONTEXT_ENTER, node);
             Object result = Interpreter.eval(node, context);
-            context.event(Event.Type.CONTEXT_EXIT, node);
+            context.event(EventType.CONTEXT_EXIT, node);
             return toJava(result);
         } catch (Throwable e) {
             String message = e.getMessage();
