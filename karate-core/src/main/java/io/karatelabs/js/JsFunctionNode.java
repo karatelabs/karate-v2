@@ -52,22 +52,22 @@ class JsFunctionNode extends JsFunction {
 
     @Override
     public Object call(Context callerContext, Object... args) {
-        final DefaultContext mergedContext;
+        final DefaultContext parentContext;
         if (callerContext instanceof DefaultContext dc) {
-            mergedContext = dc;
+            parentContext = dc;
         } else {
-            mergedContext = declaredContext;
+            parentContext = declaredContext;
         }
-        DefaultContext functionContext = new DefaultContext(mergedContext, node) {
+        DefaultContext functionContext = new DefaultContext(parentContext, node) {
             @Override
             public Object get(String name) {
                 if ("arguments".equals(name)) {
                     return Arrays.asList(args);
                 }
-                if (super.hasKey(name)) { // invoke context
+                if (super.hasKey(name)) { // typically callerContext
                     return super.get(name);
                 }
-                return declaredContext.get(name); // merge this also
+                return declaredContext.get(name);
             }
         };
         functionContext.event(Event.Type.CONTEXT_ENTER, node);
@@ -111,7 +111,7 @@ class JsFunctionNode extends JsFunction {
         Object result = Interpreter.eval(body, functionContext);
         // exit function, only propagate error
         if (functionContext.isError()) {
-            mergedContext.updateFrom(functionContext);
+            parentContext.updateFrom(functionContext);
         }
         functionContext.event(Event.Type.CONTEXT_EXIT, node);
         return body.type == NodeType.BLOCK ? functionContext.getReturnValue() : result;
