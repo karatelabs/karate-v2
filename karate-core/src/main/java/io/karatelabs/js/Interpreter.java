@@ -224,14 +224,18 @@ class Interpreter {
     }
 
     private static Object evalForStmt(Node node, DefaultContext context) {
-        DefaultContext forContext = new DefaultContext(context, node, ContextScope.LOOP_INIT);
-        forContext.event(EventType.CONTEXT_ENTER, node);
+        DefaultContext outer = new DefaultContext(context, node, ContextScope.LOOP_INIT);
+        outer.event(EventType.CONTEXT_ENTER, node);
         Node forBody = node.getLast();
         Object forResult = null;
+        DefaultContext inner = outer;
+        boolean isLetOrConst = false;
         if (node.get(2).token.type == SEMI) {
             // rare case: "for(;;)"
         } else if (node.get(3).token.type == SEMI) {
-            eval(node.get(2), forContext);
+            TokenType letOrConst = node.get(2).getFirstToken().type;
+            isLetOrConst = letOrConst == LET || letOrConst == CONST;
+            eval(node.get(2), outer);
             if (node.get(4).token.type == SEMI) {
                 // rare no-condition case: "for(init;;increment)"
             } else {
@@ -239,20 +243,27 @@ class Interpreter {
                 int index = -1;
                 while (true) {
                     index++;
-                    forContext.iteration = index;
-                    Object forCondition = eval(node.get(4), forContext);
+                    outer.iteration = index;
+                    Object forCondition = eval(node.get(4), outer);
                     if (Terms.isTruthy(forCondition)) {
-                        forResult = eval(forBody, forContext);
-                        if (forContext.isStopped()) {
-                            if (forContext.isContinuing()) {
-                                forContext.reset();
+                        if (isLetOrConst) {
+                            inner = new DefaultContext(outer, forBody, ContextScope.LOOP_BODY);
+                            inner._bindings = new HashMap<>(outer._bindings);
+                            inner._bindingInfos = new ArrayList<>(outer._bindingInfos);
+                        }
+                        forResult = eval(forBody, inner);
+                        if (inner.isStopped()) {
+                            if (inner.isContinuing()) {
+                                inner.reset();
                             } else { // break, return or throw
-                                context.updateFrom(forContext);
+                                if (outer != inner) {
+                                    outer.updateFrom(inner);
+                                }
                                 break;
                             }
                         }
                         if (forAfter != null) {
-                            eval(forAfter, forContext);
+                            eval(forAfter, outer);
                         }
                     } else {
                         break;
@@ -261,10 +272,12 @@ class Interpreter {
             }
         } else { // for in / of
             boolean in = node.get(3).token.type == IN;
-            Object forObject = eval(node.get(4), forContext);
+            Object forObject = eval(node.get(4), outer);
             Iterable<KeyValue> iterable = JsObject.toIterable(forObject);
             String varName;
+            TokenType letOrConst = VAR;
             if (node.get(2).type == NodeType.VAR_STMT) {
+                letOrConst = node.get(2).getFirstToken().type;
                 varName = node.get(2).get(1).getText();
             } else {
                 varName = node.get(2).getText();
@@ -272,24 +285,37 @@ class Interpreter {
             int index = -1;
             for (KeyValue kv : iterable) {
                 index++;
-                forContext.iteration = index;
-                if (in) {
-                    forContext.put(varName, kv.key, null);
-                } else {
-                    forContext.put(varName, kv.value, null);
+                outer.iteration = index;
+                Object varValue = in ? kv.key : kv.value;
+                BindingInfo info = switch (letOrConst) {
+                    case LET -> new BindingInfo(varName, BindingType.LET);
+                    case CONST -> new BindingInfo(varName, BindingType.CONST);
+                    default -> null;
+                };
+                if (info != null) {
+                    info.initialized = true;
                 }
-                forResult = eval(forBody, forContext);
-                if (forContext.isStopped()) {
-                    if (forContext.isContinuing()) {
-                        forContext.reset();
+                outer.put(varName, varValue, info);
+                if (info != null) {
+                    inner = new DefaultContext(outer, forBody, ContextScope.LOOP_BODY);
+                    inner._bindings = new HashMap<>(outer._bindings);
+                    inner._bindingInfos = new ArrayList<>(outer._bindingInfos);
+                }
+                forResult = eval(forBody, inner);
+                if (inner.isStopped()) {
+                    if (inner.isContinuing()) {
+                        inner.reset();
                     } else { // break, return or throw
-                        context.updateFrom(forContext);
+                        if (outer != inner) {
+                            outer.updateFrom(inner);
+                        }
                         break;
                     }
                 }
             }
         }
-        forContext.event(EventType.CONTEXT_EXIT, node);
+        outer.event(EventType.CONTEXT_EXIT, node);
+        context.updateFrom(outer);
         return forResult;
     }
 
@@ -535,7 +561,11 @@ class Interpreter {
         if (node.getFirst().type == NodeType.FN_ARROW_EXPR) { // arrow function
             return evalFnArrowExpr(node.getFirst(), context);
         } else {
-            return context.get(node.getText());
+            String varName = node.getText();
+            if (context.hasKey(varName)) {
+                return context.get(varName);
+            }
+            throw new RuntimeException(varName + " is not defined");
         }
     }
 
@@ -610,6 +640,11 @@ class Interpreter {
         return null;
     }
 
+    private static Object evalThrowStmt(Node node, DefaultContext context) {
+        Object result = eval(node.get(1), context);
+        return context.stopAndThrow(result);
+    }
+
     private static Object evalTryStmt(Node node, DefaultContext context) {
         Object tryValue = eval(node.get(1), context);
         Node finallyBlock = null;
@@ -646,6 +681,15 @@ class Interpreter {
             }
         }
         return tryValue;
+    }
+
+    private static Object evalTypeofExpr(Node node, DefaultContext context) {
+        try {
+            Object value = eval(node.get(1), context);
+            return Terms.typeOf(value);
+        } catch (Exception e) {
+            return Terms.UNDEFINED.toString();
+        }
     }
 
     private static Object evalUnaryExpr(Node node, DefaultContext context) {
@@ -773,9 +817,9 @@ class Interpreter {
             case RETURN_STMT -> evalReturnStmt(node, context);
             case STATEMENT -> evalStatement(node, context);
             case SWITCH_STMT -> evalSwitchStmt(node, context);
-            case THROW_STMT -> context.stopAndThrow(eval(node.get(1), context));
+            case THROW_STMT -> evalThrowStmt(node, context);
             case TRY_STMT -> evalTryStmt(node, context);
-            case TYPEOF_EXPR -> Terms.typeOf(eval(node.get(1), context));
+            case TYPEOF_EXPR -> evalTypeofExpr(node, context);
             case UNARY_EXPR -> evalUnaryExpr(node, context);
             case VAR_STMT -> evalVarStmt(node, context);
             case WHILE_STMT -> evalWhileStmt(node, context);

@@ -28,7 +28,7 @@ class JsRegexTest extends EvalBase {
         eval("var b = [/test/];");
         eval("var c = (/test/);");
         eval("function test() { return /test/; }");
-        eval("var d = x > 2 ? /yes/ : /no/;");
+        eval("var x = 1; var d = x > 2 ? /yes/ : /no/;");
         // regex after operators
         eval("var e = 5 + /test/;");
         eval("var f = !(/test/.test('no test'));");

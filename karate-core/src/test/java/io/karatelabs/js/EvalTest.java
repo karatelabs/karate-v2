@@ -217,9 +217,9 @@ class EvalTest extends EvalBase {
 
     @Test
     void testParseFloat() {
-        assertEquals( 3.14, eval("parseFloat('3.14')"));
-        assertEquals( 42, eval("parseFloat('42')"));
-        assertEquals( 42.99, eval("parseFloat('42.99px')"));
+        assertEquals(3.14, eval("parseFloat('3.14')"));
+        assertEquals(42, eval("parseFloat('42')"));
+        assertEquals(42.99, eval("parseFloat('42.99px')"));
         assertEquals(Double.NaN, eval("parseFloat('abc')"));
         // assertEquals( 1000, eval("parseFloat('1e3')")); TODO
     }
@@ -362,7 +362,7 @@ class EvalTest extends EvalBase {
             eval("foo.bar");
             fail("error expected");
         } catch (Exception e) {
-            assertTrue(e.getMessage().contains("cannot read properties of undefined (reading 'bar')"));
+            assertTrue(e.getMessage().contains("foo is not defined"));
         }
         try {
             eval("var obj = { a: null }; obj.a.b");
@@ -465,6 +465,29 @@ class EvalTest extends EvalBase {
         eval("{ var a = 1; { var b = 2; } }");
         assertEquals(1, get("a"));
         assertEquals(2, get("b"));
+    }
+
+    @Test
+    void testBlockScopeLet() {
+        assertEquals(2, eval("{ let a = 1; } var a = 2; a"));
+        assertEquals(1, eval("var a = 1; { let a = 2; } a"));
+        try {
+            eval("{ let a = 1; } a");
+            fail("error expected");
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("a is not defined"));
+        }
+        assertEquals(3, eval("let a = 1; { let a = 2; { let a = 3; a } }"));
+    }
+
+    @Test
+    void testForLoopScope() {
+        matchEval("var funcs = []; for (let i = 0; i < 3; i++) { funcs.push(() => i) }; funcs.map(f => f())", "[0, 1, 2]");
+        matchEval("var funcs = []; for (var i = 0; i < 3; i++) { funcs.push(() => i) }; funcs.map(f => f())", "[3, 3, 3]");
+        matchEval("var funcs = []; for (let x of [10, 20, 30]) { funcs.push(() => x) }; funcs.map(f => f())", "[10, 20, 30]");
+        matchEval("var funcs = []; for (var x of [10, 20, 30]) { funcs.push(() => x) }; funcs.map(f => f())", "[30, 30, 30]");
+        matchEval("var funcs = []; var obj = {a: 1, b: 2, c: 3}; for (let k in obj) { funcs.push(() => k) }; funcs.map(f => f())", "[a, b, c]");
+        matchEval("var funcs = []; var obj = {a: 1, b: 2, c: 3}; for (var k in obj) { funcs.push(() => k) }; funcs.map(f => f())", "[c, c, c]");
     }
 
 }
