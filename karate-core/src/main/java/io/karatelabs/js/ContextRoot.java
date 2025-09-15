@@ -34,7 +34,7 @@ class ContextRoot extends DefaultContext {
 
     private Consumer<String> onConsoleLog;
 
-    EventListener listener;
+    ContextListener listener;
     JavaBridge javaBridge;
 
     ContextRoot() {

@@ -118,7 +118,6 @@ class JsFunctionNode extends JsFunction {
         if (functionContext.isError()) {
             parentContext.updateFrom(functionContext);
         }
-        functionContext.event(EventType.CONTEXT_EXIT, node);
         return body.type == NodeType.BLOCK ? functionContext.getReturnValue() : result;
     }
 

@@ -23,7 +23,7 @@
  */
 package io.karatelabs.js;
 
-public interface EventListener {
+public interface ContextListener {
 
     default void onEvent(Event event) {
 

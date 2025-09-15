@@ -187,12 +187,10 @@ class Interpreter {
         Object[] args = argsList.toArray();
         DefaultContext callContext = new DefaultContext(context, node, ContextScope.FUNCTION);
         callContext.thisObject = prop.object == null ? callable : prop.object;
-        callContext.event(EventType.CONTEXT_ENTER, node);
         if (callContext.root.listener != null) {
             callContext.root.listener.onFunctionCall(callContext, args);
         }
         Object result = callable.call(callContext, args);
-        callContext.event(EventType.CONTEXT_EXIT, node);
         context.updateFrom(callContext);
         if (newKeyword && result == null) {
             result = callable;

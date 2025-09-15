@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +14,18 @@ import static org.junit.jupiter.api.Assertions.*;
 class EngineTest {
 
     static final Logger logger = LoggerFactory.getLogger(EngineTest.class);
+
+    @Test
+    void testEvalWith() {
+        Engine engine = new Engine();
+        engine.put("x", 10);
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("y", 20);
+        engine.evalWith("var a = x + y", vars);
+        assertEquals(30, vars.get("a"));
+        assertFalse(engine.bindings.containsKey("a"));
+        assertFalse(engine.bindings.containsKey("y"));
+    }
 
     @Test
     void testEvalResult() {
@@ -137,7 +148,7 @@ class EngineTest {
     void testOnAssign() {
         Engine engine = new Engine();
         Map<String, Object> map = new HashMap<>();
-        EventListener listener = new EventListener() {
+        ContextListener listener = new ContextListener() {
             @Override
             public void onVariableWrite(Context context, BindingType type, String name, Object value) {
                 map.put("name", name);
@@ -189,7 +200,7 @@ class EngineTest {
     @Test
     void testProgramContextParentIsNotNull() {
         Engine engine = new Engine();
-        EventListener listener = new EventListener() {
+        ContextListener listener = new ContextListener() {
             @Override
             public void onEvent(Event event) {
                 assertNotNull(event.context.getParent());
@@ -203,7 +214,7 @@ class EngineTest {
     void testArrayForEachIterationTracking() {
         Engine engine = new Engine();
         StringBuilder sb = new StringBuilder();
-        EventListener listener = new EventListener() {
+        ContextListener listener = new ContextListener() {
             @Override
             public void onFunctionCall(Context context, Object... args) {
                 if (context.getNode().type == NodeType.REF_DOT_EXPR && "b.push".equals(context.getNode().getText())) {
@@ -234,7 +245,7 @@ class EngineTest {
     void testForLoopIterationTracking() {
         Engine engine = new Engine();
         StringBuilder sb = new StringBuilder();
-        EventListener listener = new EventListener() {
+        ContextListener listener = new ContextListener() {
             @Override
             public void onFunctionCall(Context context, Object... args) {
                 if (context.getNode().type == NodeType.REF_DOT_EXPR && "b.push".equals(context.getNode().getText())) {

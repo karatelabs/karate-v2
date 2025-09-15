@@ -70,7 +70,7 @@ public class Engine {
         root.setOnConsoleLog(onConsoleLog);
     }
 
-    public void setListener(EventListener listener) {
+    public void setListener(ContextListener listener) {
         root.listener = listener;
     }
 
