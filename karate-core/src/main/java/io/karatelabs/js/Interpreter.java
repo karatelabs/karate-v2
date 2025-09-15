@@ -204,7 +204,7 @@ class Interpreter {
     private static Object evalFnExpr(Node node, DefaultContext context) {
         if (node.get(1).token.type == IDENT) {
             JsFunctionNode fn = new JsFunctionNode(false, node, fnArgs(node.get(2)), node.getLast(), context);
-            context.put(node.get(1).getText(), fn, null);
+            context.put(node.get(1).getText(), fn);
             return fn;
         } else {
             return new JsFunctionNode(false, node, fnArgs(node.get(1)), node.getLast(), context);
@@ -293,7 +293,7 @@ class Interpreter {
                 if (info != null) {
                     info.initialized = true;
                 }
-                outer.put(varName, varValue, info);
+                outer.declare(varName, varValue, info);
                 if (info != null) {
                     inner = new DefaultContext(outer, forBody, ContextScope.LOOP_BODY);
                     inner._bindings = new HashMap<>(outer._bindings);
@@ -332,37 +332,81 @@ class Interpreter {
         return Terms.instanceOf(eval(node.get(0), context), eval(node.get(2), context));
     }
 
+    private static BindingInfo toInfo(String varName, BindingType type, boolean initialized) {
+        if (type == BindingType.VAR) {
+            return null;
+        } else {
+            BindingInfo info = new BindingInfo(varName, type);
+            info.initialized = initialized;
+            return info;
+        }
+    }
+
     @SuppressWarnings("unchecked")
-    private static Object evalLitArray(Node node, DefaultContext context) {
+    private static Object evalLitArray(Node node, DefaultContext context, BindingType bindingType, List<Object> bindSource) {
         int last = node.size() - 1;
         List<Object> list = new ArrayList<>();
+        int index = 0;
         for (int i = 1; i < last; i++) {
             Node elem = node.get(i);
             Node exprNode = elem.get(0);
-            if (exprNode.token.type == DOT_DOT_DOT) { // spread
-                Object value = eval(elem.get(1), context);
-                if (value instanceof List) {
-                    List<Object> temp = (List<Object>) value;
-                    list.addAll(temp);
-                } else if (value instanceof String s) {
-                    for (char c : s.toCharArray()) {
-                        list.add(Character.toString(c));
+            if (exprNode.token.type == DOT_DOT_DOT) { // rest
+                if (bindingType != null) {
+                    String varName = elem.getLast().getText();
+                    List<Object> value = new ArrayList<>();
+                    if (bindSource != null) {
+                        for (int j = index; j < bindSource.size(); j++) {
+                            value.add(bindSource.get(j));
+                        }
+                    }
+                    context.declare(varName, value, toInfo(varName, bindingType, true));
+                } else {
+                    Object value = evalRefExpr(elem.get(1), context);
+                    if (value instanceof List) {
+                        List<Object> temp = (List<Object>) value;
+                        list.addAll(temp);
+                    } else if (value instanceof String s) { // TODO unify iterable
+                        for (char c : s.toCharArray()) {
+                            list.add(Character.toString(c));
+                        }
                     }
                 }
             } else if (exprNode.token.type == COMMA) { // sparse
                 list.add(null);
+                index++;
             } else {
-                Object value = eval(exprNode, context);
-                list.add(value);
+                if (bindingType != null) {
+                    Object value = Terms.UNDEFINED;
+                    String varName = exprNode.getFirstToken().text;
+                    if (exprNode.getFirst().type == NodeType.ASSIGN_EXPR) { // default value
+                        value = evalExpr(exprNode.getFirst().getLast(), context);
+                    }
+                    if (bindSource != null && index < bindSource.size()) {
+                        Object temp = bindSource.get(index);
+                        if (temp != Terms.UNDEFINED) {
+                            value = bindSource.get(index);
+                        }
+                    }
+                    context.declare(varName, value, toInfo(varName, bindingType, true));
+                } else {
+                    Object value = evalExpr(exprNode, context);
+                    list.add(value);
+                }
+                index++;
             }
         }
         return list;
     }
 
     @SuppressWarnings("unchecked")
-    private static Object evalLitObject(Node node, DefaultContext context) {
+    private static Object evalLitObject(Node node, DefaultContext context, BindingType bindingType, Map<String, Object> bindSource) {
         int last = node.size() - 1;
-        Map<String, Object> map = new LinkedHashMap<>(last - 1);
+        Map<String, Object> result;
+        if (bindSource != null) {
+            result = new HashMap<>(bindSource); // use to derive ...rest if it appears
+        } else {
+            result = new LinkedHashMap<>(last - 1);
+        }
         for (int i = 1; i < last; i++) {
             Node elem = node.get(i);
             Node keyNode = elem.getFirst();
@@ -376,21 +420,49 @@ class Interpreter {
                 key = keyNode.getText();
             }
             if (token == DOT_DOT_DOT) {
-                Object value = context.get(key);
-                if (value instanceof Map) {
-                    Map<String, Object> temp = (Map<String, Object>) value;
-                    map.putAll(temp);
+                if (bindingType != null) {
+                    // previous keys were being removed from result
+                    context.declare(key, result, toInfo(key, bindingType, true));
+                } else {
+                    Object value = context.get(key);
+                    if (value instanceof Map) {
+                        Map<String, Object> temp = (Map<String, Object>) value;
+                        result.putAll(temp);
+                    }
                 }
             } else if (elem.size() < 3) { // es6 enhanced object literals
-                Object value = context.get(key);
-                map.put(key, value);
+                if (bindingType != null) {
+                    Object value = Terms.UNDEFINED;
+                    if (bindSource != null && bindSource.containsKey(key)) {
+                        value = bindSource.get(key);
+                    }
+                    context.declare(key, value, toInfo(key, bindingType, true));
+                    result.remove(key);
+                } else {
+                    Object value = context.get(key);
+                    result.put(key, value);
+                }
             } else {
-                Node exprNode = elem.get(2);
-                Object value = eval(exprNode, context);
-                map.put(key, value);
+                if (bindingType != null) {
+                    Object value = Terms.UNDEFINED;
+                    if (bindSource != null && bindSource.containsKey(key)) {
+                        value = bindSource.get(key);
+                    }
+                    if (elem.get(1).getFirstToken().type == EQ) { // default value
+                        value = evalExpr(elem.get(2), context);
+                        context.declare(key, value, toInfo(key, bindingType, true));
+                    } else {
+                        String varName = elem.get(2).getText();
+                        context.declare(varName, value, toInfo(key, bindingType, true));
+                    }
+                    result.remove(key);
+                } else {
+                    Object value = evalExpr(elem.get(2), context);
+                    result.put(key, value);
+                }
             }
         }
-        return map;
+        return result;
     }
 
     private static String evalLitTemplate(Node node, DefaultContext context) {
@@ -415,8 +487,8 @@ class Interpreter {
             return node.token.literalValue();
         }
         return switch (node.type) {
-            case NodeType.LIT_ARRAY -> evalLitArray(node, context);
-            case NodeType.LIT_OBJECT -> evalLitObject(node, context);
+            case NodeType.LIT_ARRAY -> evalLitArray(node, context, null, null);
+            case NodeType.LIT_OBJECT -> evalLitObject(node, context, null, null);
             case NodeType.LIT_TEMPLATE -> evalLitTemplate(node, context);
             case NodeType.LIT_REGEX -> new JsRegex(node.getFirstToken().text);
             default -> throw new RuntimeException("unexpected lit expr: " + node);
@@ -655,7 +727,7 @@ class Interpreter {
                 catchContext.event(EventType.CONTEXT_ENTER, node);
                 if (node.get(3).token.type == L_PAREN) {
                     String errorName = node.get(4).getText();
-                    catchContext.put(errorName, context.getErrorThrown(), null);
+                    catchContext.put(errorName, context.getErrorThrown());
                     tryValue = eval(node.get(6), catchContext);
                 } else { // catch without variable name, 3 is block
                     tryValue = eval(node.get(3), context);
@@ -699,6 +771,7 @@ class Interpreter {
         };
     }
 
+    @SuppressWarnings("unchecked")
     private static Object evalVarStmt(Node node, DefaultContext context) {
         Object varValue;
         boolean initialized;
@@ -709,24 +782,32 @@ class Interpreter {
             varValue = Terms.UNDEFINED;
             initialized = false;
         }
-        List<Node> varNames = node.get(1).findAll(IDENT);
         BindingType bindingType = switch (node.getFirstToken().type) {
             case CONST -> BindingType.CONST;
             case LET -> BindingType.LET;
-            default -> null;
+            default -> BindingType.VAR;
         };
-        for (Node varName : varNames) {
-            String name = varName.getText();
-            BindingInfo info;
-            if (bindingType != null) {
-                info = new BindingInfo(name, bindingType);
-                info.initialized = initialized;
-            } else {
-                info = null;
+        Node bindings = node.get(1);
+        if (bindings.type == NodeType.LIT_ARRAY) {
+            List<Object> list = null;
+            if (varValue instanceof List) {
+                list = (List<Object>) varValue;
             }
-            context.put(name, varValue, info);
-            if (context.root.listener != null) {
-                context.root.listener.onVariableWrite(context, bindingType, name, varValue);
+            evalLitArray(bindings, context, bindingType, list);
+        } else if (bindings.type == NodeType.LIT_OBJECT) {
+            Map<String, Object> object = null;
+            if (varValue instanceof Map) {
+                object = (Map<String, Object>) varValue;
+            }
+            evalLitObject(bindings, context, bindingType, object);
+        } else {
+            List<Node> varNames = bindings.findAll(IDENT);
+            for (Node varName : varNames) {
+                String name = varName.getText();
+                context.declare(name, varValue, toInfo(name, bindingType, initialized));
+                if (context.root.listener != null) {
+                    context.root.listener.onVariableWrite(context, bindingType, name, varValue);
+                }
             }
         }
         return varValue;

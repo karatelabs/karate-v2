@@ -85,7 +85,7 @@ class JsFunctionNode extends JsFunction {
                     remainingArgs.add(args[j]);
                 }
                 String argName = argNode.getLast().getText();
-                functionContext.put(argName, remainingArgs, null);
+                functionContext.put(argName, remainingArgs);
             } else {
                 String argName = argNode.getFirst().getText();
                 Object argValue = args[i];
@@ -96,7 +96,7 @@ class JsFunctionNode extends JsFunction {
                         argValue = Interpreter.eval(exprNode, functionContext);
                     }
                 }
-                functionContext.put(argName, argValue, null);
+                functionContext.put(argName, argValue);
             }
         }
         if (args.length < argCount) {
@@ -110,7 +110,7 @@ class JsFunctionNode extends JsFunction {
                 } else {
                     argValue = Terms.UNDEFINED;
                 }
-                functionContext.put(argName, argValue, null);
+                functionContext.put(argName, argValue);
             }
         }
         Object result = Interpreter.eval(body, functionContext);

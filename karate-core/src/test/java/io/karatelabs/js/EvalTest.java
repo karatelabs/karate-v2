@@ -490,4 +490,44 @@ class EvalTest extends EvalBase {
         matchEval("var funcs = []; var obj = {a: 1, b: 2, c: 3}; for (var k in obj) { funcs.push(() => k) }; funcs.map(f => f())", "[c, c, c]");
     }
 
+    @Test
+    void testVarArrayDestructuring() {
+        eval("var [a, b] = [1, 2]");
+        assertEquals(1, get("a"));
+        assertEquals(2, get("b"));
+        eval("let [a, , c] = [1, 2, 3]");
+        assertEquals(1, get("a"));
+        assertEquals(3, get("c"));
+        eval("let [a = 5] = []");
+        assertEquals(5, get("a"));
+        eval("let [a = 5] = [undefined]");
+        assertEquals(5, get("a"));
+        eval("let [a = 5] = [null]");
+        assertNull(get("a"));
+        eval("let [a, ...rest] = [1, 2, 3]");
+        assertEquals(1, get("a"));
+        match(get("rest"), "[2, 3]");
+        eval("let [a, ...rest] = [1]");
+        assertEquals(1, get("a"));
+        match(get("rest"), "[]");
+    }
+
+    @Test
+    void testVarObjectDestructuring() {
+        eval("let { a: x, b: y } = { a: 1, b: 2 }");
+        assertEquals(1, get("x"));
+        assertEquals(2, get("y"));
+        eval("let { a, b } = { a: 1, b: 2 }");
+        assertEquals(1, get("a"));
+        assertEquals(2, get("b"));
+        eval("let {a = 5} = {}");
+        assertEquals(5, get("a"));
+        eval("let {a, ...rest} = {a: 1, b: 2, c: 3}");
+        assertEquals(1, get("a"));
+        match(get("rest"), "{b: 2, c: 3}");
+        eval("let {a, ...rest} = {a: 1}");
+        assertEquals(1, get("a"));
+        match(get("rest"), "{}");
+    }
+
 }

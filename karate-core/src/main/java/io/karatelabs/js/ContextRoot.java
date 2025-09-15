@@ -48,7 +48,7 @@ class ContextRoot extends DefaultContext {
 
     void setOnConsoleLog(Consumer<String> onConsoleLog) {
         this.onConsoleLog = onConsoleLog;
-        put("console", createConsole(), null);
+        put("console", createConsole());
     }
 
     @Override
@@ -58,7 +58,7 @@ class ContextRoot extends DefaultContext {
         }
         Object global = initGlobal(key);
         if (global != null) {
-            put(key, global, null);
+            put(key, global);
             return global;
         }
         return Terms.UNDEFINED;

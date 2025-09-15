@@ -136,13 +136,17 @@ class DefaultContext implements Context {
         return Terms.UNDEFINED;
     }
 
-    void put(String key, Object value, BindingInfo info) {
+    void put(String key, Object value) {
+        declare(key, value, null);
+    }
+
+    void declare(String key, Object value, BindingInfo info) {
         if (value instanceof JsFunction) {
             ((JsFunction) value).name = key;
         }
-        if (info != null && (info.type == BindingType.LET || info.type == BindingType.CONST)) {
-            putBinding(key, value, info); // Current scope
-        } else {
+        if (info != null) { // if present, will always be let or const (micro optimization)
+            putBinding(key, value, info); // current scope
+        } else { // hoist var
             DefaultContext targetContext = this;
             while (targetContext.depth > 0 && targetContext.scope != ContextScope.FUNCTION) {
                 targetContext = targetContext.parent;

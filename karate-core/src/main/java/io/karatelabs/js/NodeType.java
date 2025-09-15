@@ -31,7 +31,7 @@ public enum NodeType {
     STATEMENT,
     IF_STMT,
     VAR_STMT,
-    VAR_STMT_NAMES,
+    VAR_NAMES,
     RETURN_STMT,
     TRY_STMT,
     THROW_STMT,

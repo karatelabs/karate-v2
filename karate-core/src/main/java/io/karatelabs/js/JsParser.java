@@ -114,8 +114,8 @@ public class JsParser extends Parser {
             return false;
         }
         TokenType varType = lastConsumed();
-        if (!var_stmt_names()) {
-            error(NodeType.VAR_STMT_NAMES);
+        if (!(lit_array() || lit_object() || var_names())) {
+            error(NodeType.VAR_NAMES);
         }
         if (consumeIf(EQ)) {
             expr(-1, true);
@@ -125,8 +125,8 @@ public class JsParser extends Parser {
         return exit();
     }
 
-    private boolean var_stmt_names() {
-        if (!enter(NodeType.VAR_STMT_NAMES, IDENT)) {
+    private boolean var_names() {
+        if (!enter(NodeType.VAR_NAMES, IDENT)) {
             return false;
         }
         while (consumeIf(COMMA)) {
@@ -578,6 +578,9 @@ public class JsParser extends Parser {
     private boolean object_elem() {
         if (!enter(NodeType.OBJECT_ELEM, IDENT, S_STRING, D_STRING, NUMBER, DOT_DOT_DOT)) {
             return false;
+        }
+        if (consumeIf(EQ)) { // var / assigment destructuring
+            expr(-1, true);
         }
         if (consumeIf(COMMA) || peekIf(R_CURLY)) { // es6 enhanced object literals
             return exit();
