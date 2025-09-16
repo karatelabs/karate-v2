@@ -25,37 +25,38 @@ package io.karatelabs.js;
 
 public class JavaClass implements JavaAccess {
 
-    private final JavaBridge bridge;
-    private final String className;
+    private final Class<?> clazz;
 
-    public JavaClass(JavaBridge bridge, Class<?> clazz) {
-        this.bridge = bridge;
-        className = clazz.getName();
+    public JavaClass(Class<?> clazz) {
+        this.clazz = clazz;
     }
 
-    public JavaClass(JavaBridge bridge, String className) {
-        this.bridge = bridge;
-        this.className = className;
+    public JavaClass(String className) {
+        try {
+            this.clazz = Class.forName(className);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public Object invoke(Object... args) {
-        return bridge.construct(className, args);
+        return JavaUtils.construct(clazz, args);
     }
 
     @Override
     public Object call(String name, Object[] args) {
-        return JavaBridge.convertIfArray(bridge.invokeStatic(className, name, args));
+        return JavaUtils.convertIfArray(JavaUtils.invokeStatic(clazz, name, args));
     }
 
     @Override
     public Object read(String name) {
-        return JavaBridge.convertIfArray(bridge.getStatic(className, name));
+        return JavaUtils.convertIfArray(JavaUtils.getStatic(clazz, name));
     }
 
     @Override
     public void update(String name, Object value) {
-        bridge.setStatic(className, name, value);
+        JavaUtils.setStatic(clazz, name, value);
     }
 
 }

@@ -74,10 +74,6 @@ public class Engine {
         root.listener = listener;
     }
 
-    public void enableJavaBridge() {
-        root.javaBridge = new JavaBridge();
-    }
-
     public void setJavaBridge(JavaBridge javaBridge) {
         root.javaBridge = javaBridge;
     }

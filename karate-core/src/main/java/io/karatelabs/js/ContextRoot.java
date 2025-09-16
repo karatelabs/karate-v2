@@ -92,7 +92,7 @@ class ContextRoot extends DefaultContext {
                     throw new RuntimeException("java interop not enabled");
                 }
                 if ("type".equals(name)) {
-                    return (Invokable) args -> new JavaClass(javaBridge, (String) args[0]);
+                    return (Invokable) args -> javaBridge.forClass((String) args[0]);
                 }
                 return null;
             };

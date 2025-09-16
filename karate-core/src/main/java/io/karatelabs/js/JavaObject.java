@@ -27,42 +27,40 @@ import java.util.Map;
 
 public class JavaObject implements JavaAccess, ObjectLike {
 
-    private final JavaBridge bridge;
     private final Object object;
 
-    public JavaObject(JavaBridge bridge, Object object) {
-        this.bridge = bridge;
+    public JavaObject(Object object) {
         this.object = object;
     }
 
     @Override
     public Object invoke(Object... args) {
-        return bridge.construct(object.getClass().getName(), args);
+        return JavaUtils.construct(object.getClass(), args);
     }
 
     @Override
     public Object call(String name, Object... args) {
-        return JavaBridge.convertIfArray(bridge.invoke(object, name, args));
+        return JavaUtils.convertIfArray(JavaUtils.invoke(object, name, args));
     }
 
     @Override
     public Object read(String name) {
-        return JavaBridge.convertIfArray(bridge.getStatic(object.getClass().getName(), name));
+        return get(name);
     }
 
     @Override
     public void update(String name, Object value) {
-        bridge.setStatic(object.getClass().getName(), name, value);
+        put(name, value);
     }
 
     @Override
     public Object get(String name) {
-        return JavaBridge.convertIfArray(bridge.get(object, name));
+        return JavaUtils.convertIfArray(JavaUtils.get(object, name));
     }
 
     @Override
     public void put(String name, Object value) {
-        bridge.set(object, name, value);
+        JavaUtils.set(object, name, value);
     }
 
     @Override
@@ -73,7 +71,7 @@ public class JavaObject implements JavaAccess, ObjectLike {
     @SuppressWarnings("unchecked")
     @Override
     public Map<String, Object> toMap() {
-        return (Map<String, Object>) JavaBridge.toMap(object);
+        return (Map<String, Object>) JavaUtils.toMap(object);
     }
 
 }

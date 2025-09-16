@@ -35,4 +35,8 @@ public interface JavaAccess extends Invokable {
 
     Object call(String name, Object... args);
 
+    default Invokable readInvokable(String name) {
+        return args -> call(name, args);
+    }
+
 }

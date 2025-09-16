@@ -68,13 +68,12 @@ class JsProperty {
                             // try java interop
                             String base = node.getFirst().getText();
                             String path = base + "." + name;
-                            if (context.root.javaBridge.typeExists(path)) {
-                                tempObject = new JavaClass(context.root.javaBridge, path);
+                            JavaAccess ja = context.root.javaBridge.forClass(path);
+                            if (ja != null) {
+                                tempObject = ja;
                                 name = null;
-                            } else if (context.root.javaBridge.typeExists(base)) {
-                                tempObject = new JavaClass(context.root.javaBridge, base);
                             } else {
-                                tempObject = null;
+                                tempObject = context.root.javaBridge.forClass(base);
                             }
                         } else {
                             tempObject = null;
@@ -142,10 +141,10 @@ class JsProperty {
                 objectLike.put(name, value);
             } else if (context.root.javaBridge != null) {
                 try {
-                    if (object instanceof JavaClass jc) {
-                        jc.update(name, value);
+                    if (object instanceof JavaAccess ja) {
+                        ja.update(name, value);
                     } else {
-                        context.root.javaBridge.set(object, name, value);
+                        JavaUtils.set(object, name, value);
                     }
                 } catch (Exception e) {
                     logger.error("java bridge error: {}", e.getMessage());
@@ -226,15 +225,17 @@ class JsProperty {
             try {
                 if (functionCall) {
                     if (object instanceof JavaAccess ja) {
-                        return new JavaInvokable(name, ja);
+                        return ja.readInvokable(name);
                     } else {
-                        return new JavaInvokable(name, new JavaObject(context.root.javaBridge, object));
+                        JavaAccess ja = context.root.javaBridge.forObject(object);
+                        return ja.readInvokable(name);
                     }
                 } else {
                     if (object instanceof JavaAccess ja) {
                         return ja.read(name);
                     }
-                    return new JavaObject(context.root.javaBridge, object).get(name);
+                    JavaAccess ja = context.root.javaBridge.forObject(object);
+                    return ja.read(name);
                 }
             } catch (Exception e) {
                 // ignore java reflection failure

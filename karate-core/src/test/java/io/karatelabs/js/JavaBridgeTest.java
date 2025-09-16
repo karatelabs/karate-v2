@@ -10,7 +10,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class JavaBridgeTest extends EvalBase {
 
-    final JavaBridge bridge = new JavaBridge();
+    final JavaBridge bridge = new JavaBridge() {
+
+    };
 
     @Override
     Object eval(String text, String vars) {
@@ -25,13 +27,14 @@ class JavaBridgeTest extends EvalBase {
     }
 
     @Test
-    void testCall() {
-        JavaClass cp = new JavaClass(bridge, "java.util.Properties");
-        Object o = cp.invoke(JavaBridge.EMPTY);
-        JavaObject op = new JavaObject(bridge, o);
-        assertEquals(0, op.call("size", JavaBridge.EMPTY));
-        op.call("put", "foo", 5);
-        assertEquals(5, op.call("get", "foo"));
+    void testConstructAndCall() {
+        JavaAccess type = bridge.forClass("java.util.Properties");
+        Object o = type.invoke();
+        assertEquals("java.util.Properties", o.getClass().getName());
+        JavaAccess instance = bridge.forObject(o);
+        assertEquals(0, instance.call("size", JavaUtils.EMPTY));
+        instance.call("put", "foo", 5);
+        assertEquals(5, instance.call("get", "foo"));
     }
 
     @Test
@@ -40,20 +43,21 @@ class JavaBridgeTest extends EvalBase {
         dp.setStringValue("foo");
         dp.setIntValue(5);
         dp.setBooleanValue(true);
-        JavaObject jo = new JavaObject(bridge, dp);
-        assertEquals("foo", jo.get("stringValue"));
-        assertEquals(5, jo.get("intValue"));
-        assertEquals(true, jo.get("booleanValue"));
-        NodeUtils.match(jo.toMap(), "{ stringValue: 'foo', integerArray: null, intValue: 5, instanceField: 'instance-field', booleanValue: true, doubleValue: 0.0, intArray: null }");
+        JavaAccess instance = bridge.forObject(dp);
+        assertEquals("foo", instance.read("stringValue"));
+        assertEquals(5, instance.read("intValue"));
+        assertEquals(true, instance.read("booleanValue"));
+        ObjectLike ol = (ObjectLike) instance;
+        NodeUtils.match(ol.toMap(), "{ stringValue: 'foo', integerArray: null, intValue: 5, instanceField: 'instance-field', booleanValue: true, doubleValue: 0.0, intArray: null }");
     }
 
     @Test
     void testSet() {
         DemoPojo dp = new DemoPojo();
-        JavaObject jo = new JavaObject(bridge, dp);
-        jo.put("stringValue", "bar");
-        jo.put("intValue", 10);
-        jo.put("booleanValue", true);
+        JavaAccess instance = bridge.forObject(dp);
+        instance.update("stringValue", "bar");
+        instance.update("intValue", 10);
+        instance.update("booleanValue", true);
         assertEquals("bar", dp.getStringValue());
         assertEquals(10, dp.getIntValue());
         assertTrue(dp.isBooleanValue());
@@ -62,9 +66,9 @@ class JavaBridgeTest extends EvalBase {
     @Test
     void testSetSpecial() {
         DemoPojo dp = new DemoPojo();
-        JavaObject jo = new JavaObject(bridge, dp);
-        jo.put("doubleValue", 10);
-        jo.put("booleanValue", Boolean.TRUE);
+        JavaAccess instance = bridge.forObject(dp);
+        instance.update("doubleValue", 10);
+        instance.update("booleanValue", Boolean.TRUE);
         assertEquals(10, dp.getDoubleValue());
         assertTrue(dp.isBooleanValue());
     }
@@ -72,8 +76,8 @@ class JavaBridgeTest extends EvalBase {
     @Test
     void testVarArgs() {
         DemoPojo dp = new DemoPojo();
-        JavaObject jo = new JavaObject(bridge, dp);
-        JavaInvokable method = new JavaInvokable("varArgs", jo);
+        JavaAccess instance = bridge.forObject(dp);
+        Invokable method = instance.readInvokable("varArgs");
         assertEquals("foo", method.invoke(null, "foo"));
         assertEquals("bar", method.invoke(null, "foo", "bar"));
     }
@@ -81,18 +85,11 @@ class JavaBridgeTest extends EvalBase {
     @Test
     void testMethodOverload() {
         DemoPojo dp = new DemoPojo();
-        JavaObject jo = new JavaObject(bridge, dp);
-        JavaInvokable method = new JavaInvokable("doWork", jo);
+        JavaAccess instance = bridge.forObject(dp);
+        Invokable method = instance.readInvokable("doWork");
         assertEquals("hello", method.invoke());
         assertEquals("hellofoo", method.invoke("foo"));
         assertEquals("hellofootrue", method.invoke("foo", true));
-    }
-
-    @Test
-    void testConstruct() {
-        JavaClass proxy = new JavaClass(bridge, "java.util.Properties");
-        Object o = proxy.invoke(JavaBridge.EMPTY);
-        assertEquals("java.util.Properties", o.getClass().getName());
     }
 
     @Test
