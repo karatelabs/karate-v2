@@ -27,6 +27,8 @@ import java.util.*;
 
 class JsObject implements ObjectLike, JsCallable, Iterable<KeyValue> {
 
+    final JsObject _this = this;
+
     private Map<String, Object> _map;
 
     JsObject(Map<String, Object> map) {
@@ -59,34 +61,27 @@ class JsObject implements ObjectLike, JsCallable, Iterable<KeyValue> {
                             return false;
                         }
                         String prop = args[0].toString();
-                        Object thisObject = context.getThisObject();
-                        if (thisObject instanceof ObjectLike objectLike) {
-                            Map<String, Object> map = objectLike.toMap();
-                            return map != null && map.containsKey(prop);
-                        } else if (thisObject instanceof Map) {
-                            Map<String, Object> map = (Map<String, Object>) thisObject;
-                            return map.containsKey(prop);
-                        }
-                        return false;
+                        Map<String, Object> props = asMap(context);
+                        return props.containsKey(prop);
                     };
                     // static ==========================================================================================
                     case "keys" -> (Invokable) args -> {
                         List<Object> result = new ArrayList<>();
-                        for (KeyValue kv : toIterable(args[0])) {
+                        for (KeyValue kv : Terms.toIterable(args[0])) {
                             result.add(kv.key);
                         }
                         return result;
                     };
                     case "values" -> (Invokable) args -> {
                         List<Object> result = new ArrayList<>();
-                        for (KeyValue kv : toIterable(args[0])) {
+                        for (KeyValue kv : Terms.toIterable(args[0])) {
                             result.add(kv.value);
                         }
                         return result;
                     };
                     case "entries" -> (Invokable) args -> {
                         List<Object> result = new ArrayList<>();
-                        for (KeyValue kv : toIterable(args[0])) {
+                        for (KeyValue kv : Terms.toIterable(args[0])) {
                             List<Object> entry = new ArrayList<>();
                             entry.add(kv.key);
                             entry.add(kv.value);
@@ -101,13 +96,12 @@ class JsObject implements ObjectLike, JsCallable, Iterable<KeyValue> {
                         if (args[0] == null || args[0] == Terms.UNDEFINED) {
                             throw new RuntimeException("assign() requires valid first argument");
                         }
-                        Iterable<KeyValue> iterable = toIterable(args[0]);
                         Map<String, Object> result = new LinkedHashMap<>();
-                        for (KeyValue kv : iterable) {
+                        for (KeyValue kv : Terms.toIterable(args[0])) {
                             result.put(kv.key, kv.value);
                         }
                         for (int i = 1; i < args.length; i++) {
-                            for (KeyValue kv : toIterable(args[i])) {
+                            for (KeyValue kv : Terms.toIterable(args[i])) {
                                 result.put(kv.key, kv.value);
                             }
                         }
@@ -118,7 +112,7 @@ class JsObject implements ObjectLike, JsCallable, Iterable<KeyValue> {
                             throw new RuntimeException("fromEntries() requires valid argument(s)");
                         }
                         Map<String, Object> result = new LinkedHashMap<>();
-                        for (KeyValue kv : toIterable(args[0])) {
+                        for (KeyValue kv : Terms.toIterable(args[0])) {
                             if (kv.value instanceof List) {
                                 List<Object> list = (List<Object>) kv.value;
                                 if (!list.isEmpty()) {
@@ -180,57 +174,30 @@ class JsObject implements ObjectLike, JsCallable, Iterable<KeyValue> {
 
     @Override
     public Iterator<KeyValue> iterator() {
-        return toIterable(this).iterator();
+        return new Iterator<>() {
+            final Iterator<Map.Entry<String, Object>> entries = toMap().entrySet().iterator();
+            int index = 0;
+
+            @Override
+            public boolean hasNext() {
+                return entries.hasNext();
+            }
+
+            @Override
+            public KeyValue next() {
+                Map.Entry<String, Object> entry = entries.next();
+                return new KeyValue(_this, index++, entry.getKey(), entry.getValue());
+            }
+        };
     }
 
     @SuppressWarnings("unchecked")
-    static Iterable<KeyValue> toIterable(Object object) {
-        if (object instanceof List) {
-            object = new JsArray((List<Object>) object);
+    Map<String, Object> asMap(Context context) {
+        Object thisObject = context.getThisObject();
+        if (thisObject instanceof Map) {
+            return (Map<String, Object>) thisObject;
         }
-        if (object instanceof JsArray array) {
-            return () -> {
-                final int size = array.size();
-                return new Iterator<>() {
-                    int index = 0;
-
-                    @Override
-                    public boolean hasNext() {
-                        return index < size;
-                    }
-
-                    @Override
-                    public KeyValue next() {
-                        int i = index++;
-                        return new KeyValue(array, i, i + "", array.get(i));
-                    }
-                };
-            };
-        }
-        if (object instanceof Map) {
-            object = new JsObject((Map<String, Object>) object);
-        }
-        if (!(object instanceof Iterable)) {
-            object = new JsObject();
-        }
-        final ObjectLike objectLike = (ObjectLike) object;
-        return () -> {
-            final Iterator<Map.Entry<String, Object>> entries = objectLike.toMap().entrySet().iterator();
-            return new Iterator<>() {
-                int index = 0;
-
-                @Override
-                public boolean hasNext() {
-                    return entries.hasNext();
-                }
-
-                @Override
-                public KeyValue next() {
-                    Map.Entry<String, Object> entry = entries.next();
-                    return new KeyValue(objectLike, index++, entry.getKey(), entry.getValue());
-                }
-            };
-        };
+        return toMap();
     }
 
     JsCallable toCallable(Object[] args) {

@@ -23,22 +23,21 @@
  */
 package io.karatelabs.js;
 
-class JsBytes extends JsObject implements JavaMirror {
+import java.nio.charset.StandardCharsets;
 
-    final byte[] bytes;
-
-    public JsBytes(byte[] bytes) {
-        this.bytes = bytes;
-    }
+class JsTextEncoder extends JsObject {
 
     @Override
     Prototype initPrototype() {
-        Prototype wrapped = super.initPrototype();
-        return new Prototype(wrapped) {
+        return new Prototype(super.initPrototype()) {
             @Override
-            public Object getProperty(String name) {
-                if (name.equals("length")) {
-                    return bytes.length;
+            public Object getProperty(String propName) {
+                if ("encode".equals(propName)) {
+                    return (Invokable) args -> {
+                        String text = args[0].toString();
+                        byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
+                        return new JsUint8Array(bytes);
+                    };
                 }
                 return null;
             }
@@ -46,8 +45,8 @@ class JsBytes extends JsObject implements JavaMirror {
     }
 
     @Override
-    public Object toJava() {
-        return bytes;
+    public Object call(Context context, Object... args) {
+        return this;
     }
 
 }

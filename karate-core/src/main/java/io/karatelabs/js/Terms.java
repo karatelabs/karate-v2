@@ -288,9 +288,27 @@ public class Terms {
             case Number n -> new JsNumber(n);
             case Boolean b -> new JsBoolean(b);
             case Date d -> new JsDate(d);
-            case byte[] bytes -> new JsBytes(bytes);
+            case byte[] bytes -> new JsUint8Array(bytes);
             case null, default -> null;
         };
+    }
+
+    @SuppressWarnings("unchecked")
+    static Iterable<KeyValue> toIterable(Object o) {
+        // TODO strictly Objects are not iterable
+        if (o instanceof JsObject jsObject) {
+            return jsObject;
+        }
+        if (o instanceof List) {
+            return new JsArray((List<Object>) o);
+        }
+        if (o instanceof Map) {
+            return new JsObject((Map<String, Object>) o);
+        }
+        if (o instanceof String) {
+            return new JsString((String) o);
+        }
+        return new JsObject();
     }
 
     static JsCallable toCallable(Object o) {

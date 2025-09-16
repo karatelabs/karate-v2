@@ -25,6 +25,7 @@ package io.karatelabs.js;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 class JsString extends JsObject implements JavaMirror {
@@ -56,159 +57,184 @@ class JsString extends JsObject implements JavaMirror {
             @Override
             public Object getProperty(String propName) {
                 return switch (propName) {
-                    case "indexOf" -> (Invokable) args -> {
+                    case "indexOf" -> (JsCallable) (context, args) -> {
+                        String s = asString(context);
                         if (args.length > 1) {
-                            return text.indexOf((String) args[0], ((Number) args[1]).intValue());
+                            return s.indexOf((String) args[0], ((Number) args[1]).intValue());
                         }
-                        return text.indexOf((String) args[0]);
+                        return s.indexOf((String) args[0]);
                     };
-                    case "startsWith" -> (Invokable) args -> {
+                    case "startsWith" -> (JsCallable) (context, args) -> {
+                        String s = asString(context);
                         if (args.length > 1) {
-                            return text.startsWith((String) args[0], ((Number) args[1]).intValue());
+                            return s.startsWith((String) args[0], ((Number) args[1]).intValue());
                         }
-                        return text.startsWith((String) args[0]);
+                        return s.startsWith((String) args[0]);
                     };
                     case "length" -> text.length();
-                    // intentional javascript spec deviation
-                    case "getBytes" -> (Invokable) args -> new JsBytes(text.getBytes(StandardCharsets.UTF_8));
-                    case "split" -> (Invokable) args -> Arrays.asList(text.split((String) args[0]));
-                    case "charAt" -> (Invokable) args -> {
+                    // intentional deviation from js spec, to mirror Java string API
+                    case "getBytes" -> (JsCallable) (context, args) -> {
+                        String s = asString(context);
+                        return s.getBytes(StandardCharsets.UTF_8);
+                    };
+                    case "split" -> (JsCallable) (context, args) -> {
+                        String s = asString(context);
+                        return Arrays.asList(s.split((String) args[0]));
+                    };
+                    case "charAt" -> (JsCallable) (context, args) -> {
+                        String s = asString(context);
                         int index = ((Number) args[0]).intValue();
-                        if (index < 0 || index >= text.length()) {
+                        if (index < 0 || index >= s.length()) {
                             return "";
                         }
-                        return String.valueOf(text.charAt(index));
+                        return String.valueOf(s.charAt(index));
                     };
-                    case "charCodeAt" -> (Invokable) args -> {
+                    case "charCodeAt" -> (JsCallable) (context, args) -> {
+                        String s = asString(context);
                         int index = ((Number) args[0]).intValue();
-                        if (index < 0 || index >= text.length()) {
+                        if (index < 0 || index >= s.length()) {
                             return Double.NaN;
                         }
-                        return (int) text.charAt(index);
+                        return (int) s.charAt(index);
                     };
-                    case "codePointAt" -> (Invokable) args -> {
+                    case "codePointAt" -> (JsCallable) (context, args) -> {
+                        String s = asString(context);
                         int index = ((Number) args[0]).intValue();
-                        if (index < 0 || index >= text.length()) {
+                        if (index < 0 || index >= s.length()) {
                             return Terms.UNDEFINED;
                         }
-                        return text.codePointAt(index);
+                        return s.codePointAt(index);
                     };
-                    case "concat" -> (Invokable) args -> {
-                        StringBuilder sb = new StringBuilder(text);
+                    case "concat" -> (JsCallable) (context, args) -> {
+                        String s = asString(context);
+                        StringBuilder sb = new StringBuilder(s);
                         for (Object arg : args) {
                             sb.append(arg);
                         }
                         return sb.toString();
                     };
-                    case "endsWith" -> (Invokable) args -> {
+                    case "endsWith" -> (JsCallable) (context, args) -> {
+                        String s = asString(context);
                         if (args.length > 1) {
                             int endPosition = ((Number) args[1]).intValue();
-                            return text.substring(0, Math.min(endPosition, text.length())).endsWith((String) args[0]);
+                            return s.substring(0, Math.min(endPosition, s.length())).endsWith((String) args[0]);
                         }
-                        return text.endsWith((String) args[0]);
+                        return s.endsWith((String) args[0]);
                     };
-                    case "includes" -> (Invokable) args -> {
+                    case "includes" -> (JsCallable) (context, args) -> {
+                        String s = asString(context);
                         String searchString = (String) args[0];
                         if (args.length > 1) {
                             int position = ((Number) args[1]).intValue();
-                            return text.indexOf(searchString, position) >= 0;
+                            return s.indexOf(searchString, position) >= 0;
                         }
-                        return text.contains(searchString);
+                        return s.contains(searchString);
                     };
-                    case "lastIndexOf" -> (Invokable) args -> {
+                    case "lastIndexOf" -> (JsCallable) (context, args) -> {
+                        String s = asString(context);
                         if (args.length > 1) {
-                            return text.lastIndexOf((String) args[0], ((Number) args[1]).intValue());
+                            return s.lastIndexOf((String) args[0], ((Number) args[1]).intValue());
                         }
-                        return text.lastIndexOf((String) args[0]);
+                        return s.lastIndexOf((String) args[0]);
                     };
-                    case "padEnd" -> (Invokable) args -> {
+                    case "padEnd" -> (JsCallable) (context, args) -> {
+                        String s = asString(context);
                         int targetLength = ((Number) args[0]).intValue();
                         String padString = args.length > 1 ? (String) args[1] : " ";
                         if (padString.isEmpty()) {
                             padString = " ";
                         }
-                        if (text.length() >= targetLength) {
-                            return text;
+                        if (s.length() >= targetLength) {
+                            return s;
                         }
-                        int padLength = targetLength - text.length();
-                        StringBuilder sb = new StringBuilder(text);
+                        int padLength = targetLength - s.length();
+                        StringBuilder sb = new StringBuilder(s);
                         for (int i = 0; i < padLength; i++) {
                             sb.append(padString.charAt(i % padString.length()));
                         }
                         return sb.toString();
                     };
-                    case "padStart" -> (Invokable) args -> {
+                    case "padStart" -> (JsCallable) (context, args) -> {
+                        String s = asString(context);
                         int targetLength = ((Number) args[0]).intValue();
                         String padString = args.length > 1 ? (String) args[1] : " ";
                         if (padString.isEmpty()) {
                             padString = " ";
                         }
-                        if (text.length() >= targetLength) {
-                            return text;
+                        if (s.length() >= targetLength) {
+                            return s;
                         }
-                        int padLength = targetLength - text.length();
+                        int padLength = targetLength - s.length();
                         StringBuilder sb = new StringBuilder();
                         for (int i = 0; i < padLength; i++) {
                             sb.append(padString.charAt(i % padString.length()));
                         }
-                        sb.append(text);
+                        sb.append(s);
                         return sb.toString();
                     };
-                    case "repeat" -> (Invokable) args -> {
+                    case "repeat" -> (JsCallable) (context, args) -> {
+                        String s = asString(context);
                         int count = ((Number) args[0]).intValue();
                         if (count < 0) {
-                            throw new RuntimeException("Invalid count value");
+                            throw new RuntimeException("invalid count value");
                         }
-                        return text.repeat(count);
+                        return s.repeat(count);
                     };
-                    case "slice" -> (Invokable) args -> {
+                    case "slice" -> (JsCallable) (context, args) -> {
+                        String s = asString(context);
                         int beginIndex = ((Number) args[0]).intValue();
-                        int endIndex = args.length > 1 ? ((Number) args[1]).intValue() : text.length();
+                        int endIndex = args.length > 1 ? ((Number) args[1]).intValue() : s.length();
                         // handle negative indices
-                        if (beginIndex < 0) beginIndex = Math.max(text.length() + beginIndex, 0);
-                        if (endIndex < 0) endIndex = Math.max(text.length() + endIndex, 0);
+                        if (beginIndex < 0) beginIndex = Math.max(s.length() + beginIndex, 0);
+                        if (endIndex < 0) endIndex = Math.max(s.length() + endIndex, 0);
                         // ensure proper range
-                        beginIndex = Math.min(beginIndex, text.length());
-                        endIndex = Math.min(endIndex, text.length());
+                        beginIndex = Math.min(beginIndex, s.length());
+                        endIndex = Math.min(endIndex, s.length());
                         if (beginIndex >= endIndex) return "";
-                        return text.substring(beginIndex, endIndex);
+                        return s.substring(beginIndex, endIndex);
                     };
-                    case "substring" -> (Invokable) args -> {
+                    case "substring" -> (JsCallable) (context, args) -> {
+                        String s = asString(context);
                         int beginIndex = ((Number) args[0]).intValue();
-                        int endIndex = args.length > 1 ? ((Number) args[1]).intValue() : text.length();
+                        int endIndex = args.length > 1 ? ((Number) args[1]).intValue() : s.length();
                         // ensure indices within bounds
-                        beginIndex = Math.min(Math.max(beginIndex, 0), text.length());
-                        endIndex = Math.min(Math.max(endIndex, 0), text.length());
+                        beginIndex = Math.min(Math.max(beginIndex, 0), s.length());
+                        endIndex = Math.min(Math.max(endIndex, 0), s.length());
                         // swap if beginIndex > endIndex (per JS spec)
                         if (beginIndex > endIndex) {
                             int temp = beginIndex;
                             beginIndex = endIndex;
                             endIndex = temp;
                         }
-                        return text.substring(beginIndex, endIndex);
+                        return s.substring(beginIndex, endIndex);
                     };
-                    case "toLowerCase" -> (Invokable) args -> text.toLowerCase();
-                    case "toUpperCase" -> (Invokable) args -> text.toUpperCase();
-                    case "trim" -> (Invokable) args -> text.trim();
-                    case "trimStart", "trimLeft" -> (Invokable) args -> text.replaceAll("^\\s+", "");
-                    case "trimEnd", "trimRight" -> (Invokable) args -> text.replaceAll("\\s+$", "");
+                    case "toLowerCase" -> (JsCallable) (context, args) -> asString(context).toLowerCase();
+                    case "toUpperCase" -> (JsCallable) (context, args) -> asString(context).toUpperCase();
+                    case "trim" -> (JsCallable) (context, args) -> asString(context).trim();
+                    case "trimStart", "trimLeft" ->
+                            (JsCallable) (context, args) -> asString(context).replaceAll("^\\s+", "");
+                    case "trimEnd", "trimRight" ->
+                            (JsCallable) (context, args) -> asString(context).replaceAll("\\s+$", "");
                     // regex
-                    case "replace" -> (Invokable) args -> {
+                    case "replace" -> (JsCallable) (context, args) -> {
+                        String s = asString(context);
                         if (args[0] instanceof JsRegex regex) {
-                            return regex.replace(text, (String) args[1]);
+                            return regex.replace(s, (String) args[1]);
                         }
-                        return text.replace((String) args[0], (String) args[1]);
+                        return s.replace((String) args[0], (String) args[1]);
                     };
-                    case "replaceAll" -> (Invokable) args -> {
+                    case "replaceAll" -> (JsCallable) (context, args) -> {
+                        String s = asString(context);
                         if (args[0] instanceof JsRegex regex) {
                             if (!regex.global) {
                                 throw new RuntimeException("replaceAll requires regex with global flag");
                             }
-                            return regex.replace(text, (String) args[1]);
+                            return regex.replace(s, (String) args[1]);
                         }
-                        return text.replaceAll((String) args[0], (String) args[1]);
+                        return s.replaceAll((String) args[0], (String) args[1]);
                     };
-                    case "match" -> (Invokable) args -> {
+                    case "match" -> (JsCallable) (context, args) -> {
+                        String s = asString(context);
                         if (args.length == 0) {
                             return List.of("");
                         }
@@ -218,9 +244,10 @@ class JsString extends JsObject implements JavaMirror {
                         } else {
                             regex = new JsRegex(args[0].toString());
                         }
-                        return regex.match(text);
+                        return regex.match(s);
                     };
-                    case "search" -> (Invokable) args -> {
+                    case "search" -> (JsCallable) (context, args) -> {
+                        String s = asString(context);
                         if (args.length == 0) {
                             return 0;
                         }
@@ -230,9 +257,9 @@ class JsString extends JsObject implements JavaMirror {
                         } else {
                             regex = new JsRegex(args[0].toString());
                         }
-                        return regex.search(text);
+                        return regex.search(s);
                     };
-                    case "valueOf" -> (Invokable) args -> text;
+                    case "valueOf" -> (JsCallable) (context, args) -> asString(context);
                     // static ==========================================================================================
                     case "fromCharCode" -> (Invokable) args -> {
                         StringBuilder sb = new StringBuilder();
@@ -260,6 +287,33 @@ class JsString extends JsObject implements JavaMirror {
                 };
             }
         };
+    }
+
+    @Override
+    public Iterator<KeyValue> iterator() {
+        return new Iterator<>() {
+            int index = 0;
+
+            @Override
+            public boolean hasNext() {
+                return index < text.length();
+            }
+
+            @Override
+            public KeyValue next() {
+                int i = index++;
+                String c = String.valueOf(text.charAt(i));
+                return new KeyValue(_this, i, i + "", c);
+            }
+        };
+    }
+
+    public String asString(Context context) {
+        Object thisObject = context.getThisObject();
+        if (thisObject instanceof String s) {
+            return s;
+        }
+        return text;
     }
 
     @Override

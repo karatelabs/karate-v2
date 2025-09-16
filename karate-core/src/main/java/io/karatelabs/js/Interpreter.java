@@ -271,7 +271,7 @@ class Interpreter {
         } else { // for in / of
             boolean in = node.get(3).token.type == IN;
             Object forObject = eval(node.get(4), outer);
-            Iterable<KeyValue> iterable = JsObject.toIterable(forObject);
+            Iterable<KeyValue> iterable = Terms.toIterable(forObject);
             String varName;
             TokenType letOrConst = VAR;
             if (node.get(2).type == NodeType.VAR_STMT) {
@@ -362,13 +362,9 @@ class Interpreter {
                     context.declare(varName, value, toInfo(varName, bindingType, true));
                 } else {
                     Object value = evalRefExpr(elem.get(1), context);
-                    if (value instanceof List) {
-                        List<Object> temp = (List<Object>) value;
-                        list.addAll(temp);
-                    } else if (value instanceof String s) { // TODO unify iterable
-                        for (char c : s.toCharArray()) {
-                            list.add(Character.toString(c));
-                        }
+                    Iterable<KeyValue> iterable = Terms.toIterable(value);
+                    for (KeyValue kv : iterable) {
+                        list.add(kv.value);
                     }
                 }
             } else if (exprNode.token.type == COMMA) { // sparse

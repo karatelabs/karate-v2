@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2024 Karate Labs Inc.
+ * Copyright 2025 Karate Labs Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,43 +23,35 @@
  */
 package io.karatelabs.js;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.nio.charset.StandardCharsets;
 
-public abstract class JsFunction extends JsObject implements JsCallable {
-
-    String name;
+class JsTextDecoder extends JsObject {
 
     @Override
     Prototype initPrototype() {
-        Prototype wrapped = super.initPrototype();
-        return new Prototype(wrapped) {
+        return new Prototype(super.initPrototype()) {
             @Override
             public Object getProperty(String propName) {
                 return switch (propName) {
-                    case "call" -> callPrototype();
-                    case "constructor" -> _this;
-                    case "name" -> name;
+                    case "encoding" -> "utf-8";
+                    case "decode" -> (Invokable) args -> {
+                        if (args.length == 0) {
+                            return "";
+                        }
+                        if (args[0] instanceof byte[] bytes) {
+                            return new String(bytes, StandardCharsets.UTF_8);
+                        }
+                        return "";
+                    };
                     default -> null;
                 };
             }
         };
     }
 
-    JsCallable callPrototype() {
-        return (context, args) -> {
-            List<Object> list = new ArrayList<>(Arrays.asList(args));
-            Object target = null;
-            if (!list.isEmpty()) {
-                target = list.removeFirst();
-                if (context instanceof DefaultContext dc) {
-                    dc.thisObject = target;
-                }
-            }
-            Object[] shiftedArgs = list.toArray();
-            return call(context, shiftedArgs);
-        };
+    @Override
+    public Object call(Context context, Object... args) {
+        return this;
     }
 
 }

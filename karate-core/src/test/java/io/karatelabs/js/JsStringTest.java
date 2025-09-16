@@ -2,6 +2,7 @@ package io.karatelabs.js;
 
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -47,6 +48,13 @@ class JsStringTest extends EvalBase {
         assertEquals("Cost New: $$100", eval("var a = 100; `Cost New: $$${a}`"));
         assertEquals("foobar", eval("var a = x => 'foo'; `${a()}bar`"));
         assertEquals("[1, 2, 3]", eval("`[${[].map.call([1,2,3], String).join(', ')}]`"));
+    }
+
+    @Test
+    void testCallPrototype() {
+        assertEquals(2, eval("''.indexOf.call('hello', 'll')"));
+        assertEquals("el", eval("''.slice.call('hello', 1, 3)"));
+        assertEquals("aaaaa", eval("''.repeat.call('a', 5)"));
     }
 
     @Test
@@ -138,13 +146,6 @@ class JsStringTest extends EvalBase {
         assertEquals("foobar", eval("a = 'foobar'; a.valueOf()"));
         assertEquals("ABC", eval("String.fromCharCode(65, 66, 67)"));
         assertEquals("😀", eval("String.fromCodePoint(128512)"));
-        // behavior beyond js spec for java interop convenience
-        eval("var a = 'foo'; var b = a.getBytes()");
-        byte[] bytes = (byte[]) get("b");
-        assertEquals(3, bytes.length);
-        assertEquals('f', bytes[0]);
-        assertEquals('o', bytes[1]);
-        assertEquals('o', bytes[2]);
     }
 
     @Test
@@ -172,6 +173,17 @@ class JsStringTest extends EvalBase {
     void testMatch() {
         matchEval("a = 'xxfooxx'; a.match('foo')", "['foo']");
         matchEval("'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.match(/[A-E]/gi)", "['A','B','C','D','E','a','b','c','d','e']");
+    }
+
+    @Test
+    void testEncoding() {
+        byte[] bytes = (byte[]) eval("new TextEncoder().encode('hello')");
+        assertEquals("hello", new String(bytes, StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void testDecoding() {
+        assertEquals("hello world", eval("new TextDecoder().decode(new TextEncoder().encode('hello world'))"));
     }
 
 }

@@ -66,7 +66,8 @@ class ContextRoot extends DefaultContext {
         }
         return switch (key) {
             case "console", "parseInt", "parseFloat", "undefined", "Array", "Date", "Error", "Infinity", "Java",
-                 "JSON", "Math", "NaN", "Number", "Boolean", "Object", "RegExp", "String", "TypeError" -> true;
+                 "JSON", "Math", "NaN", "Number", "Boolean", "Object", "RegExp", "String", "TypeError",
+                 "TextEncoder", "TextDecoder" -> true;
             default -> false;
         };
     }
@@ -92,6 +93,8 @@ class ContextRoot extends DefaultContext {
             case "RegExp" -> new JsRegex();
             case "String" -> new JsString();
             case "TypeError" -> new JsError("TypeError");
+            case "TextDecoder" -> new JsTextDecoder();
+            case "TextEncoder" -> new JsTextEncoder();
             default -> null;
         };
     }

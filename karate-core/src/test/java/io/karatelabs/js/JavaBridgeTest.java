@@ -100,11 +100,6 @@ class JavaBridgeTest extends EvalBase {
     }
 
     @Test
-    void testBytes() {
-        assertEquals(3, eval("var a = 'foo'.getBytes(); a.length"));
-    }
-
-    @Test
     void testJavaInterop() {
         eval("var DemoUtils = Java.type('io.karatelabs.js.DemoUtils'); var b = DemoUtils.doWork()");
         assertEquals("hello", get("b"));
@@ -188,8 +183,13 @@ class JavaBridgeTest extends EvalBase {
         assertEquals("bar", eval("var props = new java.util.Properties(); props.put('foo', 'bar'); props.get('foo')"));
         assertEquals(new BigDecimal(123123123123L), eval("new java.math.BigDecimal(123123123123)"));
         assertEquals(String.CASE_INSENSITIVE_ORDER, eval("java.lang.String.CASE_INSENSITIVE_ORDER"));
-        assertEquals("aGVsbG8=", eval("var Base64 = Java.type('java.util.Base64'); Base64.getEncoder().encodeToString('hello'.getBytes())"));
         assertInstanceOf(UUID.class, eval("java.util.UUID.randomUUID()"));
     }
+
+    @Test
+    void testJavaInteropJdkSpecial() {
+        assertEquals("aGVsbG8=", eval("var Base64 = Java.type('java.util.Base64'); Base64.getEncoder().encodeToString('hello'.getBytes())"));
+    }
+
 
 }

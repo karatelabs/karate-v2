@@ -114,13 +114,6 @@ class JsDate extends JsObject implements JavaMirror {
         return value;
     }
 
-    Date cast(Context context) {
-        if (context.getThisObject() instanceof JsDate date) {
-            return date.value;
-        }
-        return value;
-    }
-
     @Override
     Prototype initPrototype() {
         Prototype wrapped = super.initPrototype();
@@ -140,57 +133,57 @@ class JsDate extends JsObject implements JavaMirror {
                             return Double.NaN;
                         }
                     };
-                    case "getTime", "valueOf" -> (JsCallable) (context, args) -> cast(context).getTime();
-                    case "toString" -> (JsCallable) (context, args) -> cast(context).toString();
+                    case "getTime", "valueOf" -> (JsCallable) (context, args) -> asDate(context).getTime();
+                    case "toString" -> (JsCallable) (context, args) -> asDate(context).toString();
                     case "toISOString" -> (JsCallable) (context, args) -> {
                         synchronized (ISO_FORMATTER) {
-                            return ISO_FORMATTER.format(cast(context));
+                            return ISO_FORMATTER.format(asDate(context));
                         }
                     };
                     case "toUTCString" -> (JsCallable) (context, args) -> {
                         SimpleDateFormat formatter = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss 'GMT'");
                         formatter.setTimeZone(UTC);
-                        return formatter.format(cast(context));
+                        return formatter.format(asDate(context));
                     };
                     case "getFullYear" -> (JsCallable) (context, args) -> {
                         Calendar cal = Calendar.getInstance();
-                        cal.setTime(cast(context));
+                        cal.setTime(asDate(context));
                         return cal.get(Calendar.YEAR);
                     };
                     case "getMonth" -> (JsCallable) (context, args) -> {
                         Calendar cal = Calendar.getInstance();
-                        cal.setTime(cast(context));
+                        cal.setTime(asDate(context));
                         return cal.get(Calendar.MONTH); // already 0-indexed in Java!
                     };
                     case "getDate" -> (JsCallable) (context, args) -> {
                         Calendar cal = Calendar.getInstance();
-                        cal.setTime(cast(context));
+                        cal.setTime(asDate(context));
                         return cal.get(Calendar.DAY_OF_MONTH);
                     };
                     case "getDay" -> (JsCallable) (context, args) -> {
                         Calendar cal = Calendar.getInstance();
-                        cal.setTime(cast(context));
+                        cal.setTime(asDate(context));
                         // convert from Java's 1=Sunday to JS's 0=Sunday
                         return cal.get(Calendar.DAY_OF_WEEK) - 1;
                     };
                     case "getHours" -> (JsCallable) (context, args) -> {
                         Calendar cal = Calendar.getInstance();
-                        cal.setTime(cast(context));
+                        cal.setTime(asDate(context));
                         return cal.get(Calendar.HOUR_OF_DAY);
                     };
                     case "getMinutes" -> (JsCallable) (context, args) -> {
                         Calendar cal = Calendar.getInstance();
-                        cal.setTime(cast(context));
+                        cal.setTime(asDate(context));
                         return cal.get(Calendar.MINUTE);
                     };
                     case "getSeconds" -> (JsCallable) (context, args) -> {
                         Calendar cal = Calendar.getInstance();
-                        cal.setTime(cast(context));
+                        cal.setTime(asDate(context));
                         return cal.get(Calendar.SECOND);
                     };
                     case "getMilliseconds" -> (JsCallable) (context, args) -> {
                         Calendar cal = Calendar.getInstance();
-                        cal.setTime(cast(context));
+                        cal.setTime(asDate(context));
                         return cal.get(Calendar.MILLISECOND);
                     };
                     case "setDate" -> (JsCallable) (context, args) -> {
@@ -198,146 +191,142 @@ class JsDate extends JsObject implements JavaMirror {
                             return Double.NaN;
                         }
                         int day = ((Number) args[0]).intValue();
-                        if (context.getThisObject() instanceof JsDate jsDate) {
-                            Calendar cal = Calendar.getInstance();
-                            cal.setTime(jsDate.value);
-                            // handles overflow automatically!
-                            cal.set(Calendar.DAY_OF_MONTH, day);
-                            jsDate.value.setTime(cal.getTimeInMillis());
-                            return jsDate.value.getTime();
-                        }
-                        return Double.NaN;
+                        Date date = asDate(context);
+                        Calendar cal = Calendar.getInstance();
+                        cal.setTime(date);
+                        // handles overflow automatically!
+                        cal.set(Calendar.DAY_OF_MONTH, day);
+                        // mutate
+                        date.setTime(cal.getTimeInMillis());
+                        return date.getTime();
                     };
                     case "setMonth" -> (JsCallable) (context, args) -> {
                         if (args.length == 0 || !(args[0] instanceof Number)) {
                             return Double.NaN;
                         }
                         int month = ((Number) args[0]).intValue();
-                        if (context.getThisObject() instanceof JsDate jsDate) {
-                            Calendar cal = Calendar.getInstance();
-                            cal.setTime(jsDate.value);
-                            // handles overflow - month 12 becomes jan of next year
-                            cal.set(Calendar.MONTH, month);
-                            if (args.length > 1 && args[1] instanceof Number) {
-                                cal.set(Calendar.DAY_OF_MONTH, ((Number) args[1]).intValue());
-                            }
-                            jsDate.value.setTime(cal.getTimeInMillis()); // Mutate!
-                            return jsDate.value.getTime();
+                        Date date = asDate(context);
+                        Calendar cal = Calendar.getInstance();
+                        cal.setTime(date);
+                        // handles overflow - month 12 becomes jan of next year
+                        cal.set(Calendar.MONTH, month);
+                        if (args.length > 1 && args[1] instanceof Number) {
+                            cal.set(Calendar.DAY_OF_MONTH, ((Number) args[1]).intValue());
                         }
-                        return Double.NaN;
+                        // mutate
+                        date.setTime(cal.getTimeInMillis());
+                        return date.getTime();
                     };
                     case "setFullYear" -> (JsCallable) (context, args) -> {
                         if (args.length == 0 || !(args[0] instanceof Number)) {
                             return Double.NaN;
                         }
                         int year = ((Number) args[0]).intValue();
-                        if (context.getThisObject() instanceof JsDate jsDate) {
-                            Calendar cal = Calendar.getInstance();
-                            cal.setTime(jsDate.value);
-                            cal.set(Calendar.YEAR, year);
-                            if (args.length > 1 && args[1] instanceof Number) {
-                                cal.set(Calendar.MONTH, ((Number) args[1]).intValue());
-                            }
-                            if (args.length > 2 && args[2] instanceof Number) {
-                                cal.set(Calendar.DAY_OF_MONTH, ((Number) args[2]).intValue());
-                            }
-                            jsDate.value.setTime(cal.getTimeInMillis()); // Mutate!
-                            return jsDate.value.getTime();
+                        Date date = asDate(context);
+                        Calendar cal = Calendar.getInstance();
+                        cal.setTime(date);
+                        cal.set(Calendar.YEAR, year);
+                        if (args.length > 1 && args[1] instanceof Number) {
+                            cal.set(Calendar.MONTH, ((Number) args[1]).intValue());
                         }
-                        return Double.NaN;
+                        if (args.length > 2 && args[2] instanceof Number) {
+                            cal.set(Calendar.DAY_OF_MONTH, ((Number) args[2]).intValue());
+                        }
+                        // mutate
+                        date.setTime(cal.getTimeInMillis());
+                        return date.getTime();
                     };
                     case "setHours" -> (JsCallable) (context, args) -> {
                         if (args.length == 0 || !(args[0] instanceof Number)) {
                             return Double.NaN;
                         }
                         int hours = ((Number) args[0]).intValue();
-                        if (context.getThisObject() instanceof JsDate jsDate) {
-                            Calendar cal = Calendar.getInstance();
-                            cal.setTime(jsDate.value);
-                            cal.set(Calendar.HOUR_OF_DAY, hours);
-                            if (args.length > 1 && args[1] instanceof Number) {
-                                cal.set(Calendar.MINUTE, ((Number) args[1]).intValue());
-                            }
-                            if (args.length > 2 && args[2] instanceof Number) {
-                                cal.set(Calendar.SECOND, ((Number) args[2]).intValue());
-                            }
-                            if (args.length > 3 && args[3] instanceof Number) {
-                                cal.set(Calendar.MILLISECOND, ((Number) args[3]).intValue());
-                            }
-                            jsDate.value.setTime(cal.getTimeInMillis()); // Mutate!
-                            return jsDate.value.getTime();
+                        Date date = asDate(context);
+                        Calendar cal = Calendar.getInstance();
+                        cal.setTime(date);
+                        cal.set(Calendar.HOUR_OF_DAY, hours);
+                        if (args.length > 1 && args[1] instanceof Number) {
+                            cal.set(Calendar.MINUTE, ((Number) args[1]).intValue());
                         }
-                        return Double.NaN;
+                        if (args.length > 2 && args[2] instanceof Number) {
+                            cal.set(Calendar.SECOND, ((Number) args[2]).intValue());
+                        }
+                        if (args.length > 3 && args[3] instanceof Number) {
+                            cal.set(Calendar.MILLISECOND, ((Number) args[3]).intValue());
+                        }
+                        // mutate
+                        date.setTime(cal.getTimeInMillis());
+                        return date.getTime();
                     };
                     case "setMinutes" -> (JsCallable) (context, args) -> {
                         if (args.length == 0 || !(args[0] instanceof Number)) {
                             return Double.NaN;
                         }
                         int minutes = ((Number) args[0]).intValue();
-                        if (context.getThisObject() instanceof JsDate jsDate) {
-                            Calendar cal = Calendar.getInstance();
-                            cal.setTime(jsDate.value);
-                            cal.set(Calendar.MINUTE, minutes);
-                            if (args.length > 1 && args[1] instanceof Number) {
-                                cal.set(Calendar.SECOND, ((Number) args[1]).intValue());
-                            }
-                            if (args.length > 2 && args[2] instanceof Number) {
-                                cal.set(Calendar.MILLISECOND, ((Number) args[2]).intValue());
-                            }
-
-                            jsDate.value.setTime(cal.getTimeInMillis()); // Mutate!
-                            return jsDate.value.getTime();
+                        Date date = asDate(context);
+                        Calendar cal = Calendar.getInstance();
+                        cal.setTime(date);
+                        cal.set(Calendar.MINUTE, minutes);
+                        if (args.length > 1 && args[1] instanceof Number) {
+                            cal.set(Calendar.SECOND, ((Number) args[1]).intValue());
                         }
-                        return Double.NaN;
+                        if (args.length > 2 && args[2] instanceof Number) {
+                            cal.set(Calendar.MILLISECOND, ((Number) args[2]).intValue());
+                        }
+                        // mutate
+                        date.setTime(cal.getTimeInMillis());
+                        return date.getTime();
                     };
                     case "setSeconds" -> (JsCallable) (context, args) -> {
                         if (args.length == 0 || !(args[0] instanceof Number)) {
                             return Double.NaN;
                         }
                         int seconds = ((Number) args[0]).intValue();
-
-                        if (context.getThisObject() instanceof JsDate jsDate) {
-                            Calendar cal = Calendar.getInstance();
-                            cal.setTime(jsDate.value);
-                            cal.set(Calendar.SECOND, seconds);
-                            if (args.length > 1 && args[1] instanceof Number) {
-                                cal.set(Calendar.MILLISECOND, ((Number) args[1]).intValue());
-                            }
-                            jsDate.value.setTime(cal.getTimeInMillis()); // Mutate!
-                            return jsDate.value.getTime();
+                        Date date = asDate(context);
+                        Calendar cal = Calendar.getInstance();
+                        cal.setTime(date);
+                        cal.set(Calendar.SECOND, seconds);
+                        if (args.length > 1 && args[1] instanceof Number) {
+                            cal.set(Calendar.MILLISECOND, ((Number) args[1]).intValue());
                         }
-                        return Double.NaN;
+                        // mutate
+                        date.setTime(cal.getTimeInMillis());
+                        return date.getTime();
                     };
                     case "setMilliseconds" -> (JsCallable) (context, args) -> {
                         if (args.length == 0 || !(args[0] instanceof Number)) {
                             return Double.NaN;
                         }
                         int ms = ((Number) args[0]).intValue();
-                        if (context.getThisObject() instanceof JsDate jsDate) {
-                            Calendar cal = Calendar.getInstance();
-                            cal.setTime(jsDate.value);
-                            cal.set(Calendar.MILLISECOND, ms);
-
-                            jsDate.value.setTime(cal.getTimeInMillis()); // Mutate!
-                            return jsDate.value.getTime();
-                        }
-                        return Double.NaN;
+                        Date date = asDate(context);
+                        Calendar cal = Calendar.getInstance();
+                        cal.setTime(date);
+                        cal.set(Calendar.MILLISECOND, ms);
+                        // mutate
+                        date.setTime(cal.getTimeInMillis());
+                        return date.getTime();
                     };
                     case "setTime" -> (JsCallable) (context, args) -> {
                         if (args.length == 0 || !(args[0] instanceof Number)) {
                             return Double.NaN;
                         }
                         long timestamp = ((Number) args[0]).longValue();
-                        if (context.getThisObject() instanceof JsDate jsDate) {
-                            jsDate.value.setTime(timestamp); // Direct mutation!
-                            return timestamp;
-                        }
-                        return Double.NaN;
+                        Date date = asDate(context);
+                        // mutate
+                        date.setTime(timestamp);
+                        return timestamp;
                     };
                     default -> null;
                 };
             }
         };
+    }
+
+    Date asDate(Context context) {
+        if (context.getThisObject() instanceof JsDate date) {
+            return date.value;
+        }
+        return value;
     }
 
     @Override
