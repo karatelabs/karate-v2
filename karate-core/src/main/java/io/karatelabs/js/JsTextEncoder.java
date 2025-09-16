@@ -35,8 +35,7 @@ class JsTextEncoder extends JsObject {
                 if ("encode".equals(propName)) {
                     return (Invokable) args -> {
                         String text = args[0].toString();
-                        byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
-                        return new JsUint8Array(bytes);
+                        return text.getBytes(StandardCharsets.UTF_8);
                     };
                 }
                 return null;

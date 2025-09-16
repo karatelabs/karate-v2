@@ -118,11 +118,14 @@ class JsProperty {
     }
 
     void set(Object value) {
-        if (index instanceof Number num) {
+        if (index instanceof Number n) {
+            // TODO out of bounds handling, unify iterable
             if (object instanceof List) { // most common case
-                ((List<Object>) object).set(num.intValue(), value);
-            } else if (object instanceof JsArray array) {
-                array.set(num.intValue(), value);
+                ((List<Object>) object).set(n.intValue(), value);
+            } else if (object instanceof byte[] bytes) {
+                if (value instanceof Number v) {
+                    bytes[n.intValue()] = (byte) (v.intValue() & 0xFF);
+                }
             } else {
                 throw new RuntimeException("cannot set by index [" + index + "]:" + value + " on (non-array): " + object);
             }
@@ -159,14 +162,19 @@ class JsProperty {
     Object get() {
         if (!functionCall && index instanceof Number n) {
             int i = n.intValue();
+            // TODO out of bounds handling, unify iterable
             if (object instanceof List) {
                 return ((List<Object>) object).get(i);
             }
             if (object instanceof JsArray array) {
+                // regex returns JsArray for exec() api
                 return array.get(i);
             }
             if (object instanceof String s) {
                 return s.substring(i, i + 1);
+            }
+            if (object instanceof byte[] bytes) {
+                return bytes[i] & 0xFF;
             }
             throw new RuntimeException("get by index [" + i + "] for non-array: " + object);
         }

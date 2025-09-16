@@ -771,7 +771,7 @@ class JsArray extends JsObject {
     }
 
     @Override
-    public List<Object> call(Context context, Object... args) {
+    public Object call(Context context, Object... args) {
         if (args.length == 1 && args[0] instanceof Number n) {
             int count = n.intValue();
             List<Object> list = new ArrayList<>();

@@ -67,7 +67,7 @@ class ContextRoot extends DefaultContext {
         return switch (key) {
             case "console", "parseInt", "parseFloat", "undefined", "Array", "Date", "Error", "Infinity", "Java",
                  "JSON", "Math", "NaN", "Number", "Boolean", "Object", "RegExp", "String", "TypeError",
-                 "TextEncoder", "TextDecoder" -> true;
+                 "TextEncoder", "TextDecoder", "Uint8Array" -> true;
             default -> false;
         };
     }
@@ -95,6 +95,7 @@ class ContextRoot extends DefaultContext {
             case "TypeError" -> new JsError("TypeError");
             case "TextDecoder" -> new JsTextDecoder();
             case "TextEncoder" -> new JsTextEncoder();
+            case "Uint8Array" -> new JsUint8Array(0);
             default -> null;
         };
     }

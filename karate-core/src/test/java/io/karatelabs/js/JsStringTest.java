@@ -186,4 +186,22 @@ class JsStringTest extends EvalBase {
         assertEquals("hello world", eval("new TextDecoder().decode(new TextEncoder().encode('hello world'))"));
     }
 
+    @Test
+    void testByteArray() {
+        byte[] bytes = (byte[]) eval("new Uint8Array(10)");
+        assertEquals(10, bytes.length);
+        for (byte b : bytes) {
+            assertEquals(0, b);
+        }
+        bytes = (byte[]) eval("new Uint8Array([72, 101, 108, 108, 111])");
+        assertEquals("Hello", new String(bytes, StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void testByteArrayIndexAccess() {
+        assertEquals(72, eval("let b = new Uint8Array([72, 101, 108]); b[0]"));
+        byte[] bytes = (byte[]) eval("let b = new Uint8Array([72, 101, 108]); b[1] = 65; b");
+        assertEquals(65, bytes[1]);
+    }
+
 }

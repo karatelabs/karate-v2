@@ -72,7 +72,7 @@ class JsString extends JsObject implements JavaMirror {
                         return s.startsWith((String) args[0]);
                     };
                     case "length" -> text.length();
-                    // intentional deviation from js spec, to mirror Java string API
+                    // intentional deviation from js spec, to enable common string java api interop
                     case "getBytes" -> (JsCallable) (context, args) -> {
                         String s = asString(context);
                         return s.getBytes(StandardCharsets.UTF_8);

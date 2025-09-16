@@ -191,5 +191,4 @@ class JavaBridgeTest extends EvalBase {
         assertEquals("aGVsbG8=", eval("var Base64 = Java.type('java.util.Base64'); Base64.getEncoder().encodeToString('hello'.getBytes())"));
     }
 
-
 }
