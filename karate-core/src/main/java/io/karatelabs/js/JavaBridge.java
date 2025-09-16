@@ -39,11 +39,19 @@ public class JavaBridge {
         }
     }
 
+    public Object construct(Class<?> clazz, Object[] args) {
+        try {
+            Constructor<?> constructor = findConstructor(clazz, args);
+            return constructor.newInstance(args);
+        } catch (Exception e) {
+            throw new RuntimeException("cannot construct [" + clazz + "]: " + e);
+        }
+    }
+
     public Object construct(String className, Object[] args) {
         try {
             Class<?> clazz = Class.forName(className);
-            Constructor<?> constructor = findConstructor(clazz, args);
-            return constructor.newInstance(args);
+            return construct(clazz, args);
         } catch (Exception e) {
             throw new RuntimeException("cannot construct [" + className + "]: " + e);
         }

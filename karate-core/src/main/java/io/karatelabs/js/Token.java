@@ -32,7 +32,7 @@ public class Token {
 
     static final Token EMPTY = new Token(Resource.text(""), TokenType.EOF, 0, 0, 0, "");
 
-    Resource resource;
+    public final Resource resource;
     public final long pos;
     public final int line;
     public final int col;
@@ -43,7 +43,7 @@ public class Token {
     Token prev;
     Token next;
 
-    public Token(Resource resource, TokenType type, long pos, int line, int col, String text) {
+    Token(Resource resource, TokenType type, long pos, int line, int col, String text) {
         this.resource = resource;
         this.type = type;
         this.pos = pos;

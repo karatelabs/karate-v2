@@ -27,7 +27,7 @@ class JavaBridgeTest extends EvalBase {
     @Test
     void testCall() {
         JavaClass cp = new JavaClass(bridge, "java.util.Properties");
-        Object o = cp.construct(JavaBridge.EMPTY);
+        Object o = cp.invoke(JavaBridge.EMPTY);
         JavaObject op = new JavaObject(bridge, o);
         assertEquals(0, op.call("size", JavaBridge.EMPTY));
         op.call("put", "foo", 5);
@@ -91,7 +91,7 @@ class JavaBridgeTest extends EvalBase {
     @Test
     void testConstruct() {
         JavaClass proxy = new JavaClass(bridge, "java.util.Properties");
-        Object o = proxy.construct(JavaBridge.EMPTY);
+        Object o = proxy.invoke(JavaBridge.EMPTY);
         assertEquals("java.util.Properties", o.getClass().getName());
     }
 

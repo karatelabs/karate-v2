@@ -25,7 +25,7 @@ package io.karatelabs.js;
 
 import java.util.Map;
 
-public class JavaObject implements JavaMethods, JavaFields, ObjectLike {
+public class JavaObject implements JavaAccess, ObjectLike {
 
     private final JavaBridge bridge;
     private final Object object;
@@ -33,6 +33,11 @@ public class JavaObject implements JavaMethods, JavaFields, ObjectLike {
     public JavaObject(JavaBridge bridge, Object object) {
         this.bridge = bridge;
         this.object = object;
+    }
+
+    @Override
+    public Object invoke(Object... args) {
+        return bridge.construct(object.getClass().getName(), args);
     }
 
     @Override

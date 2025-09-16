@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2024 Karate Labs Inc.
+ * Copyright 2025 Karate Labs Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,8 +23,15 @@
  */
 package io.karatelabs.js;
 
-@FunctionalInterface
-public interface JavaMethods {
+/**
+ * Invokable is mapped to the constructor
+ * all operations work in static or instance mode depending on context
+ */
+public interface JavaAccess extends Invokable {
+
+    Object read(String name);
+
+    void update(String name, Object value);
 
     Object call(String name, Object... args);
 

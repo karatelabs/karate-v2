@@ -40,12 +40,12 @@ public class Node implements Iterable<Node> {
 
     private Node parent;
 
-    public Node(NodeType type) {
+    Node(NodeType type) {
         this.type = type;
         token = Token.EMPTY;
     }
 
-    public Node(Token token) {
+    Node(Token token) {
         this.token = token;
         type = NodeType.TOKEN;
     }

@@ -30,7 +30,7 @@ class KeyValue {
     final String key;
     final Object value;
 
-    public KeyValue(Object parent, int index, String key, Object value) {
+    KeyValue(Object parent, int index, String key, Object value) {
         this.parent = parent;
         this.index = index;
         this.key = key;

@@ -225,14 +225,14 @@ class JsProperty {
         if (context.root.javaBridge != null) {
             try {
                 if (functionCall) {
-                    if (object instanceof JavaMethods jm) {
-                        return new JavaInvokable(name, jm);
+                    if (object instanceof JavaAccess ja) {
+                        return new JavaInvokable(name, ja);
                     } else {
                         return new JavaInvokable(name, new JavaObject(context.root.javaBridge, object));
                     }
                 } else {
-                    if (object instanceof JavaFields jf) {
-                        return jf.read(name);
+                    if (object instanceof JavaAccess ja) {
+                        return ja.read(name);
                     }
                     return new JavaObject(context.root.javaBridge, object).get(name);
                 }

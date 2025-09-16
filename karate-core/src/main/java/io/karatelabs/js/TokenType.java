@@ -179,9 +179,8 @@ public enum TokenType {
                  THROW -> true;
             // after these tokens, a regex literal is not allowed
             case R_PAREN, R_BRACKET, R_CURLY, IDENT, NUMBER, S_STRING, D_STRING, TRUE, FALSE, NULL -> false;
-            default ->
-                // for other tokens, keep the current value of regexAllowed
-                    null;
+            // for other tokens, keep the current value of regexAllowed
+            default -> null;
         };
     }
 

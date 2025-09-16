@@ -23,7 +23,7 @@
  */
 package io.karatelabs.js;
 
-public class JavaClass implements JavaMethods, JavaFields, Invokable {
+public class JavaClass implements JavaAccess {
 
     private final JavaBridge bridge;
     private final String className;
@@ -40,10 +40,6 @@ public class JavaClass implements JavaMethods, JavaFields, Invokable {
 
     @Override
     public Object invoke(Object... args) {
-        return construct(args);
-    }
-
-    public Object construct(Object[] args) {
         return bridge.construct(className, args);
     }
 

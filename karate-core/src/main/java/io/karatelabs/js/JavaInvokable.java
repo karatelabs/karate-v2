@@ -26,16 +26,16 @@ package io.karatelabs.js;
 public class JavaInvokable implements Invokable {
 
     public final String name;
-    public final JavaMethods methods;
+    public final JavaAccess access;
 
-    public JavaInvokable(String name, JavaMethods methods) {
+    public JavaInvokable(String name, JavaAccess access) {
         this.name = name;
-        this.methods = methods;
+        this.access = access;
     }
 
     @Override
     public Object invoke(Object... args) {
-        return methods.call(name, args);
+        return access.call(name, args);
     }
 
 }
