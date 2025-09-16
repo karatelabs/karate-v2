@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2024 Karate Labs Inc.
+ * Copyright 2025 Karate Labs Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,61 +23,42 @@
  */
 package io.karatelabs.js;
 
+import net.minidev.json.JSONValue;
+
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
-public class JavaObject implements JavaAccess, ObjectLike {
-
-    private final Object object;
-
-    public JavaObject(Object object) {
-        this.object = object;
-    }
-
-    @Override
-    public Object toJava() {
-        return object;
-    }
-
-    @Override
-    public Object invoke(Object... args) {
-        return JavaUtils.construct(object.getClass(), args);
-    }
-
-    @Override
-    public Object call(String name, Object... args) {
-        return JavaUtils.convertIfArray(JavaUtils.invoke(object, name, args));
-    }
-
-    @Override
-    public Object read(String name) {
-        return get(name);
-    }
-
-    @Override
-    public void update(String name, Object value) {
-        put(name, value);
-    }
+public class JsJson implements SimpleObject {
 
     @Override
     public Object get(String name) {
-        return JavaUtils.convertIfArray(JavaUtils.get(object, name));
-    }
-
-    @Override
-    public void put(String name, Object value) {
-        JavaUtils.set(object, name, value);
-    }
-
-    @Override
-    public void remove(String name) {
-        throw new RuntimeException("remove not supported on java object: " + object.getClass());
+        return switch (name) {
+            case "stringify" -> stringify();
+            case "parse" -> parse();
+            default -> throw new RuntimeException("no such api on JSON: " + name);
+        };
     }
 
     @SuppressWarnings("unchecked")
-    @Override
-    public Map<String, Object> toMap() {
-        return (Map<String, Object>) JavaUtils.toMap(object);
+    Invokable stringify() {
+        return args -> {
+            String json = JSONValue.toJSONString(args[0]);
+            if (args.length == 1) {
+                return json;
+            }
+            List<String> list = (List<String>) args[1];
+            Map<String, Object> map = (Map<String, Object>) JSONValue.parse(json);
+            Map<String, Object> result = new LinkedHashMap<>();
+            for (String k : list) {
+                result.put(k, map.get(k));
+            }
+            return JSONValue.toJSONString(result);
+        };
+    }
+
+    Invokable parse() {
+        return args -> JSONValue.parse((String) args[0]);
     }
 
 }
-

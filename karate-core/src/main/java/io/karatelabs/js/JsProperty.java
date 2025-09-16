@@ -208,8 +208,8 @@ class JsProperty {
         }
         // primitives: string, number, boolean, etc.
         JavaMirror mirror = Terms.toJavaMirror(object);
-        if (mirror != null) {
-            return mirror.get(name);
+        if (mirror instanceof ObjectLike ol) {
+            return ol.get(name);
         }
         if (object instanceof JsCallable callable) {
             // e.g. [].map.call([1, 2, 3], x => x * 2)

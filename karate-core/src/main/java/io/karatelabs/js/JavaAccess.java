@@ -39,4 +39,6 @@ public interface JavaAccess extends Invokable {
         return args -> call(name, args);
     }
 
+    Object toJava();
+
 }

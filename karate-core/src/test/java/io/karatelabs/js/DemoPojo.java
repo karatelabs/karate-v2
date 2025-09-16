@@ -1,7 +1,5 @@
 package io.karatelabs.js;
 
-import java.util.function.Function;
-
 public class DemoPojo {
 
     public DemoPojo() {
@@ -98,10 +96,6 @@ public class DemoPojo {
 
     public Integer[] doIntegerArray() {
         return integerArray;
-    }
-
-    public Function<Integer, String> doWorkFn() {
-        return x -> x + "";
     }
 
 }

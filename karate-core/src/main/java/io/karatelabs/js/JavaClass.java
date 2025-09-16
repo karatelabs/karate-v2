@@ -31,6 +31,11 @@ public class JavaClass implements JavaAccess {
         this.clazz = clazz;
     }
 
+    @Override
+    public Object toJava() {
+        return clazz;
+    }
+
     public JavaClass(String className) {
         try {
             this.clazz = Class.forName(className);

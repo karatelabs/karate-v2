@@ -134,8 +134,6 @@ class JavaBridgeTest extends EvalBase {
         assertEquals("instance-field", eval("var DemoPojo = Java.type('io.karatelabs.js.DemoPojo'); var a = new DemoPojo(); a.instanceField"));
         eval("var DemoPojo = Java.type('io.karatelabs.js.DemoPojo'); var b = new DemoPojo(); var c = b.doWork; var d = c()");
         assertEquals("hello", get("d"));
-        eval("var DemoPojo = Java.type('io.karatelabs.js.DemoPojo'); var b = new DemoPojo(); var c = b.doWorkFn(); var d = c(2)");
-        assertEquals("2", get("d"));
         eval("var DemoPojo = Java.type('io.karatelabs.js.DemoPojo'); var b = new DemoPojo('foo'); b.integerArray = [1, 2]; var c = b.doIntegerArray()");
         NodeUtils.match(get("c"), "[1, 2]");
     }
@@ -178,6 +176,11 @@ class JavaBridgeTest extends EvalBase {
         } catch (Exception e) {
             assertTrue(e.getMessage().contains("failed"));
         }
+    }
+
+    @Test
+    void testJavaToConversion() {
+        assertEquals(DemoUtils.class, eval("var DemoUtils = Java.type('io.karatelabs.js.DemoUtils'); Java.to(DemoUtils)"));
     }
 
     @Test

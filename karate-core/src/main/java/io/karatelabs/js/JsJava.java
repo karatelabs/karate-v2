@@ -23,8 +23,30 @@
  */
 package io.karatelabs.js;
 
-interface JavaMirror {
+public class JsJava implements SimpleObject {
 
-    Object toJava();
+    final JavaBridge bridge;
+
+    JsJava(JavaBridge bridge) {
+        this.bridge = bridge;
+    }
+
+    @Override
+    public Object get(String name) {
+        if (bridge == null) {
+            throw new RuntimeException("Java bridge not enabled");
+        }
+        return switch (name) {
+            case "type" -> (Invokable) args -> bridge.forClass((String) args[0]);
+            case "to" -> (Invokable) args -> {
+                if (args[0] instanceof JavaAccess ja) {
+                    return ja.toJava();
+                }
+                // TODO regex, functions, lambdas
+                return null;
+            };
+            default -> throw new RuntimeException("no such api on Java: " + name);
+        };
+    }
 
 }

@@ -10,6 +10,10 @@ public interface JavaBridge {
         }
     }
 
+    default JavaAccess forClass(Class<?> clazz) {
+        return new JavaClass(clazz);
+    }
+
     default JavaAccess forObject(Object object) {
         if (object == null) {
             throw new NullPointerException("object is null");

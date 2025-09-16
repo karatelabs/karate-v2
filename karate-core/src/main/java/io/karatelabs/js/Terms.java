@@ -28,10 +28,6 @@ import net.minidev.json.JSONValue;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 public class Terms {
 
@@ -302,20 +298,9 @@ public class Terms {
             return callable;
         } else if (o instanceof Invokable invokable) {
             return (c, args) -> invokable.invoke(args);
-        } else if (isJavaFunction(o)) {
-            return new JavaFunction(o);
         } else {
             return null;
         }
-    }
-
-    private static boolean isJavaFunction(Object o) {
-        return o instanceof Function
-                || o instanceof Runnable
-                || o instanceof JsCallable
-                || o instanceof Consumer
-                || o instanceof Supplier
-                || o instanceof Predicate;
     }
 
     public static boolean isTruthy(Object value) {
