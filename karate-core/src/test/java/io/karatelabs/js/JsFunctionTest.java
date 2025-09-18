@@ -51,12 +51,6 @@ class JsFunctionTest extends EvalBase {
     }
 
     @Test
-    void testFunctionThis() {
-        // assertEquals("bar", eval("var a = function(){ return this.foo }; a.foo = 'bar'; a()"));
-        // assertEquals("bar", eval("var a = function(){ var b = x => this.foo; return b() }; a.foo = 'bar'; a()"));
-    }
-
-    @Test
     void testFunctionArgsMissing() {
         assertEquals(true, eval("var a = function(b){ return b }; a() === undefined"));
     }
@@ -127,6 +121,14 @@ class JsFunctionTest extends EvalBase {
     @Test
     void testIife() {
         matchEval("(function(){ return 'hello' })()", "'hello'");
+    }
+
+    @Test
+    void testCallAndApply() {
+        matchEval("function sum(a, b, c){ return a + b + c }; sum(1, 2, 3)", "6");
+        matchEval("function sum(a, b, c){ return a + b + c }; sum.call(null, 1, 2, 3)", "6");
+        matchEval("function sum(a, b, c){ return a + b + c }; sum.apply(null, [1, 2, 3])", "6");
+        matchEval("function greet(pre){ return pre + this.name }; var p = { name: 'john' }; greet.call(p, 'hi ')", "hi john");
     }
 
     @Test

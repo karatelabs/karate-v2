@@ -39,6 +39,8 @@ public abstract class JsFunction extends JsObject implements JsCallable {
             public Object getProperty(String propName) {
                 return switch (propName) {
                     case "call" -> callPrototype();
+                    case "apply" -> applyPrototype();
+                    // TODO bind
                     case "constructor" -> _this;
                     case "name" -> name;
                     default -> null;
@@ -47,18 +49,53 @@ public abstract class JsFunction extends JsObject implements JsCallable {
         };
     }
 
-    JsCallable callPrototype() {
-        return (context, args) -> {
+    static class ThisArgs {
+
+        final Object thisObject;
+        final List<Object> args;
+
+        @SuppressWarnings("unchecked")
+        ThisArgs(Object[] args, boolean apply) {
             List<Object> list = new ArrayList<>(Arrays.asList(args));
-            Object target = null;
             if (!list.isEmpty()) {
-                target = list.removeFirst();
-                if (context instanceof DefaultContext dc) {
-                    dc.thisObject = target;
-                }
+                thisObject = list.removeFirst();
+            } else {
+                thisObject = Terms.UNDEFINED;
             }
-            Object[] shiftedArgs = list.toArray();
-            return call(context, shiftedArgs);
+            if (apply) {
+                if (list.isEmpty()) {
+                    this.args = list;
+                } else {
+                    Object first = list.getFirst();
+                    if (first instanceof List) {
+                        this.args = ((List<Object>) first);
+                    } else {
+                        this.args = new ArrayList<>();
+                    }
+                }
+            } else {
+                this.args = list;
+            }
+        }
+    }
+
+    private JsCallable callPrototype() {
+        return (context, args) -> {
+            ThisArgs thisArgs = new ThisArgs(args, false);
+            if (context instanceof DefaultContext dc) {
+                dc.thisObject = thisArgs.thisObject;
+            }
+            return call(context, thisArgs.args.toArray());
+        };
+    }
+
+    private JsCallable applyPrototype() {
+        return (context, args) -> {
+            ThisArgs thisArgs = new ThisArgs(args, true);
+            if (context instanceof DefaultContext dc) {
+                dc.thisObject = thisArgs.thisObject;
+            }
+            return call(context, thisArgs.args.toArray());
         };
     }
 
