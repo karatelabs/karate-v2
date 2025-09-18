@@ -79,13 +79,16 @@ class JsFunctionNode extends JsFunction {
         int actualArgCount = Math.min(args.length, argCount);
         for (int i = 0; i < actualArgCount; i++) {
             Node argNode = argNodes.get(i);
-            if (argNode.getFirst().token.type == TokenType.DOT_DOT_DOT) { // varargs
+            Node first = argNode.getFirst();
+            if (first.getFirstToken().type == TokenType.DOT_DOT_DOT) { // varargs
                 List<Object> remainingArgs = new ArrayList<>();
                 for (int j = i; j < args.length; j++) {
                     remainingArgs.add(args[j]);
                 }
                 String argName = argNode.getLast().getText();
                 functionContext.put(argName, remainingArgs);
+            } else if (first.type == NodeType.LIT_ARRAY || first.type == NodeType.LIT_OBJECT) {
+                Interpreter.evalAssign(first, functionContext, BindingType.VAR, args[i], true);
             } else {
                 String argName = argNode.getFirst().getText();
                 Object argValue = args[i];

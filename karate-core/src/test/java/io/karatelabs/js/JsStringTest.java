@@ -18,6 +18,8 @@ class JsStringTest extends EvalBase {
     void testStringConcat() {
         assertEquals("foobar", eval("'foo' + 'bar'"));
         assertEquals("abc", eval("'a' + 'b' + 'c'"));
+        assertEquals("a1", eval("'a' + 1"));
+        assertEquals("1a", eval("1 + 'a'"));
     }
 
     @Test

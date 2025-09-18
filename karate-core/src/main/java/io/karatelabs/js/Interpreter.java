@@ -53,11 +53,48 @@ class Interpreter {
         return new Terms(lhs, rhs);
     }
 
+    @SuppressWarnings("unchecked")
+    static Object evalAssign(Node bindings, DefaultContext context, BindingType bindingType, Object value, boolean initialized) {
+        if (bindings.type == NodeType.LIT_ARRAY) {
+            List<Object> list = null;
+            if (value instanceof List) {
+                list = (List<Object>) value;
+            }
+            evalLitArray(bindings, context, bindingType, list);
+        } else if (bindings.type == NodeType.LIT_OBJECT) {
+            Map<String, Object> object = null;
+            if (value instanceof Map) {
+                object = (Map<String, Object>) value;
+            }
+            evalLitObject(bindings, context, bindingType, object);
+        } else {
+            List<Node> varNames = bindings.findAll(IDENT);
+            for (Node varName : varNames) {
+                String name = varName.getText();
+                context.declare(name, value, toInfo(name, bindingType, initialized));
+                if (context.root.listener != null) {
+                    context.root.listener.onVariableWrite(context, bindingType, name, value);
+                }
+            }
+        }
+        return value;
+    }
+
     private static Object evalAssignExpr(Node node, DefaultContext context) {
-        JsProperty prop = new JsProperty(node.get(0), context);
+        Node lhs = node.get(0);
+        TokenType operator = node.get(1).token.type;
         Object value = eval(node.get(2), context);
-        Object result = switch (node.get(1).token.type) {
-            case EQ -> value;
+        if (operator == EQ) {
+            if (lhs.type == NodeType.LIT_EXPR) {
+                evalAssign(lhs.getFirst(), context, BindingType.VAR, value, true);
+            } else {
+                JsProperty prop = new JsProperty(lhs, context);
+                prop.set(value);
+            }
+            return value;
+        }
+        JsProperty prop = new JsProperty(lhs, context);
+        Object result = switch (operator) {
             case PLUS_EQ -> Terms.add(prop.get(), value);
             case MINUS_EQ -> terms(prop.get(), value).min();
             case STAR_EQ -> terms(prop.get(), value).mul();
@@ -227,13 +264,17 @@ class Interpreter {
         Node forBody = node.getLast();
         Object forResult = null;
         DefaultContext inner = outer;
-        boolean isLetOrConst = false;
         if (node.get(2).token.type == SEMI) {
             // rare case: "for(;;)"
         } else if (node.get(3).token.type == SEMI) {
-            TokenType letOrConst = node.get(2).getFirstToken().type;
-            isLetOrConst = letOrConst == LET || letOrConst == CONST;
-            eval(node.get(2), outer);
+            boolean isLetOrConst;
+            if (node.get(2).type == NodeType.VAR_STMT) {
+                evalVarStmt(node.get(2), outer);
+                isLetOrConst = node.get(2).getFirstToken().type != VAR;
+            } else {
+                isLetOrConst = false;
+                eval(node.get(2), outer);
+            }
             if (node.get(4).token.type == SEMI) {
                 // rare no-condition case: "for(init;;increment)"
             } else {
@@ -272,29 +313,26 @@ class Interpreter {
             boolean in = node.get(3).token.type == IN;
             Object forObject = eval(node.get(4), outer);
             Iterable<KeyValue> iterable = Terms.toIterable(forObject);
-            String varName;
-            TokenType letOrConst = VAR;
+            BindingType bindingType;
+            Node bindings;
             if (node.get(2).type == NodeType.VAR_STMT) {
-                letOrConst = node.get(2).getFirstToken().type;
-                varName = node.get(2).get(1).getText();
+                bindings = node.get(2).get(1);
+                bindingType = switch (node.get(2).getFirstToken().type) {
+                    case LET -> BindingType.LET;
+                    case CONST -> BindingType.CONST;
+                    default -> BindingType.VAR;
+                };
             } else {
-                varName = node.get(2).getText();
+                bindingType = BindingType.VAR;
+                bindings = node.get(2);
             }
             int index = -1;
             for (KeyValue kv : iterable) {
                 index++;
                 outer.iteration = index;
                 Object varValue = in ? kv.key : kv.value;
-                BindingInfo info = switch (letOrConst) {
-                    case LET -> new BindingInfo(varName, BindingType.LET);
-                    case CONST -> new BindingInfo(varName, BindingType.CONST);
-                    default -> null;
-                };
-                if (info != null) {
-                    info.initialized = true;
-                }
-                outer.declare(varName, varValue, info);
-                if (info != null) {
+                evalAssign(bindings, outer, bindingType, varValue, true);
+                if (bindingType == BindingType.LET || bindingType == BindingType.CONST) {
                     inner = new DefaultContext(outer, forBody, ContextScope.LOOP_BODY);
                     inner._bindings = new HashMap<>(outer._bindings);
                     inner._bindingInfos = new ArrayList<>(outer._bindingInfos);
@@ -767,15 +805,14 @@ class Interpreter {
         };
     }
 
-    @SuppressWarnings("unchecked")
     private static Object evalVarStmt(Node node, DefaultContext context) {
-        Object varValue;
+        Object value;
         boolean initialized;
         if (node.size() > 3) {
-            varValue = eval(node.get(3), context);
+            value = eval(node.get(3), context);
             initialized = true;
         } else {
-            varValue = Terms.UNDEFINED;
+            value = Terms.UNDEFINED;
             initialized = false;
         }
         BindingType bindingType = switch (node.getFirstToken().type) {
@@ -784,29 +821,7 @@ class Interpreter {
             default -> BindingType.VAR;
         };
         Node bindings = node.get(1);
-        if (bindings.type == NodeType.LIT_ARRAY) {
-            List<Object> list = null;
-            if (varValue instanceof List) {
-                list = (List<Object>) varValue;
-            }
-            evalLitArray(bindings, context, bindingType, list);
-        } else if (bindings.type == NodeType.LIT_OBJECT) {
-            Map<String, Object> object = null;
-            if (varValue instanceof Map) {
-                object = (Map<String, Object>) varValue;
-            }
-            evalLitObject(bindings, context, bindingType, object);
-        } else {
-            List<Node> varNames = bindings.findAll(IDENT);
-            for (Node varName : varNames) {
-                String name = varName.getText();
-                context.declare(name, varValue, toInfo(name, bindingType, initialized));
-                if (context.root.listener != null) {
-                    context.root.listener.onVariableWrite(context, bindingType, name, varValue);
-                }
-            }
-        }
-        return varValue;
+        return evalAssign(bindings, context, bindingType, value, initialized);
     }
 
     private static Object evalWhileStmt(Node node, DefaultContext context) {

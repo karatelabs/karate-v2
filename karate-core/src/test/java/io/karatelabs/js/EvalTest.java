@@ -510,6 +510,8 @@ class EvalTest extends EvalBase {
         eval("let [a, ...rest] = [1]");
         assertEquals(1, get("a"));
         match(get("rest"), "[]");
+        eval("var res = []; var o = { a: 1, b: 2 }; for (const [k, v] of Object.entries(o)) { res.push(k + v) }");
+        match(get("res"), "['a1', 'b2']");
     }
 
     @Test
@@ -528,6 +530,17 @@ class EvalTest extends EvalBase {
         eval("let {a, ...rest} = {a: 1}");
         assertEquals(1, get("a"));
         match(get("rest"), "{}");
+        eval("var res = []; var list = [{ a: 1 }, { a: 2 }]; for (const {a: x} of list) { res.push(x) }");
+        match(get("res"), "[1, 2]");
+    }
+
+    @Test
+    void testAssignDestructuring() {
+        eval("[x, y] = [1, 2]");
+        assertEquals(1, get("x"));
+        assertEquals(2, get("y"));
+        eval("{ a: x } = { a: 2 }");
+        assertEquals(2, get("x"));
     }
 
 }

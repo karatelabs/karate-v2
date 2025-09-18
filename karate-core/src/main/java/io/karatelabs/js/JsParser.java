@@ -451,7 +451,7 @@ public class JsParser extends Parser {
             }
             return exit();
         }
-        boolean result = consumeIf(IDENT);
+        boolean result = consumeIf(IDENT) || lit_array() || lit_object();
         if (result && consumeIf(EQ)) {
             expr(-1, true);
         }
