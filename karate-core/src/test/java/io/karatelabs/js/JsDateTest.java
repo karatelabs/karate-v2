@@ -1,12 +1,19 @@
 package io.karatelabs.js;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.Date;
+import java.util.TimeZone;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class JsDateTest extends EvalBase {
+
+    @BeforeAll
+    static void forceUTC() {
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+    }
 
     @Test
     void testDev() {
@@ -39,8 +46,8 @@ class JsDateTest extends EvalBase {
 
     @Test
     void testDateManipulation() {
-        assertEquals(1741977000000L, eval("new Date(2025, 2, 15).getTime()"));
-        assertEquals(1742841000000L, eval("var date = new Date(2025, 2, 15); date.setDate(date.getDate() + 10)"));
+        assertEquals(1741996800000L, eval("new Date(2025, 2, 15).getTime()"));
+        assertEquals(1742860800000L, eval("var date = new Date(2025, 2, 15); date.setDate(date.getDate() + 10)"));
         // dates are mutable in js
         assertEquals(JsDate.parse("2025-03-25"), get("date"));
         assertEquals(25, eval("var date = new Date(2025, 2, 15); date.setDate(date.getDate() + 10); date.getDate()"));
