@@ -38,6 +38,32 @@ public class StringUtils {
 
     public static final String EMPTY = "";
 
+    public static boolean isJson(String s) {
+        if (s == null || s.isEmpty()) {
+            return false;
+        }
+        if (s.charAt(0) == ' ') {
+            s = s.trim();
+            if (s.isEmpty()) {
+                return false;
+            }
+        }
+        return s.charAt(0) == '{' || s.charAt(0) == '[';
+    }
+
+    public static boolean isXml(String s) {
+        if (s == null || s.isEmpty()) {
+            return false;
+        }
+        if (s.charAt(0) == ' ') {
+            s = s.trim();
+            if (s.isEmpty()) {
+                return false;
+            }
+        }
+        return s.charAt(0) == '<';
+    }
+
     public static String truncate(String s, int length, boolean addDots) {
         if (s == null) {
             return EMPTY;

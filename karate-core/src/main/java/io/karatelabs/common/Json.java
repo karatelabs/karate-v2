@@ -336,7 +336,7 @@ public class Json {
 
     public static String format(Object o, boolean pretty, boolean lenient, boolean sort) {
         if (o instanceof String ostring) {
-            if (isJson(ostring)) {
+            if (StringUtils.isJson(ostring)) {
                 if (sort) { // dont care about order in first phase
                     o = JSONValue.parse(ostring);
                 } else {
@@ -467,19 +467,6 @@ public class Json {
         for (int i = 0; i < depth; i++) {
             sb.append(' ').append(' ');
         }
-    }
-
-    public static boolean isJson(String s) {
-        if (s == null || s.isEmpty()) {
-            return false;
-        }
-        if (s.charAt(0) == ' ') {
-            s = s.trim();
-            if (s.isEmpty()) {
-                return false;
-            }
-        }
-        return s.charAt(0) == '{' || s.charAt(0) == '[';
     }
 
     public static Object copy(Object o, boolean deep, boolean dropCircularReferences) {

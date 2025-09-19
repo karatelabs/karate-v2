@@ -24,6 +24,7 @@
 package io.karatelabs.match;
 
 import io.karatelabs.common.Json;
+import io.karatelabs.common.StringUtils;
 import io.karatelabs.common.Xml;
 import io.karatelabs.js.Context;
 import io.karatelabs.js.JsCallable;
@@ -227,9 +228,9 @@ public class Value implements SimpleObject {
         if (o instanceof String s) {
             if (s.isEmpty()) {
                 return o;
-            } else if (Json.isJson(s)) {
+            } else if (StringUtils.isJson(s)) {
                 return Json.of(s).value();
-            } else if (Xml.isXml(s)) {
+            } else if (StringUtils.isXml(s)) {
                 return Xml.toXmlDoc(s);
             } else {
                 if (s.charAt(0) == '\\') {

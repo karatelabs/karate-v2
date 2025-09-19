@@ -23,7 +23,6 @@
  */
 package io.karatelabs.gherkin;
 
-import io.karatelabs.common.Json;
 import io.karatelabs.common.StringUtils;
 import io.karatelabs.js.Engine;
 import org.slf4j.Logger;
@@ -186,7 +185,7 @@ public class Table {
         try {
             switch (col.type) {
                 case EVALUATED:
-                    if (Json.isJson(raw)) {
+                    if (StringUtils.isJson(raw)) {
                         raw = '(' + raw + ')';
                     }
                     return new Engine().eval(raw);

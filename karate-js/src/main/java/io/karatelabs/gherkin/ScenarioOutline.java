@@ -52,7 +52,7 @@ public class ScenarioOutline {
         s.setLine(updateLine);
         s.setDynamicExpression(dynamicExpression);
         if (tags != null || tagsForExamples != null) {
-            List<Tag> temp = new ArrayList();
+            List<Tag> temp = new ArrayList<>();
             if (tags != null) {
                 temp.addAll(tags);
             }
@@ -61,7 +61,7 @@ public class ScenarioOutline {
             }
             s.setTags(temp);
         }
-        List<Step> temp = new ArrayList(steps.size());
+        List<Step> temp = new ArrayList<>(steps.size());
         s.setSteps(temp);
         for (Step original : steps) {
             Step step = new Step(s, original.getIndex());

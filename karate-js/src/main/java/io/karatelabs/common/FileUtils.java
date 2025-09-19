@@ -23,19 +23,9 @@
  */
 package io.karatelabs.common;
 
-import de.siegmar.fastcsv.reader.CsvReader;
-import de.siegmar.fastcsv.reader.CsvRecord;
-import de.siegmar.fastcsv.writer.CsvWriter;
-import org.yaml.snakeyaml.LoaderOptions;
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 import java.io.*;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -139,57 +129,6 @@ public class FileUtils {
         }
     }
 
-    public static Object fromYaml(String raw) {
-        LoaderOptions options = new LoaderOptions();
-        options.setCodePointLimit(8 * 1024 * 1024); // 8MB
-        Yaml yaml = new Yaml(new SafeConstructor(options));
-        return yaml.load(raw);
-    }
-
-    public static List<Map<String, Object>> fromCsv(String raw) {
-        CsvReader<CsvRecord> reader = CsvReader.builder().ofCsvRecord(raw);
-        List<String> header = new ArrayList<>();
-        List<Map<String, Object>> rows = new ArrayList<>();
-        try {
-            boolean first = true;
-            for (CsvRecord row : reader) {
-                if (first) {
-                    for (String field : row.getFields()) {
-                        header.add(field.replace("\ufeff", "")); // remove byte order mark
-                    }
-                    first = false;
-                } else {
-                    int count = header.size();
-                    Map<String, Object> map = new LinkedHashMap<>(count);
-                    for (int i = 0; i < count; i++) {
-                        map.put(header.get(i), row.getField(i));
-                    }
-                    rows.add(map);
-                }
-            }
-            return rows;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static String toCsv(List<Map<String, Object>> list) {
-        StringWriter sw = new StringWriter();
-        CsvWriter writer = CsvWriter.builder().build(sw);
-        // header row
-        if (!list.isEmpty()) {
-            writer.writeRecord(list.get(0).keySet());
-        }
-        for (Map<String, Object> map : list) {
-            List<String> row = new ArrayList<>(map.size());
-            for (Object value : map.values()) {
-                row.add(value == null ? null : value.toString());
-            }
-            writer.writeRecord(row);
-        }
-        return sw.toString();
-    }
-
     public static void writeToFile(File file, String data) {
         writeToFile(file, data.getBytes(UTF_8));
     }
@@ -197,6 +136,5 @@ public class FileUtils {
     public static InputStream toInputStream(String text) {
         return new ByteArrayInputStream(text.getBytes(UTF_8));
     }
-
 
 }

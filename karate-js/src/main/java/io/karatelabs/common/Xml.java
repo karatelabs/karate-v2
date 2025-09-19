@@ -104,19 +104,6 @@ public class Xml {
 
     }
 
-    public static boolean isXml(String s) {
-        if (s == null || s.isEmpty()) {
-            return false;
-        }
-        if (s.charAt(0) == ' ') {
-            s = s.trim();
-            if (s.isEmpty()) {
-                return false;
-            }
-        }
-        return s.charAt(0) == '<';
-    }
-
     public static Document fromMap(Map<String, Object> map) {
         Map.Entry<String, Object> first = map.entrySet().iterator().next();
         return fromObject(first.getKey(), first.getValue());
