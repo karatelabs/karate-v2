@@ -71,7 +71,7 @@ public class JavaUtils {
             if (clazz != null) {
                 for (Method m : clazz.getMethods()) {
                     if (m.getName().equals(name)) {
-                        JavaClass jc = new JavaClass(clazz);
+                        JavaType jc = new JavaType(clazz);
                         return jc.readInvokable(name);
                     }
                 }

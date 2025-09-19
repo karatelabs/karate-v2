@@ -74,8 +74,8 @@ public class Engine {
         root.listener = listener;
     }
 
-    public void setJavaBridge(JavaBridge javaBridge) {
-        root.javaBridge = javaBridge;
+    public void setExternalBridge(ExternalBridge bridge) {
+        root.bridge = bridge;
     }
 
     static Object toJava(Object value) {
@@ -96,12 +96,12 @@ public class Engine {
         try {
             JsParser parser = new JsParser(resource);
             Node node = parser.parse();
-            DefaultContext context;
+            CoreContext context;
             if (localVars == null) {
-                context = new DefaultContext(root, root, 0, node, ContextScope.GLOBAL, bindings);
+                context = new CoreContext(root, root, 0, node, ContextScope.GLOBAL, bindings);
             } else {
-                DefaultContext parent = new DefaultContext(root, null, -1, new Node(NodeType.ROOT), ContextScope.GLOBAL, bindings);
-                context = new DefaultContext(root, parent, 0, node, ContextScope.GLOBAL, localVars);
+                CoreContext parent = new CoreContext(root, null, -1, new Node(NodeType.ROOT), ContextScope.GLOBAL, bindings);
+                context = new CoreContext(root, parent, 0, node, ContextScope.GLOBAL, localVars);
             }
             context.event(EventType.CONTEXT_ENTER, node);
             Object result = Interpreter.eval(node, context);

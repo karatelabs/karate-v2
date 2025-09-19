@@ -8,16 +8,16 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class JavaBridgeTest extends EvalBase {
+class ExternalBridgeTest extends EvalBase {
 
-    final JavaBridge bridge = new JavaBridge() {
+    final ExternalBridge bridge = new ExternalBridge() {
 
     };
 
     @Override
     Object eval(String text, String vars) {
         engine = new Engine();
-        engine.setJavaBridge(bridge);
+        engine.setExternalBridge(bridge);
         return engine.eval(text);
     }
 
@@ -28,10 +28,10 @@ class JavaBridgeTest extends EvalBase {
 
     @Test
     void testConstructAndCall() {
-        JavaAccess type = bridge.forClass("java.util.Properties");
+        ExternalAccess type = bridge.forType("java.util.Properties");
         Object o = type.invoke();
         assertEquals("java.util.Properties", o.getClass().getName());
-        JavaAccess instance = bridge.forObject(o);
+        ExternalAccess instance = bridge.forInstance(o);
         assertEquals(0, instance.call("size", JavaUtils.EMPTY));
         instance.call("put", "foo", 5);
         assertEquals(5, instance.call("get", "foo"));
@@ -43,7 +43,7 @@ class JavaBridgeTest extends EvalBase {
         dp.setStringValue("foo");
         dp.setIntValue(5);
         dp.setBooleanValue(true);
-        JavaAccess instance = bridge.forObject(dp);
+        ExternalAccess instance = bridge.forInstance(dp);
         assertEquals("foo", instance.read("stringValue"));
         assertEquals(5, instance.read("intValue"));
         assertEquals(true, instance.read("booleanValue"));
@@ -54,7 +54,7 @@ class JavaBridgeTest extends EvalBase {
     @Test
     void testSet() {
         DemoPojo dp = new DemoPojo();
-        JavaAccess instance = bridge.forObject(dp);
+        ExternalAccess instance = bridge.forInstance(dp);
         instance.update("stringValue", "bar");
         instance.update("intValue", 10);
         instance.update("booleanValue", true);
@@ -66,7 +66,7 @@ class JavaBridgeTest extends EvalBase {
     @Test
     void testSetSpecial() {
         DemoPojo dp = new DemoPojo();
-        JavaAccess instance = bridge.forObject(dp);
+        ExternalAccess instance = bridge.forInstance(dp);
         instance.update("doubleValue", 10);
         instance.update("booleanValue", Boolean.TRUE);
         assertEquals(10, dp.getDoubleValue());
@@ -76,7 +76,7 @@ class JavaBridgeTest extends EvalBase {
     @Test
     void testVarArgs() {
         DemoPojo dp = new DemoPojo();
-        JavaAccess instance = bridge.forObject(dp);
+        ExternalAccess instance = bridge.forInstance(dp);
         Invokable method = instance.readInvokable("varArgs");
         assertEquals("foo", method.invoke(null, "foo"));
         assertEquals("bar", method.invoke(null, "foo", "bar"));
@@ -85,7 +85,7 @@ class JavaBridgeTest extends EvalBase {
     @Test
     void testMethodOverload() {
         DemoPojo dp = new DemoPojo();
-        JavaAccess instance = bridge.forObject(dp);
+        ExternalAccess instance = bridge.forInstance(dp);
         Invokable method = instance.readInvokable("doWork");
         assertEquals("hello", method.invoke());
         assertEquals("hellofoo", method.invoke("foo"));

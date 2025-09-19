@@ -23,22 +23,21 @@
  */
 package io.karatelabs.js;
 
-/**
- * Invokable is mapped to the constructor
- * all operations work in static or instance mode depending on context
- */
-public interface JavaAccess extends Invokable {
+public interface ExternalBridge {
 
-    Object read(String name);
-
-    void update(String name, Object value);
-
-    Object call(String name, Object... args);
-
-    default Invokable readInvokable(String name) {
-        return args -> call(name, args);
+    default ExternalAccess forType(String className) {
+        try {
+            return new JavaType(className);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
-    Object toJava();
+    default ExternalAccess forInstance(Object object) {
+        if (object == null) {
+            throw new NullPointerException("object is null");
+        }
+        return new JavaObject(object);
+    }
 
 }

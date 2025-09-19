@@ -23,11 +23,11 @@
  */
 package io.karatelabs.js;
 
-public class JavaClass implements JavaAccess {
+public class JavaType implements ExternalAccess {
 
     private final Class<?> clazz;
 
-    public JavaClass(Class<?> clazz) {
+    public JavaType(Class<?> clazz) {
         this.clazz = clazz;
     }
 
@@ -36,7 +36,7 @@ public class JavaClass implements JavaAccess {
         return clazz;
     }
 
-    public JavaClass(String className) {
+    public JavaType(String className) {
         try {
             this.clazz = Class.forName(className);
         } catch (ClassNotFoundException e) {

@@ -178,8 +178,8 @@ class JsArray extends JsObject {
                     case "forEach" -> (JsCallable) (context, args) -> {
                         JsCallable callable = toCallable(args);
                         for (KeyValue kv : _this) {
-                            if (context instanceof DefaultContext dc) {
-                                dc.iteration = kv.index;
+                            if (context instanceof CoreContext cc) {
+                                cc.iteration = kv.index;
                             }
                             callable.call(context, kv.value, kv.index, context.getThisObject());
                         }

@@ -39,9 +39,9 @@ class JsFunctionNode extends JsFunction {
     final Node body; // STATEMENT or BLOCK (that may return expr)
     final List<Node> argNodes;
     final int argCount;
-    final DefaultContext declaredContext;
+    final CoreContext declaredContext;
 
-    public JsFunctionNode(boolean arrow, Node node, List<Node> argNodes, Node body, DefaultContext declaredContext) {
+    public JsFunctionNode(boolean arrow, Node node, List<Node> argNodes, Node body, CoreContext declaredContext) {
         this.arrow = arrow;
         this.node = node;
         this.argNodes = argNodes;
@@ -52,14 +52,14 @@ class JsFunctionNode extends JsFunction {
 
     @Override
     public Object call(Context callerContext, Object... args) {
-        final DefaultContext parentContext;
-        if (callerContext instanceof DefaultContext dc) {
-            parentContext = dc;
+        final CoreContext parentContext;
+        if (callerContext instanceof CoreContext cc) {
+            parentContext = cc;
         } else {
             parentContext = declaredContext;
         }
         // Interpreter.evalFnCall() will always spawn function scope
-        DefaultContext functionContext = new DefaultContext(parentContext, node, ContextScope.BLOCK) {
+        CoreContext functionContext = new CoreContext(parentContext, node, ContextScope.BLOCK) {
             @Override
             public Object get(String key) {
                 if ("arguments".equals(key)) {

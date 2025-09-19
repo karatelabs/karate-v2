@@ -25,12 +25,12 @@ package io.karatelabs.js;
 
 import java.util.function.Consumer;
 
-class ContextRoot extends DefaultContext {
+class ContextRoot extends CoreContext {
 
     private Consumer<String> onConsoleLog;
 
     ContextListener listener;
-    JavaBridge javaBridge;
+    ExternalBridge bridge;
 
     ContextRoot() {
         super(null, null, -1, null, null, null);
@@ -83,7 +83,7 @@ class ContextRoot extends DefaultContext {
             case "Date" -> new JsDate();
             case "Error" -> new JsError("Error");
             case "Infinity" -> Double.POSITIVE_INFINITY;
-            case "Java" -> new JsJava(javaBridge);
+            case "Java" -> new JsJava(bridge);
             case "JSON" -> new JsJson();
             case "Math" -> new JsMath();
             case "NaN" -> Double.NaN;

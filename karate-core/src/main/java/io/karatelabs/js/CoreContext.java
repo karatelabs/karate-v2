@@ -31,9 +31,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-class DefaultContext implements Context {
+class CoreContext implements Context {
 
-    static final Logger logger = LoggerFactory.getLogger(DefaultContext.class);
+    static final Logger logger = LoggerFactory.getLogger(CoreContext.class);
 
     final ContextRoot root;
 
@@ -42,7 +42,7 @@ class DefaultContext implements Context {
     Map<String, Object> _bindings;
     List<BindingInfo> _bindingInfos;
 
-    DefaultContext(ContextRoot root, DefaultContext parent, int depth, Node node, ContextScope scope, Map<String, Object> bindings) {
+    CoreContext(ContextRoot root, CoreContext parent, int depth, Node node, ContextScope scope, Map<String, Object> bindings) {
         this.root = root;
         this.parent = parent;
         this.depth = depth;
@@ -54,7 +54,7 @@ class DefaultContext implements Context {
         }
     }
 
-    DefaultContext(DefaultContext parent, Node node, ContextScope scope) {
+    CoreContext(CoreContext parent, Node node, ContextScope scope) {
         this(parent.root, parent, parent.depth + 1, node, scope, null);
     }
 
@@ -67,7 +67,7 @@ class DefaultContext implements Context {
 
     // public api ======================================================================================================
     //
-    final DefaultContext parent;
+    final CoreContext parent;
     final ContextScope scope;
     final int depth;
     final Node node;
@@ -147,7 +147,7 @@ class DefaultContext implements Context {
         if (info != null) { // if present, will always be let or const (micro optimization)
             putBinding(key, value, info); // current scope
         } else { // hoist var
-            DefaultContext targetContext = this;
+            CoreContext targetContext = this;
             while (targetContext.depth > 0 && targetContext.scope != ContextScope.FUNCTION) {
                 targetContext = targetContext.parent;
             }
@@ -274,7 +274,7 @@ class DefaultContext implements Context {
         return errorThrown;
     }
 
-    void updateFrom(DefaultContext childContext) {
+    void updateFrom(CoreContext childContext) {
         exitType = childContext.exitType;
         errorThrown = childContext.errorThrown;
         returnValue = childContext.returnValue;

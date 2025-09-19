@@ -82,8 +82,8 @@ public abstract class JsFunction extends JsObject implements JsCallable {
     private JsCallable callPrototype() {
         return (context, args) -> {
             ThisArgs thisArgs = new ThisArgs(args, false);
-            if (context instanceof DefaultContext dc) {
-                dc.thisObject = thisArgs.thisObject;
+            if (context instanceof CoreContext cc) {
+                cc.thisObject = thisArgs.thisObject;
             }
             return call(context, thisArgs.args.toArray());
         };
@@ -92,8 +92,8 @@ public abstract class JsFunction extends JsObject implements JsCallable {
     private JsCallable applyPrototype() {
         return (context, args) -> {
             ThisArgs thisArgs = new ThisArgs(args, true);
-            if (context instanceof DefaultContext dc) {
-                dc.thisObject = thisArgs.thisObject;
+            if (context instanceof CoreContext cc) {
+                cc.thisObject = thisArgs.thisObject;
             }
             return call(context, thisArgs.args.toArray());
         };

@@ -25,7 +25,7 @@ package io.karatelabs.js;
 
 import java.util.Map;
 
-public class JavaObject implements JavaAccess, ObjectLike {
+public class JavaObject implements ExternalAccess, ObjectLike {
 
     private final Object object;
 

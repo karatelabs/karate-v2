@@ -36,18 +36,18 @@ class JsProperty {
 
     final Node node;
     final Object object;
-    final DefaultContext context;
+    final CoreContext context;
     final boolean functionCall;
 
     boolean optional;
     String name;
     Object index;
 
-    JsProperty(Node node, DefaultContext context) {
+    JsProperty(Node node, CoreContext context) {
         this(node, context, false);
     }
 
-    JsProperty(Node node, DefaultContext context, boolean functionCall) {
+    JsProperty(Node node, CoreContext context, boolean functionCall) {
         this.node = node;
         this.context = context;
         this.functionCall = functionCall;
@@ -64,16 +64,16 @@ class JsProperty {
                     try {
                         tempObject = Interpreter.eval(node.getFirst(), context);
                     } catch (Exception e) {
-                        if (context.root.javaBridge != null) {
+                        if (context.root.bridge != null) {
                             // try java interop
                             String base = node.getFirst().getText();
                             String path = base + "." + name;
-                            JavaAccess ja = context.root.javaBridge.forClass(path);
+                            ExternalAccess ja = context.root.bridge.forType(path);
                             if (ja != null) {
                                 tempObject = ja;
                                 name = null;
                             } else {
-                                tempObject = context.root.javaBridge.forClass(base);
+                                tempObject = context.root.bridge.forType(base);
                             }
                         } else {
                             tempObject = null;
@@ -142,15 +142,16 @@ class JsProperty {
                 ((Map<String, Object>) object).put(name, value);
             } else if (object instanceof ObjectLike objectLike) {
                 objectLike.put(name, value);
-            } else if (context.root.javaBridge != null) {
+            } else if (context.root.bridge != null) {
                 try {
-                    if (object instanceof JavaAccess ja) {
+                    if (object instanceof ExternalAccess ja) {
                         ja.update(name, value);
                     } else {
-                        JavaUtils.set(object, name, value);
+                        ExternalAccess ja = context.root.bridge.forInstance(object);
+                        ja.update(name, value);
                     }
                 } catch (Exception e) {
-                    logger.error("java bridge error: {}", e.getMessage());
+                    logger.error("external bridge error: {}", e.getMessage());
                     throw new RuntimeException("cannot set '" + name + "'");
                 }
             } else {
@@ -207,7 +208,7 @@ class JsProperty {
             }
             // java interop may have been the intent, will be attempted at the end
         }
-        // covers js objects and java interop
+        // covers js objects and external interop
         if (object instanceof ObjectLike objectLike) {
             return objectLike.get(name);
         }
@@ -229,21 +230,22 @@ class JsProperty {
                 }
             }.get(name);
         }
-        if (context.root.javaBridge != null) {
+        if (context.root.bridge != null) {
             try {
                 if (functionCall) {
-                    if (object instanceof JavaAccess ja) {
+                    if (object instanceof ExternalAccess ja) {
                         return ja.readInvokable(name);
                     } else {
-                        JavaAccess ja = context.root.javaBridge.forObject(object);
+                        ExternalAccess ja = context.root.bridge.forInstance(object);
                         return ja.readInvokable(name);
                     }
                 } else {
-                    if (object instanceof JavaAccess ja) {
+                    if (object instanceof ExternalAccess ja) {
+                        return ja.read(name);
+                    } else {
+                        ExternalAccess ja = context.root.bridge.forInstance(object);
                         return ja.read(name);
                     }
-                    JavaAccess ja = context.root.javaBridge.forObject(object);
-                    return ja.read(name);
                 }
             } catch (Exception e) {
                 // ignore java reflection failure

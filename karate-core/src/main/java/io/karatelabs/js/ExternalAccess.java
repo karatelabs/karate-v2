@@ -23,30 +23,22 @@
  */
 package io.karatelabs.js;
 
-public class JsJava implements SimpleObject {
+/**
+ * Invokable is mapped to the constructor
+ * all operations work in static or instance mode depending on context
+ */
+public interface ExternalAccess extends Invokable {
 
-    final ExternalBridge bridge;
+    Object read(String name);
 
-    JsJava(ExternalBridge bridge) {
-        if (bridge == null) {
-            throw new RuntimeException("java bridge not enabled");
-        }
-        this.bridge = bridge;
+    void update(String name, Object value);
+
+    Object call(String name, Object... args);
+
+    default Invokable readInvokable(String name) {
+        return args -> call(name, args);
     }
 
-    @Override
-    public Object get(String name) {
-        return switch (name) {
-            case "type" -> (Invokable) args -> bridge.forType((String) args[0]);
-            case "to" -> (Invokable) args -> {
-                if (args[0] instanceof ExternalAccess ja) {
-                    return ja.toJava();
-                }
-                // TODO regex, functions, lambdas
-                return null;
-            };
-            default -> throw new RuntimeException("no such api on Java: " + name);
-        };
-    }
+    Object toJava();
 
 }
