@@ -74,8 +74,24 @@ class GherkinParserTest {
         assertEquals(1, scenario.getSteps().size());
         Step step = scenario.getSteps().getFirst();
         assertEquals("*", step.getPrefix());
-        assertEquals("print 'hello world'", step.getText());
+        assertEquals("print", step.getKeyword());
+        assertEquals("'hello world'", step.getText());
     }
 
+    @Test
+    void testSimpleHttp() {
+        feature("""
+                Feature:
+                Scenario:
+                  * url 'http://httpbin.org/get'
+                  * method get
+                """);
+        Step step1 = scenario.getSteps().getFirst();
+        assertEquals("url", step1.getKeyword());
+        assertEquals("'http://httpbin.org/get'", step1.getText());
+        Step step2 = scenario.getSteps().get(1);
+        assertEquals("method", step2.getKeyword());
+        assertEquals("get", step2.getText());
+    }
 
 }

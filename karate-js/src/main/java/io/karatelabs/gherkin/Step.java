@@ -37,6 +37,7 @@ public class Step {
     private int endLine;
     private List<String> comments;
     private String prefix;
+    private String keyword;
     private String text;
     private String docString;
     private Table table;
@@ -163,6 +164,14 @@ public class Step {
         this.prefix = prefix;
     }
 
+    public String getKeyword() {
+        return keyword;
+    }
+
+    public void setKeyword(String keyword) {
+        this.keyword = keyword;
+    }
+
     public String getText() {
         return text;
     }
@@ -205,7 +214,11 @@ public class Step {
 
     @Override
     public String toString() {
-        String temp = prefix + " " + text;
+        String temp = prefix;
+        if (keyword != null) {
+            temp += " " + keyword;
+        }
+        temp += " " + text;
         if (docString != null) {
             temp = temp + "\n\"\"\"\n" + docString + "\n\"\"\"";
         }

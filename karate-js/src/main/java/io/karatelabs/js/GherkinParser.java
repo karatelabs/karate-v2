@@ -83,8 +83,15 @@ public class GherkinParser extends Parser {
         step.setPrefix(prefix.text);
         steps.add(step);
         step.setLine(prefix.line);
-        int start = (int) prefix.getNextPrimary().pos;
-        Token last = null;
+        Token first = next();
+        int start;
+        if (first.type == G_KEYWORD) {
+            step.setKeyword(first.text);
+            start = (int) first.getNextPrimary().pos;
+        } else {
+            start = (int) first.pos;
+        }
+        Token last = first;
         while (true) {
             Token next = peekToken();
             if (next.type.oneOf(G_KEYWORD, EQ, G_RHS)) {
@@ -93,10 +100,9 @@ public class GherkinParser extends Parser {
                 break;
             }
         }
-        if (last != null) {
-            int end = (int) last.pos + last.text.length();
-            step.setText(prefix.resource.getText().substring(start, end));
-        }
+        int end = (int) last.pos + last.text.length();
+        String text = prefix.resource.getText().substring(start, end);
+        step.setText(text);
     }
 
     private Pair<String> nameAndDesc() {

@@ -52,7 +52,8 @@ public class KarateJs implements SimpleObject {
 
     public final Resource root;
     public final Engine engine;
-    private final HttpClient client;
+    public final HttpClient client;
+    public final HttpRequestBuilder http;
 
     private ResourceResolver resolver;
     private Markup _markup;
@@ -68,6 +69,7 @@ public class KarateJs implements SimpleObject {
     public KarateJs(Resource root, HttpClient client) {
         this.root = root;
         this.client = client;
+        http = new HttpRequestBuilder(client);
         this.engine = new Engine();
         engine.setOnConsoleLog(logger::info);
         read = args -> {
@@ -145,7 +147,6 @@ public class KarateJs implements SimpleObject {
 
     private Invokable http() {
         return args -> {
-            HttpRequestBuilder http = new HttpRequestBuilder(client);
             if (args.length > 0) {
                 http.url(args[0] + "");
             }
