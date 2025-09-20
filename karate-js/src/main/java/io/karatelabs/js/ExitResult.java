@@ -28,7 +28,7 @@ public class ExitResult {
     public final boolean ignoreError = true;
     public final Object returnValue;
 
-    ExitResult(Object returnValue) {
+    public ExitResult(Object returnValue) {
         this.returnValue = returnValue;
     }
 
