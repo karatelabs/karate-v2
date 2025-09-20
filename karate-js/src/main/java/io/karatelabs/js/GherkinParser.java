@@ -23,24 +23,29 @@
  */
 package io.karatelabs.js;
 
+import io.karatelabs.common.Pair;
 import io.karatelabs.common.Resource;
 import io.karatelabs.common.StringUtils;
-import io.karatelabs.gherkin.Feature;
-import io.karatelabs.gherkin.Tag;
+import io.karatelabs.gherkin.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static io.karatelabs.js.TokenType.*;
 
 public class GherkinParser extends Parser {
 
-    final Resource resource;
+    final Feature feature;
 
     public GherkinParser(Resource resource) {
         super(resource, true);
-        this.resource = resource;
+        feature = new Feature(resource);
     }
 
+    FeatureSection currentSection;
+    List<Step> steps;
+
     public Feature parse() {
-        Feature feature = new Feature(resource);
         while (peekIf(G_TAG)) {
             Token tag = next();
             feature.addTag(new Tag(tag.line, tag.text));
@@ -48,12 +53,60 @@ public class GherkinParser extends Parser {
         if (next().type != G_FEATURE) {
             error(G_FEATURE);
         }
+        Pair<String> featureName = nameAndDesc();
+        feature.setName(featureName.left);
+        feature.setDescription(featureName.right);
+        Token next = next();
+        while (next.type != EOF) {
+            switch (next.type) {
+                case G_SCENARIO -> {
+                    steps = new ArrayList<>();
+                    Pair<String> scenarioName = nameAndDesc();
+                    FeatureSection section = new FeatureSection();
+                    Scenario scenario = new Scenario(feature, section, -1);
+                    section.setScenario(scenario);
+                    scenario.setName(scenarioName.left);
+                    scenario.setDescription(scenarioName.right);
+                    scenario.setSteps(steps);
+                    feature.addSection(section);
+                    currentSection = section;
+                }
+                case G_PREFIX -> step(next);
+            }
+            next = next();
+        }
+        return feature;
+    }
+
+    private void step(Token prefix) {
+        Step step = new Step(feature, steps.size());
+        step.setPrefix(prefix.text);
+        steps.add(step);
+        step.setLine(prefix.line);
+        int start = (int) prefix.getNextPrimary().pos;
+        Token last = null;
+        while (true) {
+            Token next = peekToken();
+            if (next.type.oneOf(G_KEYWORD, EQ, G_RHS)) {
+                last = next();
+            } else {
+                break;
+            }
+        }
+        if (last != null) {
+            int end = (int) last.pos + last.text.length();
+            step.setText(prefix.resource.getText().substring(start, end));
+        }
+    }
+
+    private Pair<String> nameAndDesc() {
         boolean firstLine = true;
         StringBuilder description = new StringBuilder();
+        String name = null;
         while (peekIf(G_DESC)) {
             Token desc = next();
             if (firstLine) {
-                feature.setName(StringUtils.trimToNull(desc.text));
+                name = StringUtils.trimToNull(desc.text);
                 firstLine = false;
             } else {
                 if (!description.isEmpty()) {
@@ -62,10 +115,8 @@ public class GherkinParser extends Parser {
                 description.append(desc.text);
             }
         }
-        if (!description.isEmpty()) {
-            feature.setDescription(description.toString());
-        }
-        return feature;
+        String desc = description.isEmpty() ? null : description.toString();
+        return Pair.of(name, desc);
     }
 
 }

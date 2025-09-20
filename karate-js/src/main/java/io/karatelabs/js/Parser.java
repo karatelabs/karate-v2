@@ -69,7 +69,7 @@ abstract class Parser {
 
     }
 
-
+    final Resource resource;
     final List<Token> tokens;
     private final int size;
 
@@ -85,6 +85,7 @@ abstract class Parser {
     }
 
     Parser(Resource resource, boolean gherkin) {
+        this.resource = resource;
         tokens = getTokens(resource, gherkin);
         size = tokens.size();
         marker = new Marker(position, null, new Node(NodeType.ROOT), -1);

@@ -15,34 +15,42 @@ class GherkinParserTest {
     static final Logger logger = LoggerFactory.getLogger(GherkinParserTest.class);
 
     Feature feature;
+    Scenario scenario;
+    ScenarioOutline outline;
 
-    private void parse(String text) {
+    private void feature(String text) {
         Resource resource = Resource.text(text);
         GherkinParser parser = new GherkinParser(resource);
         feature = parser.parse();
+        scenario = null;
+        if (!feature.getSections().isEmpty()) {
+            FeatureSection section = feature.getSections().getFirst();
+            scenario = section.getScenario();
+            outline = section.getScenarioOutline();
+        }
     }
 
     @Test
     void testFeatureBasics() {
-        parse("""
+        feature("""
                 Feature:
                 """);
         assertNull(feature.getName());
 
-        parse("""
+        feature("""
                 Feature: foo
                 """);
         assertEquals("foo", feature.getName());
 
-        parse("""
+        feature("""
                 Feature: foo
                     bar
                 """);
         assertEquals("foo", feature.getName());
-        assertEquals("    bar", feature.getDescription());
+        assertEquals("bar", feature.getDescription());
         assertTrue(feature.getTags().isEmpty());
 
-        parse("""
+        feature("""
                 @tag1 @tag2
                 Feature: foo
                 """);
@@ -50,6 +58,23 @@ class GherkinParserTest {
         assertEquals(2, tags.size());
         assertEquals("tag1", tags.get(0).getName());
         assertEquals("tag2", tags.get(1).getName());
+
+    }
+
+    @Test
+    void testScenarioBasics() {
+        feature("""
+                Feature:
+                Scenario: foo
+                  bar
+                  * print 'hello world'
+                """);
+        assertEquals("foo", scenario.getName());
+        assertEquals("bar", scenario.getDescription());
+        assertEquals(1, scenario.getSteps().size());
+        Step step = scenario.getSteps().getFirst();
+        assertEquals("*", step.getPrefix());
+        assertEquals("print 'hello world'", step.getText());
     }
 
 

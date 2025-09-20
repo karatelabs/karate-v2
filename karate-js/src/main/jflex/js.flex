@@ -38,10 +38,14 @@ private void kkPush() { if (kkStack == null) kkStack = new ArrayDeque<>(); kkSta
 private int kkPop() { return kkStack.pop(); }
 private boolean regexAllowed = true; // start with true since a regex can appear at the start of a program
 private TokenType tt(TokenType type) { if (type.regexAllowed != null) regexAllowed = type.regexAllowed; return type; }
+private void rewind(int state) { yybegin(state); yypushback(yylength()); }
 %}
 
 WS = [ \t]
 LF = \R
+WS_ONE_LF = {WS}* {LF} {WS}*
+NOT_LF = [^\n]
+NOT_WSLF = [^ \t\n]
 
 DIGIT = [0-9]
 HEX_DIGIT = [0-9a-fA-F]
@@ -55,29 +59,32 @@ D_STRING = \"([^\"]|\\\")*\"?
 S_STRING = '([^']|\\')*'?
 IDENT = [:jletter:][:jletterdigit:]*
 T_STRING = [^`$]+ | "$"[^{$`]+
-REGEX = "/" [^*/\n] ([^/\\\n]|\\[^\n])* "/" [:jletter:]*
+REGEX = "/" [^*/\n] ([^/\\\n]|\\{NOT_LF})* "/" [:jletter:]*
 
 %state TEMPLATE PLACEHOLDER
 
 // gherkin macros (gm)
-GM_LINE = [^\r\n]+
-
+GM_IDENT = [[:jletterdigit:]\-\.]+
 GM_HEADER = "Scenario:"|"Scenario Outline:"|"Examples:"|"Background:"
 GM_PREFIX = "*"|"Given"|"When"|"Then"|"And"|"But"
+GM_TYPE_KEYWORD = "def"|"json"|"xml"|"xmlstring"|"yaml"|"csv"|"string"|"bytes"|"copy"
+GM_ASSIGN_KEYWORD = "configure"|"header"|"param"|"cookie"|"form field"|"multipart file"|"multipart field"
+GM_SPACED_KEYWORD = "form fields"|"multipart fields"|"multipart files"|"soap action"|"retry until"|"multipart entity"
+GM_MATCH_TYPE = ("=="|"!="|"contains"|"!contains") ({WS}+("only"|"any"))? ({WS}+"deep")?
 GM_TRIPLE_QUOTE = \"\"\"
-GM_TAG = "@" [^ \t\r\n]+
+GM_TAG = "@" {NOT_WSLF}+
 
 // gherkin states (gs)
-%state GHERKIN GS_DESC GS_STEP GS_DOC_STRING GS_TABLE_ROW GS_TAGS GS_COMMENT
+%state GHERKIN GS_DESC GS_DOC_STRING GS_TABLE_ROW GS_TAGS GS_COMMENT GS_STEP GS_STEP_MATCH GS_RHS
 
 %%
 
 // applies to all states
 <<EOF>>                         { return EOF; }
+{WS}+                           { return WS; }
 
 <YYINITIAL, PLACEHOLDER> {
-  {WS}* {LF} {WS}*              { return tt(WS_LF); }
-  {WS}+                         { return tt(WS); }
+  {WS_ONE_LF}                   { return WS_LF; }
   "`"                           { kkPush(); yybegin(TEMPLATE); return tt(BACKTICK); }
   "{"                           { return tt(L_CURLY); }
   //====                        { return tt(R_CURLY); }
@@ -177,56 +184,89 @@ GM_TAG = "@" [^ \t\r\n]+
   {IDENT}                       { return tt(IDENT); }
 }
 
-<YYINITIAL> "}"                 { return tt(R_CURLY); }
-
-<PLACEHOLDER> "}"               { yybegin(kkPop()); return tt(R_CURLY); }
-
-<TEMPLATE> {
-    "`"                         { yybegin(kkPop()); return tt(BACKTICK); }
-    "$"                         { return tt(T_STRING); }
-    "${"                        { kkPush(); yybegin(PLACEHOLDER); return tt(DOLLAR_L_CURLY); }
-    {T_STRING}                  { return tt(T_STRING); }
+<YYINITIAL> {
+  "}"                           { return tt(R_CURLY); }
 }
 
+<TEMPLATE> {
+  "`"                           { yybegin(kkPop()); return tt(BACKTICK); }
+  "$"                           { return tt(T_STRING); }
+  "${"                          { kkPush(); yybegin(PLACEHOLDER); return tt(DOLLAR_L_CURLY); }
+  {T_STRING}                    { return tt(T_STRING); }
+}
+
+<PLACEHOLDER> {
+  "}"                           { yybegin(kkPop()); return tt(R_CURLY); }
+}
+
+//======================================================================================================================
+
 <GHERKIN> {
-  {WS}* {LF} {WS}*              { return WS_LF; }
-  {WS}+                         { return WS; }
-  {GM_PREFIX} {WS}+             { yybegin(GS_STEP); return G_PREFIX; }
-  "#"                           { yypushback(1); yybegin(GS_COMMENT); }
-  "Scenario:" {WS}*             { yybegin(GS_DESC); return G_SCENARIO; }
-  "Scenario Outline:" {WS}*     { yybegin(GS_DESC); return G_SCENARIO_OUTLINE; }
-  "Examples:" {WS}*             { yybegin(GS_DESC); return G_EXAMPLES; }
-  "Feature:" {WS}*              { yybegin(GS_DESC); return G_FEATURE; }
-  "Background:" {WS}*           { yybegin(GS_DESC); return G_BACKGROUND; }
-  {GM_TRIPLE_QUOTE} {WS}*       { yybegin(GS_DOC_STRING); return G_TRIPLE_QUOTE; }
-  "|"                           { yybegin(GS_TABLE_ROW); return G_PIPE_FIRST; }
+  {WS_ONE_LF}                   { return WS_LF; }
+  {GM_PREFIX}                   { yybegin(GS_STEP); return G_PREFIX; }
+  "#"                           { rewind(GS_COMMENT); }
+  "Scenario:"                   { yybegin(GS_DESC); return G_SCENARIO; }
+  "Scenario Outline:"           { yybegin(GS_DESC); return G_SCENARIO_OUTLINE; }
+  "Examples:"                   { yybegin(GS_DESC); return G_EXAMPLES; }
+  "Feature:"                    { yybegin(GS_DESC); return G_FEATURE; }
+  "Background:"                 { yybegin(GS_DESC); return G_BACKGROUND; }
+  {GM_TRIPLE_QUOTE}             { yybegin(GS_DOC_STRING); return G_TRIPLE_QUOTE; }
+  "|"                           { rewind(GS_TABLE_ROW); }
   {GM_TAG}                      { yybegin(GS_TAGS); return G_TAG; }
 }
 
 <GS_COMMENT> {
-  {GM_LINE}                     { return G_COMMENT; }
-  {LF}                          { yybegin(GHERKIN); return WS_LF; }
+  {NOT_LF}+                     { return G_COMMENT; }
+  {WS_ONE_LF}                   { yybegin(GHERKIN); return WS_LF; }
 }
 
 <GS_DESC> {
-  {GM_LINE}                     { return G_DESC; }
-  {LF} {WS}* / ({GM_HEADER}|{GM_PREFIX}|"#"|"@"|"|") { yybegin(GHERKIN); return WS_LF; }
-  {LF}                          { return WS_LF; }
+  {NOT_LF}+                     { return G_DESC; }
+  {WS_ONE_LF} / ({GM_PREFIX}|{GM_HEADER}|"@") { yybegin(GHERKIN); return WS_LF; }
+  {WS_ONE_LF}                   { return WS_LF; }
 }
 
 <GS_TAGS> {
   {GM_TAG}                      { return G_TAG; }
-  {WS}+                         { return WS; }
-  {LF}                          { yybegin(GHERKIN); return WS_LF; }
+  {WS_ONE_LF}                   { yybegin(GHERKIN); return WS_LF; }
 }
 
 <GS_TABLE_ROW> {
-  [^\|\r\n]+                    { return G_TABLE_CELL; }
+  [^\|\n]+                      { return G_TABLE_CELL; }
   "|"                           { return G_PIPE; }
-  {LF}                          { yybegin(GHERKIN); return WS_LF; }
+  {WS_ONE_LF}                   { yybegin(GHERKIN); return WS_LF; }
 }
 
 <GS_STEP> {
-  {GM_LINE}                     { return G_STEP_TEXT; }
-  {LF}                          { yybegin(GHERKIN); return WS_LF; }
+  "match"                       { yybegin(GS_STEP_MATCH); return G_KEYWORD; }
+  {GM_TYPE_KEYWORD} | {GM_ASSIGN_KEYWORD} { return G_KEYWORD; }
+  {GM_SPACED_KEYWORD}           { yybegin(GS_RHS); return G_KEYWORD; }
+  {GM_IDENT} / {WS_ONE_LF}      { yybegin(GHERKIN); return G_KEYWORD; } // docstring or table
+  "=" / {WS_ONE_LF}             { yybegin(GHERKIN); return EQ; } // docstring or table
+  {GM_IDENT}                    { return G_KEYWORD; }
+  "="                           { yybegin(GS_RHS); return EQ; }
+  {NOT_WSLF}                    { rewind(GS_RHS); } // js
+  {WS_ONE_LF}                   { yybegin(GHERKIN); return WS_LF; }
+}
+
+<GS_STEP_MATCH> {
+  "each" | "header"             { return G_KEYWORD; }
+  {GM_IDENT}                    { return IDENT; }
+  ("$"|"@") {IDENT}?            { return IDENT; } // xpath
+  "?" "(" [^)]+ ")"             { return IDENT; } // json path
+  ".." | ":"                    { return DOT; } // json path
+  "/" "/"? {IDENT}?             { return IDENT; } // xpath
+  {GM_MATCH_TYPE} / {WS_ONE_LF} { yybegin(GHERKIN); return G_KEYWORD; } // docstring
+  {GM_MATCH_TYPE}               { yybegin(GS_RHS); return G_KEYWORD; }
+}
+
+<GS_RHS> {
+  {NOT_LF}+                     { return G_RHS; }
+  {WS_ONE_LF}                   { yybegin(GHERKIN); return WS_LF; }
+}
+
+<GS_DOC_STRING> {
+  {GM_TRIPLE_QUOTE}             { yybegin(GHERKIN); return G_TRIPLE_QUOTE; }
+  {NOT_LF}+                     { return G_RHS; }
+  {WS_ONE_LF}                   { return WS_LF; }
 }

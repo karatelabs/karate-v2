@@ -132,8 +132,6 @@ public enum TokenType {
     T_STRING,
     //====
     G_PREFIX,
-    G_STEP,
-    G_STEP_TEXT,
     G_COMMENT,
     G_DESC,
     G_FEATURE,
@@ -144,8 +142,9 @@ public enum TokenType {
     G_TAG,
     G_TRIPLE_QUOTE,
     G_PIPE,
-    G_PIPE_FIRST,
-    G_TABLE_CELL;
+    G_TABLE_CELL,
+    G_KEYWORD,
+    G_RHS;
 
     public final boolean primary;
     public final boolean keyword;
@@ -182,6 +181,15 @@ public enum TokenType {
             // for other tokens, keep the current value of regexAllowed
             default -> null;
         };
+    }
+
+    public boolean oneOf(TokenType... types) {
+        for (TokenType type : types) {
+            if (this == type) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }
