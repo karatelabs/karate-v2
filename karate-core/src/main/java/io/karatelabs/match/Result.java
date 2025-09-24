@@ -28,9 +28,9 @@ import java.util.Map;
 
 public class Result {
 
-    static final Result PASS = new Result(true, null);
+    public static final Result PASS = new Result(true, null);
 
-    static Result fail(String message) {
+    public static Result fail(String message) {
         return new Result(false, message);
     }
 
