@@ -48,6 +48,7 @@ public class HttpResponse implements SimpleObject {
     private ResourceType resourceType;
     private long responseTime;
     private int contentLength;
+    private HttpRequest request;
 
     public ResourceType getResourceType() {
         if (resourceType == null) {
@@ -111,6 +112,13 @@ public class HttpResponse implements SimpleObject {
         headers.put(name, values);
     }
 
+    public HttpRequest getRequest() {
+        return request;
+    }
+
+    public void setRequest(HttpRequest request) {
+        this.request = request;
+    }
 
     public void setHeader(String name, String... values) {
         setHeader(name, Arrays.asList(values));
@@ -213,6 +221,7 @@ public class HttpResponse implements SimpleObject {
             case "body" -> getBodyConverted();
             case "bodyString" -> getBodyString();
             case "bodyBytes" -> Json.toBytes(body);
+            case "request" -> request;
             default ->
                 // logger.warn("get - unexpected key: {}", key);
                     null;

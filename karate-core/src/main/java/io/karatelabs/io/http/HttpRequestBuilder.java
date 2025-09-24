@@ -112,7 +112,9 @@ public class HttpRequestBuilder implements SimpleObject {
             throw new RuntimeException("http client not set");
         }
         reset();
-        return client.invoke(request);
+        HttpResponse response = client.invoke(request);
+        response.setRequest(request);
+        return response;
     }
 
     public HttpResponse invoke(String method) {
