@@ -93,6 +93,25 @@ class EngineTest {
     }
 
     @Test
+    void testSwitchMultipleCaseWithReturn() {
+        String js = """
+                var fun = x => {
+                    switch (x) {
+                        case 'foo':
+                        case 'fie':
+                            return 'FOO';
+                        default:
+                            return 'BAR';
+                    }
+                };
+                fun('foo');
+                """;
+        Engine engine = new Engine();
+        String result = (String) engine.eval(js);
+        assertEquals("FOO", result);
+    }
+
+    @Test
     void testFunctionWithinFunction() {
         String js = """
                 function generateCardNumber(firstSix, length) {

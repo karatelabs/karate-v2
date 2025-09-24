@@ -730,10 +730,16 @@ class Interpreter {
     private static Object evalSwitchStmt(Node node, CoreContext context) {
         Object switchValue = eval(node.get(2), context);
         List<Node> caseNodes = node.findChildrenOfType(NodeType.CASE_BLOCK);
+        boolean found = false;
         for (Node caseNode : caseNodes) {
-            Object caseValue = eval(caseNode.get(1), context);
-            if (Terms.eq(switchValue, caseValue, true)) {
-                Object caseResult = evalBlock(caseNode, context);
+            if (!found) {
+                Object caseValue = eval(caseNode.get(1), context);
+                if (Terms.eq(switchValue, caseValue, true)) {
+                    found = true;
+                }
+            }
+            if (found && caseNode.size() > 3) {
+                Object caseResult = eval(caseNode.get(3), context);
                 if (context.isStopped()) {
                     return caseResult;
                 }
