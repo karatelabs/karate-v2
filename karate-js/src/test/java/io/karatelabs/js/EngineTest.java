@@ -84,9 +84,11 @@ class EngineTest {
                 """;
         JsParser parser = new JsParser(Resource.text(js));
         Node node = parser.parse();
-        assertEquals(2, node.size());
+        assertEquals(3, node.size());
         for (Node child : node) {
-            assertEquals(NodeType.STATEMENT, child.type);
+            if (!child.isEof()) {
+                assertEquals(NodeType.STATEMENT, child.type);
+            }
         }
     }
 

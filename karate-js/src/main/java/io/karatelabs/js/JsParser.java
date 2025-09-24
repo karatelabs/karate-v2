@@ -41,7 +41,7 @@ public class JsParser extends Parser {
                 break;
             }
         }
-        if (peek() != EOF) {
+        if (!consumeIf(EOF)) {
             error("cannot parse statement");
         }
         exit();

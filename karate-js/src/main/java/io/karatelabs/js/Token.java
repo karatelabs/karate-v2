@@ -79,6 +79,7 @@ public class Token {
         return switch (type) {
             case WS -> "_";
             case WS_LF -> "_\\n_";
+            case EOF -> "_EOF_";
             default -> text;
         };
     }

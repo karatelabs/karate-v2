@@ -66,16 +66,16 @@ class JsParserTest {
 
     @Test
     void testProgram() {
-        program(";", "{PROGRAM:';'}");
-        program(";;", "{PROGRAM:[';',';']}");
-        program("1;2", "{PROGRAM:[[1,';'],2]}");
-        program("1\n2", "{PROGRAM:[1,2]}");
-        program("1 \n 2", "{PROGRAM:[1,2]}");
-        program("1 \n 2 ", "{PROGRAM:[1,2]}");
-        program("1;2;", "{PROGRAM:[[1,';'],[2,';']]}");
-        program("1 ;2", "{PROGRAM:[[1,';'],2]}");
-        program("1;2 ", "{PROGRAM:[[1,';'],2]}");
-        program("1;2; ", "{PROGRAM:[[1,';'],[2,';']]}");
+        program(";", "{PROGRAM:[';', EOF]}");
+        program(";;", "{PROGRAM:[';',';',EOF]}");
+        program("1;2", "{PROGRAM:[[1,';'],2,EOF]}");
+        program("1\n2", "{PROGRAM:[1,2,EOF]}");
+        program("1 \n 2", "{PROGRAM:[1,2,EOF]}");
+        program("1 \n 2 ", "{PROGRAM:[1,2,EOF]}");
+        program("1;2;", "{PROGRAM:[[1,';'],[2,';'],EOF]}");
+        program("1 ;2", "{PROGRAM:[[1,';'],2,EOF]}");
+        program("1;2 ", "{PROGRAM:[[1,';'],2,EOF]}");
+        program("1;2; ", "{PROGRAM:[[1,';'],[2,';'],EOF]}");
     }
 
     @Test

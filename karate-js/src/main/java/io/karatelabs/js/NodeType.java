@@ -24,7 +24,7 @@
 package io.karatelabs.js;
 
 public enum NodeType {
-
+    
     TOKEN,
     ROOT,
     PROGRAM,

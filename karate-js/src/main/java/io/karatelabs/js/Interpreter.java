@@ -643,6 +643,9 @@ class Interpreter {
     private static Object evalProgram(Node node, CoreContext context) {
         Object progResult = null;
         for (Node child : node) {
+            if (child.isEof()) {
+                break;
+            }
             progResult = eval(child, context);
             if (context.isError()) {
                 Object errorThrown = context.getErrorThrown();

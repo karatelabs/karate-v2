@@ -115,6 +115,8 @@ public class NodeUtils {
                 }
             case TOKEN:
                 switch (node.token.type) {
+                    case EOF:
+                        return "EOF";
                     case IDENT:
                         return "$" + node.token.text;
                     case S_STRING:

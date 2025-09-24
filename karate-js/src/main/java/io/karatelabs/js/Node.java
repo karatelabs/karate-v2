@@ -58,6 +58,10 @@ public class Node implements Iterable<Node> {
         return type == NodeType.TOKEN;
     }
 
+    public boolean isEof() {
+        return type == NodeType.TOKEN && token.type == TokenType.EOF;
+    }
+
     public Token getFirstToken() {
         if (isToken()) {
             return token;
