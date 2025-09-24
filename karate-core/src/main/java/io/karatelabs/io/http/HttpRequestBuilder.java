@@ -65,7 +65,7 @@ public class HttpRequestBuilder implements SimpleObject {
         this(null);
     }
 
-    private void reset() {
+    public void reset() {
         // url = null;
         method = null;
         paths = null;
