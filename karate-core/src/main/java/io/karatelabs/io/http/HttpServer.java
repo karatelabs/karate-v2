@@ -37,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.util.function.Function;
 
 public class HttpServer {
 
@@ -47,8 +48,10 @@ public class HttpServer {
     private final Channel channel;
     private final int port;
 
-    public static HttpServer start(int port) {
-        return new HttpServer(port);
+    final Function<HttpRequest, HttpResponse> handler;
+
+    public static HttpServer start(int port, Function<HttpRequest, HttpResponse> handler) {
+        return new HttpServer(port, handler);
     }
 
     public int getPort() {
@@ -70,7 +73,8 @@ public class HttpServer {
         logger.info("stop: shutdown complete");
     }
 
-    private HttpServer(int requestedPort) {
+    private HttpServer(int requestedPort, Function<HttpRequest, HttpResponse> handler) {
+        this.handler = handler;
         bossGroup = new MultiThreadIoEventLoopGroup(1, NioIoHandler.newFactory());
         workerGroup = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
         CorsConfig corsConfig = CorsConfigBuilder

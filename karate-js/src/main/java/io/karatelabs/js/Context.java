@@ -25,6 +25,8 @@ package io.karatelabs.js;
 
 public interface Context {
 
+    Engine getEngine();
+
     Context getParent();
 
     ContextScope getScope();

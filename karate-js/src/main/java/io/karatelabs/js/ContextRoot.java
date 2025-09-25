@@ -27,13 +27,21 @@ import java.util.function.Consumer;
 
 class ContextRoot extends CoreContext {
 
+    private final Engine engine;
+
     private Consumer<String> onConsoleLog;
 
     ContextListener listener;
     ExternalBridge bridge;
 
-    ContextRoot() {
+    ContextRoot(Engine engine) {
         super(null, null, -1, null, null, null);
+        this.engine = engine;
+    }
+
+    @Override
+    public Engine getEngine() {
+        return engine;
     }
 
     @Override

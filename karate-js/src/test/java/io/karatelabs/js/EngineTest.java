@@ -23,8 +23,8 @@ class EngineTest {
         vars.put("y", 20);
         engine.evalWith("var a = x + y", vars);
         assertEquals(30, vars.get("a"));
-        assertFalse(engine.bindings.containsKey("a"));
-        assertFalse(engine.bindings.containsKey("y"));
+        assertFalse(engine.getBindings().containsKey("a"));
+        assertFalse(engine.getBindings().containsKey("y"));
     }
 
     @Test

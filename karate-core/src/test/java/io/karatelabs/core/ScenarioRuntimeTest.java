@@ -3,6 +3,7 @@ package io.karatelabs.core;
 import io.karatelabs.common.Resource;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.Scenario;
+import io.karatelabs.io.http.HttpResponse;
 import io.karatelabs.io.http.HttpServer;
 import org.junit.jupiter.api.Test;
 
@@ -10,7 +11,7 @@ class ScenarioRuntimeTest {
 
     @Test
     void testScenario() {
-        HttpServer server = HttpServer.start(9000);
+        HttpServer server = HttpServer.start(9000, request -> new HttpResponse());
         Resource root = Resource.path("src/test/resources/feature");
         KarateJs karate = new KarateJs(root);
         Feature feature = Feature.read(root.resolve("http-simple.feature"));

@@ -3,18 +3,24 @@ package io.karatelabs.core;
 import io.karatelabs.common.Json;
 import io.karatelabs.common.Resource;
 import io.karatelabs.io.http.ErrorHttpClient;
+import io.karatelabs.io.http.HttpResponse;
 import io.karatelabs.io.http.HttpServer;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class KarateJsTest {
 
     @Test
     void testJsClientJsServer() {
-        HttpServer server = HttpServer.start(0);
+        HttpServer server = HttpServer.start(0, request -> {
+            HttpResponse response = new HttpResponse();
+            response.setBody("hello world");
+            return response;
+        });
         int port = server.getPort();
         KarateJs context = new KarateJs(Resource.path(""));
         String js = """
@@ -89,5 +95,6 @@ class KarateJsTest {
                     """, e.getMessage());
         }
     }
+
 
 }

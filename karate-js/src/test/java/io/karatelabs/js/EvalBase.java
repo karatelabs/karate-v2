@@ -37,7 +37,7 @@ class EvalBase {
     }
 
     Object get(String varName) {
-        return engine.bindings.get(varName);
+        return engine.getBindings().get(varName);
     }
 
 }

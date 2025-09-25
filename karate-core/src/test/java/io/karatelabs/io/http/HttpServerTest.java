@@ -10,7 +10,11 @@ class HttpServerTest {
 
     @Test
     void testJavaClientJsServer() {
-        HttpServer server = HttpServer.start(0);
+        HttpServer server = HttpServer.start(0, request -> {
+            HttpResponse response = new HttpResponse();
+            response.setBody("hello world");
+            return response;
+        });
         int port = server.getPort();
         try (HttpClient client = new ApacheHttpClient()) {
             HttpRequestBuilder http = new HttpRequestBuilder(client);

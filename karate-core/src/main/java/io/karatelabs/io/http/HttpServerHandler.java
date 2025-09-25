@@ -23,7 +23,6 @@
  */
 package io.karatelabs.io.http;
 
-import io.karatelabs.js.Engine;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
@@ -43,21 +42,16 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<FullHttpReque
     static final Logger logger = LoggerFactory.getLogger(HttpServerHandler.class);
 
     final HttpServer server;
-    final Engine engine;
-    final Session session;
 
     HttpServerHandler(HttpServer server) {
         this.server = server;
-        session = Session.inMemory();
-        engine = new Engine();
-        engine.put("session", session);
     }
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest req) {
         HttpRequest request = toRequest(req);
         try {
-            HttpResponse response = handle(request);
+            HttpResponse response = server.handler.apply(request);
             FullHttpResponse res = toResponse(response);
             ctx.writeAndFlush(res);
         } catch (Exception e) {
@@ -115,49 +109,5 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<FullHttpReque
         res.content().writeBytes(content);
         return res;
     }
-
-    private HttpResponse handle(HttpRequest request) {
-        engine.put("request", request);
-        HttpResponse response = new HttpResponse();
-        engine.put("response", response);
-        engine.eval(SCRIPT);
-        return response;
-    }
-
-    private static final String SCRIPT = """
-            var resourceName;
-            var id;
-            if (request.pathMatches('/{resource}/{id}')) {
-                resourceName = request.pathParams.resource;
-                id = request.pathParams.id;
-            } else if (request.pathMatches('/{resource}')) {
-                resourceName = request.pathParams.resource;
-            }
-            session[resourceName] = session[resourceName] || {};
-            session.counter = session.counter || 1;
-            var items = session[resourceName];
-            if (id) {
-              if (request.put) {
-                var item = request.body;
-                items[id] = item;
-                response.body = item;
-              } else if (request.delete) {
-                delete items[id];
-              } else {
-                response.body = items[id];
-                if (!response.body) {
-                  response.status = 404;
-                }
-              }
-            } else if (request.post) {
-              var item = request.body;
-              let id = '' + session.counter++;
-              item.id = id;
-              items[id] = item;
-              response.body = item;
-            } else {
-              response.body = Object.values(items);
-            }
-            """;
 
 }

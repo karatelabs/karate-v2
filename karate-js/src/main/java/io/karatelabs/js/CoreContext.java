@@ -73,6 +73,11 @@ class CoreContext implements Context {
     final Node node;
 
     @Override
+    public Engine getEngine() {
+        return root.getEngine();
+    }
+
+    @Override
     public Context getParent() {
         return parent;
     }

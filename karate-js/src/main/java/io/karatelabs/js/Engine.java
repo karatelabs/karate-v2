@@ -34,20 +34,28 @@ public class Engine {
 
     public static boolean DEBUG = false;
 
-    final ContextRoot root = new ContextRoot();
+    private final ContextRoot root = new ContextRoot(this);
 
-    final Map<String, Object> bindings = new HashMap<>();
+    private final Map<String, Object> bindings = new HashMap<>();
+
+    public Object eval(Node program) {
+        return evalInternal(program, null);
+    }
 
     public Object eval(Resource resource) {
-        return evalInternal(resource);
+        return evalInternal(resource, null);
     }
 
     public Object eval(File file) {
-        return evalInternal(Resource.file(file));
+        return evalInternal(Resource.file(file), null);
     }
 
     public Object eval(String text) {
-        return evalInternal(Resource.text(text));
+        return evalInternal(Resource.text(text), null);
+    }
+
+    public Object evalWith(Node program, Map<String, Object> vars) {
+        return evalInternal(program, vars);
     }
 
     public Object evalWith(String text, Map<String, Object> vars) {
@@ -70,6 +78,10 @@ public class Engine {
         root.setOnConsoleLog(onConsoleLog);
     }
 
+    public Map<String, Object> getBindings() {
+        return bindings;
+    }
+
     public void setListener(ContextListener listener) {
         root.listener = listener;
     }
@@ -88,30 +100,30 @@ public class Engine {
         return value;
     }
 
-    private Object evalInternal(Resource resource) {
-        return evalInternal(resource, null);
+    private Object evalInternal(Resource resource, Map<String, Object> localVars) {
+        JsParser parser = new JsParser(resource);
+        return evalInternal(parser.parse(), localVars);
     }
 
-    private Object evalInternal(Resource resource, Map<String, Object> localVars) {
+    private Object evalInternal(Node program, Map<String, Object> localVars) {
         try {
-            JsParser parser = new JsParser(resource);
-            Node node = parser.parse();
             CoreContext context;
             if (localVars == null) {
-                context = new CoreContext(root, root, 0, node, ContextScope.GLOBAL, bindings);
+                context = new CoreContext(root, root, 0, program, ContextScope.GLOBAL, bindings);
             } else {
                 CoreContext parent = new CoreContext(root, null, -1, new Node(NodeType.ROOT), ContextScope.GLOBAL, bindings);
-                context = new CoreContext(root, parent, 0, node, ContextScope.GLOBAL, localVars);
+                context = new CoreContext(root, parent, 0, program, ContextScope.GLOBAL, localVars);
             }
-            context.event(EventType.CONTEXT_ENTER, node);
-            Object result = Interpreter.eval(node, context);
-            context.event(EventType.CONTEXT_EXIT, node);
+            context.event(EventType.CONTEXT_ENTER, program);
+            Object result = Interpreter.eval(program, context);
+            context.event(EventType.CONTEXT_EXIT, program);
             return toJava(result);
         } catch (Throwable e) {
             String message = e.getMessage();
             if (message == null) {
                 message = e + "";
             }
+            Resource resource = program.getFirstToken().resource;
             if (resource.isUrlResource()) {
                 message = message + "\n" + resource.getRelativePath();
             }
