@@ -57,10 +57,11 @@ public class Value implements SimpleObject {
     private Context context;
 
     Value(Object value) {
-        this(value, null);
+        this(value, null, null);
     }
 
-    Value(Object value, BiConsumer<Context, Result> onResult) {
+    Value(Object value, Context context, BiConsumer<Context, Result> onResult) {
+        this.context = context;
         if (value instanceof Set<?> set) {
             value = new ArrayList<Object>(set);
         } else if (value != null && value.getClass().isArray()) {
@@ -198,7 +199,7 @@ public class Value implements SimpleObject {
             for (String key : remainder) {
                 result.put(key, source.get(key));
             }
-            return new Value(result, other.onResult);
+            return new Value(result, other.context, other.onResult);
         } else {
             return this;
         }
@@ -210,7 +211,7 @@ public class Value implements SimpleObject {
     }
 
     public Map<String, Object> is(Match.Type matchType, Object expected) {
-        Operation op = new Operation(matchType, this, new Value(parseIfJsonOrXmlString(expected), onResult));
+        Operation op = new Operation(matchType, this, new Value(parseIfJsonOrXmlString(expected), context, onResult));
         op.execute();
         Result result;
         if (op.pass) {

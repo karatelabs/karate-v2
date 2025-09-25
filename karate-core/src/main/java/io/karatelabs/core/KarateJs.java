@@ -182,7 +182,7 @@ public class KarateJs implements SimpleObject {
             if (args.length == 0) {
                 throw new RuntimeException("match() needs at least one argument");
             }
-            return Match.evaluate(args[0], (context, result) -> {
+            return Match.evaluate(args[0], null, (context, result) -> {
                 if (keyword && onMatch != null) {
                     onMatch.accept(context, result);
                 }

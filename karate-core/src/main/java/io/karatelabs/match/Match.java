@@ -50,12 +50,12 @@ public class Match {
 
     }
 
-    public static Value evaluate(Object actual, BiConsumer<Context, Result> onResult) {
-        return new Value(Value.parseIfJsonOrXmlString(actual), onResult);
+    public static Value evaluate(Object actual, Context context, BiConsumer<Context, Result> onResult) {
+        return new Value(Value.parseIfJsonOrXmlString(actual), context, onResult);
     }
 
     public static Value that(Object actual) {
-        return new Value(Value.parseIfJsonOrXmlString(actual), (context, result) -> {
+        return new Value(Value.parseIfJsonOrXmlString(actual), null, (context, result) -> {
             if (!result.pass) {
                 throw new RuntimeException(result.message);
             }

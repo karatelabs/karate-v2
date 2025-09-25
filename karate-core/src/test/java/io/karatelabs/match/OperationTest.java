@@ -26,7 +26,7 @@ class OperationTest {
     void testSchema(String matchType, String matchEachType) {
         Json json = Json.of("{ a: '#number' }");
         Map<String, Object> map = json.asMap();
-        Map<String, Object> result = Match.evaluate("[{ a: 1 }, { a: 2 }]", null).is(Match.Type.valueOf(matchEachType), map);
+        Map<String, Object> result = Match.evaluate("[{ a: 1 }, { a: 2 }]", null, null).is(Match.Type.valueOf(matchEachType), map);
         assertEquals(true, result.get("pass"));
         Engine engine = new Engine();
         engine.put("schema", map);
