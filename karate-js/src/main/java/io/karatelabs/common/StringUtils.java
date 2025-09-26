@@ -241,11 +241,11 @@ public class StringUtils {
         }
     }
 
-    public static Map<String, String> simplify(Map<String, List<String>> map) {
+    public static Map<String, Object> simplify(Map<String, List<String>> map, boolean always) {
         if (map == null) {
             return Collections.emptyMap();
         }
-        Map<String, String> result = new LinkedHashMap<>(map.size());
+        Map<String, Object> result = new LinkedHashMap<>(map.size());
         for (Map.Entry<String, List<String>> entry : map.entrySet()) {
             String key = entry.getKey();
             List<String> values = entry.getValue();
@@ -253,7 +253,11 @@ public class StringUtils {
                 continue;
             }
             if (values.size() > 1) {
-                result.put(key, StringUtils.join(values, ","));
+                if (always) {
+                    result.put(key, StringUtils.join(values, ","));
+                } else {
+                    result.put(key, values);
+                }
             } else {
                 Object value = values.getFirst();
                 if (value != null) {
@@ -295,9 +299,9 @@ public class StringUtils {
     static final int CHAR_LENGTH = CHARS.length();
     static SecureRandom RANDOM = new SecureRandom();
 
-    public static String randomAlphaNumeric(int len){
+    public static String randomAlphaNumeric(int len) {
         StringBuilder sb = new StringBuilder(len);
-        for(int i = 0; i < len; i++)
+        for (int i = 0; i < len; i++)
             sb.append(CHARS.charAt(RANDOM.nextInt(CHAR_LENGTH)));
         return sb.toString();
     }

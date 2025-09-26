@@ -200,7 +200,7 @@ public class HttpRequest implements SimpleObject {
 
     public String getHeader(String name) {
         List<String> values = getHeaderValues(name);
-        return values == null || values.isEmpty() ? null : values.getFirst();
+        return values == null || values.isEmpty() ? null : values.getLast();
     }
 
     public String getContentType() {
@@ -280,8 +280,8 @@ public class HttpRequest implements SimpleObject {
         map.put("path", path);
         map.put("pathRaw", getPathRaw());
         map.put("method", method);
-        map.put("headers", StringUtils.simplify(headers));
-        map.put("params", StringUtils.simplify(params));
+        map.put("headers", headers);
+        map.put("params", params);
         map.put("body", getBodyConverted());
         return map;
     }
@@ -386,13 +386,13 @@ public class HttpRequest implements SimpleObject {
             case "pathRaw":
                 return getPathRaw();
             case "params":
-                return StringUtils.simplify(params);
+                return StringUtils.simplify(params, true);
             case "param":
                 return param();
             case "paramValues":
                 return paramValues();
             case "headers":
-                return StringUtils.simplify(headers);
+                return headers;
             case "header":
                 return header();
             case "headerValues":

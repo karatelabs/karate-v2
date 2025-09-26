@@ -66,7 +66,7 @@ public class HttpResponse implements SimpleObject {
 
     public String getHeader(String name) {
         List<String> values = getHeaderValues(name);
-        return values == null || values.isEmpty() ? null : values.getFirst();
+        return values == null || values.isEmpty() ? null : values.getLast();
     }
 
     public List<String> getHeaderValues(String name) { // TOTO optimize
@@ -182,7 +182,7 @@ public class HttpResponse implements SimpleObject {
     public Map<String, Object> toMap() {
         Map<String, Object> map = new HashMap<>();
         map.put("status", status);
-        map.put("headers", StringUtils.simplify(headers));
+        map.put("headers", headers);
         map.put("body", getBodyConverted());
         map.put("responseTime", responseTime);
         map.put("contentLength", contentLength);
@@ -215,7 +215,7 @@ public class HttpResponse implements SimpleObject {
             case "status" -> status;
             case "statusText" -> statusText;
             case "responseTime" -> responseTime;
-            case "headers" -> StringUtils.simplify(headers);
+            case "headers" -> headers;
             case "header" -> header();
             case "headerValues" -> headerValues();
             case "body" -> getBodyConverted();
