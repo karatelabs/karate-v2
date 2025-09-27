@@ -63,7 +63,7 @@ class EngineTest {
                 """;
         JsParser parser = new JsParser(Resource.text(js));
         Node node = parser.parse();
-        Node lastLine = node.findFirst(TokenType.CONST);
+        Node lastLine = node.findFirstChild(TokenType.CONST);
         assertEquals(9, lastLine.token.line);
     }
 

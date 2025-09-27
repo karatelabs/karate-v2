@@ -82,6 +82,10 @@ public class Engine {
         return bindings;
     }
 
+    public Context getRootContext() {
+        return root;
+    }
+
     public void setListener(ContextListener listener) {
         root.listener = listener;
     }

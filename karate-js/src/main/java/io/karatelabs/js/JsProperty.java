@@ -51,6 +51,7 @@ class JsProperty {
         this.node = node;
         this.context = context;
         this.functionCall = functionCall;
+        context.root.currentNode = node;
         switch (node.type) {
             case REF_EXPR:
                 object = null;

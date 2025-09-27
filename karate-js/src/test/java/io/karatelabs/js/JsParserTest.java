@@ -3,8 +3,6 @@ package io.karatelabs.js;
 import io.karatelabs.common.Resource;
 import org.junit.jupiter.api.Test;
 
-import java.util.NoSuchElementException;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -17,7 +15,7 @@ class JsParserTest {
         if (type == null) {
             child = node;
         } else {
-            Node found = node.findFirst(type);
+            Node found = node.findFirstChild(type);
             child = found.getFirst();
         }
         NodeUtils.assertEquals(text, child, json);
@@ -26,7 +24,7 @@ class JsParserTest {
     private static Token firstNumber(String text) {
         JsParser parser = new JsParser(Resource.text(text));
         Node root = parser.parse();
-        Node num = root.findFirst(TokenType.NUMBER);
+        Node num = root.findFirstChild(TokenType.NUMBER);
         return num.token;
     }
 

@@ -68,7 +68,7 @@ class Interpreter {
             }
             evalLitObject(bindings, context, bindingType, object);
         } else {
-            List<Node> varNames = bindings.findAll(IDENT);
+            List<Node> varNames = bindings.findChildren(IDENT);
             for (Node varName : varNames) {
                 String name = varName.getText();
                 context.declare(name, value, toInfo(name, bindingType, initialized));
@@ -729,7 +729,7 @@ class Interpreter {
 
     private static Object evalSwitchStmt(Node node, CoreContext context) {
         Object switchValue = eval(node.get(2), context);
-        List<Node> caseNodes = node.findChildrenOfType(NodeType.CASE_BLOCK);
+        List<Node> caseNodes = node.findImmediateChildren(NodeType.CASE_BLOCK);
         boolean found = false;
         for (Node caseNode : caseNodes) {
             if (!found) {
@@ -745,7 +745,7 @@ class Interpreter {
                 }
             }
         }
-        List<Node> defaultNodes = node.findChildrenOfType(NodeType.DEFAULT_BLOCK);
+        List<Node> defaultNodes = node.findImmediateChildren(NodeType.DEFAULT_BLOCK);
         if (!defaultNodes.isEmpty()) {
             return evalBlock(defaultNodes.getFirst(), context);
         }

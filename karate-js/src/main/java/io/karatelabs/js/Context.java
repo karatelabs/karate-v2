@@ -35,6 +35,8 @@ public interface Context {
 
     Node getNode();
 
+    Node getCurrentNode();
+
     String getPath();
 
     int getIteration();

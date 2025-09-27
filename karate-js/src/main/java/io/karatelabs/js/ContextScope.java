@@ -25,6 +25,7 @@ package io.karatelabs.js;
 
 public enum ContextScope {
 
+    ROOT,
     GLOBAL,
     FUNCTION,
     BLOCK,

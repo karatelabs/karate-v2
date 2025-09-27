@@ -78,6 +78,11 @@ class CoreContext implements Context {
     }
 
     @Override
+    public Node getCurrentNode() {
+        return root.currentNode;
+    }
+
+    @Override
     public Context getParent() {
         return parent;
     }

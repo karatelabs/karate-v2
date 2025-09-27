@@ -115,12 +115,12 @@ public class Node implements Iterable<Node> {
         return sb.toString();
     }
 
-    public Node findFirst(NodeType type) {
+    public Node findFirstChild(NodeType type) {
         for (Node child : children) {
             if (child.type == type) {
                 return child;
             }
-            Node temp = child.findFirst(type);
+            Node temp = child.findFirstChild(type);
             if (temp != null) {
                 return temp;
             }
@@ -128,12 +128,12 @@ public class Node implements Iterable<Node> {
         return null;
     }
 
-    public Node findFirst(TokenType token) {
+    public Node findFirstChild(TokenType token) {
         for (Node child : children) {
             if (child.token.type == token) {
                 return child;
             }
-            Node temp = child.findFirst(token);
+            Node temp = child.findFirstChild(token);
             if (temp != null) {
                 return temp;
             }
@@ -141,7 +141,15 @@ public class Node implements Iterable<Node> {
         return null;
     }
 
-    public List<Node> findChildrenOfType(NodeType type) {
+    public Node findParent(NodeType type) {
+        Node temp = this.parent;
+        while (temp != null && temp.type != type) {
+            temp = temp.parent;
+        }
+        return temp;
+    }
+
+    List<Node> findImmediateChildren(NodeType type) {
         List<Node> results = new ArrayList<>();
         for (Node child : children) {
             if (child.type == type) {
@@ -151,16 +159,16 @@ public class Node implements Iterable<Node> {
         return results;
     }
 
-    public List<Node> findAll(TokenType token) {
+    public List<Node> findChildren(TokenType token) {
         List<Node> results = new ArrayList<>();
-        findAll(token, results);
+        findChildren(token, results);
         return results;
     }
 
-    private void findAll(TokenType token, List<Node> results) {
+    private void findChildren(TokenType token, List<Node> results) {
         for (Node child : children) {
             if (!child.isToken()) {
-                child.findAll(token, results);
+                child.findChildren(token, results);
             } else if (child.token.type == token) {
                 results.add(child);
             }

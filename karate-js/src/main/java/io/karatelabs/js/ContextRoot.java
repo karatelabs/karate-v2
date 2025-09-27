@@ -31,17 +31,23 @@ class ContextRoot extends CoreContext {
 
     private Consumer<String> onConsoleLog;
 
+    Node currentNode;
     ContextListener listener;
     ExternalBridge bridge;
 
     ContextRoot(Engine engine) {
-        super(null, null, -1, null, null, null);
+        super(null, null, -1, null, ContextScope.ROOT, null);
         this.engine = engine;
     }
 
     @Override
     public Engine getEngine() {
         return engine;
+    }
+
+    @Override
+    public Node getCurrentNode() {
+        return currentNode;
     }
 
     @Override

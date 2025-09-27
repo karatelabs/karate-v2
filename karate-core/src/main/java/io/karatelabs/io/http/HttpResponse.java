@@ -155,12 +155,14 @@ public class HttpResponse implements SimpleObject {
     }
 
     public Object getBodyConverted() {
-        if (body instanceof byte[]) {
+        if (body instanceof byte[] bytes) {
             ResourceType rt = getResourceType(); // derive if needed
             if (rt != null && rt.isBinary()) {
                 return body;
             }
-            return Http.fromBytes((byte[]) body, false, rt);
+            return Http.fromBytes(bytes, false, rt);
+        } else if (body instanceof String text) {
+            return Http.fromString(text, false, getResourceType());
         } else {
             return body;
         }
