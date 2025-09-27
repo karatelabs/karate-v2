@@ -44,9 +44,9 @@ class MatchTest {
     }
 
     private void match(Object actual, Match.Type mt, Object expected, boolean fails) {
-        Map<String, Object> mr = Match.evaluate(actual, null, null).is(mt, expected);
-        pass = (Boolean) mr.get("pass");
-        message = (String) mr.get("message");
+        Result mr = Match.evaluate(actual, null, null).is(mt, expected);
+        pass = mr.pass;
+        message = mr.message;
         if (!fails) {
             assertTrue(pass, message);
         } else {
@@ -56,8 +56,8 @@ class MatchTest {
 
     @Test
     void testApi() {
-        Map<String, Object> result = Match.that(null)._equals(null);
-        assertEquals(true, result.get("pass"));
+        Result mr = Match.that(null)._equals(null);
+        assertTrue(mr.pass);
     }
 
     @Test

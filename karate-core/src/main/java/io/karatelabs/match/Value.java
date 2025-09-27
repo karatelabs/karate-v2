@@ -210,7 +210,7 @@ public class Value implements SimpleObject {
         return "[type: " + type + ", value: " + value + "]";
     }
 
-    public Map<String, Object> is(Match.Type matchType, Object expected) {
+    public Result is(Match.Type matchType, Object expected) {
         Operation op = new Operation(matchType, this, new Value(parseIfJsonOrXmlString(expected), context, onResult));
         op.execute();
         Result result;
@@ -222,7 +222,7 @@ public class Value implements SimpleObject {
         if (onResult != null) {
             onResult.accept(context, result);
         }
-        return result.toMap();
+        return result;
     }
 
     static Object parseIfJsonOrXmlString(Object o) {
@@ -244,70 +244,71 @@ public class Value implements SimpleObject {
 
     //======================================================================
     //
-    public Map<String, Object> _equals(Object expected) {
+    public Result _equals(Object expected) {
         return is(Match.Type.EQUALS, expected);
     }
 
-    public Map<String, Object> contains(Object expected) {
+    public Result contains(Object expected) {
         return is(Match.Type.CONTAINS, expected);
     }
 
-    public Map<String, Object> containsDeep(Object expected) {
+    public Result containsDeep(Object expected) {
         return is(Match.Type.CONTAINS_DEEP, expected);
     }
 
-    public Map<String, Object> containsOnly(Object expected) {
+    public Result containsOnly(Object expected) {
         return is(Match.Type.CONTAINS_ONLY, expected);
     }
 
-    public Map<String, Object> containsOnlyDeep(Object expected) {
+    public Result containsOnlyDeep(Object expected) {
         return is(Match.Type.CONTAINS_ONLY_DEEP, expected);
     }
 
-    public Map<String, Object> containsAny(Object expected) {
+    public Result containsAny(Object expected) {
         return is(Match.Type.CONTAINS_ANY, expected);
     }
 
-    public Map<String, Object> notEquals(Object expected) {
+    public Result notEquals(Object expected) {
         return is(Match.Type.NOT_EQUALS, expected);
     }
 
-    public Map<String, Object> notContains(Object expected) {
+    public Result notContains(Object expected) {
         return is(Match.Type.NOT_CONTAINS, expected);
     }
 
-    public Map<String, Object> eachEquals(Object expected) {
+    public Result eachEquals(Object expected) {
         return is(Match.Type.EACH_EQUALS, expected);
     }
 
-    public Map<String, Object> eachNotEquals(Object expected) {
+    public Result eachNotEquals(Object expected) {
         return is(Match.Type.EACH_NOT_EQUALS, expected);
     }
 
-    public Map<String, Object> eachContains(Object expected) {
+    public Result eachContains(Object expected) {
         return is(Match.Type.EACH_CONTAINS, expected);
     }
 
-    public Map<String, Object> eachNotContains(Object expected) {
+    public Result eachNotContains(Object expected) {
         return is(Match.Type.EACH_NOT_CONTAINS, expected);
     }
 
-    public Map<String, Object> eachContainsDeep(Object expected) {
+    public Result eachContainsDeep(Object expected) {
         return is(Match.Type.EACH_CONTAINS_DEEP, expected);
     }
 
-    public Map<String, Object> eachContainsOnly(Object expected) {
+    public Result eachContainsOnly(Object expected) {
         return is(Match.Type.EACH_CONTAINS_ONLY, expected);
     }
 
-    public Map<String, Object> eachContainsAny(Object expected) {
+    public Result eachContainsAny(Object expected) {
         return is(Match.Type.EACH_CONTAINS_ANY, expected);
     }
 
     JsCallable call(Match.Type matchType) {
         return (context, args) -> {
             Value.this.context = context;
-            return is(matchType, args[0]);
+            Result result = is(matchType, args[0]);
+            return result.toMap();
         };
     }
 
