@@ -29,20 +29,20 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-class JsRegex extends JsObject {
+public class JsRegex extends JsObject {
 
-    final String pattern;
-    final String flags;
-    final Pattern compiledPattern;
-    final boolean global;
+    public final String pattern;
+    public final String flags;
+    public final Pattern javaPattern;
+    public final boolean global;
 
-    int lastIndex = 0;
+    private int lastIndex = 0;
 
-    public JsRegex() {
+    JsRegex() {
         this("(?:)");
     }
 
-    public JsRegex(String literalText) {
+    JsRegex(String literalText) {
         if (literalText.startsWith("/")) {
             int lastSlashIndex = literalText.lastIndexOf('/');
             if (lastSlashIndex <= 0) {
@@ -63,20 +63,20 @@ class JsRegex extends JsObject {
         try {
             // unescape js-specific regex syntax that differs from Java
             String javaPattern = translateJsRegexToJava(this.pattern);
-            this.compiledPattern = Pattern.compile(javaPattern, javaFlags);
+            this.javaPattern = Pattern.compile(javaPattern, javaFlags);
         } catch (PatternSyntaxException e) {
             throw new RuntimeException("invalid regex: " + pattern + " - " + e.getMessage());
         }
     }
 
-    public JsRegex(String pattern, String flags) {
+    JsRegex(String pattern, String flags) {
         this.pattern = pattern;
         this.flags = flags != null ? flags : "";
         this.global = this.flags.contains("g");
         int javaFlags = translateJsFlags(this.flags);
         try {
             String javaPattern = translateJsRegexToJava(this.pattern);
-            this.compiledPattern = Pattern.compile(javaPattern, javaFlags);
+            this.javaPattern = Pattern.compile(javaPattern, javaFlags);
         } catch (PatternSyntaxException e) {
             throw new RuntimeException("invalid regex: " + pattern + " - " + e.getMessage());
         }
@@ -106,7 +106,7 @@ class JsRegex extends JsObject {
     public boolean test(String str) {
         if (global) {
             // for global, start at lastIndex
-            Matcher matcher = compiledPattern.matcher(str);
+            Matcher matcher = javaPattern.matcher(str);
             boolean found = matcher.find(lastIndex);
             if (found) {
                 lastIndex = matcher.end();
@@ -116,12 +116,12 @@ class JsRegex extends JsObject {
             return found;
         } else {
             // non-global regex does not update lastIndex
-            return compiledPattern.matcher(str).find();
+            return javaPattern.matcher(str).find();
         }
     }
 
     public String replace(String str, String replacement) {
-        Matcher matcher = compiledPattern.matcher(str);
+        Matcher matcher = javaPattern.matcher(str);
         StringBuilder result = new StringBuilder();
         while (matcher.find()) {
             matcher.appendReplacement(result, replacement);
@@ -135,7 +135,7 @@ class JsRegex extends JsObject {
     }
 
     public List<String> match(String str) {
-        Matcher matcher = compiledPattern.matcher(str);
+        Matcher matcher = javaPattern.matcher(str);
         List<String> matches = new ArrayList<>();
         while (matcher.find()) {
             matches.add(matcher.group(0));
@@ -145,15 +145,15 @@ class JsRegex extends JsObject {
     }
 
     public int search(String str) {
-        Matcher matcher = compiledPattern.matcher(str);
+        Matcher matcher = javaPattern.matcher(str);
         if (matcher.find()) {
             return matcher.start();
         }
         return -1;
     }
 
-    public JsArray exec(String str) {
-        Matcher matcher = compiledPattern.matcher(str);
+    JsArray exec(String str) {
+        Matcher matcher = javaPattern.matcher(str);
         boolean found;
         if (global) {
             // for global, start at lastIndex
