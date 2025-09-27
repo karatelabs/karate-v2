@@ -348,7 +348,7 @@ public class Terms {
         return value == UNDEFINED;
     }
 
-    static String typeOf(Object value) {
+    public static String typeOf(Object value) {
         if (value instanceof String) {
             return "string";
         }
