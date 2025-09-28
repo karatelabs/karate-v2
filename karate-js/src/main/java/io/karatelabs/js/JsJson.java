@@ -32,7 +32,7 @@ import java.util.Map;
 public class JsJson implements SimpleObject {
 
     @Override
-    public Object get(String name) {
+    public Object jsGet(String name) {
         return switch (name) {
             case "stringify" -> stringify();
             case "parse" -> parse();

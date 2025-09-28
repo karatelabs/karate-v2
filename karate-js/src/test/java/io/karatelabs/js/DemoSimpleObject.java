@@ -3,7 +3,7 @@ package io.karatelabs.js;
 public class DemoSimpleObject implements SimpleObject {
 
     @Override
-    public Object get(String name) {
+    public Object jsGet(String name) {
         if (name.equals("doWorkException")) {
             return (Invokable) args -> {
                 throw new RuntimeException("failed");

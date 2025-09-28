@@ -26,6 +26,9 @@ package io.karatelabs.js;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public interface SimpleObject extends ObjectLike {
@@ -44,8 +47,34 @@ public interface SimpleObject extends ObjectLike {
 
     @Override
     default Map<String, Object> toMap() {
-        logger.warn("remove() not implemented for: {}", getClass().getName());
-        return null;
+        Map<String, Object> map = new LinkedHashMap<>();
+        for (String key : keys()) {
+            map.put(key, jsGet(key));
+        }
+        return map;
     }
+
+    default List<String> keys() {
+        logger.warn("toStringKeys() not implemented for: {}", getClass().getName());
+        return Collections.emptyList();
+    }
+
+    @Override
+    default Object get(String name) {
+        if ("toString".equals(name)) {
+            try {
+                Object temp = jsGet(name);
+                if (temp != null) {
+                    return temp;
+                }
+            } catch (Exception e) {
+                // ignore
+            }
+            return (JsCallable) (context, args) -> Terms.TO_STRING(toMap());
+        }
+        return jsGet(name);
+    }
+
+    Object jsGet(String name);
 
 }

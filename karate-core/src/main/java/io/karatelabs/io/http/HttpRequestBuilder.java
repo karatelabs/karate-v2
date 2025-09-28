@@ -591,7 +591,7 @@ public class HttpRequestBuilder implements SimpleObject {
     }
 
     @Override
-    public Object get(String key) {
+    public Object jsGet(String key) {
         switch (key) {
             case "get":
             case "post":

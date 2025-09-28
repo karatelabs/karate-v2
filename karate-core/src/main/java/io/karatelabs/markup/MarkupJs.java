@@ -36,14 +36,12 @@ class MarkupJs implements SimpleObject {
     }
 
     @Override
-    public Object get(String name) {
-        switch (name) {
-            case "template":
-                return getTemplateName();
-            case "caller":
-                return getCallerTemplateName();
-        }
-        return null;
+    public Object jsGet(String name) {
+        return switch (name) {
+            case "template" -> getTemplateName();
+            case "caller" -> getCallerTemplateName();
+            default -> null;
+        };
     }
 
     public String getCallerTemplateName() {

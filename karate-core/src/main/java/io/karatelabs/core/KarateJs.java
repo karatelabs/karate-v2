@@ -206,7 +206,7 @@ public class KarateJs implements SimpleObject {
     }
 
     @Override
-    public Object get(String key) {
+    public Object jsGet(String key) {
         return switch (key) {
             case "doc" -> doc();
             case "get" -> get();

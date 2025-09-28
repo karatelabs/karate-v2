@@ -367,7 +367,7 @@ public class HttpRequest implements SimpleObject {
     }
 
     @Override
-    public Object get(String key) {
+    public Object jsGet(String key) {
         switch (key) {
             case "method":
                 return method;

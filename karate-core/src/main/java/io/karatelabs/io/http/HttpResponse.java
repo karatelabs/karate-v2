@@ -212,7 +212,7 @@ public class HttpResponse implements SimpleObject {
     }
 
     @Override
-    public Object get(String key) {
+    public Object jsGet(String key) {
         return switch (key) {
             case "status" -> status;
             case "statusText" -> statusText;

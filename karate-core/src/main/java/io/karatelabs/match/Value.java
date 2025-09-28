@@ -313,7 +313,7 @@ public class Value implements SimpleObject {
     }
 
     @Override
-    public Object get(String name) {
+    public Object jsGet(String name) {
         return switch (name) {
             case "equals" -> call(Match.Type.EQUALS);
             case "contains" -> call(Match.Type.CONTAINS);
