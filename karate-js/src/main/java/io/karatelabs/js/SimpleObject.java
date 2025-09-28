@@ -26,14 +26,15 @@ package io.karatelabs.js;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 public interface SimpleObject extends ObjectLike {
 
     Logger logger = LoggerFactory.getLogger(SimpleObject.class);
+
+    String TO_STRING = "toString";
 
     @Override
     default void put(String name, Object value) {
@@ -47,24 +48,27 @@ public interface SimpleObject extends ObjectLike {
 
     @Override
     default Map<String, Object> toMap() {
-        Map<String, Object> map = new LinkedHashMap<>();
-        for (String key : keys()) {
-            map.put(key, jsGet(key));
-        }
-        return map;
+        return Terms.toMap(keys(), this::jsGet);
     }
 
-    default List<String> keys() {
-        logger.warn("toStringKeys() not implemented for: {}", getClass().getName());
+    default Collection<String> keys() {
+        logger.warn("keys() not implemented for: {}", getClass().getName());
         return Collections.emptyList();
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     default Object get(String name) {
-        if ("toString".equals(name)) {
+        if (TO_STRING.equals(name)) {
             try {
                 Object temp = jsGet(name);
-                if (temp != null) {
+                if (temp instanceof Collection) {
+                    Collection<String> keys = (Collection<String>) temp;
+                    return (JsCallable) (context, args) -> {
+                        Map<String, Object> map = Terms.toMap(keys, this::jsGet);
+                        return Terms.TO_STRING(map);
+                    };
+                } else if (temp != null) {
                     return temp;
                 }
             } catch (Exception e) {

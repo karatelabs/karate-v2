@@ -25,9 +25,8 @@ package io.karatelabs.js;
 
 import net.minidev.json.JSONValue;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Function;
 
 public class Terms {
 
@@ -382,6 +381,14 @@ public class Terms {
             }
         }
         return false;
+    }
+
+    static Map<String, Object> toMap(Collection<String> keys, Function<String, Object> valueResolver) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        for (String key : keys) {
+            map.put(key, valueResolver.apply(key));
+        }
+        return map;
     }
 
     static String TO_STRING(Object o) {

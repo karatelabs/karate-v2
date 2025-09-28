@@ -23,6 +23,7 @@
  */
 package io.karatelabs.js;
 
+import java.util.Collection;
 import java.util.function.Consumer;
 
 class ContextRoot extends CoreContext {
@@ -117,7 +118,7 @@ class ContextRoot extends CoreContext {
     private ObjectLike createConsole() {
         return (SimpleObject) name -> {
             if ("log".equals(name)) {
-                return (Invokable) args -> {
+                return (JsCallable) (context, args) -> {
                     StringBuilder sb = new StringBuilder();
                     for (int i = 0; i < args.length; i++) {
                         Object arg = args[i];
@@ -126,10 +127,10 @@ class ContextRoot extends CoreContext {
                         }
                         JsCallable callable = null;
                         if (arg instanceof ObjectLike objectLike) {
-                            callable = Terms.toCallable(objectLike.get("toString"));
+                            callable = Terms.toCallable(objectLike.get(SimpleObject.TO_STRING));
                         }
                         if (callable != null) {
-                            sb.append(callable.call(null, arg));
+                            sb.append(callable.call(context, arg));
                         } else {
                             sb.append(Terms.TO_STRING(arg));
                         }
