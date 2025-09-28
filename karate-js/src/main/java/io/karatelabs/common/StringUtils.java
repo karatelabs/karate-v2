@@ -23,6 +23,12 @@
  */
 package io.karatelabs.common;
 
+import io.karatelabs.js.JsCallable;
+import io.karatelabs.js.ObjectLike;
+import io.karatelabs.js.SimpleObject;
+import net.minidev.json.JSONStyle;
+import net.minidev.json.JSONValue;
+
 import java.io.*;
 import java.security.SecureRandom;
 import java.util.*;
@@ -314,6 +320,146 @@ public class StringUtils {
         } else {
             return String.format("%.1f MB", bytes / (1024.0 * 1024));
         }
+    }
+
+    public static String formatJson(Object o) {
+        return formatJson(o, true, false, false);
+    }
+
+    public static String formatJson(Object o, boolean pretty, boolean lenient, boolean sort) {
+        if (o instanceof String ostring) {
+            if (StringUtils.isJson(ostring)) {
+                if (sort) { // dont care about order in first phase
+                    o = JSONValue.parse(ostring);
+                } else {
+                    o = JSONValue.parseKeepingOrder(ostring);
+                }
+            } else {
+                return ostring;
+            }
+        }
+        if (o instanceof List || o instanceof Map) {
+            StringBuilder sb = new StringBuilder();
+            formatRecurse(o, pretty, lenient, sort, sb, 0);
+            return sb.toString();
+        } else {
+            return o + "";
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void formatRecurse(Object o, boolean pretty, boolean lenient, boolean sort, StringBuilder sb, int depth) {
+        if (o == null) {
+            sb.append("null");
+        } else if (o instanceof List<?> list) {
+            sb.append('[');
+            if (pretty) {
+                sb.append('\n');
+            } else if (!list.isEmpty()) {
+                sb.append(' ');
+            }
+            Iterator<?> iterator = list.iterator();
+            while (iterator.hasNext()) {
+                Object child = iterator.next();
+                if (pretty) {
+                    pad(sb, depth + 1);
+                }
+                formatRecurse(child, pretty, lenient, sort, sb, depth + 1);
+                if (iterator.hasNext()) {
+                    sb.append(',');
+                    if (!pretty) {
+                        sb.append(' ');
+                    }
+                }
+                if (pretty) {
+                    sb.append('\n');
+                }
+            }
+            if (pretty) {
+                pad(sb, depth);
+            }
+            if (!pretty && !list.isEmpty()) {
+                sb.append(' ');
+            }
+            sb.append(']');
+        } else if (o instanceof Map) {
+            // found a rare case where key was a boolean (not string)
+            Map<Object, Object> map = (Map<Object, Object>) o;
+            if (sort) {
+                map = new TreeMap<>(map);
+            }
+            sb.append('{');
+            if (pretty) {
+                sb.append('\n');
+            } else if (!map.isEmpty()) {
+                sb.append(' ');
+            }
+            Iterator<Map.Entry<Object, Object>> iterator = map.entrySet().iterator();
+            while (iterator.hasNext()) {
+                Map.Entry<Object, Object> entry = iterator.next();
+                Object key = entry.getKey();
+                if (pretty) {
+                    pad(sb, depth + 1);
+                }
+                if (lenient) {
+                    String escaped = escapeJsonValue(key == null ? null : key.toString());
+                    if (escaped != null && isValidJsonKey(escaped)) {
+                        sb.append(key);
+                    } else {
+                        sb.append('\'').append(escaped).append('\'');
+                    }
+                } else {
+                    sb.append('"').append(escapeJsonValue(key == null ? null : key.toString())).append('"');
+                }
+                sb.append(':').append(' ');
+                formatRecurse(entry.getValue(), pretty, lenient, sort, sb, depth + 1);
+                if (iterator.hasNext()) {
+                    sb.append(',');
+                    if (!pretty) {
+                        sb.append(' ');
+                    }
+                }
+                if (pretty) {
+                    sb.append('\n');
+                }
+            }
+            if (pretty) {
+                pad(sb, depth);
+            }
+            if (!pretty && !map.isEmpty()) {
+                sb.append(' ');
+            }
+            sb.append('}');
+        } else if (o instanceof Number || o instanceof Boolean) {
+            sb.append(o);
+        } else if (o instanceof SimpleObject so) {
+            JsCallable jsc = so.jsToString();
+            String s = (String) jsc.call(null);
+            sb.append(s);
+        } else {
+            String value = o.toString();
+            if (lenient) {
+                sb.append('\'').append(escapeJsonValue(value)).append('\'');
+            } else {
+                sb.append('"').append(escapeJsonValue(value)).append('"');
+            }
+        }
+    }
+
+    private static void pad(StringBuilder sb, int depth) {
+        for (int i = 0; i < depth; i++) {
+            sb.append(' ').append(' ');
+        }
+    }
+
+    private static final Pattern JS_IDENTIFIER_PATTERN = Pattern.compile("^[A-Za-z_$][A-Za-z0-9_$]*$");
+
+    private static boolean isValidJsonKey(String key) {
+        return JS_IDENTIFIER_PATTERN.matcher(key).matches();
+    }
+
+    private static String escapeJsonValue(String raw) {
+        return JSONValue.escape(raw, JSONStyle.LT_COMPRESS);
     }
 
 }

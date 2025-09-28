@@ -25,6 +25,7 @@ package io.karatelabs.core;
 
 import io.karatelabs.common.Json;
 import io.karatelabs.common.Resource;
+import io.karatelabs.common.StringUtils;
 import io.karatelabs.common.Xml;
 import io.karatelabs.io.http.ApacheHttpClient;
 import io.karatelabs.io.http.HttpClient;
@@ -196,7 +197,7 @@ public class KarateJs implements SimpleObject {
                 throw new RuntimeException("toStringPretty() needs at least one argument");
             }
             if (args[0] instanceof List || args[0] instanceof Map) {
-                return Json.formatPretty(args[0]);
+                return StringUtils.formatJson(args[0]);
             } else if (args[0] instanceof Node) {
                 return Xml.toString((Node) args[0], true);
             } else {

@@ -23,7 +23,6 @@
  */
 package io.karatelabs.js;
 
-import java.util.Collection;
 import java.util.function.Consumer;
 
 class ContextRoot extends CoreContext {

@@ -159,7 +159,7 @@ class JsonTest {
     @Test
     void testJsonFormat() {
         Object o = Json.of("{redirect:{url:'/index'}}").value();
-        String s = Json.format(o, false, false, false);
+        String s = StringUtils.formatJson(o, false, false, false);
         assertEquals("{ \"redirect\": { \"url\": \"/index\" } }", s);
     }
 

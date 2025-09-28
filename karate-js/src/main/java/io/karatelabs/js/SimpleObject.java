@@ -23,11 +23,13 @@
  */
 package io.karatelabs.js;
 
+import io.karatelabs.common.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public interface SimpleObject extends ObjectLike {
@@ -48,7 +50,7 @@ public interface SimpleObject extends ObjectLike {
 
     @Override
     default Map<String, Object> toMap() {
-        return Terms.toMap(keys(), this::jsGet);
+        return toMap(keys(), this);
     }
 
     default Collection<String> keys() {
@@ -56,29 +58,38 @@ public interface SimpleObject extends ObjectLike {
         return Collections.emptyList();
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     default Object get(String name) {
         if (TO_STRING.equals(name)) {
-            try {
-                Object temp = jsGet(name);
-                if (temp instanceof Collection) {
-                    Collection<String> keys = (Collection<String>) temp;
-                    return (JsCallable) (context, args) -> {
-                        Map<String, Object> map = Terms.toMap(keys, this::jsGet);
-                        return Terms.TO_STRING(map);
-                    };
-                } else if (temp != null) {
-                    return temp;
-                }
-            } catch (Exception e) {
-                // ignore
-            }
-            return (JsCallable) (context, args) -> Terms.TO_STRING(toMap());
+            return jsToString();
         }
         return jsGet(name);
     }
 
     Object jsGet(String name);
+
+    default JsCallable jsToString() {
+        try {
+            Object temp = jsGet(TO_STRING);
+            if (temp instanceof JsCallable jsc) {
+                return jsc;
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+        return (context, args) -> toString(toMap());
+    }
+
+    static String toString(Map<String, Object> map) {
+        return StringUtils.formatJson(map);
+    }
+
+    static Map<String, Object> toMap(Collection<String> keys, SimpleObject so) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        for (String key : keys) {
+            map.put(key, so.jsGet(key));
+        }
+        return map;
+    }
 
 }
