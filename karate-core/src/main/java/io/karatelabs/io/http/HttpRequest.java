@@ -291,8 +291,8 @@ public class HttpRequest implements SimpleObject {
         return method + " " + urlAndPath;
     }
 
-    public HttpRequestBuilder toHttpRequestBuilder() {
-        HttpRequestBuilder builder = new HttpRequestBuilder();
+    public HttpRequestBuilder toHttpRequestBuilder(HttpClient client) {
+        HttpRequestBuilder builder = new HttpRequestBuilder(client);
         builder.method(method);
         if (urlBase != null) {
             builder.url(urlBase);

@@ -62,9 +62,8 @@ import java.util.concurrent.TimeUnit;
 
 public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApacheHttpClient.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ApacheHttpClient.class);
 
-    private long startTime;
     private HttpRequest request;
     private CloseableHttpClient httpClient;
 
@@ -87,6 +86,8 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
     private String sslTrustStorePassword;
     private String sslTrustStoreType;
     private boolean sslTrustAll = true;
+
+    private final HttpLogger logger = new HttpLogger();
 
     @SuppressWarnings("unchecked")
     @Override
@@ -113,7 +114,7 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
                         sslAlgorithm = algorithm;
                     }
                 } else {
-                    logger.warn("boolean or object expected for: {}", key);
+                    LOGGER.warn("boolean or object expected for: {}", key);
                 }
                 break;
             case "proxy":
@@ -128,34 +129,34 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
                     proxyPassword = (String) map.get("password");
                     nonProxyHosts = (List<String>) map.get("nonProxyHosts");
                 } else {
-                    logger.warn("string or object expected for: {}", key);
+                    LOGGER.warn("string or object expected for: {}", key);
                 }
                 break;
             case "readTimeout":
                 if (value instanceof Number time) {
                     readTimeout = time.intValue();
                 } else {
-                    logger.warn("number expected for: {}", key);
+                    LOGGER.warn("number expected for: {}", key);
                 }
                 break;
             case "connectTimeout":
                 if (value instanceof Number time) {
                     connectTimeout = time.intValue();
                 } else {
-                    logger.warn("number expected for: {}", key);
+                    LOGGER.warn("number expected for: {}", key);
                 }
                 break;
             case "followRedirects":
                 if (value instanceof Boolean flag) {
                     followRedirects = flag;
                 } else {
-                    logger.warn("boolean expected for: {}", key);
+                    LOGGER.warn("boolean expected for: {}", key);
                 }
                 break;
             default:
-                logger.warn("unexpected key: {}", key);
+                LOGGER.warn("unexpected key: {}", key);
         }
-        logger.debug("http client configured: {}", key);
+        LOGGER.debug("http client configured: {}", key);
         httpClient = null; // will force lazy rebuild
     }
 
@@ -199,7 +200,7 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
                 }
                 connectionManagerBuilder.setSSLSocketFactory(socketFactory);
             } catch (Exception e) {
-                logger.error("ssl context init failed: {}", e.getMessage());
+                LOGGER.error("ssl context init failed: {}", e.getMessage());
                 throw new RuntimeException(e);
             }
         } else {
@@ -208,7 +209,7 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
                 SSLConnectionSocketFactory socketFactory = new LenientSslConnectionSocketFactory(sslContext, new NoopHostnameVerifier());
                 connectionManagerBuilder.setSSLSocketFactory(socketFactory);
             } catch (Exception e) {
-                logger.error("ssl context init failed: {}", e.getMessage());
+                LOGGER.error("ssl context init failed: {}", e.getMessage());
                 throw new RuntimeException(e);
             }
         }
@@ -226,7 +227,7 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
                 .setConnectionManager(connectionManagerBuilder.build())
                 .addRequestInterceptorLast(this);
         httpClient = clientBuilder.build();
-        logger.debug("http client created");
+        LOGGER.debug("http client created");
     }
 
     @Override
@@ -259,10 +260,22 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
             if (httpClient == null) {
                 initHttpClient();
             }
-            return httpClient.execute(requestBuilder.build(), response -> buildResponse(response, startTime));
+            HttpResponse finalResponse = httpClient.execute(requestBuilder.build(), response -> buildResponse(response, startTime));
+            finalResponse.setRequest(request);
+            logger.logResponse(finalResponse);
+            return finalResponse;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private long startTime;
+
+    @Override
+    public void process(org.apache.hc.core5.http.HttpRequest hr, EntityDetails entity, HttpContext context) {
+        request.setHeaders(toHeaders(hr));
+        logger.logRequest(request);
+        startTime = System.currentTimeMillis();
     }
 
     static HttpResponse buildResponse(org.apache.hc.core5.http.HttpResponse httpResponse, long startTime) {
@@ -270,6 +283,7 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
         int statusCode = httpResponse.getCode();
         Map<String, List<String>> headers = toHeaders(httpResponse);
         HttpResponse response = new HttpResponse();
+        response.setStartTime(startTime);
         response.setResponseTime(endTime - startTime);
         response.setStatus(statusCode);
         response.setHeaders(headers);
@@ -278,14 +292,13 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
             if (entity != null) {
                 try {
                     byte[] bytes = EntityUtils.toByteArray(entity);
-                    response.setBody(bytes);
+                    response.setBody(bytes, null);
                     response.setContentLength(bytes.length);
                 } catch (Exception e) {
-                    logger.warn("error extracting response body: {}", e.getMessage());
+                    LOGGER.warn("error extracting response body: {}", e.getMessage());
                 }
             }
         }
-        logger.debug("{} in {} ms", response.getStatus(), response.getResponseTime());
         return response;
     }
 
@@ -304,13 +317,6 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
         return map;
     }
 
-    @Override
-    public void process(org.apache.hc.core5.http.HttpRequest hr, EntityDetails entity, HttpContext context) {
-        request.setHeaders(toHeaders(hr));
-        logger.debug("{} {}", hr.getMethod(), hr.getRequestUri());
-        startTime = System.currentTimeMillis();
-    }
-
     private static KeyStore getKeyStore(String trustStoreFile, String password, String type) {
         if (trustStoreFile == null) {
             return null;
@@ -324,10 +330,10 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
             File file = new File(trustStoreFile); // TODO relative path
             InputStream is = new FileInputStream(file);
             keyStore.load(is, passwordChars);
-            logger.debug("key store key count for {}: {}", trustStoreFile, keyStore.size());
+            LOGGER.debug("key store key count for {}: {}", trustStoreFile, keyStore.size());
             return keyStore;
         } catch (Exception e) {
-            logger.error("key store init failed: {}", e.getMessage());
+            LOGGER.error("key store init failed: {}", e.getMessage());
             throw new RuntimeException(e);
         }
     }
@@ -351,7 +357,7 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
         if (httpClient != null) {
             try {
                 httpClient.close();
-                logger.debug("http client closed");
+                LOGGER.debug("http client closed");
             } finally {
                 httpClient = null;
             }

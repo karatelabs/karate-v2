@@ -32,8 +32,6 @@ import io.netty.handler.codec.http.cookie.ClientCookieEncoder;
 import io.netty.handler.codec.http.cookie.Cookie;
 import io.netty.handler.codec.http.cookie.DefaultCookie;
 import org.apache.hc.core5.net.URIBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -42,8 +40,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class HttpRequestBuilder implements SimpleObject {
-
-    private static final Logger logger = LoggerFactory.getLogger(HttpRequestBuilder.class);
 
     private String url;
     private String method;
@@ -54,15 +50,12 @@ public class HttpRequestBuilder implements SimpleObject {
     private Object body;
     private Set<Cookie> cookies;
     private String charset;
+    private AuthHandler authHandler;
 
     private final HttpClient client;
 
     public HttpRequestBuilder(HttpClient client) {
         this.client = client;
-    }
-
-    public HttpRequestBuilder() {
-        this(null);
     }
 
     public void reset() {
@@ -78,7 +71,7 @@ public class HttpRequestBuilder implements SimpleObject {
     }
 
     public HttpRequestBuilder copy() {
-        HttpRequestBuilder hrb = new HttpRequestBuilder();
+        HttpRequestBuilder hrb = new HttpRequestBuilder(client);
         hrb.url = url;
         hrb.method = method;
         hrb.paths = paths;
@@ -177,6 +170,14 @@ public class HttpRequestBuilder implements SimpleObject {
     public HttpRequestBuilder bodyJson(String json) {
         this.body = Json.of(json).value();
         return this;
+    }
+
+    public HttpClient getClient() {
+        return client;
+    }
+
+    public HttpRequestBuilder forkNewBuilder() {
+        return new HttpRequestBuilder(client);
     }
 
     public Map<String, String> getHeaders() {
@@ -330,6 +331,11 @@ public class HttpRequestBuilder implements SimpleObject {
         return this;
     }
 
+    public HttpRequestBuilder auth(AuthHandler authHandler) {
+        this.authHandler = authHandler;
+        return this;
+    }
+
     public String getUri() {
         try {
             URIBuilder builder;
@@ -428,6 +434,9 @@ public class HttpRequestBuilder implements SimpleObject {
                 }
                 contentType(contentType);
             }
+        }
+        if (authHandler != null) {
+            authHandler.apply(this);
         }
     }
 
@@ -614,7 +623,7 @@ public class HttpRequestBuilder implements SimpleObject {
             case "body":
                 return body();
         }
-        logger.warn("unexpected key: {}", key);
+        System.err.println("http-request-builder no such key: " + key);
         return null;
     }
 

@@ -71,6 +71,7 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<FullHttpReque
             List<String> list = headers.computeIfAbsent(entry.getKey(), k -> new ArrayList<>());
             list.add(entry.getValue());
         });
+        request.setHeaders(headers);
         ByteBuf buf = req.content();
         int len = buf.readableBytes();
         if (len > 0) {

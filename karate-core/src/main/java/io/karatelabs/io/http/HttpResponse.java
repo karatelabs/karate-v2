@@ -23,14 +23,13 @@
  */
 package io.karatelabs.io.http;
 
-import io.karatelabs.common.FileUtils;
-import io.karatelabs.common.Json;
-import io.karatelabs.common.ResourceType;
-import io.karatelabs.common.StringUtils;
+import io.karatelabs.common.*;
 import io.karatelabs.js.Invokable;
 import io.karatelabs.js.SimpleObject;
+import net.minidev.json.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.w3c.dom.Node;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -44,8 +43,9 @@ public class HttpResponse implements SimpleObject {
     private int status = 200;
     private String statusText;
     private Map<String, List<String>> headers;
-    private Object body;
+    private byte[] body;
     private ResourceType resourceType;
+    private long startTime;
     private long responseTime;
     private int contentLength;
     private HttpRequest request;
@@ -120,6 +120,14 @@ public class HttpResponse implements SimpleObject {
         this.request = request;
     }
 
+    public void setStartTime(long startTime) {
+        this.startTime = startTime;
+    }
+
+    public long getStartTime() {
+        return startTime;
+    }
+
     public void setHeader(String name, String... values) {
         setHeader(name, Arrays.asList(values));
     }
@@ -150,22 +158,40 @@ public class HttpResponse implements SimpleObject {
         return FileUtils.toString(Json.toBytes(body));
     }
 
-    public void setBody(Object body) {
+    public void setBody(byte[] body, ResourceType resourceType) {
         this.body = body;
+        this.resourceType = resourceType;
+        if (resourceType != null) {
+            setContentType(resourceType.contentType);
+        }
+    }
+
+    public void setBody(String body) {
+        setBody(FileUtils.toBytes(body), ResourceType.TEXT);
+    }
+
+    public void setBody(Map<String, Object> body) {
+        setBody(Json.toBytes(body), ResourceType.JSON);
+    }
+
+    public void setBody(List<Object> body) {
+        setBody(Json.toBytes(body), ResourceType.JSON);
+    }
+
+    public void setBodyJson(String body) {
+        setBody(FileUtils.toBytes(body), ResourceType.JSON);
+    }
+
+    public void setBodyXml(String body) {
+        setBody(FileUtils.toBytes(body), ResourceType.XML);
     }
 
     public Object getBodyConverted() {
-        if (body instanceof byte[] bytes) {
-            ResourceType rt = getResourceType(); // derive if needed
-            if (rt != null && rt.isBinary()) {
-                return body;
-            }
-            return Http.fromBytes(bytes, false, rt);
-        } else if (body instanceof String text) {
-            return Http.fromString(text, false, getResourceType());
-        } else {
+        ResourceType rt = getResourceType(); // derive if needed
+        if (rt != null && rt.isBinary()) {
             return body;
         }
+        return Http.fromBytes(body, false, rt);
     }
 
     public long getResponseTime() {
@@ -216,6 +242,7 @@ public class HttpResponse implements SimpleObject {
         return switch (key) {
             case "status" -> status;
             case "statusText" -> statusText;
+            case "startTime" -> startTime;
             case "responseTime" -> responseTime;
             case "headers" -> headers;
             case "header" -> header();
@@ -235,7 +262,17 @@ public class HttpResponse implements SimpleObject {
     public void put(String key, Object value) {
         switch (key) {
             case "body":
-                body = value;
+                if (value instanceof Map || value instanceof List) {
+                    setBody(FileUtils.toBytes(JSONValue.toJSONString(value)), ResourceType.JSON);
+                } else if (value instanceof Node xml) {
+                    setBody(FileUtils.toBytes(Xml.toString(xml)), ResourceType.XML);
+                } else if (value instanceof String s) {
+                    setBody(s);
+                } else if (value instanceof byte[] bytes) {
+                    setBody(bytes, null);
+                } else {
+                    throw new RuntimeException("unsupported response body type: " + value);
+                }
                 break;
             case "status":
                 status = ((Number) value).intValue();
