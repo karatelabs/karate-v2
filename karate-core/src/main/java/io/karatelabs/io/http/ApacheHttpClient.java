@@ -23,6 +23,7 @@
  */
 package io.karatelabs.io.http;
 
+import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
 import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.cookie.BasicCookieStore;
@@ -66,6 +67,7 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
 
     private HttpRequest request;
     private CloseableHttpClient httpClient;
+    private volatile ClassicHttpRequest currentRequest;
 
     private int readTimeout = 30000;
     private int connectTimeout = 30000;
@@ -260,12 +262,25 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
             if (httpClient == null) {
                 initHttpClient();
             }
-            HttpResponse finalResponse = httpClient.execute(requestBuilder.build(), response -> buildResponse(response, startTime));
+            currentRequest = requestBuilder.build();
+            HttpResponse finalResponse = httpClient.execute(currentRequest, response -> buildResponse(response, startTime));
+            currentRequest = null; // clear after completion
             finalResponse.setRequest(request);
             logger.logResponse(finalResponse);
             return finalResponse;
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            currentRequest = null;
+        }
+    }
+
+    @Override
+    public void abort() {
+        ClassicHttpRequest req = currentRequest;
+        if (req instanceof HttpUriRequestBase) {
+            ((HttpUriRequestBase) req).abort();
+            LOGGER.warn("http request aborted");
         }
     }
 

@@ -13,6 +13,11 @@ public class ErrorHttpClient implements HttpClient {
     }
 
     @Override
+    public void abort() {
+
+    }
+
+    @Override
     public void close() {
 
     }

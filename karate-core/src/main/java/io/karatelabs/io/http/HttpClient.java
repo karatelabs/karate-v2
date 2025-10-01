@@ -31,4 +31,6 @@ public interface HttpClient extends Closeable {
 
     void config(String key, Object value);
 
+    void abort();
+
 }

@@ -440,49 +440,6 @@ public class HttpRequestBuilder implements SimpleObject {
         }
     }
 
-    public Map<String, Object> toHttpRequestData() {
-        buildInternal();
-        Map<String, Object> map = new HashMap<>();
-        map.put("url", getUri());
-        map.put("method", method);
-        if (headers != null) {
-            List<Map<String, Object>> list = new ArrayList<>(headers.size());
-            map.put("headers", list);
-            headers.forEach((k, v) -> {
-                if (v != null) {
-                    v.forEach(value -> {
-                        if (value != null) {
-                            Map<String, Object> header = new HashMap<>();
-                            header.put("name", k);
-                            header.put("value", value);
-                            list.add(header);
-                        }
-                    });
-                }
-            });
-        }
-        if (params != null) {
-            List<Map<String, Object>> list = new ArrayList<>(params.size());
-            map.put("params", list);
-            params.forEach((k, v) -> {
-                if (v != null) {
-                    v.forEach(value -> {
-                        if (value != null) {
-                            Map<String, Object> header = new HashMap<>();
-                            header.put("name", k);
-                            header.put("value", value);
-                            list.add(header);
-                        }
-                    });
-                }
-            });
-        }
-        if (body != null) {
-            map.put("body", body);
-        }
-        return map;
-    }
-
     private static final List<String> CURL_IGNORED_HEADERS = Arrays.asList(
             "accept-encoding",
             "connection",
