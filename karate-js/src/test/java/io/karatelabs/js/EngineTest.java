@@ -8,12 +8,20 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class EngineTest {
 
     static final Logger logger = LoggerFactory.getLogger(EngineTest.class);
+
+    @Test
+    void testLazyContextVariables() {
+        Engine engine = new Engine();
+        engine.put("x", (Supplier<String>) () -> "foo");
+        assertEquals("foo", engine.eval("x"));
+    }
 
     @Test
     void testEvalWith() {

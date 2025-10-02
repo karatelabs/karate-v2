@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 class CoreContext implements Context {
 
@@ -135,7 +136,11 @@ class CoreContext implements Context {
             if (info != null && !info.initialized) {
                 throw new RuntimeException("cannot access '" + key + "' before initialization");
             }
-            return _bindings.get(key);
+            Object result = _bindings.get(key);
+            if (result instanceof Supplier<?> supplier) {
+                return supplier.get();
+            }
+            return result;
         }
         if (parent != null && parent.hasKey(key)) {
             return parent.get(key);
