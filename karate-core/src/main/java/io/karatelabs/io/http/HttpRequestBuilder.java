@@ -68,6 +68,7 @@ public class HttpRequestBuilder implements SimpleObject {
         body = null;
         cookies = null;
         charset = null;
+        authHandler = null;
     }
 
     public HttpRequestBuilder copy() {
