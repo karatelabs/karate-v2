@@ -89,7 +89,7 @@ class MarkupTest {
         };
         Markup markup = Markup.init(js, resolver);
         String rendered = markup.processPath("custom", null);
-        assertEquals("<div><div>caller</div>\n<div><div>called</div></div></div>", rendered);
+        assertEquals("<div><div>caller</div>\n<div><div>called</div></div></div>", rendered.replaceAll("\\r", ""));
     }
 
 
