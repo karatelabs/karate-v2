@@ -82,6 +82,7 @@ public class HttpRequestBuilder implements SimpleObject {
         hrb.body = body;
         hrb.cookies = cookies;
         hrb.charset = charset;
+        hrb.authHandler = authHandler;
         return hrb;
     }
 
