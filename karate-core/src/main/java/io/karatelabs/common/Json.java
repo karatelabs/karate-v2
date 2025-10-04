@@ -179,7 +179,9 @@ public class Json {
     }
 
     public Json remove(String path) {
-        doc.delete(prefix(path));
+        if (pathExists(path)) {
+            doc.delete(prefix(path));
+        }
         return this;
     }
 
