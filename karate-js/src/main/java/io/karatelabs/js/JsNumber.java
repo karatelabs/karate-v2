@@ -26,6 +26,7 @@ package io.karatelabs.js;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
+import java.util.Map;
 
 class JsNumber extends JsObject implements JavaMirror {
 
@@ -102,6 +103,22 @@ class JsNumber extends JsObject implements JavaMirror {
                             }
                             return result;
                         }
+                    };
+                    case "toLocaleString" -> (Invokable) args -> {
+                        double d = value.doubleValue();
+                        DecimalFormat df = (DecimalFormat) DecimalFormat.getInstance();
+                        int optionsIndex = args.length > 1 ? 1 : 0;
+                        if (args.length > optionsIndex && args[optionsIndex] instanceof Map<?, ?> options) {
+                            Object minFractionDigits = options.get("minimumFractionDigits");
+                            Object maxFractionDigits = options.get("maximumFractionDigits");
+                            if (minFractionDigits instanceof Number n) {
+                                df.setMinimumFractionDigits(n.intValue());
+                            }
+                            if (maxFractionDigits instanceof Number n) {
+                                df.setMaximumFractionDigits(n.intValue());
+                            }
+                        }
+                        return df.format(d);
                     };
                     // static ==========================================================================================
                     case "valueOf" -> (Invokable) args -> value;

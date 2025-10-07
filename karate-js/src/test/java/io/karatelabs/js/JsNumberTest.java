@@ -1,11 +1,19 @@
 package io.karatelabs.js;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+
+import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
 class JsNumberTest extends EvalBase {
+
+    @BeforeAll
+    static void setLocale() {
+        Locale.setDefault(Locale.US);
+    }
 
     @Test
     void testConstructor() {
@@ -102,6 +110,37 @@ class JsNumberTest extends EvalBase {
         } catch (RuntimeException e) {
             // ok
         }
+    }
+
+    @Test
+    void testToLocaleString() {
+        // Basic usage - no arguments (uses US locale formatting)
+        String result = (String) eval("(1234.567).toLocaleString()");
+        assertEquals("1,234.567", result);
+
+        // With options - minimumFractionDigits
+        result = (String) eval("(1234.5).toLocaleString('en-US', {minimumFractionDigits: 3})");
+        assertEquals("1,234.500", result);
+
+        // With options - maximumFractionDigits
+        result = (String) eval("(1234.56789).toLocaleString('en-US', {maximumFractionDigits: 2})");
+        assertEquals("1,234.57", result);
+
+        // Both min and max
+        result = (String) eval("(1234.5).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4})");
+        assertEquals("1,234.50", result);
+
+        // Zero
+        result = (String) eval("(0).toLocaleString()");
+        assertEquals("0", result);
+
+        // Negative number
+        result = (String) eval("(-1234.5).toLocaleString()");
+        assertEquals("-1,234.5", result);
+
+        // Large number
+        result = (String) eval("(1234567.89).toLocaleString()");
+        assertEquals("1,234,567.89", result);
     }
 
 }
