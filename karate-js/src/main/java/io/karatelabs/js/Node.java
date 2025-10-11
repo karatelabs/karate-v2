@@ -84,7 +84,7 @@ public class Node implements Iterable<Node> {
 
     public String toStringError(String message) {
         Token first = getFirstToken();
-        if (first.resource.isUrlResource()) {
+        if (first.resource.isFile()) {
             return first.getPositionDisplay() + " " + type + "\n" + first.resource.getRelativePath() + "\n" + message;
         } else if (first.line == 0) {
             return message;

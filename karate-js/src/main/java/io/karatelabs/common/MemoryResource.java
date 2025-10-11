@@ -24,31 +24,34 @@
 package io.karatelabs.common;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class MemoryResource implements Resource {
 
-    private final File workingDir;
+    private static final Path SYSTEM_TEMP = Path.of(System.getProperty("java.io.tmpdir"));
+
+    private final Path root;
     private final byte[] bytes;
 
     private String[] lines;
 
     MemoryResource(String text) {
-        this(null, text);
+        this(text, null);
     }
 
     MemoryResource(byte[] bytes) {
-        this(null, bytes);
+        this(bytes, null);
     }
 
-    MemoryResource(File workingDir, String text) {
-        this(workingDir, FileUtils.toBytes(text));
+    MemoryResource(String text, Path root) {
+        this(FileUtils.toBytes(text), root);
     }
 
-    MemoryResource(File workingDir, byte[] bytes) {
-        this.workingDir = workingDir == null ? FileUtils.WORKING_DIR : workingDir;
+    MemoryResource(byte[] bytes, Path root) {
+        this.root = root != null ? root : SYSTEM_TEMP;
         this.bytes = bytes;
     }
 
@@ -65,11 +68,6 @@ public class MemoryResource implements Resource {
     }
 
     @Override
-    public boolean isUrlResource() {
-        return false;
-    }
-
-    @Override
     public boolean isFile() {
         return false;
     }
@@ -80,8 +78,13 @@ public class MemoryResource implements Resource {
     }
 
     @Override
-    public File getFile() {
+    public Path getPath() {
         return null;
+    }
+
+    @Override
+    public Path getRoot() {
+        return root;
     }
 
     @Override
@@ -96,7 +99,28 @@ public class MemoryResource implements Resource {
 
     @Override
     public Resource resolve(String path) {
-        return new UrlResource(new File(workingDir, path), false);
+        return new PathResource(root.resolve(path), root);
+    }
+
+    /**
+     * Materializes this in-memory resource to disk at the specified filename.
+     * The file is created within the root directory.
+     *
+     * @param filename the filename to save as
+     * @return PathResource pointing to the saved file
+     */
+    public PathResource materialize(String filename) {
+        try {
+            Path target = root.resolve(filename);
+            // Ensure parent directories exist
+            if (target.getParent() != null) {
+                Files.createDirectories(target.getParent());
+            }
+            Files.write(target, bytes);
+            return new PathResource(target, root);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to materialize resource to: " + filename, e);
+        }
     }
 
     @Override

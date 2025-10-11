@@ -51,7 +51,7 @@ public class Feature {
     }
 
     public static Feature read(File file) {
-        return read(Resource.file(file));
+        return read(Resource.from(file.toPath()));
     }
 
     public static Feature read(Resource resource) {

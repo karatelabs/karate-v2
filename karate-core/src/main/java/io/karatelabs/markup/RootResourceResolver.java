@@ -25,12 +25,22 @@ package io.karatelabs.markup;
 
 import io.karatelabs.common.Resource;
 
-public class UrlResourceResolver implements ResourceResolver {
+/**
+ * Resource resolver that resolves paths relative to a configured root.
+ * The root can be a file system path or a classpath location.
+ */
+public class RootResourceResolver implements ResourceResolver {
 
     private final boolean classpath;
     final String root;
 
-    public UrlResourceResolver(String root) {
+    /**
+     * Creates a resolver with the specified root path.
+     * Supports "classpath:" prefix for classpath resources.
+     *
+     * @param root the root path (e.g., "src/main", "classpath:resources")
+     */
+    public RootResourceResolver(String root) {
         if (root == null) {
             root = "";
         }

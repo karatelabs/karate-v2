@@ -118,7 +118,7 @@ public class Markup {
     }
 
     public static Markup init(Engine je, String root) {
-        return init(je, new UrlResourceResolver(root));
+        return init(je, new RootResourceResolver(root));
     }
 
     static class MarkupEngineContext implements IContext {

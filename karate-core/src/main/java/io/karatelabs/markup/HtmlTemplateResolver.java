@@ -63,6 +63,7 @@ class HtmlTemplateResolver implements ITemplateResolver {
     public TemplateResolution resolveTemplate(IEngineConfiguration ec, String ownerTemplate, String content, Map<String, Object> attributes) {
         if (attributes != null && !doneWithStringTemplate) { // string
             doneWithStringTemplate = true;
+            prevCaller = null;  // Reset caller for string templates
             HtmlStringTemplateResource templateResource = new HtmlStringTemplateResource(content, resolver);
             return new TemplateResolution(templateResource, TemplateMode.HTML, NonCacheableCacheEntryValidity.INSTANCE);
         } else { // html file name
@@ -70,8 +71,11 @@ class HtmlTemplateResolver implements ITemplateResolver {
                 content = content + ".html";
             }
             Resource caller;
-            if (ownerTemplate != null && !ownerTemplate.startsWith(Resource.THIS_COLON)) {
-                caller = resolver.resolve(ownerTemplate, null);
+            // Only resolve ownerTemplate as caller if it's a valid template name (not HTML content or markers)
+            if (ownerTemplate != null && !ownerTemplate.startsWith(Resource.THIS_COLON) && prevCaller != null) {
+                // ownerTemplate needs .html extension too
+                String ownerPath = ownerTemplate.endsWith(".html") ? ownerTemplate : ownerTemplate + ".html";
+                caller = resolver.resolve(ownerPath, null);
             } else {
                 caller = prevCaller;
             }

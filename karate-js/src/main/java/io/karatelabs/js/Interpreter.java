@@ -713,7 +713,7 @@ class Interpreter {
             }
             Token first = node.getFirstToken();
             String message = "js failed:\n==========\n" + first.getLineText() + "\n";
-            if (first.resource.isUrlResource()) {
+            if (first.resource.isFile()) {
                 message = message + first.resource + ":" + first.getPositionDisplay() + " ";
             } else if (first.line != 0) {
                 message = message + first.getPositionDisplay() + " ";

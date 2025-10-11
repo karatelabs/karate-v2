@@ -47,7 +47,7 @@ public class Engine {
     }
 
     public Object eval(File file) {
-        return evalInternal(Resource.file(file), null);
+        return evalInternal(Resource.from(file.toPath()), null);
     }
 
     public Object eval(String text) {
@@ -128,7 +128,7 @@ public class Engine {
                 message = e + "";
             }
             Resource resource = program.getFirstToken().resource;
-            if (resource.isUrlResource()) {
+            if (resource.isFile()) {
                 message = message + "\n" + resource.getRelativePath();
             }
             throw new RuntimeException(message);

@@ -14,7 +14,7 @@ class MarkupTest {
 
     private static String render(String filename) {
         Engine js = new Engine();
-        UrlResourceResolver resolver = new UrlResourceResolver("src/test/resources/markup");
+        RootResourceResolver resolver = new RootResourceResolver("classpath:markup");
         Markup markup = Markup.init(js, resolver);
         return markup.processPath(filename, null);
     }
@@ -23,7 +23,7 @@ class MarkupTest {
     void testHtmlString() {
         Engine js = new Engine();
         js.put("message", "hello world");
-        Markup markup = Markup.init(js, new UrlResourceResolver("src/test/resources/markup"));
+        Markup markup = Markup.init(js, new RootResourceResolver("classpath:markup"));
         String html = "<div><div th:text=\"message\"></div><div th:replace=\"/temp.html\"></div></div>";
         String rendered = markup.processString(html, null);
         assertEquals("<div><div>hello world</div><div>temp</div></div>", rendered);
@@ -67,7 +67,7 @@ class MarkupTest {
 
     @Test
     void testNoCache() {
-        Resource resource = Resource.path("src/test/resources/markup/temp.js");
+        Resource resource = Resource.path("classpath:markup/temp.js");
         String rendered = render("nocache.html");
         assertTrue(rendered.contains("<script src=\"temp.js?ts=" + resource.getLastModified() + "\"></script>"));
     }
@@ -77,7 +77,7 @@ class MarkupTest {
     @Test
     void testCustomResolverAndThis() {
         Engine js = new Engine();
-        UrlResourceResolver resolver = new UrlResourceResolver("src/test/resources/markup") {
+        RootResourceResolver resolver = new RootResourceResolver("classpath:markup") {
             @Override
             public Resource resolve(String path, Resource caller) {
                 if (path.startsWith(MY_COLON)) {

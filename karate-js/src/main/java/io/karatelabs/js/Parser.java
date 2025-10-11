@@ -264,7 +264,7 @@ abstract class Parser {
             } while (type != EOF);
         } catch (Throwable e) {
             String message = "lexer failed at [" + (line + 1) + ":" + (col + 1) + "] prev: " + prev;
-            if (resource.isUrlResource()) {
+            if (resource.isFile()) {
                 message = message + "\n" + resource.getRelativePath();
             }
             throw new ParserException(message, e);

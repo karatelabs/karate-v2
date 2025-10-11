@@ -26,6 +26,8 @@ package io.karatelabs.common;
 
 import java.io.*;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -39,8 +41,8 @@ public class FileUtils {
 
     public static String toString(File file) {
         try {
-            return toString(new FileInputStream(file));
-        } catch (FileNotFoundException e) {
+            return Files.readString(file.toPath(), UTF_8);
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
@@ -68,7 +70,7 @@ public class FileUtils {
 
     public static byte[] toBytes(File file) {
         try {
-            return toBytes(new FileInputStream(file));
+            return Files.readAllBytes(file.toPath());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -108,7 +110,7 @@ public class FileUtils {
 
     public static void copy(File src, File dest) {
         try {
-            writeToFile(dest, toBytes(new FileInputStream(src)));
+            Files.copy(src.toPath(), dest.toPath());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -116,15 +118,14 @@ public class FileUtils {
 
     public static void writeToFile(File file, byte[] data) {
         try {
-            File parent = file.getAbsoluteFile().getParentFile();
-            if (!parent.exists()) {
-                parent.mkdirs();
+            Path path = file.toPath();
+            // Create parent directories if they don't exist
+            Path parent = path.getParent();
+            if (parent != null && !Files.exists(parent)) {
+                Files.createDirectories(parent);
             }
-            // try with resources, so will be closed automatically
-            try (FileOutputStream fos = new FileOutputStream(file)) {
-                fos.write(data);
-            }
-        } catch (IOException e) {
+            Files.write(path, data);
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
