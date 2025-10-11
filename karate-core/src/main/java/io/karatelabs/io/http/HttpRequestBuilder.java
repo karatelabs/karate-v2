@@ -465,8 +465,12 @@ public class HttpRequestBuilder implements SimpleObject {
     }
 
     public String toCurlCommand() {
+        return toCurlCommand("sh");
+    }
+
+    public String toCurlCommand(String platform) {
         buildInternal();
-        return buildCurlCommand(false);
+        return buildCurlCommand(false, platform);
     }
 
     /**
@@ -474,10 +478,20 @@ public class HttpRequestBuilder implements SimpleObject {
      * Useful for UI display where OAuth tokens would show placeholders.
      */
     public String toCurlCommandPreview() {
-        return buildCurlCommand(true);
+        return toCurlCommandPreview("sh");
     }
 
-    private String buildCurlCommand(boolean preview) {
+    public String toCurlCommandPreview(String platform) {
+        return buildCurlCommand(true, platform);
+    }
+
+    private String buildCurlCommand(boolean preview, String platform) {
+        if (platform == null) {
+            platform = "sh";
+        }
+        final String effectivePlatform = platform;
+        String lineContinuation = StringUtils.getLineContinuation(effectivePlatform);
+
         StringBuilder sb = new StringBuilder();
         sb.append("curl");
 
@@ -495,7 +509,7 @@ public class HttpRequestBuilder implements SimpleObject {
         // Add URL
         String url = getUri();
         if (!StringUtils.isBlank(url)) {
-            sb.append(" \\\n  ").append(StringUtils.shellEscape(url));
+            sb.append(lineContinuation).append("  ").append(StringUtils.shellEscapeForPlatform(url, effectivePlatform));
         }
 
         // Add auth if present
@@ -503,9 +517,9 @@ public class HttpRequestBuilder implements SimpleObject {
         if (authHandler != null) {
             if (preview) {
                 // Preview mode - use toCurlPreview() to avoid side effects
-                authArgument = authHandler.toCurlPreview();
+                authArgument = authHandler.toCurlPreview(effectivePlatform);
                 if (authArgument != null) {
-                    sb.append(" \\\n  ").append(authArgument);
+                    sb.append(lineContinuation).append("  ").append(authArgument);
                 } else {
                     // Auth handler wants to use Authorization header
                     // For preview, apply it unless it requires network
@@ -516,9 +530,9 @@ public class HttpRequestBuilder implements SimpleObject {
                 }
             } else {
                 // Normal mode - use toCurlArgument()
-                authArgument = authHandler.toCurlArgument();
+                authArgument = authHandler.toCurlArgument(effectivePlatform);
                 if (authArgument != null) {
-                    sb.append(" \\\n  ").append(authArgument);
+                    sb.append(lineContinuation).append("  ").append(authArgument);
                 }
             }
         } else {
@@ -534,8 +548,8 @@ public class HttpRequestBuilder implements SimpleObject {
                     if (values != null && !values.isEmpty()) {
                         values.forEach(value -> {
                             if (value != null) {
-                                sb.append(" \\\n  ");
-                                sb.append("-H ").append(StringUtils.shellEscape(name + ": " + value));
+                                sb.append(lineContinuation).append("  ");
+                                sb.append("-H ").append(StringUtils.shellEscapeForPlatform(name + ": " + value, effectivePlatform));
                             }
                         });
                     }
@@ -547,29 +561,31 @@ public class HttpRequestBuilder implements SimpleObject {
         if (preview && authHandler != null && authArgument == null) {
             // Check if it's ClientCredentialsAuthHandler
             if (authHandler instanceof ClientCredentialsAuthHandler) {
-                sb.append(" \\\n  ");
-                sb.append("-H ").append(StringUtils.shellEscape("Authorization: Bearer <your-oauth2-access-token>"));
+                sb.append(lineContinuation).append("  ");
+                sb.append("-H ").append(StringUtils.shellEscapeForPlatform("Authorization: Bearer <your-oauth2-access-token>", effectivePlatform));
             }
         }
 
         // Add body/data based on content type
         if (multiPart != null) {
             // Multipart form data - delegate to MultiPartBuilder
-            String multiPartCommand = multiPart.toCurlCommand();
+            String multiPartCommand = multiPart.toCurlCommand(effectivePlatform);
             if (!multiPartCommand.isEmpty()) {
-                sb.append(" \\\n  ");
-                sb.append(multiPartCommand.replace(" \\\n", " \\\n  "));
+                sb.append(lineContinuation).append("  ");
+                // Replace line continuations in multipart command with platform-specific ones
+                String shLineCont = StringUtils.getLineContinuation("sh");
+                sb.append(multiPartCommand.replace(shLineCont, lineContinuation + "  "));
             }
         } else if (body != null) {
             // Handle body based on content type
             String contentType = getContentType();
-            sb.append(" \\\n  ");
+            sb.append(lineContinuation).append("  ");
 
             // Check if body is binary data (byte array)
             if (body instanceof byte[]) {
                 // For binary data, we can't easily represent it in curl without a file
                 // Best we can do is indicate it's binary
-                sb.append("-d ").append(StringUtils.shellEscape("[binary data]"));
+                sb.append("-d ").append(StringUtils.shellEscapeForPlatform("[binary data]", effectivePlatform));
             } else {
                 // For JSON or text, serialize and escape properly
                 String bodyStr;
@@ -578,7 +594,7 @@ public class HttpRequestBuilder implements SimpleObject {
                 } else {
                     bodyStr = Json.stringifyStrict(body);
                 }
-                sb.append("-d ").append(StringUtils.shellEscape(bodyStr));
+                sb.append("-d ").append(StringUtils.shellEscapeForPlatform(bodyStr, effectivePlatform));
             }
         } else if (params != null && !params.isEmpty() && !"GET".equals(curlMethod)) {
             // For non-GET requests with parameters but no body, treat as form data
@@ -586,7 +602,7 @@ public class HttpRequestBuilder implements SimpleObject {
             boolean isUrlEncoded = contentType != null &&
                 contentType.toLowerCase().contains("application/x-www-form-urlencoded");
 
-            sb.append(" \\\n  ");
+            sb.append(lineContinuation).append("  ");
             Iterator<Map.Entry<String, List<String>>> paramsIterator = params.entrySet().iterator();
             while (paramsIterator.hasNext()) {
                 Map.Entry<String, List<String>> entry = paramsIterator.next();
@@ -598,13 +614,13 @@ public class HttpRequestBuilder implements SimpleObject {
                         String value = valuesIterator.next();
                         if (value != null) {
                             if (isUrlEncoded) {
-                                sb.append("--data-urlencode ").append(StringUtils.shellEscape(name + "=" + value));
+                                sb.append("--data-urlencode ").append(StringUtils.shellEscapeForPlatform(name + "=" + value, effectivePlatform));
                             } else {
                                 // Default to form data
-                                sb.append("-d ").append(StringUtils.shellEscape(urlEncode(name) + "=" + urlEncode(value)));
+                                sb.append("-d ").append(StringUtils.shellEscapeForPlatform(urlEncode(name) + "=" + urlEncode(value), effectivePlatform));
                             }
                             if (valuesIterator.hasNext() || paramsIterator.hasNext()) {
-                                sb.append(" \\\n  ");
+                                sb.append(lineContinuation).append("  ");
                             }
                         }
                     }

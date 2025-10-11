@@ -40,7 +40,7 @@ public class ClientCredentialsAuthHandler implements AuthHandler {
     }
 
     @Override
-    public String toCurlPreview() {
+    public String toCurlPreview(String platform) {
         // Return null to indicate we should use a header placeholder
         // Don't call toCurlArgument() as that would trigger token fetch
         return null;

@@ -366,6 +366,58 @@ public class StringUtils {
     }
 
     /**
+     * Escapes a string for PowerShell.
+     * Uses single quotes and escapes embedded single quotes by doubling them.
+     *
+     * @param value the string to escape
+     * @return escaped string wrapped in single quotes
+     */
+    public static String shellEscapePowerShell(String value) {
+        if (value == null) {
+            return "''";
+        }
+        // For PowerShell:
+        // Use single quotes (which are literal strings in PS)
+        // Escape single quotes by doubling them: ' becomes ''
+        return "'" + value.replace("'", "''") + "'";
+    }
+
+    /**
+     * Escapes a string for the specified shell platform.
+     *
+     * @param value the string to escape
+     * @param platform "sh" for Unix/Linux/macOS, "cmd" for Windows CMD, "ps" for PowerShell
+     * @return escaped string suitable for the target platform
+     */
+    public static String shellEscapeForPlatform(String value, String platform) {
+        if (platform == null) {
+            platform = "sh";
+        }
+        return switch (platform) {
+            case "cmd" -> shellEscapeWindows(value);
+            case "ps" -> shellEscapePowerShell(value);
+            default -> shellEscapeUnix(value); // "sh" or default
+        };
+    }
+
+    /**
+     * Returns the line continuation character for the specified shell platform.
+     *
+     * @param platform "sh" for Unix/Linux/macOS, "cmd" for Windows CMD, "ps" for PowerShell
+     * @return line continuation string
+     */
+    public static String getLineContinuation(String platform) {
+        if (platform == null) {
+            platform = "sh";
+        }
+        return switch (platform) {
+            case "cmd" -> " ^\n";
+            case "ps" -> " `\n";
+            default -> " \\\n"; // "sh" or default
+        };
+    }
+
+    /**
      * Builds a complete shell command from command name and arguments.
      * Properly escapes each argument for the current OS.
      *

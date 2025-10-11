@@ -456,4 +456,86 @@ class HttpRequestBuilderCurlTest {
         assertTrue(curl.contains("curl -X POST"));
         assertTrue(curl.contains("-d '{\"key\":\"value\"}'"));
     }
+
+    // Platform-specific tests
+
+    @Test
+    void testWindowsCmdPlatform() {
+        HttpRequestBuilder http = new HttpRequestBuilder(null);
+        http.url("https://api.example.com/users");
+        http.method("POST");
+        http.header("Content-Type", "application/json");
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("name", "John Doe");
+        http.body(body);
+
+        String curl = http.toCurlCommand("cmd");
+        logger.info("Windows CMD format:\n{}", curl);
+
+        // Should use double quotes instead of single quotes
+        assertTrue(curl.contains("\"https://api.example.com/users\""));
+        assertTrue(curl.contains("-H \"Content-Type: application/json\""));
+        assertTrue(curl.contains("-d \"{\"\"name\"\":\"\"John Doe\"\"}\""));
+        // Should use ^ for line continuation
+        assertTrue(curl.contains(" ^\n"));
+        assertFalse(curl.contains(" \\\n"));
+    }
+
+    @Test
+    void testPowerShellPlatform() {
+        HttpRequestBuilder http = new HttpRequestBuilder(null);
+        http.url("https://api.example.com/users");
+        http.method("POST");
+        http.header("Authorization", "Bearer token123");
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("message", "It's a test");
+        http.body(body);
+
+        String curl = http.toCurlCommand("ps");
+        logger.info("PowerShell format:\n{}", curl);
+
+        // Should use single quotes (PowerShell style)
+        assertTrue(curl.contains("'https://api.example.com/users'"));
+        assertTrue(curl.contains("-H 'Authorization: Bearer token123'"));
+        // Single quotes in JSON should be doubled for PowerShell
+        assertTrue(curl.contains("It''s a test"));
+        // Should use ` (backtick) for line continuation
+        assertTrue(curl.contains(" `\n"));
+        assertFalse(curl.contains(" \\\n"));
+    }
+
+    @Test
+    void testWindowsCmdWithBasicAuth() {
+        HttpRequestBuilder http = new HttpRequestBuilder(null);
+        http.url("https://api.example.com/secure");
+        http.method("GET");
+        http.auth(new BasicAuthHandler("admin", "pass@123"));
+
+        String curl = http.toCurlCommand("cmd");
+        logger.info("Windows CMD with basic auth:\n{}", curl);
+
+        // Should use double quotes
+        assertTrue(curl.contains("-u \"admin:pass@123\""));
+        assertTrue(curl.contains("\"https://api.example.com/secure\""));
+        // Should use ^ for line continuation
+        assertTrue(curl.contains(" ^\n"));
+    }
+
+    @Test
+    void testPowerShellWithSpecialCharacters() {
+        HttpRequestBuilder http = new HttpRequestBuilder(null);
+        http.url("https://api.example.com/data");
+        http.method("POST");
+        http.body("Test's data with 'quotes'");
+
+        String curl = http.toCurlCommand("ps");
+        logger.info("PowerShell with special chars:\n{}", curl);
+
+        // PowerShell escapes single quotes by doubling them
+        assertTrue(curl.contains("Test''s data with ''quotes''"));
+        // Should use backtick for line continuation
+        assertTrue(curl.contains(" `\n"));
+    }
 }

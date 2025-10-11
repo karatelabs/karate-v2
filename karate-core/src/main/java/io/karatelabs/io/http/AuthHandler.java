@@ -35,6 +35,17 @@ public interface AuthHandler {
      * For example, BasicAuthHandler can return "-u username:password"
      */
     default String toCurlArgument() {
+        return toCurlArgument("sh");
+    }
+
+    /**
+     * Returns the curl command argument for this auth handler, or null to use the default
+     * behavior (including the Authorization header).
+     * For example, BasicAuthHandler can return "-u username:password"
+     *
+     * @param platform "sh" for Unix/Linux/macOS, "cmd" for Windows CMD, "ps" for PowerShell
+     */
+    default String toCurlArgument(String platform) {
         return null;
     }
 
@@ -45,7 +56,19 @@ public interface AuthHandler {
      * For OAuth handlers that need network access, this should return a placeholder.
      */
     default String toCurlPreview() {
-        return toCurlArgument();
+        return toCurlPreview("sh");
+    }
+
+    /**
+     * Returns the curl preview for this auth handler (without triggering side effects).
+     * This is used for UI/preview purposes where we don't want to make network calls.
+     * If null, falls back to toCurlArgument() behavior.
+     * For OAuth handlers that need network access, this should return a placeholder.
+     *
+     * @param platform "sh" for Unix/Linux/macOS, "cmd" for Windows CMD, "ps" for PowerShell
+     */
+    default String toCurlPreview(String platform) {
+        return toCurlArgument(platform);
     }
 
 }

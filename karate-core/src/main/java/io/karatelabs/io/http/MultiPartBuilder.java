@@ -206,6 +206,15 @@ public class MultiPartBuilder {
     }
 
     public String toCurlCommand() {
+        return toCurlCommand("sh");
+    }
+
+    public String toCurlCommand(String platform) {
+        if (platform == null) {
+            platform = "sh";
+        }
+        String lineContinuation = StringUtils.getLineContinuation(platform);
+
         StringBuilder sb = new StringBuilder();
         Iterator<InterfaceHttpData> parts = encoder.getBodyListAttributes().iterator();
         while (parts.hasNext()) {
@@ -219,7 +228,7 @@ public class MultiPartBuilder {
                 if (filename != null && !filename.isEmpty()) {
                     // Real file upload
                     sb.append("-F ");
-                    sb.append(StringUtils.shellEscape(name + "=@" + filename));
+                    sb.append(StringUtils.shellEscapeForPlatform(name + "=@" + filename, platform));
 
                     // Add content type if present
                     String contentType = fileUpload.getContentType();
@@ -239,11 +248,11 @@ public class MultiPartBuilder {
                     if (multipart) {
                         // For multipart/form-data, use -F
                         sb.append("-F ");
-                        sb.append(StringUtils.shellEscape(name + "=" + (value != null ? value : "")));
+                        sb.append(StringUtils.shellEscapeForPlatform(name + "=" + (value != null ? value : ""), platform));
                     } else {
                         // For application/x-www-form-urlencoded, use --data-urlencode
                         sb.append("--data-urlencode ");
-                        sb.append(StringUtils.shellEscape(name + "=" + (value != null ? value : "")));
+                        sb.append(StringUtils.shellEscapeForPlatform(name + "=" + (value != null ? value : ""), platform));
                     }
                 }
             } else if (part instanceof Attribute attr) {
@@ -259,16 +268,16 @@ public class MultiPartBuilder {
                 if (multipart) {
                     // For multipart/form-data, use -F
                     sb.append("-F ");
-                    sb.append(StringUtils.shellEscape(name + "=" + (value != null ? value : "")));
+                    sb.append(StringUtils.shellEscapeForPlatform(name + "=" + (value != null ? value : ""), platform));
                 } else {
                     // For application/x-www-form-urlencoded, use --data-urlencode
                     sb.append("--data-urlencode ");
-                    sb.append(StringUtils.shellEscape(name + "=" + (value != null ? value : "")));
+                    sb.append(StringUtils.shellEscapeForPlatform(name + "=" + (value != null ? value : ""), platform));
                 }
             }
 
             if (parts.hasNext()) {
-                sb.append(" \\\n");
+                sb.append(lineContinuation);
             }
         }
         return sb.toString();

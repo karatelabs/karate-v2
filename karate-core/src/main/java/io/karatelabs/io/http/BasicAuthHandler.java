@@ -52,11 +52,11 @@ public class BasicAuthHandler implements AuthHandler {
     }
 
     @Override
-    public String toCurlArgument() {
+    public String toCurlArgument(String platform) {
         // Use curl's native basic auth flag
         String userPass = username + ":" + password;
-        // Escape for shell
-        return "-u " + StringUtils.shellEscape(userPass);
+        // Escape for shell based on platform
+        return "-u " + StringUtils.shellEscapeForPlatform(userPass, platform);
     }
 
     public String getUsername() {
