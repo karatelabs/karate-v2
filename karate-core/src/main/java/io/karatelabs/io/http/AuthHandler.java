@@ -29,4 +29,23 @@ public interface AuthHandler {
 
     String getType();
 
+    /**
+     * Returns the curl command argument for this auth handler, or null to use the default
+     * behavior (including the Authorization header).
+     * For example, BasicAuthHandler can return "-u username:password"
+     */
+    default String toCurlArgument() {
+        return null;
+    }
+
+    /**
+     * Returns the curl preview for this auth handler (without triggering side effects).
+     * This is used for UI/preview purposes where we don't want to make network calls.
+     * If null, falls back to toCurlArgument() behavior.
+     * For OAuth handlers that need network access, this should return a placeholder.
+     */
+    default String toCurlPreview() {
+        return toCurlArgument();
+    }
+
 }

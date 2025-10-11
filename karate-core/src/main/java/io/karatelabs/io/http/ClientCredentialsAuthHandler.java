@@ -39,4 +39,15 @@ public class ClientCredentialsAuthHandler implements AuthHandler {
         return "oauth2";
     }
 
+    @Override
+    public String toCurlPreview() {
+        // Return null to indicate we should use a header placeholder
+        // Don't call toCurlArgument() as that would trigger token fetch
+        return null;
+    }
+
+    public String getAuthorizationHeaderPreview() {
+        return "Bearer <your-oauth2-access-token>";
+    }
+
 }

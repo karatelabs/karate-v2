@@ -25,6 +25,7 @@ package io.karatelabs.io.http;
 
 import io.karatelabs.common.Json;
 import io.karatelabs.common.ResourceType;
+import io.karatelabs.common.StringUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
@@ -209,7 +210,44 @@ public class MultiPartBuilder {
         Iterator<InterfaceHttpData> parts = encoder.getBodyListAttributes().iterator();
         while (parts.hasNext()) {
             InterfaceHttpData part = parts.next();
-            if (part instanceof Attribute attr) {
+            String name = part.getName();
+
+            if (part instanceof FileUpload fileUpload) {
+                // Check if this is an actual file upload or just a text field with empty filename
+                String filename = fileUpload.getFilename();
+
+                if (filename != null && !filename.isEmpty()) {
+                    // Real file upload
+                    sb.append("-F ");
+                    sb.append(StringUtils.shellEscape(name + "=@" + filename));
+
+                    // Add content type if present
+                    String contentType = fileUpload.getContentType();
+                    if (contentType != null && !contentType.isEmpty()) {
+                        sb.append(";type=").append(contentType);
+                    }
+                } else {
+                    // Text field stored as FileUpload (with empty filename)
+                    // Get the actual string value
+                    String value = null;
+                    try {
+                        value = fileUpload.getString();
+                    } catch (Exception e) {
+                        logger.error("failed to get file upload value: {}", e.getMessage());
+                    }
+
+                    if (multipart) {
+                        // For multipart/form-data, use -F
+                        sb.append("-F ");
+                        sb.append(StringUtils.shellEscape(name + "=" + (value != null ? value : "")));
+                    } else {
+                        // For application/x-www-form-urlencoded, use --data-urlencode
+                        sb.append("--data-urlencode ");
+                        sb.append(StringUtils.shellEscape(name + "=" + (value != null ? value : "")));
+                    }
+                }
+            } else if (part instanceof Attribute attr) {
+                // Handle simple form fields
                 String value;
                 try {
                     value = attr.getValue();
@@ -217,13 +255,20 @@ public class MultiPartBuilder {
                     value = null;
                     logger.error("failed to get multipart value: {}", e.getMessage());
                 }
-                sb.append("-d ")
-                        .append(part.getName())
-                        .append("=")
-                        .append(value);
-                if (parts.hasNext()) {
-                    sb.append(" \\\n");
+
+                if (multipart) {
+                    // For multipart/form-data, use -F
+                    sb.append("-F ");
+                    sb.append(StringUtils.shellEscape(name + "=" + (value != null ? value : "")));
+                } else {
+                    // For application/x-www-form-urlencoded, use --data-urlencode
+                    sb.append("--data-urlencode ");
+                    sb.append(StringUtils.shellEscape(name + "=" + (value != null ? value : "")));
                 }
+            }
+
+            if (parts.hasNext()) {
+                sb.append(" \\\n");
             }
         }
         return sb.toString();

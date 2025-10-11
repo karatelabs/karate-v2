@@ -450,39 +450,143 @@ public class HttpRequestBuilder implements SimpleObject {
             "content-length"
     );
 
+    /**
+     * URL encodes a string for use in form data
+     */
+    private static String urlEncode(String value) {
+        if (value == null) {
+            return "";
+        }
+        try {
+            return java.net.URLEncoder.encode(value, java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return value;
+        }
+    }
+
     public String toCurlCommand() {
         buildInternal();
+        return buildCurlCommand(false);
+    }
+
+    /**
+     * Generate curl command preview without side effects (no network calls).
+     * Useful for UI display where OAuth tokens would show placeholders.
+     */
+    public String toCurlCommandPreview() {
+        return buildCurlCommand(true);
+    }
+
+    private String buildCurlCommand(boolean preview) {
         StringBuilder sb = new StringBuilder();
-        sb.append("curl ");
-        sb.append("-X ").append(method).append(' ');
+        sb.append("curl");
+
+        // Determine method - use provided or default
+        String curlMethod = method;
+        if (curlMethod == null) {
+            if (multiPart != null && multiPart.isMultipart()) {
+                curlMethod = "POST";
+            } else {
+                curlMethod = "GET";
+            }
+        }
+        sb.append(" -X ").append(curlMethod.toUpperCase());
+
+        // Add URL
         String url = getUri();
         if (!StringUtils.isBlank(url)) {
-            sb.append(getUri()).append(' ');
+            sb.append(" \\\n  ").append(StringUtils.shellEscape(url));
         }
+
+        // Add auth if present
+        final String authArgument;
+        if (authHandler != null) {
+            if (preview) {
+                // Preview mode - use toCurlPreview() to avoid side effects
+                authArgument = authHandler.toCurlPreview();
+                if (authArgument != null) {
+                    sb.append(" \\\n  ").append(authArgument);
+                } else {
+                    // Auth handler wants to use Authorization header
+                    // For preview, apply it unless it requires network
+                    if (!(authHandler instanceof ClientCredentialsAuthHandler)) {
+                        // Safe to apply - doesn't need network
+                        authHandler.apply(this);
+                    }
+                }
+            } else {
+                // Normal mode - use toCurlArgument()
+                authArgument = authHandler.toCurlArgument();
+                if (authArgument != null) {
+                    sb.append(" \\\n  ").append(authArgument);
+                }
+            }
+        } else {
+            authArgument = null;
+        }
+
+        // Add headers
         if (headers != null && !headers.isEmpty()) {
             headers.forEach((name, values) -> {
-                if (!CURL_IGNORED_HEADERS.contains(name.toLowerCase())) {
+                // Skip Authorization header if auth handler provided a curl argument
+                boolean skipAuth = authArgument != null && "authorization".equals(name.toLowerCase());
+                if (!skipAuth && !CURL_IGNORED_HEADERS.contains(name.toLowerCase())) {
                     if (values != null && !values.isEmpty()) {
                         values.forEach(value -> {
                             if (value != null) {
-                                sb.append(" \\\n");
-                                sb.append("-H \"").append(name).append(": ").append(value).append("\"");
+                                sb.append(" \\\n  ");
+                                sb.append("-H ").append(StringUtils.shellEscape(name + ": " + value));
                             }
                         });
                     }
                 }
             });
         }
+
+        // In preview mode with OAuth that needs network, add placeholder header
+        if (preview && authHandler != null && authArgument == null) {
+            // Check if it's ClientCredentialsAuthHandler
+            if (authHandler instanceof ClientCredentialsAuthHandler) {
+                sb.append(" \\\n  ");
+                sb.append("-H ").append(StringUtils.shellEscape("Authorization: Bearer <your-oauth2-access-token>"));
+            }
+        }
+
+        // Add body/data based on content type
         if (multiPart != null) {
-            sb.append(" \\\n");
-            sb.append(multiPart.toCurlCommand());
+            // Multipart form data - delegate to MultiPartBuilder
+            String multiPartCommand = multiPart.toCurlCommand();
+            if (!multiPartCommand.isEmpty()) {
+                sb.append(" \\\n  ");
+                sb.append(multiPartCommand.replace(" \\\n", " \\\n  "));
+            }
         } else if (body != null) {
-            sb.append(" \\\n");
-            String raw = Json.stringifyStrict(body);
-            sb.append("-d '").append(raw).append("'");
-        } else if (params != null && !params.isEmpty() && !method.equals("GET")) {
-            // For non-GET requests with parameters but no body or multipart, add parameters as form fields
-            sb.append(" \\\n");
+            // Handle body based on content type
+            String contentType = getContentType();
+            sb.append(" \\\n  ");
+
+            // Check if body is binary data (byte array)
+            if (body instanceof byte[]) {
+                // For binary data, we can't easily represent it in curl without a file
+                // Best we can do is indicate it's binary
+                sb.append("-d ").append(StringUtils.shellEscape("[binary data]"));
+            } else {
+                // For JSON or text, serialize and escape properly
+                String bodyStr;
+                if (body instanceof String) {
+                    bodyStr = (String) body;
+                } else {
+                    bodyStr = Json.stringifyStrict(body);
+                }
+                sb.append("-d ").append(StringUtils.shellEscape(bodyStr));
+            }
+        } else if (params != null && !params.isEmpty() && !"GET".equals(curlMethod)) {
+            // For non-GET requests with parameters but no body, treat as form data
+            String contentType = getContentType();
+            boolean isUrlEncoded = contentType != null &&
+                contentType.toLowerCase().contains("application/x-www-form-urlencoded");
+
+            sb.append(" \\\n  ");
             Iterator<Map.Entry<String, List<String>>> paramsIterator = params.entrySet().iterator();
             while (paramsIterator.hasNext()) {
                 Map.Entry<String, List<String>> entry = paramsIterator.next();
@@ -493,15 +597,21 @@ public class HttpRequestBuilder implements SimpleObject {
                     while (valuesIterator.hasNext()) {
                         String value = valuesIterator.next();
                         if (value != null) {
-                            sb.append("-d ").append(name).append("=").append(value);
+                            if (isUrlEncoded) {
+                                sb.append("--data-urlencode ").append(StringUtils.shellEscape(name + "=" + value));
+                            } else {
+                                // Default to form data
+                                sb.append("-d ").append(StringUtils.shellEscape(urlEncode(name) + "=" + urlEncode(value)));
+                            }
                             if (valuesIterator.hasNext() || paramsIterator.hasNext()) {
-                                sb.append(" \\\n");
+                                sb.append(" \\\n  ");
                             }
                         }
                     }
                 }
             }
         }
+
         return sb.toString();
     }
 

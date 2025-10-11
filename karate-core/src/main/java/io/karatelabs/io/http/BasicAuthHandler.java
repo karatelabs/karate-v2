@@ -23,6 +23,8 @@
  */
 package io.karatelabs.io.http;
 
+import io.karatelabs.common.StringUtils;
+
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
@@ -47,6 +49,22 @@ public class BasicAuthHandler implements AuthHandler {
     @Override
     public String getType() {
         return "basic";
+    }
+
+    @Override
+    public String toCurlArgument() {
+        // Use curl's native basic auth flag
+        String userPass = username + ":" + password;
+        // Escape for shell
+        return "-u " + StringUtils.shellEscape(userPass);
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public String getPassword() {
+        return password;
     }
 
 }

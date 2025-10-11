@@ -286,6 +286,13 @@ public class StringUtils {
 
     private static final Pattern CLI_ARG = Pattern.compile("'([^']*)'[^\\S]|\"([^\"]*)\"[^\\S]|(\\S+)");
 
+    /**
+     * Tokenizes a CLI command string into individual arguments.
+     * Handles both single-quoted and double-quoted strings.
+     *
+     * @param command the command string to tokenize
+     * @return array of arguments
+     */
     public static String[] tokenizeCliCommand(String command) {
         List<String> args = new ArrayList<>();
         Matcher m = CLI_ARG.matcher(command + " ");
@@ -299,6 +306,99 @@ public class StringUtils {
             }
         }
         return args.toArray(new String[0]);
+    }
+
+    /**
+     * Escapes a string for safe use as a shell argument.
+     * Uses OS-appropriate escaping (single quotes for Unix, double quotes for Windows).
+     *
+     * @param value the string to escape
+     * @return escaped string suitable for shell command
+     */
+    public static String shellEscape(String value) {
+        if (OsUtils.isWindows()) {
+            return shellEscapeWindows(value);
+        } else {
+            return shellEscapeUnix(value);
+        }
+    }
+
+    /**
+     * Escapes a string for Unix/Mac/Linux shell (bash, sh, zsh).
+     * Uses single quotes and escapes embedded single quotes as '\''
+     *
+     * @param value the string to escape
+     * @return escaped string wrapped in single quotes
+     */
+    public static String shellEscapeUnix(String value) {
+        if (value == null) {
+            return "''";
+        }
+        // For Unix shells, wrap in single quotes and escape any single quotes
+        // Single quote escaping: end quote, literal escaped quote, start quote
+        return "'" + value.replace("'", "'\\''") + "'";
+    }
+
+    /**
+     * Escapes a string for Windows cmd.exe.
+     * Uses double quotes and escapes embedded double quotes and special chars.
+     *
+     * @param value the string to escape
+     * @return escaped string wrapped in double quotes
+     */
+    public static String shellEscapeWindows(String value) {
+        if (value == null) {
+            return "\"\"";
+        }
+        // For Windows cmd.exe:
+        // 1. Wrap in double quotes
+        // 2. Escape double quotes as ""
+        // 3. Escape special characters: ^, &, |, <, >, %, !
+        String escaped = value
+            .replace("\"", "\"\"")  // Escape double quotes
+            .replace("^", "^^")      // Escape caret
+            .replace("&", "^&")      // Escape ampersand
+            .replace("|", "^|")      // Escape pipe
+            .replace("<", "^<")      // Escape less-than
+            .replace(">", "^>")      // Escape greater-than
+            .replace("%", "%%");     // Escape percent
+        return "\"" + escaped + "\"";
+    }
+
+    /**
+     * Builds a complete shell command from command name and arguments.
+     * Properly escapes each argument for the current OS.
+     *
+     * @param command the command name
+     * @param args the arguments
+     * @return complete shell command string
+     */
+    public static String buildShellCommand(String command, String... args) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(command);
+        for (String arg : args) {
+            sb.append(' ');
+            sb.append(shellEscape(arg));
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Builds a complete shell command from command name and arguments.
+     * Properly escapes each argument for the current OS.
+     *
+     * @param command the command name
+     * @param args the arguments
+     * @return complete shell command string
+     */
+    public static String buildShellCommand(String command, List<String> args) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(command);
+        for (String arg : args) {
+            sb.append(' ');
+            sb.append(shellEscape(arg));
+        }
+        return sb.toString();
     }
 
     static final String CHARS = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
