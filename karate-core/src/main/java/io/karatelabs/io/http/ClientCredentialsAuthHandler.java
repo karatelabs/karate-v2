@@ -1,10 +1,14 @@
 package io.karatelabs.io.http;
 
 import io.karatelabs.common.Json;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
 public class ClientCredentialsAuthHandler implements AuthHandler {
+
+    private static final Logger logger = LoggerFactory.getLogger(ClientCredentialsAuthHandler.class);
 
     private final Map<String, Object> config;
     private Map<String, Object> token;
@@ -22,8 +26,13 @@ public class ClientCredentialsAuthHandler implements AuthHandler {
             builder.formField("scope", config.get("scope"));
         }
         builder.header("Accept", "application/json");
-        HttpResponse response = builder.invoke("post");
-        return Json.of(response.getBodyString()).asMap();
+        try {
+            HttpResponse response = builder.invoke("post");
+            return Json.of(response.getBodyString()).asMap();
+        } catch (Exception e) {
+            logger.error("client credentials auth request failed: {}", e.getMessage());
+            throw new RuntimeException("client credentials auth request failed: " + e.getMessage(), e);
+        }
     }
 
     @Override
