@@ -202,7 +202,11 @@ public interface Resource {
     }
 
     default String getExtension() {
-        String path = getUri().getPath();
+        URI uri = getUri();
+        if (uri == null) {
+            return "";
+        }
+        String path = uri.getPath();
         int pos = path.lastIndexOf('.');
         if (pos == -1 || pos == path.length() - 1) {
             return "";
@@ -280,6 +284,43 @@ public interface Resource {
         return pos == -1 ? "" : relativePath.substring(0, pos + 1);
     }
 
+    /**
+     * Helper method to convert a URL to a Path, handling JAR URLs specially.
+     * Falls back to MemoryResource if JAR file system provider is not available.
+     *
+     * @param url  the URL to convert
+     * @param root optional root path for the resource
+     * @return Path object, or null if fallback to MemoryResource is needed
+     * @throws Exception if streaming fallback is required (caller should catch and create MemoryResource)
+     */
+    static Path urlToPath(URL url, Path root) throws Exception {
+        URI uri = url.toURI();
+
+        if (!"jar".equals(uri.getScheme())) {
+            return Path.of(uri);
+        }
+
+        // Special handling for JAR URLs
+        try {
+            return Path.of(uri);
+        } catch (java.nio.file.FileSystemNotFoundException e) {
+            // File system doesn't exist yet, create it
+            try {
+                java.nio.file.FileSystems.newFileSystem(uri, java.util.Collections.emptyMap());
+                return Path.of(uri);
+            } catch (java.nio.file.FileSystemAlreadyExistsException ex) {
+                // Another thread created it concurrently, that's fine
+                return Path.of(uri);
+            } catch (java.nio.file.ProviderNotFoundException ex) {
+                // JAR file system provider not available - signal fallback needed
+                throw new java.nio.file.ProviderNotFoundException("JAR provider not available");
+            }
+        } catch (java.nio.file.ProviderNotFoundException e) {
+            // JAR file system provider not available - signal fallback needed
+            throw e;
+        }
+    }
+
     static Resource path(String path) {
         return path(path, null);
     }
@@ -321,7 +362,17 @@ public interface Resource {
             }
             // Convert URL to Path for classpath resources
             try {
-                return new PathResource(Path.of(url.toURI()), FileUtils.WORKING_DIR.toPath(), true);
+                Path resourcePath = urlToPath(url, null);
+                return new PathResource(resourcePath, FileUtils.WORKING_DIR.toPath(), true);
+            } catch (java.nio.file.ProviderNotFoundException e) {
+                // JAR file system provider not available (common in jpackage/JavaFX apps)
+                // Fall back to streaming the resource content (root defaults to SYSTEM_TEMP)
+                try (java.io.InputStream is = url.openStream()) {
+                    String content = FileUtils.toString(is);
+                    return new MemoryResource(content);
+                } catch (Exception ex) {
+                    throw new RuntimeException("Failed to create resource from classpath: " + path, ex);
+                }
             } catch (Exception e) {
                 throw new RuntimeException("Failed to create resource from classpath: " + path, e);
             }
@@ -387,8 +438,17 @@ public interface Resource {
      */
     static Resource from(URL url, Path root) {
         try {
-            Path path = Path.of(url.toURI());
+            Path path = urlToPath(url, root);
             return root != null ? new PathResource(path, root) : new PathResource(path);
+        } catch (java.nio.file.ProviderNotFoundException e) {
+            // JAR file system provider not available (common in jpackage/JavaFX apps)
+            // Fall back to streaming the resource content
+            try (java.io.InputStream is = url.openStream()) {
+                String content = FileUtils.toString(is);
+                return root != null ? new MemoryResource(content, root) : new MemoryResource(content);
+            } catch (Exception ex) {
+                throw new RuntimeException("Failed to create resource from URL: " + url, ex);
+            }
         } catch (Exception e) {
             throw new RuntimeException("Failed to create resource from URL: " + url, e);
         }
