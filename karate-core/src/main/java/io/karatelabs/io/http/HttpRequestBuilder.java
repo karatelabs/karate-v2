@@ -133,6 +133,10 @@ public class HttpRequestBuilder implements SimpleObject {
         return this;
     }
 
+    public String getUrl() {
+        return url;
+    }
+
     public HttpRequestBuilder method(String method) {
         this.method = method;
         return this;
