@@ -10,6 +10,7 @@ import org.junit.jupiter.api.condition.OS;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -963,7 +964,7 @@ class ResourceTest {
         // Test that invalid URLs are handled properly with good error message
         assertThrows(RuntimeException.class, () -> {
             // Create a malformed URL that will fail conversion
-            java.net.URL url = new java.net.URL("http://example.com/file.txt");
+            java.net.URL url = URI.create("http://example.com/file.txt").toURL();
             Resource.from(url);
         }, "Should throw RuntimeException for unsupported URL schemes");
     }

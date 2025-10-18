@@ -545,7 +545,7 @@ public class JsParser extends Parser {
         if (!enter(NodeType.UNARY_EXPR, NOT, TILDE)) {
             return false;
         }
-        expr(-1, true);
+        expr(8, true);
         return exit();
     }
 

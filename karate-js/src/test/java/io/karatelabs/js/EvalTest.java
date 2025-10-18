@@ -198,6 +198,16 @@ class EvalTest extends EvalBase {
     }
 
     @Test
+    void testUnaryPrecedence() {
+        assertEquals(true, eval("var foo = false; var bar = true; !foo || bar"));
+        assertEquals(false, eval("var foo = true; var bar = false; !foo || bar"));
+        assertEquals(true, eval("var foo = false; var bar = true; !foo && bar"));
+        assertEquals(false, eval("var foo = true; var bar = true; !foo && bar"));
+        assertEquals(-3, eval("~5 + 3"));
+        assertEquals(false, eval("var a = false; var b = false; !a == b"));
+    }
+
+    @Test
     void testJsonApi() {
         assertEquals("{\"a\":\"b\"}", eval("JSON.stringify({a:'b'})"));
         assertEquals("{\"a\":\"b\"}", eval("JSON.stringify({a:'b',c:'d'}, ['a'])"));

@@ -278,6 +278,11 @@ class JsParserTest {
     }
 
     @Test
+    void testUnary() {
+        expr("!foo || bar", "[['!','$foo'], '||', '$bar']");
+    }
+
+    @Test
     void testTernary() {
         expr("true ? 'foo' : bar", "[true,'?','foo',':',$bar]");
         expr("0 && 1 ? 'foo' : bar", "[[0,'&&',1],'?','foo',':',$bar]");
