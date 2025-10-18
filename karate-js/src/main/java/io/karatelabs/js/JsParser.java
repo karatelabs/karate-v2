@@ -289,7 +289,7 @@ public class JsParser extends Parser {
         if (!enter(NodeType.DELETE_STMT, DELETE)) {
             return false;
         }
-        expr(8, true);
+        expr(13, true);
         return exit();
     }
 
@@ -341,29 +341,44 @@ public class JsParser extends Parser {
                 consume(COLON);
                 expr(-1, true);
                 exit(Shift.RIGHT);
-            } else if (priority < 2 && enter(NodeType.LOGIC_AND_EXPR, AMP_AMP, PIPE_PIPE)) {
+            } else if (priority < 2 && enter(NodeType.LOGIC_AND_EXPR, PIPE_PIPE)) {
                 expr(2, true);
                 exit(Shift.LEFT);
-            } else if (priority < 3 && enter(NodeType.LOGIC_EXPR,
-                    EQ_EQ_EQ, NOT_EQ_EQ, EQ_EQ, NOT_EQ,
-                    LT, GT, LT_EQ, GT_EQ)) {
+            } else if (priority < 3 && enter(NodeType.LOGIC_AND_EXPR, AMP_AMP)) {
                 expr(3, true);
                 exit(Shift.LEFT);
-            } else if (priority < 4 && enter(NodeType.LOGIC_BIT_EXPR, AMP, PIPE, CARET,
-                    GT_GT, LT_LT, GT_GT_GT)) {
+            } else if (priority < 4 && enter(NodeType.LOGIC_BIT_EXPR, PIPE)) {
                 expr(4, true);
                 exit(Shift.LEFT);
-            } else if (priority < 5 && enter(NodeType.MATH_ADD_EXPR, PLUS, MINUS)) {
+            } else if (priority < 5 && enter(NodeType.LOGIC_BIT_EXPR, CARET)) {
                 expr(5, true);
                 exit(Shift.LEFT);
-            } else if (priority < 6 && enter(NodeType.MATH_MUL_EXPR, STAR, SLASH, PERCENT)) {
+            } else if (priority < 6 && enter(NodeType.LOGIC_BIT_EXPR, AMP)) {
                 expr(6, true);
                 exit(Shift.LEFT);
-            } else if (priority < 7 && peekIf(STAR_STAR)) {
+            } else if (priority < 7 && enter(NodeType.LOGIC_EXPR,
+                    EQ_EQ_EQ, NOT_EQ_EQ, EQ_EQ, NOT_EQ)) {
+                expr(7, true);
+                exit(Shift.LEFT);
+            } else if (priority < 8 && enter(NodeType.LOGIC_EXPR,
+                    LT, GT, LT_EQ, GT_EQ)) {
+                expr(8, true);
+                exit(Shift.LEFT);
+            } else if (priority < 9 && enter(NodeType.LOGIC_BIT_EXPR,
+                    GT_GT, LT_LT, GT_GT_GT)) {
+                expr(9, true);
+                exit(Shift.LEFT);
+            } else if (priority < 10 && enter(NodeType.MATH_ADD_EXPR, PLUS, MINUS)) {
+                expr(10, true);
+                exit(Shift.LEFT);
+            } else if (priority < 11 && enter(NodeType.MATH_MUL_EXPR, STAR, SLASH, PERCENT)) {
+                expr(11, true);
+                exit(Shift.LEFT);
+            } else if (priority < 12 && peekIf(STAR_STAR)) {
                 do {
                     enter(NodeType.MATH_EXP_EXPR);
                     consumeNext();
-                    expr(7, true);
+                    expr(12, true);
                     exit(Shift.RIGHT);
                 } while (peekIf(STAR_STAR));
             } else if (enter(NodeType.FN_CALL_EXPR, L_PAREN)) {
@@ -378,7 +393,7 @@ public class JsParser extends Parser {
                     consumeNext();
                 } else if (dotType == QUES_DOT) {
                     if (dotNext == L_BRACKET || dotNext == L_PAREN) {
-                        expr_rhs(7);
+                        expr_rhs(12);
                     } else {
                         error(L_BRACKET, L_PAREN);
                     }
@@ -392,8 +407,8 @@ public class JsParser extends Parser {
                 exit(Shift.LEFT);
             } else if (enter(NodeType.MATH_POST_EXPR, PLUS_PLUS, MINUS_MINUS)) {
                 exit(Shift.LEFT);
-            } else if (enter(NodeType.INSTANCEOF_EXPR, INSTANCEOF)) {
-                expr(-1, true);
+            } else if (priority < 8 && enter(NodeType.INSTANCEOF_EXPR, INSTANCEOF)) {
+                expr(8, true);
                 exit(Shift.LEFT);
             } else {
                 break;
@@ -484,7 +499,7 @@ public class JsParser extends Parser {
         if (!enter(NodeType.NEW_EXPR, NEW)) {
             return false;
         }
-        expr(8, true);
+        expr(13, true);
         return exit();
     }
 
@@ -492,7 +507,7 @@ public class JsParser extends Parser {
         if (!enter(NodeType.TYPEOF_EXPR, TYPEOF)) {
             return false;
         }
-        expr(8, true);
+        expr(13, true);
         return exit();
     }
 
@@ -545,7 +560,7 @@ public class JsParser extends Parser {
         if (!enter(NodeType.UNARY_EXPR, NOT, TILDE)) {
             return false;
         }
-        expr(8, true);
+        expr(13, true);
         return exit();
     }
 
@@ -553,7 +568,7 @@ public class JsParser extends Parser {
         if (!enter(NodeType.MATH_PRE_EXPR, PLUS_PLUS, MINUS_MINUS, MINUS, PLUS)) {
             return false;
         }
-        if (!(expr(8, false) || consumeIf(NUMBER))) {
+        if (!(expr(13, false) || consumeIf(NUMBER))) {
             error(NodeType.EXPR);
         }
         return exit();

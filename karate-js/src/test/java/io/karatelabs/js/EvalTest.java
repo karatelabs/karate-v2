@@ -191,6 +191,58 @@ class EvalTest extends EvalBase {
     }
 
     @Test
+    void testLogicAndOrPrecedence() {
+        // && has higher precedence than ||
+        assertEquals(true, eval("true || false && false"));
+        assertEquals(false, eval("false || false && true"));
+        assertEquals(true, eval("false && true || true"));
+        assertEquals(false, eval("false && true || false"));
+    }
+
+    @Test
+    void testRelationalEqualityPrecedence() {
+        // relational operators (<, >, <=, >=) have higher precedence than equality (==, ===)
+        // 2 < 3 == 1 should be (2 < 3) == 1 => true == 1 => true (not (2 < 3) == 1 parsed left-to-right as ((2 < 3) == 1))
+        // Actually in JS: true == 1 is true (coercion), so this won't catch the bug
+        // Better test: 5 > 3 == 2 should be (5 > 3) == 2 => true == 2 => false
+        // If parsed wrong as (5 > 3) == 2, it's still false
+        // Even better: 1 == 2 < 3 should be 1 == (2 < 3) => 1 == true => true
+        // If parsed wrong: (1 == 2) < 3 => false < 3 => true (same result!)
+        // Best test: 0 == 1 < 2 should be 0 == (1 < 2) => 0 == true => false
+        // If wrong: (0 == 1) < 2 => false < 2 => true (different!)
+        assertEquals(false, eval("0 == 1 < 2"));
+        assertEquals(true, eval("1 == 1 < 2"));
+    }
+
+    @Test
+    void testBitwisePrecedence() {
+        // In JS: & has higher precedence than ^, and ^ has higher precedence than |
+        // Also: bitwise operators have lower precedence than equality
+        // Test: 1 | 2 & 4 should be 1 | (2 & 4) => 1 | 0 => 1
+        // If wrong (left-to-right): (1 | 2) & 4 => 3 & 4 => 0
+        assertEquals(1, eval("1 | 2 & 4"));
+        // Test: 1 ^ 2 & 4 should be 1 ^ (2 & 4) => 1 ^ 0 => 1
+        // If wrong: (1 ^ 2) & 4 => 3 & 4 => 0
+        assertEquals(1, eval("1 ^ 2 & 4"));
+        // Test: 1 | 2 ^ 3 should be 1 | (2 ^ 3) => 1 | 1 => 1
+        // If wrong: (1 | 2) ^ 3 => 3 ^ 3 => 0
+        assertEquals(1, eval("1 | 2 ^ 3"));
+    }
+
+    @Test
+    void testInstanceofPrecedence() {
+        // instanceof has same precedence as relational operators, higher than equality
+        // Create a constructor function
+        String js = "function Foo() {}; var foo = new Foo(); ";
+        // First verify instanceof works
+        assertEquals(true, eval(js + "foo instanceof Foo"));
+        // Test precedence: foo instanceof Foo == true should be (foo instanceof Foo) == true => true == true => true
+        // If wrong precedence: foo instanceof (Foo == true) would fail or give wrong result
+        assertEquals(true, eval(js + "foo instanceof Foo == true"));
+        assertEquals(false, eval(js + "foo instanceof Foo == false"));
+    }
+
+    @Test
     void testUnary() {
         assertEquals(true, eval("!false"));
         assertEquals(-6, eval("~5"));
