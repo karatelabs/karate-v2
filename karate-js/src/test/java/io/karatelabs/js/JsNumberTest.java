@@ -67,6 +67,18 @@ class JsNumberTest extends EvalBase {
     }
 
     @Test
+    void testNaNInequality() {
+        // NaN != anything (including numbers) should be true
+        assertEquals(true, eval("NaN != 5"));
+        assertEquals(true, eval("NaN !== 5"));
+        assertEquals(true, eval("5 != NaN"));
+        assertEquals(true, eval("5 !== NaN"));
+        // NaN != NaN should also be true
+        assertEquals(true, eval("NaN != NaN"));
+        assertEquals(true, eval("NaN !== NaN"));
+    }
+
+    @Test
     void testIsSafeInteger() {
         assertEquals(true, eval("Number.isSafeInteger(9007199254740991)"));  // MAX_SAFE_INTEGER
         assertEquals(false, eval("Number.isSafeInteger(9007199254740992)")); // just over

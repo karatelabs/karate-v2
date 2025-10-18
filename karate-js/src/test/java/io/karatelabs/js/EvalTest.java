@@ -179,6 +179,18 @@ class EvalTest extends EvalBase {
     }
 
     @Test
+    void testNaNInequality() {
+        // NaN != anything (including numbers) should be true
+        assertEquals(true, eval("NaN != 5"));
+        assertEquals(true, eval("NaN !== 5"));
+        assertEquals(true, eval("5 != NaN"));
+        assertEquals(true, eval("5 !== NaN"));
+        // NaN != NaN should also be true
+        assertEquals(true, eval("NaN != NaN"));
+        assertEquals(true, eval("NaN !== NaN"));
+    }
+
+    @Test
     void testLogicShortCircuit() {
         assertEquals(null, eval("var a = {}; a.b && a.b.c"));
         assertEquals(0, eval("var a = { b: 0 }; a && a.b"));

@@ -545,10 +545,10 @@ class Interpreter {
         Object rhs = eval(node.get(2), context);
         TokenType logicOp = node.get(1).token.type;
         if (Terms.NAN.equals(lhs) || Terms.NAN.equals(rhs)) {
-            if (Terms.NAN.equals(lhs) && Terms.NAN.equals(rhs)) {
-                return logicOp == NOT_EQ || logicOp == NOT_EQ_EQ;
+            if (logicOp == NOT_EQ || logicOp == NOT_EQ_EQ) {
+                return true;  // NaN is not equal to anything, including itself
             }
-            return false;
+            return false;  // NaN compared to anything with ==, ===, <, >, <=, >= is false
         }
         return switch (logicOp) {
             case EQ_EQ -> Terms.eq(lhs, rhs, false);
