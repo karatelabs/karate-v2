@@ -341,6 +341,8 @@ class JsDate extends JsObject implements JavaMirror {
                 return new JsDate(s).value;
             } else if (arg instanceof JsDate date) {
                 return new Date(date.value.getTime()); // clone
+            } else if (arg instanceof Date date) {
+                return new Date(date.getTime()); // clone from java.util.Date
             }
         } else if (args.length >= 3) {
             int year = args[0] instanceof Number ? ((Number) args[0]).intValue() : 0;

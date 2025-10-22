@@ -21,6 +21,43 @@ class JsDateTest extends EvalBase {
     }
 
     @Test
+    void testDateCopyConstructor() {
+        // Test that new Date(dateObject) creates a copy with the same timestamp
+        eval("var original = new Date('2024-01-01');"
+                + "var copy = new Date(original);"
+                + "var origTime = original.getTime();"
+                + "var copyTime = copy.getTime();");
+
+        // Copy should have the exact same timestamp as original
+        assertEquals(get("origTime"), get("copyTime"),
+            "new Date(dateObject) should create a copy with the same timestamp");
+    }
+
+    @Test
+    void testDateCopyImmutability() {
+        // Test that copying a Date object creates an independent copy
+        // Bug report: modifying a copy should not affect the original
+        eval("var original = new Date('2024-01-01');"
+                + "var copy = new Date(original);"
+                + "copy.setMonth(copy.getMonth() + 10);"
+                + "var originalMonth = original.getMonth();"
+                + "var originalYear = original.getFullYear();"
+                + "var originalIso = original.toISOString();"
+                + "var copyMonth = copy.getMonth();"
+                + "var copyYear = copy.getFullYear();");
+
+        // Original should still be January 2024 (unchanged)
+        assertEquals(0, get("originalMonth"), "Original month should still be 0 (January)");
+        assertEquals(2024, get("originalYear"), "Original year should still be 2024");
+        assertTrue(get("originalIso").toString().startsWith("2024-01-01"),
+            "Original date should still be 2024-01-01");
+
+        // Copy should be November 2024 (original month 0 + 10 = month 10)
+        assertEquals(10, get("copyMonth"), "Copy month should be 10 (November)");
+        assertEquals(2024, get("copyYear"), "Copy year should be 2024");
+    }
+
+    @Test
     void testDateConstructor() {
         eval("var a = new Date(2025, 2, 15)");
         assertEquals(JsDate.parse("2025-03-15"), get("a"));
