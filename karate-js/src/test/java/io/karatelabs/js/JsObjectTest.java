@@ -12,6 +12,37 @@ class JsObjectTest extends EvalBase {
     }
 
     @Test
+    void testObjectNumericBracketAccess() {
+        // Test that objects can be accessed with numeric indices using bracket notation
+        // In standard JavaScript, obj[3] is equivalent to obj['3'] for objects
+        eval("var obj = {1: 0.4, 2: 0.6, 3: 0.75, 4: 0.85, 5: 0.95, 6: 1};"
+                + "var value = obj[3];");
+        assertEquals(0.75, get("value"));
+
+        // Also test with string keys - should work the same way
+        eval("var obj2 = {'1': 0.4, '2': 0.6, '3': 0.75};"
+                + "var value2 = obj2[3];");
+        assertEquals(0.75, get("value2"));
+
+        // Test that both numeric and string access return the same value
+        eval("var obj3 = {5: 'hello'};"
+                + "var numAccess = obj3[5];"
+                + "var strAccess = obj3['5'];");
+        assertEquals("hello", get("numAccess"));
+        assertEquals("hello", get("strAccess"));
+
+        // Test setting with numeric indices
+        eval("var obj4 = {};"
+                + "obj4[1] = 'one';"
+                + "obj4[2] = 'two';"
+                + "var val1 = obj4[1];"
+                + "var val2 = obj4['2'];");
+        assertEquals("one", get("val1"));
+        assertEquals("two", get("val2"));
+        NodeUtils.match(get("obj4"), "{ '1': 'one', '2': 'two' }");
+    }
+
+    @Test
     void testObject() {
         matchEval("{}", "{}");
         matchEval("{ a: 1 }", "{ a: 1 }");

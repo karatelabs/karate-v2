@@ -123,10 +123,15 @@ class JsProperty {
             // TODO out of bounds handling, unify iterable
             if (object instanceof List) { // most common case
                 ((List<Object>) object).set(n.intValue(), value);
+                return;
             } else if (object instanceof byte[] bytes) {
                 if (value instanceof Number v) {
                     bytes[n.intValue()] = (byte) (v.intValue() & 0xFF);
                 }
+                return;
+            } else if (object instanceof Map || object instanceof ObjectLike) {
+                // For objects, convert numeric index to string for property access
+                name = index + "";
             } else {
                 throw new RuntimeException("cannot set by index [" + index + "]:" + value + " on (non-array): " + object);
             }
@@ -134,30 +139,30 @@ class JsProperty {
             if (index != null) {
                 name = index + "";
             }
-            if (name == null) {
-                throw new RuntimeException("unexpected set [null]:" + value + " on: " + object);
-            }
-            if (object == null) {
-                context.update(name, value);
-            } else if (object instanceof Map) {
-                ((Map<String, Object>) object).put(name, value);
-            } else if (object instanceof ObjectLike objectLike) {
-                objectLike.put(name, value);
-            } else if (context.root.bridge != null) {
-                try {
-                    if (object instanceof ExternalAccess ja) {
-                        ja.update(name, value);
-                    } else {
-                        ExternalAccess ja = context.root.bridge.forInstance(object);
-                        ja.update(name, value);
-                    }
-                } catch (Exception e) {
-                    logger.error("external bridge error: {}", e.getMessage());
-                    throw new RuntimeException("cannot set '" + name + "'");
+        }
+        if (name == null) {
+            throw new RuntimeException("unexpected set [null]:" + value + " on: " + object);
+        }
+        if (object == null) {
+            context.update(name, value);
+        } else if (object instanceof Map) {
+            ((Map<String, Object>) object).put(name, value);
+        } else if (object instanceof ObjectLike objectLike) {
+            objectLike.put(name, value);
+        } else if (context.root.bridge != null) {
+            try {
+                if (object instanceof ExternalAccess ja) {
+                    ja.update(name, value);
+                } else {
+                    ExternalAccess ja = context.root.bridge.forInstance(object);
+                    ja.update(name, value);
                 }
-            } else {
-                throw new RuntimeException("cannot set '" + name + "' - " + node.getText());
+            } catch (Exception e) {
+                logger.error("external bridge error: {}", e.getMessage());
+                throw new RuntimeException("cannot set '" + name + "'");
             }
+        } else {
+            throw new RuntimeException("cannot set '" + name + "' - " + node.getText());
         }
     }
 
@@ -178,9 +183,13 @@ class JsProperty {
             if (object instanceof byte[] bytes) {
                 return bytes[i] & 0xFF;
             }
-            throw new RuntimeException("get by index [" + i + "] for non-array: " + object);
-        }
-        if (index != null) {
+            // For objects (Map, ObjectLike), convert numeric index to string for property access
+            if (object instanceof Map || object instanceof ObjectLike) {
+                name = index + "";
+            } else {
+                throw new RuntimeException("get by index [" + i + "] for non-array: " + object);
+            }
+        } else if (index != null) {
             name = index + "";
         }
         if (name == null) {
