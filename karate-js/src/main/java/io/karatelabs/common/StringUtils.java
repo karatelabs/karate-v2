@@ -479,6 +479,10 @@ public class StringUtils {
     }
 
     public static String formatJson(Object o, boolean pretty, boolean lenient, boolean sort) {
+        return formatJson(o, pretty, lenient, sort, "  ");
+    }
+
+    public static String formatJson(Object o, boolean pretty, boolean lenient, boolean sort, String indent) {
         if (o instanceof String ostring) {
             if (StringUtils.isJson(ostring)) {
                 if (sort) { // dont care about order in first phase
@@ -492,7 +496,7 @@ public class StringUtils {
         }
         if (o instanceof List || o instanceof Map) {
             StringBuilder sb = new StringBuilder();
-            formatRecurse(o, pretty, lenient, sort, sb, 0);
+            formatRecurse(o, pretty, lenient, sort, indent, sb, 0);
             return sb.toString();
         } else {
             return o + "";
@@ -500,7 +504,7 @@ public class StringUtils {
     }
 
     @SuppressWarnings("unchecked")
-    private static void formatRecurse(Object o, boolean pretty, boolean lenient, boolean sort, StringBuilder sb, int depth) {
+    private static void formatRecurse(Object o, boolean pretty, boolean lenient, boolean sort, String indent, StringBuilder sb, int depth) {
         if (o == null) {
             sb.append("null");
         } else if (o instanceof List<?> list) {
@@ -514,9 +518,9 @@ public class StringUtils {
             while (iterator.hasNext()) {
                 Object child = iterator.next();
                 if (pretty) {
-                    pad(sb, depth + 1);
+                    pad(sb, depth + 1, indent);
                 }
-                formatRecurse(child, pretty, lenient, sort, sb, depth + 1);
+                formatRecurse(child, pretty, lenient, sort, indent, sb, depth + 1);
                 if (iterator.hasNext()) {
                     sb.append(',');
                     if (!pretty) {
@@ -528,7 +532,7 @@ public class StringUtils {
                 }
             }
             if (pretty) {
-                pad(sb, depth);
+                pad(sb, depth, indent);
             }
             if (!pretty && !list.isEmpty()) {
                 sb.append(' ');
@@ -551,7 +555,7 @@ public class StringUtils {
                 Map.Entry<Object, Object> entry = iterator.next();
                 Object key = entry.getKey();
                 if (pretty) {
-                    pad(sb, depth + 1);
+                    pad(sb, depth + 1, indent);
                 }
                 if (lenient) {
                     String escaped = escapeJsonValue(key == null ? null : key.toString());
@@ -564,7 +568,7 @@ public class StringUtils {
                     sb.append('"').append(escapeJsonValue(key == null ? null : key.toString())).append('"');
                 }
                 sb.append(':').append(' ');
-                formatRecurse(entry.getValue(), pretty, lenient, sort, sb, depth + 1);
+                formatRecurse(entry.getValue(), pretty, lenient, sort, indent, sb, depth + 1);
                 if (iterator.hasNext()) {
                     sb.append(',');
                     if (!pretty) {
@@ -576,7 +580,7 @@ public class StringUtils {
                 }
             }
             if (pretty) {
-                pad(sb, depth);
+                pad(sb, depth, indent);
             }
             if (!pretty && !map.isEmpty()) {
                 sb.append(' ');
@@ -598,10 +602,8 @@ public class StringUtils {
         }
     }
 
-    private static void pad(StringBuilder sb, int depth) {
-        for (int i = 0; i < depth; i++) {
-            sb.append(' ').append(' ');
-        }
+    private static void pad(StringBuilder sb, int depth, String indent) {
+        sb.append(indent.repeat(depth));
     }
 
     private static final Pattern JS_IDENTIFIER_PATTERN = Pattern.compile("^[A-Za-z_$][A-Za-z0-9_$]*$");

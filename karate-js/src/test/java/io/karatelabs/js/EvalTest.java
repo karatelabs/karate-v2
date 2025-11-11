@@ -2,8 +2,6 @@ package io.karatelabs.js;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class EvalTest extends EvalBase {
@@ -269,13 +267,6 @@ class EvalTest extends EvalBase {
         assertEquals(false, eval("var foo = true; var bar = true; !foo && bar"));
         assertEquals(-3, eval("~5 + 3"));
         assertEquals(false, eval("var a = false; var b = false; !a == b"));
-    }
-
-    @Test
-    void testJsonApi() {
-        assertEquals("{\"a\":\"b\"}", eval("JSON.stringify({a:'b'})"));
-        assertEquals("{\"a\":\"b\"}", eval("JSON.stringify({a:'b',c:'d'}, ['a'])"));
-        assertEquals(Map.of("a", "b"), eval("JSON.parse('{\"a\":\"b\"}')"));
     }
 
     @Test

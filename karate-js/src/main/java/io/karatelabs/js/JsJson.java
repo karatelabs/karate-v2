@@ -23,6 +23,7 @@
  */
 package io.karatelabs.js;
 
+import io.karatelabs.common.StringUtils;
 import net.minidev.json.JSONValue;
 
 import java.util.LinkedHashMap;
@@ -43,17 +44,52 @@ public class JsJson implements SimpleObject {
     @SuppressWarnings("unchecked")
     Invokable stringify() {
         return args -> {
-            String json = JSONValue.toJSONString(args[0]);
-            if (args.length == 1) {
-                return json;
+            Object value = args[0];
+            Object replacer = args.length > 1 ? args[1] : null;
+            Object space = args.length > 2 ? args[2] : null;
+
+            // Handle replacer (array of keys to include)
+            if (replacer instanceof List) {
+                List<String> list = (List<String>) replacer;
+                if (value instanceof Map) {
+                    Map<String, Object> map = (Map<String, Object>) value;
+                    Map<String, Object> result = new LinkedHashMap<>();
+                    for (String k : list) {
+                        if (map.containsKey(k)) {
+                            result.put(k, map.get(k));
+                        }
+                    }
+                    value = result;
+                }
             }
-            List<String> list = (List<String>) args[1];
-            Map<String, Object> map = (Map<String, Object>) JSONValue.parse(json);
-            Map<String, Object> result = new LinkedHashMap<>();
-            for (String k : list) {
-                result.put(k, map.get(k));
+
+            // Handle space parameter for pretty printing
+            boolean pretty = false;
+            String indentStr = "  ";
+
+            if (space != null) {
+                if (space instanceof Number) {
+                    int indent = Math.min(((Number) space).intValue(), 10);
+                    if (indent > 0) {
+                        pretty = true;
+                        indentStr = " ".repeat(indent);
+                    }
+                } else if (space instanceof String spaceStr) {
+                    if (!spaceStr.isEmpty()) {
+                        pretty = true;
+                        indentStr = spaceStr.substring(0, Math.min(spaceStr.length(), 10));
+                    }
+                }
             }
-            return JSONValue.toJSONString(result);
+
+            // For compact output (no space parameter), use JSONValue for strict compact formatting
+            if (!pretty) {
+                return JSONValue.toJSONString(value);
+            }
+
+            // Use centralized StringUtils.formatJson for pretty printing
+            // lenient=false for strict JSON (double quotes), sort=false to preserve order
+            return StringUtils.formatJson(value, true, false, false, indentStr);
         };
     }
 
