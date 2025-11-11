@@ -48,8 +48,12 @@ public class JsJson implements SimpleObject {
             Object replacer = args.length > 1 ? args[1] : null;
             Object space = args.length > 2 ? args[2] : null;
 
-            // Handle replacer (array of keys to include)
-            if (replacer instanceof List) {
+            // Handle replacer function - transform the value tree first
+            if (replacer instanceof JsCallable replacerFunc) {
+                value = applyReplacerFunction(replacerFunc, "", value);
+            }
+            // Handle replacer array (array of keys to include)
+            else if (replacer instanceof List) {
                 List<String> list = (List<String>) replacer;
                 if (value instanceof Map) {
                     Map<String, Object> map = (Map<String, Object>) value;
@@ -91,6 +95,47 @@ public class JsJson implements SimpleObject {
             // lenient=false for strict JSON (double quotes), sort=false to preserve order
             return StringUtils.formatJson(value, true, false, false, indentStr);
         };
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object applyReplacerFunction(JsCallable replacerFunc, String key, Object value) {
+        // First, call the replacer function for this key-value pair
+        Object transformed;
+        try {
+            transformed = replacerFunc.call(null, key, value);
+        } catch (Exception e) {
+            throw new RuntimeException("Error in replacer function: " + e.getMessage(), e);
+        }
+
+        // If replacer returns undefined, this key should be filtered out
+        if (transformed == Terms.UNDEFINED) {
+            return Terms.UNDEFINED;
+        }
+
+        // Recursively apply replacer to nested objects and arrays
+        if (transformed instanceof Map) {
+            Map<String, Object> map = (Map<String, Object>) transformed;
+            Map<String, Object> result = new LinkedHashMap<>();
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
+                Object nestedValue = applyReplacerFunction(replacerFunc, entry.getKey(), entry.getValue());
+                // Skip keys where replacer returned undefined
+                if (nestedValue != Terms.UNDEFINED) {
+                    result.put(entry.getKey(), nestedValue);
+                }
+            }
+            return result;
+        } else if (transformed instanceof List) {
+            List<Object> list = (List<Object>) transformed;
+            List<Object> result = new java.util.ArrayList<>();
+            for (int i = 0; i < list.size(); i++) {
+                Object nestedValue = applyReplacerFunction(replacerFunc, String.valueOf(i), list.get(i));
+                // For arrays, undefined values become null in JSON
+                result.add(nestedValue == Terms.UNDEFINED ? null : nestedValue);
+            }
+            return result;
+        }
+
+        return transformed;
     }
 
     Invokable parse() {

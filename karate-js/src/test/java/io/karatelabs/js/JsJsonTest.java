@@ -89,4 +89,57 @@ class JsJsonTest extends EvalBase {
         Map<String, Object> nested = (Map<String, Object>) result.get("c");
         assertEquals("e", nested.get("d"));
     }
+
+    @Test
+    void testStringifyWithFunctionReplacerFilterKeys() {
+        // Filter out password field
+        String result = (String) eval("""
+            var obj = {username: 'john', password: 'secret', email: 'john@example.com'};
+            JSON.stringify(obj, function(key, value) {
+                if (key === 'password') return undefined;
+                return value;
+            })
+        """);
+        assertEquals("{\"username\":\"john\",\"email\":\"john@example.com\"}", result);
+    }
+
+    @Test
+    void testStringifyWithFunctionReplacerTransformValues() {
+        // Transform string values to uppercase
+        String result = (String) eval("""
+            var obj = {name: 'alice', city: 'paris'};
+            JSON.stringify(obj, function(key, value) {
+                if (typeof value === 'string') return value.toUpperCase();
+                return value;
+            })
+        """);
+        assertEquals("{\"name\":\"ALICE\",\"city\":\"PARIS\"}", result);
+    }
+
+    @Test
+    void testStringifyWithFunctionReplacerOnNestedObject() {
+        // Replacer should be called for nested values
+        String result = (String) eval("""
+            var obj = {a: 1, b: {c: 2, d: 3}};
+            JSON.stringify(obj, function(key, value) {
+                if (typeof value === 'number') return value * 10;
+                return value;
+            })
+        """);
+        assertEquals("{\"a\":10,\"b\":{\"c\":20,\"d\":30}}", result);
+    }
+
+    @Test
+    void testStringifyWithFunctionReplacerAndSpace() {
+        // Function replacer combined with space parameter
+        String result = (String) eval("""
+            var obj = {keep: 'yes', remove: 'no'};
+            JSON.stringify(obj, function(key, value) {
+                if (key === 'remove') return undefined;
+                return value;
+            }, 2)
+        """);
+        String expected = "{\n  \"keep\": \"yes\"\n}";
+        assertEquals(expected, result);
+    }
 }
