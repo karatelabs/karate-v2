@@ -67,10 +67,21 @@ public class HttpServer {
     }
 
     public void stop() {
+        stopAsync();
+        try {
+            bossGroup.terminationFuture().sync();
+            workerGroup.terminationFuture().sync();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Interrupted while shutting down HTTP server", e);
+        }
+        logger.info("stop: shutdown complete");
+    }
+
+    public void stopAsync() {
         logger.info("stop: shutting down");
         bossGroup.shutdownGracefully();
         workerGroup.shutdownGracefully();
-        logger.info("stop: shutdown complete");
     }
 
     private HttpServer(int requestedPort, Function<HttpRequest, HttpResponse> handler) {

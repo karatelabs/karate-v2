@@ -2,6 +2,7 @@ package io.karatelabs.io.http;
 
 import io.karatelabs.common.Json;
 import io.karatelabs.io.http.oauth.OAuth2Exception;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +17,13 @@ import static org.junit.jupiter.api.Assertions.*;
 class AuthorizationCodeAuthHandlerTest {
 
     static final Logger logger = LoggerFactory.getLogger(AuthorizationCodeAuthHandlerTest.class);
+
+    @AfterEach
+    void waitForAsyncShutdown() throws InterruptedException {
+        // Wait a bit for any async server shutdowns to complete
+        // This prevents port conflicts between tests
+        Thread.sleep(100);
+    }
 
     @Test
     void testFullAuthorizationCodeFlow() {
@@ -102,6 +110,8 @@ class AuthorizationCodeAuthHandlerTest {
             logger.info("Full authorization flow completed successfully");
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            server.stop(); // Blocking stop - this test uses default callback ports
         }
     }
 
@@ -216,6 +226,8 @@ class AuthorizationCodeAuthHandlerTest {
             assertTrue(exception.getMessage().contains("Authorization flow failed"));
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            server.stopAsync();
         }
     }
 
@@ -253,6 +265,8 @@ class AuthorizationCodeAuthHandlerTest {
             assertTrue(exception.getMessage().contains("Token exchange failed"));
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            server.stopAsync();
         }
     }
 
@@ -314,6 +328,8 @@ class AuthorizationCodeAuthHandlerTest {
             logger.info("PKCE verifier: {}", codeVerifier.get());
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            server.stopAsync();
         }
     }
 
@@ -379,6 +395,8 @@ class AuthorizationCodeAuthHandlerTest {
             logger.info("Callback server used configured port: {}", redirectUri);
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            server.stopAsync();
         }
     }
 
@@ -424,6 +442,8 @@ class AuthorizationCodeAuthHandlerTest {
             logger.info("Callback server used one of configured ports: {}", redirectUri);
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            server.stopAsync();
         }
     }
 
@@ -470,6 +490,8 @@ class AuthorizationCodeAuthHandlerTest {
             logger.info("Callback server used default port: {}", redirectUri);
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            server.stop(); // Blocking stop - this test uses default callback ports
         }
     }
 
@@ -509,6 +531,8 @@ class AuthorizationCodeAuthHandlerTest {
             assertTrue(redirectUri.contains(":5555/callback"));
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            server.stopAsync();
         }
     }
 }

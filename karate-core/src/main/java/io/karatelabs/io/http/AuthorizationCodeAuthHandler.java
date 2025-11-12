@@ -209,13 +209,13 @@ public class AuthorizationCodeAuthHandler implements AuthHandler {
     private String startCallbackServer(LocalCallbackServer server) {
         int[] ports = getConfiguredPorts();
 
-        IOException lastException = null;
+        Exception lastException = null;
         for (int port : ports) {
             try {
                 String redirectUri = server.start(port);
                 logger.info("Callback server started on port {}", port);
                 return redirectUri;
-            } catch (IOException e) {
+            } catch (Exception e) {
                 logger.debug("Port {} in use, trying next port", port);
                 lastException = e;
             }

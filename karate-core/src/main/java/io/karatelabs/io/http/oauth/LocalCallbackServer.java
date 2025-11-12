@@ -1,17 +1,11 @@
 package io.karatelabs.io.http.oauth;
 
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
+import io.karatelabs.io.http.HttpRequest;
+import io.karatelabs.io.http.HttpResponse;
+import io.karatelabs.io.http.HttpServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -29,7 +23,7 @@ public class LocalCallbackServer {
     /**
      * Start server on random available port
      */
-    public String start() throws IOException {
+    public String start() {
         return start(0);
     }
 
@@ -37,62 +31,58 @@ public class LocalCallbackServer {
      * Start server on specific port (0 = random)
      * @return The redirect URI: http://127.0.0.1:PORT/callback
      */
-    public String start(int preferredPort) throws IOException {
+    public String start(int preferredPort) {
         codeFuture = new CompletableFuture<>();
 
-        server = HttpServer.create(new InetSocketAddress("127.0.0.1", preferredPort), 0);
-        port = server.getAddress().getPort();
+        server = HttpServer.start(preferredPort, this::handleRequest);
+        port = server.getPort();
 
         logger.info("OAuth callback server started on port {}", port);
-
-        server.createContext("/callback", this::handleCallback);
-        server.setExecutor(null); // Use default executor
-        server.start();
 
         return "http://127.0.0.1:" + port + "/callback";
     }
 
-    private void handleCallback(HttpExchange exchange) throws IOException {
-        String query = exchange.getRequestURI().getQuery();
-        Map<String, String> params = parseQuery(query);
+    private HttpResponse handleRequest(HttpRequest request) {
+        HttpResponse response = new HttpResponse();
 
-        String code = params.get("code");
-        String error = params.get("error");
-        String state = params.get("state");
+        // Only handle GET requests to /callback path
+        if (!"GET".equalsIgnoreCase(request.getMethod())) {
+            response.setStatus(405);
+            response.setBody("Method Not Allowed");
+            return response;
+        }
+
+        if (!"/callback".equals(request.getPath())) {
+            response.setStatus(404);
+            response.setBody("Not Found");
+            return response;
+        }
+
+        String code = request.getParam("code");
+        String error = request.getParam("error");
+        String state = request.getParam("state");
 
         logger.debug("Received OAuth callback: code={}, error={}, state={}",
             code != null ? "present" : "null", error, state);
 
         if (code != null) {
             codeFuture.complete(code);
-            sendSuccessPage(exchange);
+            sendSuccessPage(response);
         } else {
-            String errorDesc = params.getOrDefault("error_description", "Unknown error");
+            String errorDesc = request.getParam("error_description");
+            if (errorDesc == null) {
+                errorDesc = "Unknown error";
+            }
             codeFuture.completeExceptionally(
                 new OAuth2Exception(error + ": " + errorDesc)
             );
-            sendErrorPage(exchange, error, errorDesc);
+            sendErrorPage(response, error, errorDesc);
         }
+
+        return response;
     }
 
-    private Map<String, String> parseQuery(String query) {
-        Map<String, String> params = new HashMap<>();
-        if (query == null || query.isEmpty()) {
-            return params;
-        }
-
-        for (String param : query.split("&")) {
-            String[] parts = param.split("=", 2);
-            if (parts.length == 2) {
-                String key = URLDecoder.decode(parts[0], StandardCharsets.UTF_8);
-                String value = URLDecoder.decode(parts[1], StandardCharsets.UTF_8);
-                params.put(key, value);
-            }
-        }
-        return params;
-    }
-
-    private void sendSuccessPage(HttpExchange exchange) throws IOException {
+    private void sendSuccessPage(HttpResponse response) {
         String html = """
             <!DOCTYPE html>
             <html>
@@ -110,10 +100,12 @@ public class LocalCallbackServer {
             </body>
             </html>
             """;
-        sendResponse(exchange, 200, html);
+        response.setStatus(200);
+        response.setBody(html);
+        response.setContentType("text/html; charset=UTF-8");
     }
 
-    private void sendErrorPage(HttpExchange exchange, String error, String description) throws IOException {
+    private void sendErrorPage(HttpResponse response, String error, String description) {
         String html = String.format("""
             <!DOCTYPE html>
             <html>
@@ -133,16 +125,9 @@ public class LocalCallbackServer {
             </body>
             </html>
             """, error, description);
-        sendResponse(exchange, 400, html);
-    }
-
-    private void sendResponse(HttpExchange exchange, int statusCode, String html) throws IOException {
-        byte[] bytes = html.getBytes(StandardCharsets.UTF_8);
-        exchange.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
-        exchange.sendResponseHeaders(statusCode, bytes.length);
-        try (OutputStream os = exchange.getResponseBody()) {
-            os.write(bytes);
-        }
+        response.setStatus(400);
+        response.setBody(html);
+        response.setContentType("text/html; charset=UTF-8");
     }
 
     public CompletableFuture<String> getCodeFuture() {
@@ -154,9 +139,20 @@ public class LocalCallbackServer {
     }
 
     public void stop() {
+        stopAsync();
+    }
+
+    public void stopAsync() {
         if (server != null) {
             logger.info("Stopping OAuth callback server on port {}", port);
-            server.stop(0);
+            server.stopAsync();
+        }
+    }
+
+    public void stopAndWait() {
+        if (server != null) {
+            logger.info("Stopping OAuth callback server on port {}", port);
+            server.stop();
         }
     }
 }

@@ -266,7 +266,7 @@ class LocalCallbackServerTest {
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-            // Should have HTML content type
+            // Should have HTML content type with UTF-8 charset
             String contentType = response.headers().firstValue("Content-Type").orElse("");
             assertTrue(contentType.contains("text/html"));
             assertTrue(contentType.contains("charset=UTF-8"));
