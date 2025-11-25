@@ -37,6 +37,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 public class HttpServer {
@@ -84,10 +86,19 @@ public class HttpServer {
         workerGroup.shutdownGracefully();
     }
 
+    private static ThreadFactory daemonThreadFactory(String prefix) {
+        AtomicInteger counter = new AtomicInteger();
+        return r -> {
+            Thread t = new Thread(r, prefix + counter.incrementAndGet());
+            t.setDaemon(true);
+            return t;
+        };
+    }
+
     private HttpServer(int requestedPort, Function<HttpRequest, HttpResponse> handler) {
         this.handler = handler;
-        bossGroup = new MultiThreadIoEventLoopGroup(1, NioIoHandler.newFactory());
-        workerGroup = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
+        bossGroup = new MultiThreadIoEventLoopGroup(1, daemonThreadFactory("http-boss-"), NioIoHandler.newFactory());
+        workerGroup = new MultiThreadIoEventLoopGroup(daemonThreadFactory("http-worker-"), NioIoHandler.newFactory());
         CorsConfig corsConfig = CorsConfigBuilder
                 .forAnyOrigin().allowNullOrigin()
                 .allowedRequestHeaders(Http.Header.keys())

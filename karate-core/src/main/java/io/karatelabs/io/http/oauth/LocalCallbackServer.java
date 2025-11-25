@@ -6,7 +6,9 @@ import io.karatelabs.io.http.HttpServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Local HTTP server to capture OAuth redirect with authorization code.
@@ -15,6 +17,18 @@ import java.util.concurrent.CompletableFuture;
 public class LocalCallbackServer {
 
     private static final Logger logger = LoggerFactory.getLogger(LocalCallbackServer.class);
+    private static final Set<LocalCallbackServer> ACTIVE_SERVERS = ConcurrentHashMap.newKeySet();
+
+    public static void shutdownAll() {
+        if (ACTIVE_SERVERS.isEmpty()) {
+            return;
+        }
+        logger.info("Shutting down {} active OAuth callback server(s)", ACTIVE_SERVERS.size());
+        for (LocalCallbackServer server : ACTIVE_SERVERS) {
+            server.stopAsync();
+        }
+        ACTIVE_SERVERS.clear();
+    }
 
     private HttpServer server;
     private CompletableFuture<String> codeFuture;
@@ -36,6 +50,7 @@ public class LocalCallbackServer {
 
         server = HttpServer.start(preferredPort, this::handleRequest);
         port = server.getPort();
+        ACTIVE_SERVERS.add(this);
 
         logger.info("OAuth callback server started on port {}", port);
 
@@ -143,6 +158,7 @@ public class LocalCallbackServer {
     }
 
     public void stopAsync() {
+        ACTIVE_SERVERS.remove(this);
         if (server != null) {
             logger.info("Stopping OAuth callback server on port {}", port);
             server.stopAsync();
@@ -150,6 +166,7 @@ public class LocalCallbackServer {
     }
 
     public void stopAndWait() {
+        ACTIVE_SERVERS.remove(this);
         if (server != null) {
             logger.info("Stopping OAuth callback server on port {}", port);
             server.stop();
