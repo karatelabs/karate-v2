@@ -214,6 +214,29 @@ public interface Resource {
         return path.substring(pos + 1);
     }
 
+    /**
+     * Returns just the file name (last path segment) of this resource.
+     * Works for both file-based and URL-based resources.
+     *
+     * @return the simple file name, or empty string if unavailable
+     */
+    default String getSimpleName() {
+        URI uri = getUri();
+        if (uri == null) {
+            return "";
+        }
+        String path = uri.getPath();
+        if (path == null || path.isEmpty()) {
+            return "";
+        }
+        // Remove trailing slash if present
+        if (path.endsWith("/")) {
+            path = path.substring(0, path.length() - 1);
+        }
+        int pos = path.lastIndexOf('/');
+        return pos == -1 ? path : path.substring(pos + 1);
+    }
+
     default String getFileNameWithoutExtension() {
         String path = getRelativePath();
         int pos = path.lastIndexOf('.');

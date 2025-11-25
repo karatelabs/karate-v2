@@ -969,4 +969,43 @@ class ResourceTest {
         }, "Should throw RuntimeException for unsupported URL schemes");
     }
 
+    // ========== getSimpleName() Tests ==========
+
+    @Test
+    void testGetSimpleNameForFile() {
+        Resource resource = Resource.from(testFile.toPath());
+        assertEquals("test.txt", resource.getSimpleName());
+    }
+
+    @Test
+    void testGetSimpleNameForNestedFile() {
+        Resource resource = Resource.from(subDirFile.toPath());
+        assertEquals("nested.txt", resource.getSimpleName());
+    }
+
+    @Test
+    void testGetSimpleNameForMemoryResource() {
+        Resource resource = Resource.text("content");
+        // Memory resources have null URI
+        assertEquals("", resource.getSimpleName());
+    }
+
+    @Test
+    void testGetSimpleNameForFileWithoutExtension() throws IOException {
+        File noExtFile = tempDir.resolve("noextension").toFile();
+        FileUtils.writeToFile(noExtFile, "content");
+        Resource resource = Resource.from(noExtFile.toPath());
+        assertEquals("noextension", resource.getSimpleName());
+    }
+
+    @Test
+    void testGetSimpleNameForDeeplyNestedFile() throws IOException {
+        Path deepFile = tempDir.resolve("a/b/c/d/deep.json");
+        Files.createDirectories(deepFile.getParent());
+        Files.writeString(deepFile, "{}");
+
+        Resource resource = Resource.from(deepFile);
+        assertEquals("deep.json", resource.getSimpleName());
+    }
+
 }
