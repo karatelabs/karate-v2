@@ -37,6 +37,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -44,6 +46,18 @@ import java.util.function.Function;
 public class HttpServer {
 
     static final Logger logger = LoggerFactory.getLogger(HttpServer.class);
+    private static final Set<HttpServer> ACTIVE_SERVERS = ConcurrentHashMap.newKeySet();
+
+    public static void shutdownAll() {
+        if (ACTIVE_SERVERS.isEmpty()) {
+            return;
+        }
+        logger.info("shutting down {} active server(s)", ACTIVE_SERVERS.size());
+        for (HttpServer server : ACTIVE_SERVERS) {
+            server.stopAsync();
+        }
+        ACTIVE_SERVERS.clear();
+    }
 
     private final EventLoopGroup bossGroup;
     private final EventLoopGroup workerGroup;
@@ -81,6 +95,7 @@ public class HttpServer {
     }
 
     public void stopAsync() {
+        ACTIVE_SERVERS.remove(this);
         logger.info("stop: shutting down");
         bossGroup.shutdownGracefully();
         workerGroup.shutdownGracefully();
@@ -122,6 +137,7 @@ public class HttpServer {
             channel = bootstrap.bind(requestedPort).sync().channel();
             InetSocketAddress isa = (InetSocketAddress) channel.localAddress();
             port = isa.getPort();
+            ACTIVE_SERVERS.add(this);
             logger.info("http server started on port: {}", port);
         } catch (Exception e) {
             throw new RuntimeException(e);
