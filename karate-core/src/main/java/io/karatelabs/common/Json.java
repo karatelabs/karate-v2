@@ -52,16 +52,22 @@ public class Json {
     }
 
     public static Json object() {
-        return Json.of("{}");
+        return new Json(JsonPath.parse("{}"));
     }
 
     public static Json array() {
-        return Json.of("[]");
+        return new Json(JsonPath.parse("[]"));
     }
 
     public static Json of(Object any) {
-        if (any instanceof String) {
-            return new Json(JsonPath.parse((String) any));
+        if (any == null) {
+            throw new IllegalArgumentException("input must not be null");
+        }
+        if (any instanceof String s) {
+            if (s.isBlank()) {
+                throw new IllegalArgumentException("input string must not be empty or blank");
+            }
+            return new Json(JsonPath.parse(s));
         } else if (any instanceof List || any instanceof Map) {
             return new Json(JsonPath.parse(any));
         } else {

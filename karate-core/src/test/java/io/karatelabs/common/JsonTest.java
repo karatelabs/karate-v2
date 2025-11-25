@@ -174,4 +174,28 @@ class JsonTest {
         assertEquals("{\"a\":{\"b\":\"#java.util.HashMap\"}}", s);
     }
 
+    @Test
+    void testJsonOfNullThrows() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> {
+            Json.of(null);
+        });
+        assertTrue(e.getMessage().contains("must not be null"));
+    }
+
+    @Test
+    void testJsonOfEmptyStringThrows() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> {
+            Json.of("");
+        });
+        assertTrue(e.getMessage().contains("must not be empty or blank"));
+    }
+
+    @Test
+    void testJsonOfBlankStringThrows() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> {
+            Json.of("   ");
+        });
+        assertTrue(e.getMessage().contains("must not be empty or blank"));
+    }
+
 }
