@@ -960,13 +960,145 @@ class ResourceTest {
     }
 
     @Test
-    void testResourceFromUrlHandlesException() {
-        // Test that invalid URLs are handled properly with good error message
-        assertThrows(RuntimeException.class, () -> {
-            // Create a malformed URL that will fail conversion
-            java.net.URL url = URI.create("http://example.com/file.txt").toURL();
+    void testResourceFromHttpUrlWithMockServer() throws Exception {
+        // Start a simple HTTP server
+        com.sun.net.httpserver.HttpServer server = com.sun.net.httpserver.HttpServer.create(
+            new java.net.InetSocketAddress(0), 0);
+        String responseContent = "{\"swagger\": \"2.0\", \"info\": {\"title\": \"Test API\"}}";
+
+        server.createContext("/api/spec.json", exchange -> {
+            byte[] response = responseContent.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.getResponseBody().close();
+        });
+        server.start();
+
+        try {
+            int port = server.getAddress().getPort();
+            java.net.URL url = URI.create("http://localhost:" + port + "/api/spec.json").toURL();
+
+            Resource resource = Resource.from(url);
+
+            assertNotNull(resource);
+            assertFalse(resource.isFile());
+            assertTrue(resource.isInMemory());
+            assertFalse(resource.isClassPath());
+            assertEquals(responseContent, resource.getText());
+
+            // UrlResource should preserve the URI
+            assertNotNull(resource.getUri());
+            assertEquals("http", resource.getUri().getScheme());
+            assertTrue(resource.getUri().toString().contains("/api/spec.json"));
+
+            // getSimpleName should return the file name from the URL path
+            assertEquals("spec.json", resource.getSimpleName());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void testResourceFromHttpsUrlHandlesNetworkError() {
+        // Test that network errors are wrapped in RuntimeException with good message
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> {
+            // Use a URL that will fail to connect (localhost with unused port)
+            java.net.URL url = URI.create("http://localhost:59999/nonexistent").toURL();
             Resource.from(url);
-        }, "Should throw RuntimeException for unsupported URL schemes");
+        });
+        assertTrue(ex.getMessage().contains("Failed to fetch content from URL"));
+    }
+
+    @Test
+    void testHttpUrlResourceResolve() throws Exception {
+        // Start a simple HTTP server
+        com.sun.net.httpserver.HttpServer server = com.sun.net.httpserver.HttpServer.create(
+            new java.net.InetSocketAddress(0), 0);
+
+        server.createContext("/api/main.json", exchange -> {
+            byte[] response = "main".getBytes();
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.getResponseBody().close();
+        });
+        server.createContext("/api/sibling.json", exchange -> {
+            byte[] response = "sibling".getBytes();
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.getResponseBody().close();
+        });
+        server.start();
+
+        try {
+            int port = server.getAddress().getPort();
+            java.net.URL url = URI.create("http://localhost:" + port + "/api/main.json").toURL();
+
+            Resource main = Resource.from(url);
+            assertEquals("main", main.getText());
+
+            // Resolve a sibling URL
+            Resource sibling = main.resolve("sibling.json");
+            assertNotNull(sibling);
+            assertEquals("sibling", sibling.getText());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void testHttpUrlResourceGetRelativePath() throws Exception {
+        // Start a simple HTTP server
+        com.sun.net.httpserver.HttpServer server = com.sun.net.httpserver.HttpServer.create(
+            new java.net.InetSocketAddress(0), 0);
+
+        server.createContext("/path/to/resource.json", exchange -> {
+            byte[] response = "{}".getBytes();
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.getResponseBody().close();
+        });
+        server.start();
+
+        try {
+            int port = server.getAddress().getPort();
+            java.net.URL url = URI.create("http://localhost:" + port + "/path/to/resource.json").toURL();
+
+            Resource resource = Resource.from(url);
+
+            // Relative path should be derived from URL path (without leading slash)
+            String relativePath = resource.getRelativePath();
+            assertEquals("path/to/resource.json", relativePath);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void testHttpUrlResourceToString() throws Exception {
+        com.sun.net.httpserver.HttpServer server = com.sun.net.httpserver.HttpServer.create(
+            new java.net.InetSocketAddress(0), 0);
+
+        server.createContext("/test", exchange -> {
+            byte[] response = "test".getBytes();
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.getResponseBody().close();
+        });
+        server.start();
+
+        try {
+            int port = server.getAddress().getPort();
+            java.net.URL url = URI.create("http://localhost:" + port + "/test").toURL();
+
+            Resource resource = Resource.from(url);
+            String str = resource.toString();
+
+            // toString should return the original URL
+            assertTrue(str.contains("http://localhost:" + port + "/test"));
+        } finally {
+            server.stop(0);
+        }
     }
 
     // ========== getSimpleName() Tests ==========

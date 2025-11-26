@@ -443,10 +443,11 @@ public interface Resource {
     }
 
     /**
-     * Creates a Resource from a URL (supports file:// and jar:// schemes).
+     * Creates a Resource from a URL.
+     * Supports file://, jar://, http://, and https:// schemes.
      *
      * @param url the URL to convert
-     * @return PathResource instance
+     * @return Resource instance (PathResource for file/jar, UrlResource for http/https)
      */
     static Resource from(URL url) {
         return from(url, null);
@@ -454,12 +455,26 @@ public interface Resource {
 
     /**
      * Creates a Resource from a URL with custom root.
+     * Supports file://, jar://, http://, and https:// schemes.
      *
      * @param url  the URL to convert
      * @param root the root path for relative path computation
-     * @return PathResource instance
+     * @return Resource instance (PathResource for file/jar, UrlResource for http/https)
      */
     static Resource from(URL url, Path root) {
+        String protocol = url.getProtocol();
+
+        // Handle HTTP/HTTPS URLs by streaming content into UrlResource
+        if ("http".equals(protocol) || "https".equals(protocol)) {
+            try (java.io.InputStream is = url.openStream()) {
+                byte[] bytes = FileUtils.toBytes(is);
+                return root != null ? new UrlResource(url, bytes, root) : new UrlResource(url, bytes);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to fetch content from URL: " + url, e);
+            }
+        }
+
+        // Handle file:// and jar:// URLs
         try {
             Path path = urlToPath(url, root);
             return root != null ? new PathResource(path, root) : new PathResource(path);
