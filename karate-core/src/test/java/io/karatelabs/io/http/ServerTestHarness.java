@@ -82,7 +82,7 @@ public class ServerTestHarness implements AutoCloseable {
             }
         }
         if (server != null) {
-            server.stop();
+            server.stopAsync();
         }
         logger.info("ServerTestHarness stopped");
     }

@@ -2,7 +2,6 @@ package io.karatelabs.io.http;
 
 import io.karatelabs.common.Resource;
 import io.karatelabs.markup.ResourceResolver;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,11 +11,13 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Tests for RequestHandler using InMemoryTestHarness.
+ * No real HTTP server needed - tests handler logic directly.
+ */
 class RequestHandlerTest {
 
-    static HttpServer server;
-    static HttpClient client;
-    static int port;
+    static InMemoryTestHarness harness;
     static InMemorySessionStore sessionStore;
     static Map<String, String> resources;
 
@@ -50,22 +51,7 @@ class RequestHandlerTest {
                 .staticPrefix("/pub/");
 
         RequestHandler handler = new RequestHandler(config, resolver);
-        server = HttpServer.start(0, handler);
-        port = server.getPort();
-        client = new ApacheHttpClient();
-    }
-
-    @AfterAll
-    static void afterAll() {
-        if (client != null) {
-            try {
-                client.close();
-            } catch (Exception ignored) {
-            }
-        }
-        if (server != null) {
-            server.stop();
-        }
+        harness = new InMemoryTestHarness(handler);
     }
 
     @BeforeEach
@@ -73,54 +59,15 @@ class RequestHandlerTest {
         sessionStore.clear();
     }
 
-    private HttpResponse get(String pathWithParams) {
-        HttpRequestBuilder builder = new HttpRequestBuilder(client)
-                .url("http://localhost:" + port)
-                .method("GET");
-
-        // Handle query params in path: /api/hello?name=world
-        int queryIdx = pathWithParams.indexOf('?');
-        if (queryIdx >= 0) {
-            builder.path(pathWithParams.substring(0, queryIdx));
-            String queryString = pathWithParams.substring(queryIdx + 1);
-            for (String param : queryString.split("&")) {
-                String[] parts = param.split("=", 2);
-                if (parts.length == 2) {
-                    builder.param(parts[0], parts[1]);
-                }
-            }
-        } else {
-            builder.path(pathWithParams);
-        }
-
-        return builder.invoke();
+    private HttpResponse get(String path) {
+        return harness.get(path);
     }
 
     private HttpResponse getWithCookie(String path, String cookie) {
-        return new HttpRequestBuilder(client)
-                .url("http://localhost:" + port)
+        return harness.request()
                 .path(path)
-                .method("GET")
                 .header("Cookie", cookie)
-                .invoke();
-    }
-
-    private HttpResponse getNoRedirect(String path) {
-        // Create client that doesn't follow redirects
-        ApacheHttpClient noRedirectClient = new ApacheHttpClient();
-        noRedirectClient.config("followRedirects", false);
-        try {
-            return new HttpRequestBuilder(noRedirectClient)
-                    .url("http://localhost:" + port)
-                    .path(path)
-                    .method("GET")
-                    .invoke();
-        } finally {
-            try {
-                noRedirectClient.close();
-            } catch (Exception ignored) {
-            }
-        }
+                .get();
     }
 
     // Template routing tests
@@ -181,7 +128,8 @@ class RequestHandlerTest {
 
     @Test
     void testApiRedirect() {
-        HttpResponse response = getNoRedirect("/api/redirect");
+        // In-memory harness doesn't follow redirects, so we see the 302 directly
+        HttpResponse response = get("/api/redirect");
 
         assertEquals(302, response.getStatus());
         assertEquals("/other", response.getHeader("Location"));

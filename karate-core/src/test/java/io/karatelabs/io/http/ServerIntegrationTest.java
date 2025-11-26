@@ -1,5 +1,7 @@
 package io.karatelabs.io.http;
 
+import io.karatelabs.common.Resource;
+import io.karatelabs.core.KarateJs;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -252,6 +254,30 @@ class ServerIntegrationTest {
         HttpResponse response = harness.get("/test");
         assertEquals(201, response.getStatus());
         assertEquals("<div>created</div>", response.getBodyString());
+    }
+
+    // ========== JS HTTP Client Tests ==========
+
+    @Test
+    void testJsHttpClient() {
+        // Test the JS karate.http() client making requests to our server
+        harness.setHandler(ctx -> {
+            ctx.response().setBody("hello world");
+            return ctx.response();
+        });
+
+        KarateJs context = new KarateJs(Resource.path(""));
+        String js = """
+                var http = karate.http('http://localhost:%s');
+                var response = http.path('cats').post({ name: 'Billie' });
+                var body1 = response.body;
+                response = http.path('cats').get();
+                var body2 = response.body;
+                """.formatted(harness.getPort());
+        context.engine.eval(js);
+
+        assertEquals("hello world", context.engine.get("body1"));
+        assertEquals("hello world", context.engine.get("body2"));
     }
 
 }
