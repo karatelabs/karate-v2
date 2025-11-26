@@ -92,5 +92,29 @@ class MarkupTest {
         assertEquals("<div><div>caller</div>\n<div><div>called</div></div></div>", rendered.replaceAll("\\r", ""));
     }
 
+    // ========== MarkupContext Tests ==========
+
+    @Test
+    void testContextRead() {
+        Engine js = new Engine();
+        Markup markup = Markup.init(js, new RootResourceResolver("classpath:markup"));
+        // context.read() in th:text expression
+        String html = "<div th:text=\"context.read('test-data.json')\"></div>";
+        String rendered = markup.processString(html, null);
+        assertTrue(rendered.contains("karate"));
+        assertTrue(rendered.contains("version"));
+    }
+
+    @Test
+    void testContextMethods() {
+        // Test context.read, context.toJson, context.template using file-based template
+        String rendered = render("context-test.html");
+        // context.template returns current template name
+        assertTrue(rendered.contains("<div id=\"template\">context-test.html</div>"), "template not found in: " + rendered);
+        // context.read returns file content (quotes are HTML-encoded in output)
+        assertTrue(rendered.contains("karate") && rendered.contains("version"), "read content not found in: " + rendered);
+        // context.toJson returns JSON string (quotes HTML-encoded as &quot;)
+        assertTrue(rendered.contains("msg") && rendered.contains("hello"), "json not found in: " + rendered);
+    }
 
 }

@@ -28,6 +28,9 @@ import net.minidev.json.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.netty.handler.codec.http.QueryStringDecoder;
+import io.netty.handler.codec.http.QueryStringEncoder;
+
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -223,6 +226,68 @@ public class Http {
             default:
                 return raw;
         }
+    }
+
+    // ========== Query String Utilities ==========
+
+    /**
+     * Parse a URI path that may contain query parameters.
+     * Returns a Pair where left is the path (without query string) and right is the params map.
+     * <p>
+     * Examples:
+     * - "/test?name=john" -> Pair.of("/test", {name: [john]})
+     * - "/test" -> Pair.of("/test", {})
+     * - "/api/users?id=1&id=2" -> Pair.of("/api/users", {id: [1, 2]})
+     */
+    public static Pair<Object> parsePathAndParams(String uri) {
+        QueryStringDecoder decoder = new QueryStringDecoder(uri);
+        String path = decoder.path();
+        Map<String, List<String>> params = decoder.parameters();
+        return Pair.of(path, params);
+    }
+
+    /**
+     * Build a URI with query parameters from a path and params map.
+     * <p>
+     * Example: buildUri("/test", Map.of("name", List.of("john"))) -> "/test?name=john"
+     */
+    public static String buildUri(String path, Map<String, List<String>> params) {
+        if (params == null || params.isEmpty()) {
+            return path;
+        }
+        QueryStringEncoder encoder = new QueryStringEncoder(path);
+        params.forEach((name, values) -> {
+            if (values != null) {
+                values.forEach(value -> encoder.addParam(name, value));
+            }
+        });
+        return encoder.toString();
+    }
+
+    /**
+     * Extract just the path portion from a URI (strips query string).
+     */
+    public static String extractPath(String uri) {
+        int qpos = uri.indexOf('?');
+        return qpos == -1 ? uri : uri.substring(0, qpos);
+    }
+
+    /**
+     * Extract just the query string from a URI (without the leading '?').
+     * Returns null if no query string present.
+     */
+    public static String extractQueryString(String uri) {
+        int qpos = uri.indexOf('?');
+        return qpos == -1 ? null : uri.substring(qpos + 1);
+    }
+
+    /**
+     * Parse query string parameters from a URI.
+     * Returns empty map if no query string present.
+     */
+    public static Map<String, List<String>> parseQueryParams(String uri) {
+        QueryStringDecoder decoder = new QueryStringDecoder(uri);
+        return decoder.parameters();
     }
 
 }

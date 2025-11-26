@@ -46,11 +46,11 @@ class KarateTemplateContext implements IEngineContext {
     private final Engine engine;
     private final Map<String, Object> vars = new HashMap<>();
 
-    KarateTemplateContext(IEngineContext wrapped, Engine engine) {
+    KarateTemplateContext(IEngineContext wrapped, Engine engine, ResourceResolver resolver) {
         this.wrapped = wrapped;
         this.engine = engine;
         this.engine.put("_", vars);
-        this.engine.put("context", new MarkupJs(this));
+        this.engine.put("context", new MarkupJs(this, resolver));
     }
 
     void evalGlobal(String src) {

@@ -24,6 +24,7 @@
 package io.karatelabs.io.http;
 
 import io.karatelabs.common.FileUtils;
+import io.karatelabs.common.Json;
 import io.karatelabs.common.Pair;
 import io.karatelabs.common.ResourceType;
 import io.karatelabs.common.StringUtils;
@@ -336,6 +337,28 @@ public class HttpRequest implements SimpleObject {
         };
     }
 
+    private Invokable paramInt() {
+        return args -> {
+            if (args.length > 0) {
+                String val = getParam(args[0] + "");
+                return val == null ? null : Integer.parseInt(val);
+            } else {
+                throw new RuntimeException("missing argument for paramInt()");
+            }
+        };
+    }
+
+    private Invokable paramJson() {
+        return args -> {
+            if (args.length > 0) {
+                String val = getParam(args[0] + "");
+                return val == null ? null : Json.of(val).value();
+            } else {
+                throw new RuntimeException("missing argument for paramJson()");
+            }
+        };
+    }
+
     private Invokable header() {
         return args -> {
             if (args.length > 0) {
@@ -389,6 +412,10 @@ public class HttpRequest implements SimpleObject {
                 return StringUtils.simplify(params, true);
             case "param":
                 return param();
+            case "paramInt":
+                return paramInt();
+            case "paramJson":
+                return paramJson();
             case "paramValues":
                 return paramValues();
             case "headers":

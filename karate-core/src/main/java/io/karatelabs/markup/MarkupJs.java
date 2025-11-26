@@ -23,27 +23,33 @@
  */
 package io.karatelabs.markup;
 
-import io.karatelabs.js.SimpleObject;
+import io.karatelabs.common.FileUtils;
+import io.karatelabs.common.Json;
+import io.karatelabs.common.Resource;
 import org.thymeleaf.engine.TemplateData;
 import org.thymeleaf.templateresource.ITemplateResource;
 
-class MarkupJs implements SimpleObject {
+/**
+ * Implementation of MarkupContext for plain templating mode (without server).
+ * Provides access to template metadata, resource reading, and JSON utilities.
+ */
+class MarkupJs implements MarkupContext {
 
     final KarateTemplateContext markup;
+    final ResourceResolver resolver;
 
-    MarkupJs(KarateTemplateContext markup) {
+    MarkupJs(KarateTemplateContext markup, ResourceResolver resolver) {
         this.markup = markup;
+        this.resolver = resolver;
     }
 
     @Override
-    public Object jsGet(String name) {
-        return switch (name) {
-            case "template" -> getTemplateName();
-            case "caller" -> getCallerTemplateName();
-            default -> null;
-        };
+    public String getTemplateName() {
+        String name = markup.wrapped.getTemplateData().getTemplate();
+        return name.startsWith("/") ? name.substring(1) : name;
     }
 
+    @Override
     public String getCallerTemplateName() {
         TemplateData td = markup.wrapped.getTemplateData();
         ITemplateResource tr = td.getTemplateResource();
@@ -53,9 +59,26 @@ class MarkupJs implements SimpleObject {
         return null;
     }
 
-    public String getTemplateName() {
-        String name = markup.wrapped.getTemplateData().getTemplate();
-        return name.startsWith("/") ? name.substring(1) : name;
+    @Override
+    public String read(String path) {
+        Resource resource = resolver.resolve(path, null);
+        return resource.getText();
+    }
+
+    @Override
+    public byte[] readBytes(String path) {
+        Resource resource = resolver.resolve(path, null);
+        return FileUtils.toBytes(resource.getStream());
+    }
+
+    @Override
+    public String toJson(Object obj) {
+        return Json.stringifyStrict(obj);
+    }
+
+    @Override
+    public Object fromJson(String json) {
+        return Json.of(json).value();
     }
 
 }

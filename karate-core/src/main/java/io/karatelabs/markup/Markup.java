@@ -55,12 +55,12 @@ public class Markup {
     private final StandardEngineContextFactory standardFactory;
     private final TemplateEngine wrapped;
 
-    Markup(Engine engine, IDialect... dialects) {
+    Markup(Engine engine, ResourceResolver resolver, IDialect... dialects) {
         standardFactory = new StandardEngineContextFactory();
         wrapped = new TemplateEngine();
         wrapped.setEngineContextFactory((IEngineConfiguration ec, TemplateData data, Map<String, Object> attrs, IContext context) -> {
             IEngineContext engineContext = standardFactory.createEngineContext(ec, data, attrs, context);
-            return new KarateTemplateContext(engineContext, engine);
+            return new KarateTemplateContext(engineContext, engine, resolver);
         });
         // the next line is a set which clears and replaces all existing / default
         wrapped.setDialect(new KarateStandardDialect());
@@ -112,7 +112,7 @@ public class Markup {
     }
 
     public static Markup init(Engine engine, MarkupConfig config) {
-        Markup markup = new Markup(engine, new KarateProcessorDialect(config));
+        Markup markup = new Markup(engine, config.getResolver(), new KarateProcessorDialect(config));
         markup.wrapped.setTemplateResolver(new HtmlTemplateResolver(config));
         return markup;
     }
