@@ -327,4 +327,39 @@ class RequestHandlerTest {
         assertEquals(403, response.getStatus());
     }
 
+    // Path traversal protection tests
+
+    @Test
+    void testPathTraversalBlockedOnStatic() {
+        HttpResponse response = get("/pub/../../../etc/passwd");
+
+        assertEquals(403, response.getStatus());
+        assertTrue(response.getBodyString().contains("Forbidden"));
+    }
+
+    @Test
+    void testPathTraversalBlockedOnApi() {
+        HttpResponse response = get("/api/../../../etc/passwd");
+
+        assertEquals(403, response.getStatus());
+        assertTrue(response.getBodyString().contains("Forbidden"));
+    }
+
+    @Test
+    void testPathTraversalBlockedOnTemplate() {
+        HttpResponse response = get("/../../../etc/passwd");
+
+        assertEquals(403, response.getStatus());
+        assertTrue(response.getBodyString().contains("Forbidden"));
+    }
+
+    @Test
+    void testEncodedPathTraversalBlocked() {
+        // %2e%2e = ".."
+        HttpResponse response = get("/pub/%2e%2e/%2e%2e/etc/passwd");
+
+        assertEquals(403, response.getStatus());
+        assertTrue(response.getBodyString().contains("Forbidden"));
+    }
+
 }

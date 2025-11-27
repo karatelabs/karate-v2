@@ -237,4 +237,99 @@ class MarkupTest {
         assertTrue(rendered.contains("<span>2</span>-<span>c</span>"), "Third item index should be 2: " + rendered);
     }
 
+    // ========== XSS Prevention Tests ==========
+    // These tests verify that th:text properly escapes HTML to prevent XSS attacks.
+    // This is Thymeleaf's built-in behavior - these tests document and verify it.
+
+    @Test
+    void testThTextEscapesScriptTags() {
+        Engine js = new Engine();
+        js.put("userInput", "<script>alert('xss')</script>");
+        Markup markup = Markup.init(js, new RootResourceResolver("classpath:markup"));
+
+        String html = "<div th:text=\"userInput\">placeholder</div>";
+        String rendered = markup.processString(html, null);
+
+        // Script tags should be escaped, not executable
+        assertFalse(rendered.contains("<script>"), "Script tag should be escaped");
+        assertTrue(rendered.contains("&lt;script&gt;"), "Should contain escaped script tag");
+        assertTrue(rendered.contains("&lt;/script&gt;"), "Should contain escaped closing tag");
+    }
+
+    @Test
+    void testThTextEscapesHtmlEntities() {
+        Engine js = new Engine();
+        js.put("userInput", "<b>bold</b> & \"quoted\" 'apostrophe'");
+        Markup markup = Markup.init(js, new RootResourceResolver("classpath:markup"));
+
+        String html = "<div th:text=\"userInput\">placeholder</div>";
+        String rendered = markup.processString(html, null);
+
+        // All special HTML characters should be escaped
+        assertFalse(rendered.contains("<b>"), "HTML tags should be escaped");
+        assertTrue(rendered.contains("&lt;b&gt;"), "Should contain escaped <b>");
+        assertTrue(rendered.contains("&amp;"), "Ampersand should be escaped");
+        assertTrue(rendered.contains("&quot;") || rendered.contains("&#34;"), "Quotes should be escaped");
+    }
+
+    @Test
+    void testThTextEscapesEventHandlers() {
+        Engine js = new Engine();
+        js.put("userInput", "<img src=x onerror=alert('xss')>");
+        Markup markup = Markup.init(js, new RootResourceResolver("classpath:markup"));
+
+        String html = "<div th:text=\"userInput\">placeholder</div>";
+        String rendered = markup.processString(html, null);
+
+        // Event handler injection should be escaped - the < becomes &lt; so it's not an HTML tag
+        assertFalse(rendered.contains("<img"), "IMG tag should be escaped");
+        assertTrue(rendered.contains("&lt;img"), "Should contain escaped img tag");
+        // The onerror= text is present but not executable because it's inside escaped text
+        assertTrue(rendered.contains("onerror="), "Text contains onerror but it's escaped");
+    }
+
+    @Test
+    void testThTextEscapesJavascriptUrl() {
+        Engine js = new Engine();
+        js.put("userInput", "<a href=\"javascript:alert('xss')\">click</a>");
+        Markup markup = Markup.init(js, new RootResourceResolver("classpath:markup"));
+
+        String html = "<div th:text=\"userInput\">placeholder</div>";
+        String rendered = markup.processString(html, null);
+
+        // Javascript URL should be escaped as text
+        assertFalse(rendered.contains("<a href"), "Anchor tag should be escaped");
+        assertTrue(rendered.contains("&lt;a"), "Should contain escaped anchor");
+    }
+
+    @Test
+    void testThUtextDoesNotEscape() {
+        // Document that th:utext does NOT escape - should only be used with trusted content
+        Engine js = new Engine();
+        js.put("trustedHtml", "<b>bold</b>");
+        Markup markup = Markup.init(js, new RootResourceResolver("classpath:markup"));
+
+        String html = "<div th:utext=\"trustedHtml\">placeholder</div>";
+        String rendered = markup.processString(html, null);
+
+        // th:utext renders HTML as-is (use only with trusted content!)
+        assertTrue(rendered.contains("<b>bold</b>"), "th:utext should render HTML unescaped");
+    }
+
+    @Test
+    void testThAttrEscapesAttributeValues() {
+        // Test escaping in th:title (standard attribute) context
+        Engine js = new Engine();
+        js.put("userTitle", "Title with \"quotes\" and <tags>");
+        Markup markup = Markup.init(js, new RootResourceResolver("classpath:markup"));
+
+        String html = "<div th:title=\"userTitle\">content</div>";
+        String rendered = markup.processString(html, null);
+
+        // Attribute values should be properly escaped
+        assertTrue(rendered.contains("title="), "Should have title attribute");
+        // Quotes and angle brackets should be escaped in attribute value
+        assertFalse(rendered.contains("<tags>"), "Tags in attr should be escaped");
+    }
+
 }

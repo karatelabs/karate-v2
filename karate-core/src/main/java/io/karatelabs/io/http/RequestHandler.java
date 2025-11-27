@@ -238,6 +238,11 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
     private HttpResponse handleStatic(HttpRequest request, HttpResponse response, ServerContext context) {
         String path = request.getPath();
 
+        // Path traversal protection
+        if (!PathSecurity.isSafe(path)) {
+            return forbidden(response, "Invalid path");
+        }
+
         // Use path without leading slash as resource path
         // e.g., /pub/app.js -> pub/app.js
         String resourcePath = path.startsWith("/") ? path.substring(1) : path;
@@ -276,6 +281,11 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
 
     private HttpResponse handleApi(HttpRequest request, HttpResponse response, ServerContext context) {
         String path = request.getPath();
+
+        // Path traversal protection
+        if (!PathSecurity.isSafe(path)) {
+            return forbidden(response, "Invalid path");
+        }
 
         // Convert API path to JS file path: /api/users -> api/users.js
         String jsPath = path.substring(1); // Remove leading /
@@ -329,6 +339,11 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
 
     private HttpResponse handleTemplate(HttpRequest request, HttpResponse response, ServerContext context) {
         String path = request.getPath();
+
+        // Path traversal protection
+        if (!PathSecurity.isSafe(path)) {
+            return forbidden(response, "Invalid path");
+        }
 
         // Convert path to template: /signin -> signin.html, / -> index.html
         String templatePath = path.equals("/") ? "index.html" : path.substring(1);
@@ -421,6 +436,13 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
 
         // Fallback to simple text
         response.setBody("Not Found: " + path);
+        response.setHeader("Content-Type", "text/plain");
+        return response;
+    }
+
+    private HttpResponse forbidden(HttpResponse response, String message) {
+        response.setStatus(403);
+        response.setBody("Forbidden: " + message);
         response.setHeader("Content-Type", "text/plain");
         return response;
     }
