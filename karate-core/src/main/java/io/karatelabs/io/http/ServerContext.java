@@ -249,6 +249,7 @@ public class ServerContext implements MarkupContext {
             case "request" -> request;
             case "response" -> response;
             case "session" -> session;
+            case "csrf" -> getCsrfToken();
 
             default -> null;
         };
@@ -327,6 +328,19 @@ public class ServerContext implements MarkupContext {
         String hxRequest = request.getHeader("HX-Request");
         String xhrHeader = request.getHeader("X-Requested-With");
         return hxRequest != null || "XMLHttpRequest".equals(xhrHeader);
+    }
+
+    /**
+     * Get the CSRF token object for templates.
+     * Returns a CsrfToken with token, headerName, and fieldName properties.
+     *
+     * @return CsrfToken object or null if CSRF is disabled or no session
+     */
+    public CsrfProtection.CsrfToken getCsrfToken() {
+        if (config == null || !config.isCsrfEnabled()) {
+            return null;
+        }
+        return CsrfProtection.createTemplateToken(session);
     }
 
 }

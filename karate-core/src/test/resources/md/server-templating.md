@@ -10,6 +10,7 @@ This guide documents the server-side templating system used in Karate for buildi
 4. [Built-in Objects](#built-in-objects)
 5. [HTMX Integration](#htmx-integration)
 6. [Common Patterns](#common-patterns)
+7. [Server Setup](#server-setup)
 
 ---
 
@@ -1284,6 +1285,153 @@ if (!session.user) {
     subscriptions: session.user.subscriptions
   };
 }
+```
+
+---
+
+## Server Setup
+
+This section covers how to configure and start the Karate HTTP server for serving templates and APIs.
+
+### Basic Server Setup
+
+```java
+import io.karatelabs.io.http.*;
+import io.karatelabs.markup.*;
+import io.karatelabs.markup.htmx.HtmxDialect;
+import io.karatelabs.js.Engine;
+
+// 1. Create resource resolver (classpath or file-based)
+ResourceResolver resolver = (path, caller) -> Resource.path("classpath:web/" + path);
+
+// 2. Configure the server
+ServerConfig config = new ServerConfig()
+    .resourceRoot("classpath:web")       // Root for templates/resources
+    .sessionStore(new InMemorySessionStore())  // Enable sessions
+    .sessionExpirySeconds(3600)          // 1 hour session timeout
+    .apiPrefix("/api/")                  // API routes prefix
+    .staticPrefix("/pub/")               // Static file routes prefix
+    .devMode(true);                      // Hot reload templates (dev only)
+
+// 3. Create request handler
+RequestHandler handler = new RequestHandler(config, resolver);
+
+// 4. Start the server
+HttpServer server = HttpServer.start(8080, handler);
+```
+
+### ServerConfig Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `resourceRoot(path)` | none | Root path for templates and resources |
+| `sessionStore(store)` | null | Session store (null = no sessions) |
+| `sessionExpirySeconds(sec)` | 600 | Session timeout in seconds |
+| `sessionCookieName(name)` | `"karate.sid"` | Name of the session cookie |
+| `apiPrefix(prefix)` | `"/api/"` | URL prefix for API routes |
+| `staticPrefix(prefix)` | `"/pub/"` | URL prefix for static files |
+| `devMode(bool)` | false | Enable hot reload and disable caching |
+| `csrfEnabled(bool)` | true | Enable CSRF protection |
+| `securityHeadersEnabled(bool)` | true | Add security headers to responses |
+| `contentSecurityPolicy(csp)` | null | Custom CSP header value |
+| `hstsEnabled(bool)` | false | Enable HSTS header (production only) |
+
+### Routing
+
+Requests are routed based on path:
+
+| Path Pattern | Handler | Example |
+|--------------|---------|---------|
+| `/pub/*` | Static file | `/pub/app.js` → `web/pub/app.js` |
+| `/api/*` | JavaScript API | `/api/users` → `web/api/users.js` |
+| `/*` | HTML template | `/signin` → `web/signin.html` |
+
+### Security Features
+
+#### CSRF Protection (enabled by default)
+
+CSRF tokens are automatically generated and validated on POST/PUT/PATCH/DELETE requests.
+
+**In templates:**
+```html
+<form method="post" th:action="context.template">
+    <input type="hidden" name="_csrf" th:value="csrf.token">
+    <!-- form fields -->
+    <button type="submit">Submit</button>
+</form>
+```
+
+**For HTMX/AJAX requests:**
+```html
+<meta name="csrf-token" th:content="csrf.token">
+<script>
+    // Add CSRF token to all HTMX requests
+    document.body.addEventListener('htmx:configRequest', (e) => {
+        e.detail.headers['X-CSRF-Token'] =
+            document.querySelector('meta[name="csrf-token"]').content;
+    });
+</script>
+```
+
+#### Security Headers
+
+These headers are automatically added to HTML responses:
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY` (configurable)
+- `X-XSS-Protection: 1; mode=block`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Content-Security-Policy` (if configured)
+- `Strict-Transport-Security` (if HSTS enabled, production only)
+
+#### Secure Cookies
+
+Session cookies are created with:
+- `HttpOnly` - Always set
+- `Secure` - Set when not in devMode
+- `SameSite=Strict` - Set when not in devMode
+
+### Custom Java Objects
+
+Inject custom Java objects into templates via the external bridge:
+
+```java
+// Create a utilities class
+public class AppUtils {
+    public String formatDate(long timestamp) {
+        return new SimpleDateFormat("yyyy-MM-dd").format(new Date(timestamp));
+    }
+    public List<Price> getPrices() {
+        return priceService.getAll();
+    }
+}
+
+// Configure the engine with external bridge
+Engine engine = new Engine();
+engine.setExternalBridge((name, args) -> {
+    if ("utils".equals(name)) {
+        return new AppUtils();
+    }
+    return null;
+});
+
+// Use in templates
+<span th:text="utils.formatDate(item.createdAt)">2024-01-01</span>
+```
+
+### Programmatic Template Rendering
+
+Render templates outside of HTTP requests:
+
+```java
+Engine engine = new Engine();
+MarkupConfig markupConfig = new MarkupConfig();
+markupConfig.setResolver(resolver);
+
+Markup markup = Markup.init(engine, markupConfig, new HtmxDialect());
+
+// Render with variables
+Map<String, Object> vars = Map.of("name", "John", "items", itemList);
+String html = markup.processPath("email-template.html", vars);
 ```
 
 ---

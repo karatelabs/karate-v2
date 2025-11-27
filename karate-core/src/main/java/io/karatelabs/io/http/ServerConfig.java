@@ -48,6 +48,13 @@ public class ServerConfig {
     // Security
     private boolean csrfEnabled = true;
     private String[] allowedOrigins;
+    private boolean securityHeadersEnabled = true;
+    private String contentSecurityPolicy;
+    private String xFrameOptions = "DENY";
+    private String referrerPolicy = "strict-origin-when-cross-origin";
+    private boolean hstsEnabled = false;
+    private long hstsMaxAge = 31536000; // 1 year in seconds
+    private boolean hstsIncludeSubDomains = true;
 
     // Error templates
     private String errorTemplate404;
@@ -115,6 +122,34 @@ public class ServerConfig {
 
     public String[] getAllowedOrigins() {
         return allowedOrigins;
+    }
+
+    public boolean isSecurityHeadersEnabled() {
+        return securityHeadersEnabled;
+    }
+
+    public String getContentSecurityPolicy() {
+        return contentSecurityPolicy;
+    }
+
+    public String getXFrameOptions() {
+        return xFrameOptions;
+    }
+
+    public String getReferrerPolicy() {
+        return referrerPolicy;
+    }
+
+    public boolean isHstsEnabled() {
+        return hstsEnabled;
+    }
+
+    public long getHstsMaxAge() {
+        return hstsMaxAge;
+    }
+
+    public boolean isHstsIncludeSubDomains() {
+        return hstsIncludeSubDomains;
     }
 
     public String getErrorTemplate404() {
@@ -196,6 +231,41 @@ public class ServerConfig {
 
     public ServerConfig allowedOrigins(String... allowedOrigins) {
         this.allowedOrigins = allowedOrigins;
+        return this;
+    }
+
+    public ServerConfig securityHeadersEnabled(boolean securityHeadersEnabled) {
+        this.securityHeadersEnabled = securityHeadersEnabled;
+        return this;
+    }
+
+    public ServerConfig contentSecurityPolicy(String contentSecurityPolicy) {
+        this.contentSecurityPolicy = contentSecurityPolicy;
+        return this;
+    }
+
+    public ServerConfig xFrameOptions(String xFrameOptions) {
+        this.xFrameOptions = xFrameOptions;
+        return this;
+    }
+
+    public ServerConfig referrerPolicy(String referrerPolicy) {
+        this.referrerPolicy = referrerPolicy;
+        return this;
+    }
+
+    public ServerConfig hstsEnabled(boolean hstsEnabled) {
+        this.hstsEnabled = hstsEnabled;
+        return this;
+    }
+
+    public ServerConfig hstsMaxAge(long hstsMaxAge) {
+        this.hstsMaxAge = hstsMaxAge;
+        return this;
+    }
+
+    public ServerConfig hstsIncludeSubDomains(boolean hstsIncludeSubDomains) {
+        this.hstsIncludeSubDomains = hstsIncludeSubDomains;
         return this;
     }
 

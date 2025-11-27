@@ -392,4 +392,49 @@ class ServerContextTest {
         assertNull(context.jsGet("unknownKey"));
     }
 
+    // CSRF tests
+
+    @Test
+    void testCsrfTokenWithSession() {
+        context.init();
+
+        CsrfProtection.CsrfToken csrf = (CsrfProtection.CsrfToken) context.jsGet("csrf");
+
+        assertNotNull(csrf);
+        assertNotNull(csrf.getToken());
+        assertEquals("X-CSRF-Token", csrf.getHeaderName());
+        assertEquals("_csrf", csrf.getFieldName());
+    }
+
+    @Test
+    void testCsrfTokenWithoutSession() {
+        // No session initialized
+        CsrfProtection.CsrfToken csrf = (CsrfProtection.CsrfToken) context.jsGet("csrf");
+
+        // Should still return token object, but with null token
+        assertNotNull(csrf);
+        assertNull(csrf.getToken());
+    }
+
+    @Test
+    void testCsrfTokenDisabled() {
+        ServerConfig configNoCsrf = new ServerConfig()
+                .sessionStore(new InMemorySessionStore())
+                .csrfEnabled(false);
+        ServerContext contextNoCsrf = new ServerContext(request, response, configNoCsrf);
+        contextNoCsrf.init();
+
+        assertNull(contextNoCsrf.jsGet("csrf"));
+    }
+
+    @Test
+    void testCsrfTokenViaGetMethod() {
+        context.init();
+
+        CsrfProtection.CsrfToken csrf = context.getCsrfToken();
+
+        assertNotNull(csrf);
+        assertNotNull(csrf.getToken());
+    }
+
 }

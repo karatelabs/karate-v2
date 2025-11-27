@@ -22,6 +22,13 @@ class ServerConfigTest {
         assertTrue(config.isStaticPrefixEnabled());
         assertTrue(config.isCsrfEnabled());
         assertNull(config.getAllowedOrigins());
+        assertTrue(config.isSecurityHeadersEnabled());
+        assertNull(config.getContentSecurityPolicy());
+        assertEquals("DENY", config.getXFrameOptions());
+        assertEquals("strict-origin-when-cross-origin", config.getReferrerPolicy());
+        assertFalse(config.isHstsEnabled());
+        assertEquals(31536000, config.getHstsMaxAge());
+        assertTrue(config.isHstsIncludeSubDomains());
         assertNull(config.getErrorTemplate404());
         assertNull(config.getErrorTemplate500());
         assertNull(config.getRequestInterceptor());
@@ -159,6 +166,33 @@ class ServerConfigTest {
         Session session = config.createSession();
 
         assertNull(session);
+    }
+
+    @Test
+    void testSecuritySettings() {
+        ServerConfig config = new ServerConfig()
+                .securityHeadersEnabled(true)
+                .contentSecurityPolicy("default-src 'self'")
+                .xFrameOptions("SAMEORIGIN")
+                .referrerPolicy("no-referrer")
+                .hstsEnabled(true)
+                .hstsMaxAge(86400)
+                .hstsIncludeSubDomains(false);
+
+        assertTrue(config.isSecurityHeadersEnabled());
+        assertEquals("default-src 'self'", config.getContentSecurityPolicy());
+        assertEquals("SAMEORIGIN", config.getXFrameOptions());
+        assertEquals("no-referrer", config.getReferrerPolicy());
+        assertTrue(config.isHstsEnabled());
+        assertEquals(86400, config.getHstsMaxAge());
+        assertFalse(config.isHstsIncludeSubDomains());
+    }
+
+    @Test
+    void testSecurityHeadersDisabled() {
+        ServerConfig config = new ServerConfig().securityHeadersEnabled(false);
+
+        assertFalse(config.isSecurityHeadersEnabled());
     }
 
     @Test

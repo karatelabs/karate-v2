@@ -187,7 +187,7 @@ public class HttpRequest implements SimpleObject {
     }
 
     public List<String> getParamValues(String name) {
-        return params.get(name);
+        return params == null ? null : params.get(name);
     }
 
     public String getParam(String name) {

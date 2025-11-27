@@ -211,4 +211,120 @@ class RequestHandlerTest {
         assertEquals(200, response.getStatus());
     }
 
+    // Security headers tests
+
+    @Test
+    void testSecurityHeadersOnHtmlResponse() {
+        HttpResponse response = get("/");
+
+        assertEquals(200, response.getStatus());
+        assertTrue(response.getHeader("Content-Type").contains("text/html"));
+
+        // Security headers should be applied to HTML responses
+        assertEquals("nosniff", response.getHeader("X-Content-Type-Options"));
+        assertEquals("DENY", response.getHeader("X-Frame-Options"));
+        assertEquals("1; mode=block", response.getHeader("X-XSS-Protection"));
+        assertEquals("strict-origin-when-cross-origin", response.getHeader("Referrer-Policy"));
+    }
+
+    @Test
+    void testSecurityHeadersNotOnApiResponse() {
+        HttpResponse response = get("/api/hello?name=test");
+
+        assertEquals(200, response.getStatus());
+
+        // Security headers should NOT be applied to non-HTML responses
+        assertNull(response.getHeader("X-Content-Type-Options"));
+        assertNull(response.getHeader("X-Frame-Options"));
+    }
+
+    @Test
+    void testSecurityHeadersNotOnStaticJs() {
+        HttpResponse response = get("/pub/app.js");
+
+        assertEquals(200, response.getStatus());
+
+        // Security headers should NOT be applied to static JS
+        assertNull(response.getHeader("X-Content-Type-Options"));
+        assertNull(response.getHeader("X-Frame-Options"));
+    }
+
+    // CSRF validation tests
+
+    @Test
+    void testCsrfValidationBlocksPostWithoutToken() {
+        // Create a session first
+        HttpResponse sessionResponse = get("/api/session");
+        String setCookie = sessionResponse.getHeader("Set-Cookie");
+        String sessionCookie = setCookie.split(";")[0];
+
+        // POST without CSRF token should be blocked
+        HttpResponse response = harness.request()
+                .path("/api/hello")
+                .header("Cookie", sessionCookie)
+                .post();
+
+        assertEquals(403, response.getStatus());
+        assertTrue(response.getBodyString().contains("CSRF"));
+    }
+
+    @Test
+    void testCsrfValidationAllowsPostWithValidToken() {
+        // Create a session and get the CSRF token
+        Session session = sessionStore.create(600);
+        String csrfToken = CsrfProtection.getOrCreateToken(session);
+        String sessionCookie = "karate.sid=" + session.getId();
+
+        // POST with valid CSRF token should succeed
+        HttpResponse response = harness.request()
+                .path("/api/hello?name=test")
+                .header("Cookie", sessionCookie)
+                .header("X-CSRF-Token", csrfToken)
+                .post();
+
+        assertEquals(200, response.getStatus());
+    }
+
+    @Test
+    void testCsrfValidationAllowsPostWithHtmxHeader() {
+        // Create a session and get the CSRF token
+        Session session = sessionStore.create(600);
+        String csrfToken = CsrfProtection.getOrCreateToken(session);
+        String sessionCookie = "karate.sid=" + session.getId();
+
+        // POST with HX-CSRF-Token header should succeed
+        HttpResponse response = harness.request()
+                .path("/api/hello?name=test")
+                .header("Cookie", sessionCookie)
+                .header("HX-CSRF-Token", csrfToken)
+                .post();
+
+        assertEquals(200, response.getStatus());
+    }
+
+    @Test
+    void testCsrfValidationAllowsGetRequests() {
+        // GET requests should not require CSRF token
+        HttpResponse response = get("/api/hello?name=world");
+
+        assertEquals(200, response.getStatus());
+    }
+
+    @Test
+    void testCsrfValidationBlocksInvalidToken() {
+        // Create a session
+        Session session = sessionStore.create(600);
+        CsrfProtection.getOrCreateToken(session); // Generate the real token
+        String sessionCookie = "karate.sid=" + session.getId();
+
+        // POST with invalid CSRF token should be blocked
+        HttpResponse response = harness.request()
+                .path("/api/hello")
+                .header("Cookie", sessionCookie)
+                .header("X-CSRF-Token", "invalid-token")
+                .post();
+
+        assertEquals(403, response.getStatus());
+    }
+
 }

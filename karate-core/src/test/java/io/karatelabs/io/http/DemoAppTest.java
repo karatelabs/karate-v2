@@ -32,6 +32,7 @@ class DemoAppTest {
                 .apiPrefix("/api/")
                 .staticPrefix("/pub/")
                 .devMode(true)
+                .csrfEnabled(false)  // Disable for demo tests (CSRF tested separately)
                 .logHandler(message -> logMessages.add(message));
 
         RootResourceResolver resolver = new RootResourceResolver("classpath:demo");

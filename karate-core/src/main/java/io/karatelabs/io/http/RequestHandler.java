@@ -25,7 +25,6 @@ package io.karatelabs.io.http;
 
 import io.karatelabs.common.FileUtils;
 import io.karatelabs.common.Resource;
-import io.karatelabs.common.ResourceNotFoundException;
 import io.karatelabs.common.ResourceType;
 import io.karatelabs.js.Engine;
 import io.karatelabs.markup.Markup;
@@ -95,6 +94,14 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
             // Load existing session from cookie if present
             loadSession(request, context);
 
+            // CSRF validation for state-changing requests (skip static files)
+            if (!config.isStaticPath(path)) {
+                HttpResponse csrfError = validateCsrf(request, context);
+                if (csrfError != null) {
+                    return csrfError;
+                }
+            }
+
             // Call request interceptor if configured
             if (config.getRequestInterceptor() != null) {
                 config.getRequestInterceptor().accept(request);
@@ -112,6 +119,11 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
 
             // Save session if modified
             saveSession(context, result);
+
+            // Apply security headers for HTML responses
+            if (SecurityHeaders.isHtmlResponse(result.getHeader("Content-Type"))) {
+                SecurityHeaders.apply(result, config);
+            }
 
             return result;
 
@@ -157,6 +169,36 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
                 return trimmed.substring(cookieName.length() + 1);
             }
         }
+        return null;
+    }
+
+    /**
+     * Validate CSRF token for state-changing requests.
+     *
+     * @return null if valid or not required, HttpResponse with 403 if invalid
+     */
+    private HttpResponse validateCsrf(HttpRequest request, ServerContext context) {
+        // Skip if CSRF protection is disabled
+        if (!config.isCsrfEnabled()) {
+            return null;
+        }
+
+        // Only validate state-changing methods
+        String method = request.getMethod();
+        if (!CsrfProtection.requiresValidation(method)) {
+            return null;
+        }
+
+        // Validate the token
+        Session session = context.getSession();
+        if (!CsrfProtection.validate(request, session)) {
+            HttpResponse response = new HttpResponse();
+            response.setStatus(403);
+            response.setBody("Forbidden: Invalid or missing CSRF token");
+            response.setHeader("Content-Type", "text/plain");
+            return response;
+        }
+
         return null;
     }
 
@@ -245,7 +287,7 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
             Resource resource;
             try {
                 resource = resolver.resolve(jsPath, null);
-            } catch (ResourceNotFoundException e) {
+            } catch (RuntimeException e) {
                 return notFound(response, path);
             }
             if (resource == null) {
@@ -299,7 +341,7 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
             Resource templateResource;
             try {
                 templateResource = resolver.resolve(templatePath, null);
-            } catch (ResourceNotFoundException e) {
+            } catch (RuntimeException e) {
                 return notFound(response, path);
             }
             if (templateResource == null) {
