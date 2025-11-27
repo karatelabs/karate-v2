@@ -124,8 +124,10 @@ public class UrlResource implements Resource {
     public Resource resolve(String path) {
         // For URL resources, resolve creates a new URL relative to this one
         try {
-            URL resolved = new URL(url, path);
-            return Resource.from(resolved, root);
+            URI baseUri = url.toURI();
+            URI resolvedUri = baseUri.resolve(path);
+            URL resolvedUrl = resolvedUri.toURL();
+            return Resource.from(resolvedUrl, root);
         } catch (Exception e) {
             // Fall back to path-based resolution from root
             return new PathResource(root.resolve(path), root);

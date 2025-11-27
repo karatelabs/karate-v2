@@ -2,6 +2,7 @@ package io.karatelabs.markup;
 
 import io.karatelabs.common.Resource;
 import io.karatelabs.js.Engine;
+import io.karatelabs.js.ExternalBridge;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -115,6 +116,125 @@ class MarkupTest {
         assertTrue(rendered.contains("karate") && rendered.contains("version"), "read content not found in: " + rendered);
         // context.toJson returns JSON string (quotes HTML-encoded as &quot;)
         assertTrue(rendered.contains("msg") && rendered.contains("hello"), "json not found in: " + rendered);
+    }
+
+    @Test
+    void testTemplateErrorLogging() {
+        // Test that template errors produce clear error messages with line info
+        Engine js = new Engine();
+        Markup markup = Markup.init(js, new RootResourceResolver("classpath:markup"));
+
+        // Template with intentional error - undefined variable
+        String template = """
+            <div>
+                <script ka:scope="global">
+                    _.value = undefinedVar.foo
+                </script>
+                <span th:text="value">test</span>
+            </div>
+            """;
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> {
+            markup.processString(template, null);
+        });
+
+        // Verify the root cause contains useful error info
+        Throwable rootCause = ex;
+        while (rootCause.getCause() != null) {
+            rootCause = rootCause.getCause();
+        }
+        String message = rootCause.getMessage();
+        assertTrue(message.contains("undefinedVar"), "Error should mention the undefined variable: " + message);
+    }
+
+    // ========== Java Interop Tests ==========
+
+    @Test
+    void testJavaInterop() {
+        // Test Java.type() in templates
+        Engine js = new Engine();
+        js.setExternalBridge(new ExternalBridge() {});
+        Markup markup = Markup.init(js, new RootResourceResolver("classpath:markup"));
+
+        // Test using Java.type() to create a UUID
+        String html = """
+            <div>
+                <script ka:scope="global">
+                    var UUID = Java.type('java.util.UUID');
+                    _.uuid = UUID.randomUUID().toString();
+                    _.uuidLen = _.uuid.length;
+                </script>
+                <span th:text="uuidLen">0</span>
+            </div>
+            """;
+        String rendered = markup.processString(html, null);
+        // UUID string is 36 characters (8-4-4-4-12 format)
+        assertTrue(rendered.contains("<span>36</span>"), "UUID length should be 36: " + rendered);
+    }
+
+    @Test
+    void testJavaInteropDateFormatting() {
+        // Test Java interop for date formatting as documented
+        Engine js = new Engine();
+        js.setExternalBridge(new ExternalBridge() {});
+        Markup markup = Markup.init(js, new RootResourceResolver("classpath:markup"));
+
+        String html = """
+            <div>
+                <script ka:scope="global">
+                    var SimpleDateFormat = Java.type('java.text.SimpleDateFormat');
+                    var Date = Java.type('java.util.Date');
+                    var formatter = new SimpleDateFormat('yyyy-MM-dd');
+                    // Use a fixed date for testing: Jan 15, 2024
+                    var date = new Date(1705276800000);
+                    _.formatted = formatter.format(date);
+                </script>
+                <span th:text="formatted">date</span>
+            </div>
+            """;
+        String rendered = markup.processString(html, null);
+        assertTrue(rendered.contains("2024-01-15"), "Formatted date should be 2024-01-15: " + rendered);
+    }
+
+    @Test
+    void testJavaInteropDirectClassPath() {
+        // Test direct class path access (without Java.type)
+        Engine js = new Engine();
+        js.setExternalBridge(new ExternalBridge() {});
+        Markup markup = Markup.init(js, new RootResourceResolver("classpath:markup"));
+
+        String html = """
+            <div>
+                <script ka:scope="global">
+                    // Math.max returns double, cast to int for clean output
+                    _.result = parseInt(java.lang.Math.max(10, 20));
+                </script>
+                <span th:text="result">0</span>
+            </div>
+            """;
+        String rendered = markup.processString(html, null);
+        assertTrue(rendered.contains("<span>20</span>"), "Math.max should return 20: " + rendered);
+    }
+
+    @Test
+    void testIterationStatusWithJavaInterop() {
+        // Test that Thymeleaf's IterationStatus works with Java interop
+        // The iter variable should be accessible directly without conversion
+        Engine js = new Engine();
+        js.setExternalBridge(new ExternalBridge() {});
+        Markup markup = Markup.init(js, new RootResourceResolver("classpath:markup"));
+
+        String html = """
+            <ul>
+                <li th:each="item, iter: ['a', 'b', 'c']">
+                    <span th:text="iter.index">0</span>-<span th:text="item">x</span>
+                </li>
+            </ul>
+            """;
+        String rendered = markup.processString(html, null);
+        assertTrue(rendered.contains("<span>0</span>-<span>a</span>"), "First item index should be 0: " + rendered);
+        assertTrue(rendered.contains("<span>1</span>-<span>b</span>"), "Second item index should be 1: " + rendered);
+        assertTrue(rendered.contains("<span>2</span>-<span>c</span>"), "Third item index should be 2: " + rendered);
     }
 
 }

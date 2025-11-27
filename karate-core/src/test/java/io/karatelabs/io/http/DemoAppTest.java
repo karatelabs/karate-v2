@@ -129,8 +129,9 @@ class DemoAppTest {
     @Test
     void testRequestGet() {
         HttpResponse response = get("/");
-        assertTrue(response.getBodyString().contains("id=\"method-get\""));
-        assertFalse(response.getBodyString().contains("id=\"method-post\""));
+        String body = response.getBodyString();
+        assertTrue(body.contains("id=\"method-get\""));
+        assertFalse(body.contains("id=\"method-post\""));
     }
 
     @Test
@@ -589,6 +590,19 @@ class DemoAppTest {
         // _.items should be accessible in th:each
         assertTrue(body.contains("Apple"));
         assertTrue(body.contains("Banana"));
+    }
+
+    @Test
+    void testSessionSyncAfterContextInit() {
+        // Test that 'session' variable is available after context.init()
+        // The index.html template calls context.init() and then uses session directly
+        HttpResponse response = get("/");
+        String cookie = extractSessionCookie(response);
+        // Session should have been created and cookie set
+        assertNotNull(cookie, "Session cookie should be set after context.init()");
+        // The template should be able to use 'session' directly after init
+        // (visit count is stored in session.visitCount)
+        assertTrue(response.getBodyString().contains(">1<"), "Visit count should be 1");
     }
 
 }

@@ -87,6 +87,15 @@ public interface MarkupContext extends SimpleObject {
     Object fromJson(String json);
 
     /**
+     * Returns the session object if one exists, null otherwise.
+     * Used by template engine to sync session variable after context.init() is called.
+     * Default returns null (no session in plain templating mode).
+     */
+    default Object getContextSession() {
+        return null;
+    }
+
+    /**
      * Default implementation of jsGet that exposes context methods to JavaScript.
      * Implementations can override to add more properties/methods.
      */

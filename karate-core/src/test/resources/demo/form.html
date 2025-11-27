@@ -5,15 +5,18 @@
 </head>
 <body>
 <script ka:scope="global">
+    // Use _.foo for computed values and form processing logic
     _.formData = null
     _.message = null
-    _.isPost = request.post
-    _.templateName = context.template
-    _.hasSession = typeof session !== 'undefined' && session != null
-    _.lastSubmission = _.hasSession ? session.lastSubmission : null
+
+    // Initialize session if needed - session is automatically available after init()
+    if (!session) {
+        context.init()
+    }
+    _.lastSubmission = session.lastSubmission || null
 
     if (request.post) {
-        // Handle form submission
+        // Handle form submission - computed data
         _.formData = {
             name: request.param('name'),
             email: request.param('email'),
@@ -23,10 +26,8 @@
         // Log the submission
         context.log('Form submitted:', context.toJson(_.formData))
 
-        // Store in session
-        if (typeof session !== 'undefined' && session) {
-            session.lastSubmission = _.formData
-        }
+        // Store in session - 'session' works directly
+        session.lastSubmission = _.formData
         _.message = 'Form submitted successfully!'
 
         // If redirect param is set, redirect
@@ -42,18 +43,18 @@
     <h1>Submit Form</h1>
 
     <!-- Success message -->
-    <div th:if="_.message" id="success-message" class="alert" th:text="_.message">Message</div>
+    <div th:if="message" id="success-message" class="alert" th:text="message">Message</div>
 
     <!-- Show submitted data -->
-    <div th:if="_.formData" id="submitted-data">
+    <div th:if="formData" id="submitted-data">
         <h3>Submitted Data:</h3>
-        <p>Name: <span th:text="_.formData.name">name</span></p>
-        <p>Email: <span th:text="_.formData.email">email</span></p>
-        <p>Age: <span th:text="_.formData.age">age</span></p>
+        <p>Name: <span th:text="formData.name">name</span></p>
+        <p>Email: <span th:text="formData.email">email</span></p>
+        <p>Age: <span th:text="formData.age">age</span></p>
     </div>
 
-    <!-- Form -->
-    <form method="post" th:action="_.templateName" id="main-form">
+    <!-- Form - use context.template directly -->
+    <form method="post" th:action="context.template" id="main-form">
         <div>
             <label for="name">Name:</label>
             <input type="text" id="name" name="name" />
@@ -80,9 +81,9 @@
     <div id="spinner" style="display:none">Loading...</div>
 
     <!-- Session data display -->
-    <div th:if="_.lastSubmission" id="session-data">
+    <div th:if="lastSubmission" id="session-data">
         <h3>Last Submission (from session):</h3>
-        <p th:text="context.toJson(_.lastSubmission)">JSON</p>
+        <p th:text="context.toJson(lastSubmission)">JSON</p>
     </div>
 </main>
 </body>

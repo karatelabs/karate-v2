@@ -99,8 +99,79 @@ public class Markup {
                 throw new TemplateOutputException("error flushing output writer", content, -1, -1, e);
             }
         } catch (Exception e) {
-            logger.error("template error: {}", StringUtils.throwableToString(e));
+            logTemplateError(content, e);
             throw new RuntimeException(e);
+        }
+    }
+
+    private static final int CONTEXT_LINES = 2;
+
+    private void logTemplateError(String template, Exception e) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("\n========== TEMPLATE ERROR ==========\n");
+
+        // Extract useful info from Thymeleaf exceptions
+        Throwable current = e;
+        String templateName = null;
+        int line = -1;
+        int col = -1;
+
+        while (current != null) {
+            // Check for Thymeleaf exceptions with position info
+            if (current instanceof org.thymeleaf.exceptions.TemplateProcessingException tpe) {
+                if (tpe.getTemplateName() != null) templateName = tpe.getTemplateName();
+                if (tpe.getLine() != null) line = tpe.getLine();
+                if (tpe.getCol() != null) col = tpe.getCol();
+            }
+            current = current.getCause();
+        }
+
+        // Show file path if it's different from template content (file-based template)
+        if (templateName != null && !templateName.equals(template)) {
+            sb.append("File: ").append(templateName).append("\n");
+        }
+
+        // Show line/col and context lines around the error
+        if (line > 0) {
+            sb.append("Line: ").append(line);
+            if (col > 0) sb.append(", Col: ").append(col);
+            sb.append("\n");
+            appendContextLines(sb, template, line);
+        } else {
+            // No line info available, show truncated template
+            if (template.length() > 200) {
+                sb.append("Template: ").append(template.substring(0, 200)).append("...\n");
+            } else {
+                sb.append("Template: ").append(template).append("\n");
+            }
+        }
+
+        // Find the root cause message
+        Throwable rootCause = e;
+        while (rootCause.getCause() != null) {
+            rootCause = rootCause.getCause();
+        }
+        sb.append("Error: ").append(rootCause.getMessage()).append("\n");
+        sb.append("====================================\n");
+
+        logger.error(sb.toString());
+
+        // Also log full stack trace at trace level for troubleshooting
+        if (logger.isTraceEnabled()) {
+            logger.trace("Full stack trace: {}", StringUtils.throwableToString(e));
+        }
+    }
+
+    private void appendContextLines(StringBuilder sb, String template, int errorLine) {
+        String[] lines = template.split("\n");
+        int start = Math.max(0, errorLine - CONTEXT_LINES - 1);
+        int end = Math.min(lines.length, errorLine + CONTEXT_LINES);
+        int lineNumWidth = String.valueOf(end).length();
+
+        for (int i = start; i < end; i++) {
+            int lineNum = i + 1;
+            String marker = (lineNum == errorLine) ? ">" : " ";
+            sb.append(String.format("%s %"+lineNumWidth+"d | %s%n", marker, lineNum, lines[i]));
         }
     }
 

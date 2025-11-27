@@ -5,34 +5,24 @@
 </head>
 <body>
 <script ka:scope="global">
-    // Test items data
     _.items = [
         { id: 1, name: 'Apple', price: 1.50 },
         { id: 2, name: 'Banana', price: 0.75 },
         { id: 3, name: 'Cherry', price: 2.00 }
     ]
-
-    // Test toJson/fromJson
     _.itemsJson = context.toJson(_.items)
-    _.itemsParsed = context.fromJson(_.itemsJson)
-
-    // Test read
     _.headerContent = context.read('header.html')
     _.readSucceeded = _.headerContent != null
-
-    // Store request state
-    _.isAjax = request.ajax
 </script>
 
-<!-- Only include full page wrapper for non-AJAX requests -->
-<div th:unless="_.isAjax">
+<div th:unless="request.ajax">
     <div th:replace="header.html"></div>
     <h1>Items List</h1>
 </div>
 
 <div id="items-container">
     <table>
-        <thead th:unless="_.isAjax">
+        <thead th:unless="request.ajax">
             <tr>
                 <th>ID</th>
                 <th>Name</th>
@@ -41,21 +31,21 @@
             </tr>
         </thead>
         <tbody id="items-list">
-            <tr th:each="item : _.items" th:id="'item-' + item.id">
+            <tr th:each="item : items">
                 <td th:text="item.id">ID</td>
                 <td th:text="item.name">Name</td>
-                <td th:text="'$' + item.price">Price</td>
+                <td th:text="item.price">Price</td>
                 <td>
                     <button ka:get="/api/items"
                             ka:vals="id:item.id"
-                            ka:target="'#item-' + item.id"
+                            ka:target="#items-list"
                             ka:swap="outerHTML">
                         Refresh
                     </button>
                     <button ka:delete="/api/items"
                             ka:vals="id:item.id"
-                            ka:confirm="'Delete ' + item.name + '?'"
-                            ka:target="'#item-' + item.id"
+                            ka:confirm="Are you sure?"
+                            ka:target="#items-list"
                             ka:swap="outerHTML">
                         Delete
                     </button>
@@ -66,7 +56,7 @@
 
     <!-- Loop with index -->
     <ul id="indexed-list">
-        <li th:each="item, iter : _.items">
+        <li th:each="item, iter : items">
             <span th:text="iter.index">0</span>:
             <span th:text="item.name">Name</span>
             <span th:if="iter.first">(first)</span>
@@ -75,10 +65,7 @@
     </ul>
 </div>
 
-<!-- Test JSON serialization output -->
-<div id="json-output" th:text="_.itemsJson">JSON here</div>
-
-<!-- Test context.read() worked -->
-<div id="read-check" th:if="_.readSucceeded">Read succeeded</div>
+<div id="json-output" th:text="itemsJson">JSON here</div>
+<div id="read-check" th:if="readSucceeded">Read succeeded</div>
 </body>
 </html>

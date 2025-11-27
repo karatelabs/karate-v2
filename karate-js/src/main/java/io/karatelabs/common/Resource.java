@@ -381,7 +381,7 @@ public interface Resource {
                 url = ClassLoader.getSystemResource(relativePath);
             }
             if (url == null) {
-                throw new RuntimeException("cannot find classpath resource: " + path);
+                throw new ResourceNotFoundException(path);
             }
             // Convert URL to Path for classpath resources
             try {

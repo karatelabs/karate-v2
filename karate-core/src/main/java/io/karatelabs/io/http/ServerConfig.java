@@ -23,6 +23,8 @@
  */
 package io.karatelabs.io.http;
 
+import io.karatelabs.js.ExternalBridge;
+
 import java.util.Arrays;
 import java.util.function.Consumer;
 
@@ -54,6 +56,9 @@ public class ServerConfig {
     // Callbacks
     private Consumer<HttpRequest> requestInterceptor;
     private Consumer<String> logHandler;
+
+    // Java interop bridge (default allows all classes)
+    private ExternalBridge externalBridge = new ExternalBridge() {};
 
     public ServerConfig() {
     }
@@ -126,6 +131,10 @@ public class ServerConfig {
 
     public Consumer<String> getLogHandler() {
         return logHandler;
+    }
+
+    public ExternalBridge getExternalBridge() {
+        return externalBridge;
     }
 
     // Fluent setters (builder pattern)
@@ -207,6 +216,16 @@ public class ServerConfig {
 
     public ServerConfig logHandler(Consumer<String> logHandler) {
         this.logHandler = logHandler;
+        return this;
+    }
+
+    /**
+     * Set a custom ExternalBridge to control Java interop.
+     * Override forType() to restrict which Java classes can be accessed from templates.
+     * By default, all classes are accessible.
+     */
+    public ServerConfig externalBridge(ExternalBridge externalBridge) {
+        this.externalBridge = externalBridge;
         return this;
     }
 

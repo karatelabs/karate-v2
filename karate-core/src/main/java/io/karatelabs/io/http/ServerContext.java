@@ -71,6 +71,9 @@ public class ServerContext implements MarkupContext {
     private final List<String> logMessages = new ArrayList<>();
     private final Map<String, Object> flash = new HashMap<>();
 
+    // Callback for syncing session to JS engine after init()
+    private java.util.function.Consumer<Session> onSessionInit;
+
     public ServerContext(HttpRequest request, HttpResponse response, ServerConfig config) {
         this.request = request;
         this.response = response;
@@ -117,6 +120,11 @@ public class ServerContext implements MarkupContext {
         return Json.of(json).value();
     }
 
+    @Override
+    public Object getContextSession() {
+        return session;
+    }
+
     // Server-specific methods
 
     /**
@@ -155,12 +163,25 @@ public class ServerContext implements MarkupContext {
 
     /**
      * Initialize a new session. If sessions are not enabled in config, this is a no-op.
+     * After creating the session, the onSessionInit callback is invoked to sync with JS engine.
      */
     public void init() {
         if (config != null && config.isSessionEnabled()) {
             this.session = config.createSession();
             this.closed = false;
+            // Notify JS engine to update its session variable
+            if (onSessionInit != null) {
+                onSessionInit.accept(this.session);
+            }
         }
+    }
+
+    /**
+     * Set a callback to be invoked after session initialization.
+     * Used by KarateTemplateContext to sync session to JS engine.
+     */
+    public void setOnSessionInit(java.util.function.Consumer<Session> callback) {
+        this.onSessionInit = callback;
     }
 
     /**
@@ -207,7 +228,7 @@ public class ServerContext implements MarkupContext {
             case "uuid" -> (Invokable) args -> uuid();
             case "init" -> (Invokable) args -> {
                 init();
-                return null;
+                return session;  // Return session so scripts can do: session = context.init()
             };
             case "close" -> (Invokable) args -> {
                 close();

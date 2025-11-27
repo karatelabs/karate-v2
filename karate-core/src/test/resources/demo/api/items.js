@@ -11,9 +11,9 @@ if (request.get) {
     // GET - list all or get single by ID
     var id = request.paramInt('id')
     if (id) {
-        var item = items.filter(function(i) { return i.id === id })[0]
-        if (item) {
-            response.body = item
+        var filtered = items.filter(function(i) { return i.id === id })
+        if (filtered.length > 0) {
+            response.body = filtered[0]
         } else {
             response.status = 404
             response.body = { error: 'Item not found', id: id }
@@ -40,8 +40,9 @@ if (request.put) {
     // PUT - update item
     var id = request.paramInt('id')
     var body = request.body
-    var item = items.filter(function(i) { return i.id === id })[0]
-    if (item) {
+    var filtered = items.filter(function(i) { return i.id === id })
+    if (filtered.length > 0) {
+        var item = filtered[0]
         item.name = body.name || item.name
         item.price = body.price !== undefined ? body.price : item.price
         response.body = item

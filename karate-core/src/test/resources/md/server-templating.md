@@ -60,7 +60,7 @@ Replaces element content with the evaluated expression.
 ```html
 <span th:text="user.name">Placeholder</span>
 <p th:text="'Hello, ' + user.name">Hello, Guest</p>
-<div th:text="_.message">Default message</div>
+<div th:text="message">Default message</div>
 ```
 
 #### `th:if` / `th:unless` - Conditional Rendering
@@ -228,28 +228,72 @@ Append file modification timestamp to URLs.
 
 ## Server-Side JavaScript
 
-### The Underscore Variable (`_`)
+### The Underscore Variable (`_`) - Setting Template Variables
 
-The `_` (underscore) variable is a special shared object for passing data from JavaScript to templates.
+The `_` (underscore) variable is a special object used **only in server-side JavaScript** to set variables that become available in template expressions.
+
+**Key Rule:** Use `_.foo` to **set** variables in `<script ka:scope>` blocks, then access as `foo` (without `_.`) in Thymeleaf expressions.
 
 ```html
 <script ka:scope="global">
-  // Set values in script
+  // Set values using _.foo syntax
   _.message = 'Hello World';
   _.items = [{id: 1, name: 'Apple'}, {id: 2, name: 'Banana'}];
   _.isAuthenticated = session.user != null;
-
-  // Define helper functions
-  _.formatPrice = function(price) {
-    return '$' + price.toFixed(2);
-  };
 </script>
 
-<!-- Access in template -->
-<h1 th:text="_.message">Message</h1>
-<tr th:each="item: _.items">...</tr>
-<div th:if="_.isAuthenticated">Welcome!</div>
-<span th:text="formatPrice(item.price)">$0.00</span>
+<!-- Access in template WITHOUT the _. prefix -->
+<h1 th:text="message">Message</h1>
+<tr th:each="item : items">...</tr>
+<div th:if="isAuthenticated">Welcome!</div>
+```
+
+### Direct Access to Built-in Objects
+
+Built-in objects like `request`, `context`, and `session` can be accessed directly in Thymeleaf expressions without needing to set them via `_.`:
+
+```html
+<!-- Access request properties directly -->
+<div th:if="request.get">This is a GET request</div>
+<div th:if="request.post">This is a POST request</div>
+<div th:if="request.ajax">This is an AJAX request</div>
+
+<!-- Access context methods directly -->
+<div th:text="context.template">index.html</div>
+<div th:text="context.uuid()">uuid-here</div>
+<div th:text="context.sessionId">session-id</div>
+
+<!-- Access session data directly (when session exists) -->
+<div th:if="session">Session active</div>
+<div th:text="session.user">username</div>
+```
+
+### When to Use `_.foo`
+
+Use `_.foo` when you need to:
+1. **Compute values** that require JavaScript logic
+2. **Transform data** before displaying
+3. **Store temporary values** for reuse across the template
+
+```html
+<script ka:scope="global">
+  // Computed values need _.foo
+  _.visitCount = (context.session ? context.session.visitCount : 0) + 1;
+  _.formattedDate = new Date().toLocaleDateString();
+  _.itemsJson = context.toJson(items);
+
+  // Complex logic
+  if (request.post) {
+    _.formData = {
+      name: request.param('name'),
+      email: request.param('email')
+    };
+  }
+</script>
+
+<!-- Then access without _. prefix -->
+<span th:text="visitCount">0</span>
+<span th:text="formattedDate">Date</span>
 ```
 
 ### Global vs Local Scope
@@ -293,11 +337,12 @@ The `_` (underscore) variable is a special shared object for passing data from J
   }
 </script>
 
-<div th:if="_.message" class="alert" th:text="_.message"></div>
+<!-- Access without _. prefix in Thymeleaf expressions -->
+<div th:if="message" class="alert" th:text="message"></div>
 <form method="post" th:action="context.template">
-  <input name="name" th:value="_.formData?.name"/>
-  <input name="email" th:value="_.formData?.email"/>
-  <input name="age" type="number" th:value="_.formData?.age"/>
+  <input name="name" th:value="formData?.name"/>
+  <input name="email" th:value="formData?.email"/>
+  <input name="age" type="number" th:value="formData?.age"/>
   <button type="submit">Save</button>
 </form>
 ```
@@ -378,14 +423,19 @@ context.switch(template)   // Switch to different template
 
 ```html
 <script ka:scope="global">
-  // Authentication check
-  if (!session.user) {
-    context.redirect('/signin');
+  // Initialize session for new visitors
+  // After context.init(), 'session' is immediately available
+  if (!session) {
+    context.init()
   }
 
-  // Initialize session for new visitors
-  if (typeof session === 'undefined') {
-    context.init();
+  // Now session can be used directly
+  _.visitCount = (session.visitCount || 0) + 1
+  session.visitCount = _.visitCount
+
+  // Authentication check (after session is initialized)
+  if (!session.user) {
+    context.redirect('/signin');
   }
 
   // Generate unique ID
@@ -409,6 +459,34 @@ context.switch(template)   // Switch to different template
 ### `session` - Session Object
 
 User session state, persisted across requests.
+
+#### Session Initialization
+
+The `session` variable is `null` until explicitly initialized with `context.init()`. After calling `context.init()`, the `session` object is immediately available in the same script block.
+
+```html
+<script ka:scope="global">
+  // Check if session exists, initialize if not
+  if (!session) {
+    context.init()
+  }
+
+  // session is now available immediately after init()
+  session.visitCount = (session.visitCount || 0) + 1
+</script>
+
+<!-- session is available in template expressions -->
+<span th:text="session.visitCount">0</span>
+```
+
+**Key Points:**
+- `session` is `null` for new visitors (no session cookie)
+- Call `context.init()` to create a new session
+- After `init()`, `session` is immediately available in the same script
+- A session cookie is automatically set in the response
+- Use `context.close()` to invalidate/destroy a session
+
+#### Session Properties
 
 ```javascript
 // Read/write session properties
@@ -1072,11 +1150,11 @@ For more control or custom serialization, use the textarea pattern:
 ```html
 <script ka:scope="global">
   _.items = db.findItems();
-  _.isAjax = request.ajax;
 </script>
 
 <!-- Only render full page structure for non-AJAX requests -->
-<div th:unless="_.isAjax">
+<!-- Access request.ajax directly - no need to set via _.foo -->
+<div th:unless="request.ajax">
   <head th:replace="~{index::head}"></head>
   <nav th:replace="header.html"></nav>
   <h1>Items</h1>
@@ -1085,11 +1163,12 @@ For more control or custom serialization, use the textarea pattern:
 <!-- This part always renders -->
 <div id="items-container">
   <table>
-    <thead th:unless="_.isAjax">
+    <thead th:unless="request.ajax">
       <tr><th>Name</th><th>Price</th></tr>
     </thead>
     <tbody>
-      <tr th:each="item: _.items" th:id="'item-' + item.id">
+      <!-- Access items without _. prefix -->
+      <tr th:each="item : items" th:id="'item-' + item.id">
         <td th:text="item.name">Name</td>
         <td th:text="item.price">Price</td>
       </tr>

@@ -25,6 +25,7 @@ package io.karatelabs.io.http;
 
 import io.karatelabs.common.FileUtils;
 import io.karatelabs.common.Resource;
+import io.karatelabs.common.ResourceNotFoundException;
 import io.karatelabs.common.ResourceType;
 import io.karatelabs.js.Engine;
 import io.karatelabs.markup.Markup;
@@ -68,6 +69,10 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
         this.config = config;
         this.resolver = resolver;
         this.engine = new Engine();
+        // Enable Java interop with configured bridge
+        if (config.getExternalBridge() != null) {
+            this.engine.setExternalBridge(config.getExternalBridge());
+        }
         // Initialize markup with HtmxDialect for HTMX support
         MarkupConfig markupConfig = new MarkupConfig();
         markupConfig.setResolver(resolver);
@@ -237,7 +242,12 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
         }
 
         try {
-            Resource resource = resolver.resolve(jsPath, null);
+            Resource resource;
+            try {
+                resource = resolver.resolve(jsPath, null);
+            } catch (ResourceNotFoundException e) {
+                return notFound(response, path);
+            }
             if (resource == null) {
                 return notFound(response, path);
             }
@@ -246,6 +256,10 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
 
             // Create fresh engine for this request
             Engine reqEngine = new Engine();
+            // Enable Java interop with configured bridge
+            if (config.getExternalBridge() != null) {
+                reqEngine.setExternalBridge(config.getExternalBridge());
+            }
             reqEngine.put("request", request);
             reqEngine.put("response", response);
             reqEngine.put("context", context);
@@ -282,7 +296,12 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
 
         try {
             // Check if template exists
-            Resource templateResource = resolver.resolve(templatePath, null);
+            Resource templateResource;
+            try {
+                templateResource = resolver.resolve(templatePath, null);
+            } catch (ResourceNotFoundException e) {
+                return notFound(response, path);
+            }
             if (templateResource == null) {
                 return notFound(response, path);
             }

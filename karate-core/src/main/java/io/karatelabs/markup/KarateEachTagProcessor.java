@@ -51,15 +51,24 @@ class KarateEachTagProcessor extends AbstractAttributeTagProcessor {
             final IElementTagStructureHandler structureHandler) {
         int pos = av.indexOf(':');
         String iterVarName;
+        String statusVarName = null;
         if (pos == -1) {
             iterVarName = "_";
         } else {
-            iterVarName = av.substring(0, pos).trim();
-            av = av.substring(pos + 1);
+            String varPart = av.substring(0, pos).trim();
+            av = av.substring(pos + 1).trim();
+            // Check for status variable: "item, iter" or just "item"
+            int commaPos = varPart.indexOf(',');
+            if (commaPos != -1) {
+                iterVarName = varPart.substring(0, commaPos).trim();
+                statusVarName = varPart.substring(commaPos + 1).trim();
+            } else {
+                iterVarName = varPart;
+            }
         }
         KarateTemplateContext kec = (KarateTemplateContext) ctx;
         Object value = kec.evalLocal(av);
-        structureHandler.iterateElement(iterVarName, null, value);
+        structureHandler.iterateElement(iterVarName, statusVarName, value);
     }
 
 }

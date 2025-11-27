@@ -24,8 +24,6 @@
 package io.karatelabs.markup;
 
 import io.karatelabs.js.Engine;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.thymeleaf.IEngineConfiguration;
 import org.thymeleaf.context.IEngineContext;
 import org.thymeleaf.context.IdentifierSequences;
@@ -40,8 +38,6 @@ import java.util.*;
 
 public class KarateTemplateContext implements IEngineContext {
 
-    private static final Logger logger = LoggerFactory.getLogger(KarateTemplateContext.class);
-
     final IEngineContext wrapped;
     private final Engine engine;
     private final Map<String, Object> vars = new HashMap<>();
@@ -50,12 +46,45 @@ public class KarateTemplateContext implements IEngineContext {
         this.wrapped = wrapped;
         this.engine = engine;
         this.engine.put("_", vars);
-        this.engine.put("context", new MarkupJs(this, resolver));
+        // Use existing MarkupContext from template variables if present (e.g., ServerContext in server mode)
+        // Otherwise create a MarkupJs for plain templating mode
+        Object existingContext = wrapped.getVariable("context");
+        if (existingContext instanceof MarkupContext) {
+            this.engine.put("context", existingContext);
+            if (existingContext instanceof io.karatelabs.io.http.ServerContext sc) {
+                sc.setOnSessionInit(session -> {
+                    engine.put("session", session);
+                });
+            }
+        } else {
+            this.engine.put("context", new MarkupJs(this, resolver));
+        }
     }
 
     void evalGlobal(String src) {
         getVariableNames().forEach(name -> engine.put(name, getVariable(name)));
+        // Always sync session from template vars (may be null for new requests)
+        // This ensures the engine doesn't carry stale session from previous requests
+        Object sessionFromVars = wrapped.getVariable("session");
+        engine.put("session", sessionFromVars);
         engine.eval(src);
+        // After script execution, sync session if context.init() was called
+        syncSessionVariable();
+    }
+
+    /**
+     * Sync the 'session' variable if context.init() created a new session.
+     * This allows templates to use 'session' directly after calling context.init().
+     */
+    private void syncSessionVariable() {
+        Object contextObj = engine.get("context");
+        if (contextObj instanceof MarkupContext mc) {
+            Object session = mc.getContextSession();
+            if (session != null && engine.get("session") == null) {
+                engine.put("session", session);
+                wrapped.setVariable("session", session);
+            }
+        }
     }
 
     public Object evalLocalAsObject(String src) {
