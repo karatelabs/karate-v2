@@ -1,0 +1,1230 @@
+# Karate Server-Side Templating Guide
+
+This guide documents the server-side templating system used in Karate for building web applications. The system is based on Thymeleaf but customized to use JavaScript expressions instead of OGNL/SpEL.
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Template Syntax](#template-syntax)
+3. [Server-Side JavaScript](#server-side-javascript)
+4. [Built-in Objects](#built-in-objects)
+5. [HTMX Integration](#htmx-integration)
+6. [Common Patterns](#common-patterns)
+
+---
+
+## Overview
+
+Karate's templating engine provides:
+
+- **HTML templates** with Thymeleaf-like syntax
+- **Server-side JavaScript execution** for business logic
+- **Session management** for user state
+- **HTMX integration** for dynamic, partial page updates
+- **API handlers** using plain JavaScript files
+
+### File Structure
+
+```
+app/
+  index.html          # Main entry point
+  header.html         # Shared fragment
+  signin.html         # Authentication page
+  api/
+    items.js          # REST API endpoint
+    session.js        # Session operations
+  pub/
+    app.js            # Static JavaScript (served as-is)
+    app.css           # Static CSS
+```
+
+### Key Differences from Standard Thymeleaf
+
+| Feature | Standard Thymeleaf | Karate Templating |
+|---------|-------------------|-------------------|
+| Expression Language | OGNL/SpEL (`${...}`) | JavaScript (direct) |
+| Expression Syntax | `th:text="${user.name}"` | `th:text="user.name"` |
+| Server-side Logic | Spring Controllers | `<script ka:scope="global">` |
+| Session Access | Spring Session | `session.*` JavaScript object |
+
+---
+
+## Template Syntax
+
+### Basic Attributes
+
+#### `th:text` - Text Content
+
+Replaces element content with the evaluated expression.
+
+```html
+<span th:text="user.name">Placeholder</span>
+<p th:text="'Hello, ' + user.name">Hello, Guest</p>
+<div th:text="_.message">Default message</div>
+```
+
+#### `th:if` / `th:unless` - Conditional Rendering
+
+Conditionally includes or excludes elements.
+
+```html
+<!-- Show only if condition is true -->
+<div th:if="session.user">Welcome back!</div>
+<div th:if="request.post">Form was submitted</div>
+<div th:if="items.length > 0">Items found</div>
+
+<!-- Show only if condition is false -->
+<div th:unless="session.user">Please sign in</div>
+<div th:unless="request.ajax">This is a full page request</div>
+```
+
+#### `th:each` - Iteration
+
+Iterates over arrays/lists.
+
+```html
+<!-- Basic iteration -->
+<tr th:each="item: items">
+  <td th:text="item.name">Name</td>
+  <td th:text="item.price">Price</td>
+</tr>
+
+<!-- With iteration status -->
+<li th:each="item, iter: items">
+  <span th:text="iter.index">0</span>:
+  <span th:text="item.name">Name</span>
+  <span th:if="iter.first">(first)</span>
+  <span th:if="iter.last">(last)</span>
+</li>
+
+<!-- Inline array -->
+<div th:each="color: ['red', 'green', 'blue']">
+  <span th:text="color">color</span>
+</div>
+```
+
+Iteration status properties:
+- `iter.index` - 0-based index
+- `iter.count` - 1-based count
+- `iter.first` - true if first element
+- `iter.last` - true if last element
+- `iter.even` / `iter.odd` - alternating rows
+
+#### `th:replace` / `th:insert` - Template Inclusion
+
+Include other templates.
+
+```html
+<!-- Replace this element with template content -->
+<div th:replace="header.html"></div>
+<div th:replace="~{header}"></div>
+
+<!-- Insert template content inside this element -->
+<div th:insert="~{footer}"></div>
+
+<!-- Fragment with context -->
+<div th:insert="this:with-called" th:with="foo: 'bar', msg: message"></div>
+```
+
+#### `th:fragment` - Fragment Definition
+
+Define reusable fragments.
+
+```html
+<!-- In header.html -->
+<head th:fragment="head">
+  <title>My App</title>
+  <script src="pub/app.js"></script>
+</head>
+
+<!-- Usage -->
+<head th:replace="~{header::head}"></head>
+```
+
+### Attribute Manipulation
+
+#### `th:attr` - Set Attributes
+
+```html
+<div th:attr="foo: 'bar', data-id: item.id">content</div>
+```
+
+#### `th:attrappend` / `th:attrprepend` - Append/Prepend to Attributes
+
+```html
+<div foo="x" th:attrappend="foo: 'y'">Result: foo="xy"</div>
+<div foo="x" th:attrprepend="foo: 'y'">Result: foo="yx"</div>
+```
+
+#### `th:id`, `th:class`, `th:value`, `th:action`, etc.
+
+Direct attribute setters.
+
+```html
+<div th:id="'item-' + item.id">...</div>
+<input th:value="form.name"/>
+<form th:action="context.template" method="post">...</form>
+<tr th:class="iter.even ? 'even' : 'odd'">...</tr>
+```
+
+#### `th:with` - Local Variables
+
+Define variables for template scope.
+
+```html
+<div th:with="total: price * quantity, formatted: '$' + total">
+  <span th:text="formatted">$0</span>
+</div>
+```
+
+### Karate-Specific Attributes
+
+#### `ka:scope` - Server-Side Script Execution
+
+Execute JavaScript on the server before rendering.
+
+```html
+<!-- Global scope: variables accessible throughout template -->
+<script ka:scope="global">
+  _.items = db.findItems();
+  _.user = session.user;
+  _.isAdmin = session.user && session.user.admin;
+</script>
+
+<!-- Local scope: variables accessible only in parent element -->
+<div>
+  <script ka:scope="local">
+    _.itemTotal = item.price * item.quantity;
+  </script>
+  <span th:text="itemTotal">0</span>
+</div>
+```
+
+#### `ka:set` - Capture Block Content
+
+Capture multi-line content into a variable.
+
+```html
+<pre ka:set="content">
+First line
+Second line
+Third line
+</pre>
+<div th:text="content">...</div>
+```
+
+#### `ka:nocache` - Cache Busting
+
+Append file modification timestamp to URLs.
+
+```html
+<script src="pub/app.js" ka:nocache="true"></script>
+<!-- Renders: <script src="pub/app.js?ts=1699123456789"></script> -->
+
+<link rel="stylesheet" href="pub/app.css" ka:nocache="true"/>
+```
+
+---
+
+## Server-Side JavaScript
+
+### The Underscore Variable (`_`)
+
+The `_` (underscore) variable is a special shared object for passing data from JavaScript to templates.
+
+```html
+<script ka:scope="global">
+  // Set values in script
+  _.message = 'Hello World';
+  _.items = [{id: 1, name: 'Apple'}, {id: 2, name: 'Banana'}];
+  _.isAuthenticated = session.user != null;
+
+  // Define helper functions
+  _.formatPrice = function(price) {
+    return '$' + price.toFixed(2);
+  };
+</script>
+
+<!-- Access in template -->
+<h1 th:text="_.message">Message</h1>
+<tr th:each="item: _.items">...</tr>
+<div th:if="_.isAuthenticated">Welcome!</div>
+<span th:text="formatPrice(item.price)">$0.00</span>
+```
+
+### Global vs Local Scope
+
+```html
+<!-- Global scope: runs once, variables persist for entire template -->
+<script ka:scope="global">
+  _.globalData = db.loadData();
+</script>
+
+<!-- Local scope: runs for each iteration, isolated variables -->
+<div th:each="item: items">
+  <script ka:scope="local">
+    _.computedValue = item.price * 1.1; // 10% markup
+  </script>
+  <span th:text="computedValue">0</span>
+</div>
+```
+
+### Handling POST Requests
+
+```html
+<script ka:scope="global">
+  _.formData = null;
+  _.message = null;
+
+  if (request.post) {
+    // Get form parameters
+    _.formData = {
+      name: request.param('name'),
+      email: request.param('email'),
+      age: request.paramInt('age')
+    };
+
+    // Process the form
+    db.saveUser(_.formData);
+    _.message = 'User saved successfully!';
+
+    // Optional: redirect after processing
+    // context.redirect('/users');
+  }
+</script>
+
+<div th:if="_.message" class="alert" th:text="_.message"></div>
+<form method="post" th:action="context.template">
+  <input name="name" th:value="_.formData?.name"/>
+  <input name="email" th:value="_.formData?.email"/>
+  <input name="age" type="number" th:value="_.formData?.age"/>
+  <button type="submit">Save</button>
+</form>
+```
+
+### Multiple Actions with Switch
+
+```html
+<script ka:scope="global">
+  if (request.post) {
+    switch (request.param('action')) {
+      case 'create':
+        let form = request.paramJson('form');
+        db.create(form);
+        break;
+      case 'delete':
+        let id = request.param('id');
+        db.delete(id);
+        break;
+      case 'update':
+        let data = request.paramJson('data');
+        db.update(data);
+        break;
+    }
+  }
+  _.items = db.findAll();
+</script>
+```
+
+### Java Interop
+
+```html
+<script ka:scope="global">
+  // Import Java types
+  const JavaDate = Java.type('java.util.Date');
+  const SimpleDateFormat = Java.type('java.text.SimpleDateFormat');
+
+  // Use Java classes
+  _.toDateString = function(timestamp) {
+    const date = new JavaDate(parseInt(timestamp) * 1000);
+    const formatter = new SimpleDateFormat('yyyy-MM-dd');
+    return formatter.format(date);
+  };
+</script>
+
+<span th:text="toDateString(item.createdAt)">2024-01-01</span>
+```
+
+---
+
+## Built-in Objects
+
+### `context` - Server Context
+
+Core utilities and methods.
+
+```javascript
+// Properties
+context.template      // Current template name (e.g., "index.html")
+context.caller        // Caller template name (for fragments)
+context.sessionId     // Current session ID (or null)
+context.closed        // True if session was closed
+context.flash         // Flash messages object
+
+// Methods
+context.redirect(path)     // Redirect to another URL
+context.init()             // Initialize a new session
+context.close()            // Close/invalidate session
+context.uuid()             // Generate a UUID
+context.log(...)           // Log messages
+context.read(path)         // Read file as text
+context.readBytes(path)    // Read file as bytes
+context.toJson(obj)        // Serialize object to JSON
+context.fromJson(str)      // Parse JSON string
+context.switch(template)   // Switch to different template
+```
+
+**Examples:**
+
+```html
+<script ka:scope="global">
+  // Authentication check
+  if (!session.user) {
+    context.redirect('/signin');
+  }
+
+  // Initialize session for new visitors
+  if (typeof session === 'undefined') {
+    context.init();
+  }
+
+  // Generate unique ID
+  _.requestId = context.uuid();
+
+  // Logging
+  context.log('User accessed:', context.template, 'User:', session.user?.email);
+
+  // Read external data
+  _.config = context.fromJson(context.read('config.json'));
+
+  // JSON serialization for client
+  _.userJson = context.toJson(session.user);
+</script>
+
+<!-- Display flash messages -->
+<div th:if="context.flash.error" class="alert-danger" th:text="context.flash.error"></div>
+<div th:if="context.flash.success" class="alert-success" th:text="context.flash.success"></div>
+```
+
+### `session` - Session Object
+
+User session state, persisted across requests.
+
+```javascript
+// Read/write session properties
+session.user = { id: 123, name: 'John' };
+session.cart = [];
+session.visitCount = (session.visitCount || 0) + 1;
+
+// Delete property
+delete session.user;
+```
+
+**Common Patterns:**
+
+```html
+<script ka:scope="global">
+  // Store user after login
+  if (loginSuccess) {
+    session.user = {
+      userId: profile.userId,
+      email: profile.email,
+      name: profile.name,
+      admin: profile.admin
+    };
+  }
+
+  // Shopping cart
+  if (request.post && request.param('action') === 'addToCart') {
+    session.cart = session.cart || [];
+    session.cart.push({
+      productId: request.param('productId'),
+      quantity: request.paramInt('quantity')
+    });
+  }
+</script>
+
+<!-- Display session data -->
+<div th:if="session.user">
+  <span>Welcome, </span>
+  <span th:text="session.user.name">User</span>
+</div>
+```
+
+### `request` - HTTP Request Object
+
+Access request data.
+
+```javascript
+// Properties
+request.method        // "GET", "POST", etc.
+request.url           // Full URL
+request.urlBase       // Base URL (e.g., "https://example.com")
+request.path          // Path without query (e.g., "/users")
+request.pathRaw       // Path with query string
+request.params        // All query/form parameters
+request.headers       // All headers
+request.body          // Parsed body (JSON object or form data)
+request.bodyString    // Raw body as string
+request.bodyBytes     // Raw body as bytes
+request.multiParts    // Multipart form data
+
+// Method shortcuts (boolean)
+request.get           // true if GET
+request.post          // true if POST
+request.put           // true if PUT
+request.delete        // true if DELETE
+request.ajax          // true if HTMX/AJAX request
+
+// Methods
+request.param(name)           // Get single parameter
+request.param(name, default)  // With default value
+request.paramInt(name)        // Parse as integer
+request.paramJson(name)       // Parse JSON field
+request.paramValues(name)     // Get all values for parameter
+request.header(name)          // Get header value
+request.headerValues(name)    // Get all header values
+request.pathMatches(pattern)  // Check path pattern
+request.multiPart(name)       // Get multipart field
+```
+
+**Examples:**
+
+```html
+<script ka:scope="global">
+  // Get query parameters
+  let page = request.paramInt('page') || 1;
+  let search = request.param('q', '');
+
+  // Handle different request methods
+  if (request.get) {
+    _.items = db.search(search, page);
+  }
+
+  if (request.post) {
+    let formData = {
+      name: request.param('name'),
+      email: request.param('email')
+    };
+    db.save(formData);
+  }
+
+  // Handle JSON body
+  if (request.post && request.header('Content-Type').includes('application/json')) {
+    let data = request.body;
+    processData(data);
+  }
+
+  // Handle file uploads
+  if (request.post && request.multiParts) {
+    let file = request.multiPart('file');
+    if (file) {
+      storage.save(file.name, file.bytes);
+    }
+  }
+</script>
+
+<!-- Show different content for AJAX requests -->
+<div th:unless="request.ajax">
+  <header th:replace="header.html"></header>
+  <h1>Page Title</h1>
+</div>
+<div id="content">
+  <!-- This part renders for both full and AJAX requests -->
+  <tr th:each="item: _.items">...</tr>
+</div>
+```
+
+### `response` - HTTP Response Object
+
+Control response output (primarily for API handlers).
+
+```javascript
+// Properties
+response.status       // HTTP status code (default: 200)
+response.body         // Response body (auto-serialized to JSON if object)
+response.headers      // Response headers map
+
+// Set in API handler (.js file)
+response.status = 201;
+response.body = { created: true, id: newId };
+response.headers['X-Custom-Header'] = 'value';
+```
+
+**API Handler Example (api/items.js):**
+
+```javascript
+if (request.get) {
+  let id = request.paramInt('id');
+  if (id) {
+    let item = db.findById(id);
+    if (item) {
+      response.body = item;
+    } else {
+      response.status = 404;
+      response.body = { error: 'Item not found' };
+    }
+  } else {
+    response.body = db.findAll();
+  }
+}
+
+if (request.post) {
+  let data = request.body;
+  let newItem = db.create(data);
+  response.status = 201;
+  response.body = newItem;
+}
+
+if (request.delete) {
+  let id = request.paramInt('id');
+  db.delete(id);
+  response.body = { deleted: true };
+}
+```
+
+---
+
+## HTMX Integration
+
+Karate provides custom attributes that convert to HTMX attributes with additional features.
+
+### HTTP Method Attributes
+
+```html
+<!-- ka:get → hx-get -->
+<button ka:get="/api/items">Load Items</button>
+
+<!-- ka:post → hx-post -->
+<form ka:post="/api/users">
+  <input name="email"/>
+  <button type="submit">Create</button>
+</form>
+
+<!-- ka:put → hx-put -->
+<button ka:put="/api/items" ka:vals="id:item.id">Update</button>
+
+<!-- ka:patch → hx-patch -->
+<button ka:patch="/api/items" ka:vals="id:item.id,status:'active'">Activate</button>
+
+<!-- ka:delete → hx-delete -->
+<button ka:delete="/api/items" ka:vals="id:item.id">Delete</button>
+```
+
+### The `this` Keyword
+
+Use `"this"` to reference the current template path.
+
+```html
+<!-- Reload current template -->
+<button ka:get="this">Refresh</button>
+
+<!-- Post back to current template -->
+<form ka:post="this">
+  <input name="action" value="save"/>
+  <button type="submit">Save</button>
+</form>
+```
+
+### Dynamic Values with `ka:vals`
+
+Send additional data with requests.
+
+```html
+<!-- Single value -->
+<button ka:post="/api/action" ka:vals="id:item.id">Click</button>
+
+<!-- Multiple values -->
+<button ka:post="/api/action" ka:vals="id:item.id,action:'delete',confirm:true">Delete</button>
+
+<!-- Expression values -->
+<tr th:each="item: items" ka:vals="itemId:item.id,itemName:item.name">
+  <td>
+    <a href="#" hx-get="/api/details" th:text="item.name">Name</a>
+  </td>
+</tr>
+
+<!-- With action parameter -->
+<button hx-post="manage-team" hx-target="#main-content"
+        ka:vals="action:'addUser',userId:user.id">
+  Add User
+</button>
+```
+
+### Target and Swap
+
+```html
+<!-- Target specific element -->
+<button ka:get="/api/items" ka:target="#results">Load</button>
+
+<!-- Swap strategies -->
+<button ka:get="/partial" ka:swap="innerHTML">Replace inner HTML</button>
+<button ka:get="/partial" ka:swap="outerHTML">Replace entire element</button>
+<button ka:get="/partial" ka:swap="beforeend">Append to end</button>
+<button ka:get="/partial" ka:swap="afterbegin">Insert at beginning</button>
+<button ka:get="/partial" ka:swap="delete">Delete target</button>
+
+<!-- Dynamic target from expression -->
+<button ka:get="/api/item"
+        ka:vals="id:item.id"
+        ka:target="'#item-' + item.id"
+        ka:swap="outerHTML">
+  Refresh
+</button>
+```
+
+### Other HTMX Attributes
+
+```html
+<!-- Trigger events -->
+<input ka:get="/search"
+       ka:trigger="keyup changed delay:300ms"
+       ka:target="#results"/>
+
+<!-- Confirmation dialog -->
+<button ka:delete="/api/item"
+        ka:vals="id:item.id"
+        ka:confirm="'Are you sure you want to delete ' + item.name + '?'">
+  Delete
+</button>
+
+<!-- Loading indicator -->
+<button ka:get="/api/slow-operation" ka:indicator="#spinner">
+  <span>Process</span>
+  <span id="spinner" class="spinner" style="display:none">Loading...</span>
+</button>
+
+<!-- Push URL to history -->
+<a ka:get="/page/2" ka:push-url="true">Page 2</a>
+
+<!-- Include additional form fields -->
+<button ka:post="/api/submit" ka:include="[name='extra']">Submit</button>
+
+<!-- Synchronization -->
+<button ka:post="/api/action" ka:sync="closest form:abort">Submit</button>
+
+<!-- Disable element during request -->
+<button ka:post="/api/action" ka:disabled-elt="this">Submit</button>
+```
+
+### Loading Indicators
+
+Use CSS classes for loading states.
+
+```html
+<!-- Element to show during loading -->
+<span class="ka-indicator spinner-border spinner-border-sm"></span>
+
+<!-- Element to hide during loading -->
+<i class="bi bi-person ka-indicator-hide"></i>
+
+<!-- Combined example -->
+<button ka:post="/api/action" hx-target="#result">
+  <i class="bi bi-check ka-indicator-hide"></i>
+  <span class="ka-indicator spinner-border spinner-border-sm"></span>
+  <span>Submit</span>
+</button>
+```
+
+Add CSS:
+
+```css
+.ka-indicator {
+  display: none;
+}
+.htmx-request .ka-indicator {
+  display: inline-block;
+}
+.htmx-request .ka-indicator-hide {
+  display: none;
+}
+```
+
+### `ka:data` - AlpineJS Data Binding
+
+The `ka:data` attribute provides seamless data binding between server-side data and AlpineJS. It works on any element to initialize `x-data`, with special form handling for bidirectional binding.
+
+**Syntax:** `ka:data="alpineVar:serverExpression"`
+
+- `alpineVar` - The AlpineJS variable name to create (e.g., `form`, `data`)
+- `serverExpression` - Server-side expression for initial data
+
+**What it does:**
+
+On **any element**:
+1. Adds `x-data="{ alpineVar: <json-data> }"` attribute
+2. Removes the `ka:data` attribute from output
+
+On **`<form>` elements** (additional):
+3. Injects a hidden input with `x-bind:value="JSON.stringify(alpineVar)"` for form submission
+
+**Basic Example:**
+
+```html
+<script ka:scope="local">
+  _.initialForm = {
+    email: '',
+    name: '',
+    subscribe: true
+  };
+</script>
+
+<!-- Access the variable directly as 'initialForm' (not '_.initialForm') -->
+<form ka:data="form:initialForm" ka:post="/api/users" ka:target="#result">
+  <input x-model="form.email" placeholder="Email"/>
+  <input x-model="form.name" placeholder="Name"/>
+  <label>
+    <input type="checkbox" x-model="form.subscribe"/>
+    Subscribe to newsletter
+  </label>
+  <button type="submit">Submit</button>
+</form>
+```
+
+> **Important:** Variables set as `_.varName` in `ka:scope` blocks become available as `varName` directly in subsequent sibling elements. The `_.` prefix is only used when **setting** variables, not when **accessing** them in `ka:data` expressions.
+
+**Renders as:**
+
+```html
+<form x-data="{ form: {&quot;email&quot;:&quot;&quot;,&quot;name&quot;:&quot;&quot;,&quot;subscribe&quot;:true} }"
+      hx-post="/api/users" hx-target="#result">
+  <input type="hidden" name="form" x-bind:value="JSON.stringify(form)"/>
+  <input x-model="form.email" placeholder="Email"/>
+  <input x-model="form.name" placeholder="Name"/>
+  <label>
+    <input type="checkbox" x-model="form.subscribe"/>
+    Subscribe to newsletter
+  </label>
+  <button type="submit">Submit</button>
+</form>
+```
+
+**Server-side Processing:**
+
+```html
+<script ka:scope="global">
+  if (request.post) {
+    // Parse the JSON form data
+    let form = request.paramJson('form');
+    // form = { email: 'user@test.com', name: 'John', subscribe: true }
+    db.createUser(form);
+  }
+</script>
+```
+
+**Complex Data Structures:**
+
+```html
+<script ka:scope="local">
+  _.teamForm = {
+    email: '',
+    role: 'user',
+    products: [],      // Array of selected product IDs
+    notify: true
+  };
+</script>
+
+<form ka:data="form:teamForm" ka:post="this" ka:target="#main-content">
+  <input x-model="form.email" placeholder="Email"/>
+
+  <select x-model="form.role">
+    <option value="user">User</option>
+    <option value="admin">Admin</option>
+  </select>
+
+  <!-- Checkbox array binding -->
+  <div th:each="product: products">
+    <label>
+      <input type="checkbox"
+             th:value="product.id"
+             x-model="form.products"/>
+      <span th:text="product.name">Product</span>
+    </label>
+  </div>
+
+  <label>
+    <input type="checkbox" x-model="form.notify"/>
+    Send notification
+  </label>
+
+  <button type="submit" ka:vals="action:'addUser'">Add User</button>
+</form>
+```
+
+**Non-Form Usage (read-only binding):**
+
+Use `ka:data` on any element to initialize Alpine data without form submission:
+
+```html
+<script ka:scope="local">
+  _.userProfile = db.getUser(session.userId);
+</script>
+
+<!-- Access as 'userProfile' directly -->
+<div ka:data="user:userProfile" class="profile-card">
+  <h2 x-text="user.name">Name</h2>
+  <p x-text="user.email">email@example.com</p>
+  <span x-show="user.verified" class="badge">Verified</span>
+</div>
+
+<!-- Iterate over server data -->
+<section ka:data="items:products">
+  <template x-for="item in items">
+    <div class="product">
+      <span x-text="item.name"></span>
+      <span x-text="'$' + item.price"></span>
+    </div>
+  </template>
+</section>
+```
+
+**Combining with HTMX:**
+
+```html
+<form ka:data="form:data"
+      ka:post="/api/submit"
+      ka:target="#result"
+      ka:swap="innerHTML"
+      ka:indicator="#spinner">
+  <input x-model="form.query" placeholder="Search..."/>
+  <button type="submit">
+    <span class="ka-indicator-hide">Search</span>
+    <span class="ka-indicator">Loading...</span>
+  </button>
+</form>
+```
+
+---
+
+## Common Patterns
+
+### Authentication Flow
+
+```html
+<!-- signin.html -->
+<script ka:scope="global">
+  if (request.post) {
+    let authType = request.param('authType');
+    context.init();
+    session.state = context.uuid();
+    session.authType = authType;
+    let redirectUrl = auth.getOAuthUrl(authType, session.state);
+    context.redirect(redirectUrl);
+  } else if (request.param('code')) {
+    // OAuth callback
+    let code = request.param('code');
+    let state = request.param('state');
+    if (state !== session.state) {
+      throw 'CSRF validation failed';
+    }
+    let profile = auth.exchangeCode(code, session.authType);
+    session.user = profile;
+    delete session.state;
+    context.redirect('/');
+  }
+</script>
+
+<form method="post" th:action="context.template">
+  <button name="authType" value="google">Sign in with Google</button>
+  <button name="authType" value="github">Sign in with GitHub</button>
+</form>
+```
+
+### Protected Routes
+
+```html
+<!-- index.html -->
+<script ka:scope="global">
+  if (!session.user) {
+    context.redirect('/signin');
+  }
+</script>
+<body th:if="session.user">
+  <!-- Protected content -->
+</body>
+```
+
+### Conditional Routing
+
+```html
+<script ka:scope="global">
+  if (session.user) {
+    const hasProduct = session.user.products.find(p => p.active);
+    if (hasProduct) {
+      session.route = 'dashboard';
+    } else {
+      session.route = 'checkout';
+    }
+  }
+</script>
+
+<div id="main-content">
+  <div th:if="session.route=='dashboard'" th:insert="~{dashboard}"></div>
+  <div th:if="session.route=='checkout'" th:insert="~{checkout}"></div>
+  <div th:unless="session.route" th:insert="~{welcome}"></div>
+</div>
+```
+
+### SPA-like Navigation with HTMX
+
+```html
+<!-- header.html -->
+<nav hx-target="#main-content">
+  <a href="#" ka:get="dashboard">Dashboard</a>
+  <a href="#" ka:get="users">Users</a>
+  <a href="#" ka:get="settings">Settings</a>
+  <span class="ka-indicator spinner-border"></span>
+</nav>
+
+<!-- index.html -->
+<div th:replace="header.html"></div>
+<div id="main-content">
+  <div th:insert="~{dashboard}"></div>
+</div>
+```
+
+### Form with JSON Data (AlpineJS Integration)
+
+**Recommended: Using `ka:data`**
+
+The `ka:data` attribute provides a clean, declarative way to bind server-side data to AlpineJS forms:
+
+```html
+<script ka:scope="global">
+  _.defaultForm = { name: '', items: [] };
+</script>
+
+<form ka:data="form:_.defaultForm" ka:post="handler" ka:target="#result">
+  <input x-model="form.name" placeholder="Name"/>
+
+  <div th:each="opt: options">
+    <label>
+      <input type="checkbox" th:value="opt.id" x-model="form.items"/>
+      <span th:text="opt.name">Option</span>
+    </label>
+  </div>
+
+  <button type="submit" ka:vals="action:'save'">Save</button>
+</form>
+```
+
+**Legacy: Hidden Textarea Pattern**
+
+For more control or custom serialization, use the textarea pattern:
+
+```html
+<form x-data="{ form: { name: '', items: [] } }">
+  <!-- Hidden textarea for JSON serialization -->
+  <textarea style="display:none"
+            th:text="context.toJson(_.defaultForm)"
+            x-init="form = kjs.fromJson($el.value)"
+            x-text="kjs.toJson(form)"
+            name="form"></textarea>
+
+  <input x-model="form.name" placeholder="Name"/>
+
+  <div x-data="{ options: [{id: 1, name: 'A'}, {id: 2, name: 'B'}] }">
+    <template x-for="opt in options">
+      <label>
+        <input type="checkbox" x-bind:value="opt.id" x-model="form.items"/>
+        <span x-text="opt.name"></span>
+      </label>
+    </template>
+  </div>
+
+  <button hx-post="handler" hx-target="#result" ka:vals="action:'save'">
+    Save
+  </button>
+</form>
+```
+
+**Server-side processing (same for both patterns):**
+
+```html
+<script ka:scope="global">
+  if (request.post && request.param('action') === 'save') {
+    let form = request.paramJson('form');
+    // form = { name: 'Value', items: [1, 2] }
+    db.save(form);
+  }
+</script>
+```
+
+### Flash Messages
+
+```html
+<script ka:scope="global">
+  if (request.post) {
+    try {
+      processData(request.body);
+    } catch (e) {
+      context.flash.error = e.message;
+    }
+  }
+</script>
+
+<div th:if="context.flash.error" class="alert alert-danger" th:text="context.flash.error"></div>
+<div th:if="context.flash.success" class="alert alert-success" th:text="context.flash.success"></div>
+```
+
+### Partial Rendering for AJAX
+
+```html
+<script ka:scope="global">
+  _.items = db.findItems();
+  _.isAjax = request.ajax;
+</script>
+
+<!-- Only render full page structure for non-AJAX requests -->
+<div th:unless="_.isAjax">
+  <head th:replace="~{index::head}"></head>
+  <nav th:replace="header.html"></nav>
+  <h1>Items</h1>
+</div>
+
+<!-- This part always renders -->
+<div id="items-container">
+  <table>
+    <thead th:unless="_.isAjax">
+      <tr><th>Name</th><th>Price</th></tr>
+    </thead>
+    <tbody>
+      <tr th:each="item: _.items" th:id="'item-' + item.id">
+        <td th:text="item.name">Name</td>
+        <td th:text="item.price">Price</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+```
+
+### CRUD Table with HTMX
+
+```html
+<script ka:scope="global">
+  if (request.post) {
+    let action = request.param('action');
+    let id = request.paramInt('id');
+    switch (action) {
+      case 'delete':
+        db.deleteItem(id);
+        break;
+      case 'update':
+        db.updateItem(id, request.paramJson('data'));
+        break;
+    }
+  }
+  _.items = db.findAllItems();
+</script>
+
+<table hx-target="#main-content">
+  <tr th:each="item: _.items" th:id="'row-' + item.id" ka:vals="id:item.id">
+    <td th:text="item.name">Name</td>
+    <td th:text="item.status">Status</td>
+    <td>
+      <button class="btn btn-sm btn-primary"
+              hx-get="edit-item"
+              hx-target="'#row-' + item.id"
+              ka:vals="id:item.id">
+        Edit
+      </button>
+      <button class="btn btn-sm btn-danger"
+              hx-post="this"
+              ka:vals="action:'delete',id:item.id"
+              ka:confirm="'Delete ' + item.name + '?'">
+        Delete
+      </button>
+    </td>
+  </tr>
+</table>
+```
+
+---
+
+## API Handlers
+
+Plain JavaScript files in the `api/` directory handle REST API requests.
+
+### Basic API Handler (api/items.js)
+
+```javascript
+// GET /api/items - List all or get by ID
+if (request.get) {
+  let id = request.paramInt('id');
+  if (id) {
+    let item = db.findById(id);
+    if (item) {
+      response.body = item;
+    } else {
+      response.status = 404;
+      response.body = { error: 'Not found' };
+    }
+  } else {
+    response.body = db.findAll();
+  }
+}
+
+// POST /api/items - Create
+if (request.post) {
+  let data = request.body;
+  let item = db.create(data);
+  response.status = 201;
+  response.body = item;
+}
+
+// PUT /api/items?id=1 - Update
+if (request.put) {
+  let id = request.paramInt('id');
+  let data = request.body;
+  let item = db.update(id, data);
+  response.body = item;
+}
+
+// DELETE /api/items?id=1 - Delete
+if (request.delete) {
+  let id = request.paramInt('id');
+  db.delete(id);
+  response.body = { deleted: true };
+}
+```
+
+### Session-Aware API (api/user.js)
+
+```javascript
+// Check authentication
+if (!session.user) {
+  response.status = 401;
+  response.body = { error: 'Unauthorized' };
+} else {
+  response.body = {
+    user: {
+      id: session.user.userId,
+      name: session.user.name,
+      email: session.user.email
+    },
+    subscriptions: session.user.subscriptions
+  };
+}
+```
+
+---
+
+## Summary
+
+| Feature | Syntax | Description |
+|---------|--------|-------------|
+| Text output | `th:text="expr"` | Replace element content |
+| Conditional | `th:if="expr"` / `th:unless="expr"` | Show/hide elements |
+| Loop | `th:each="item: list"` | Iterate arrays |
+| Include | `th:replace="file.html"` | Include templates |
+| Server JS | `<script ka:scope="global">` | Execute server-side JS |
+| Pass data | `_.variable = value` | From script to template |
+| Session | `session.key = value` | Persist across requests |
+| Request data | `request.param('name')` | Get form/query params |
+| Redirect | `context.redirect('/path')` | HTTP redirect |
+| HTMX GET | `ka:get="/path"` | AJAX GET request |
+| HTMX POST | `ka:post="/path"` | AJAX POST request |
+| HTMX data | `ka:vals="key:value"` | Send data with request |
+| HTMX target | `ka:target="#id"` | Update target element |
+| HTMX swap | `ka:swap="outerHTML"` | How to update content |
+| Alpine binding | `ka:data="var:expr"` | Bind server data to AlpineJS form |

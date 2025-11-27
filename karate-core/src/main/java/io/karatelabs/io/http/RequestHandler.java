@@ -28,7 +28,9 @@ import io.karatelabs.common.Resource;
 import io.karatelabs.common.ResourceType;
 import io.karatelabs.js.Engine;
 import io.karatelabs.markup.Markup;
+import io.karatelabs.markup.MarkupConfig;
 import io.karatelabs.markup.ResourceResolver;
+import io.karatelabs.markup.htmx.HtmxDialect;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -66,7 +68,11 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
         this.config = config;
         this.resolver = resolver;
         this.engine = new Engine();
-        this.markup = Markup.init(engine, resolver);
+        // Initialize markup with HtmxDialect for HTMX support
+        MarkupConfig markupConfig = new MarkupConfig();
+        markupConfig.setResolver(resolver);
+        markupConfig.setDevMode(config.isDevMode());
+        this.markup = Markup.init(engine, markupConfig, new HtmxDialect());
     }
 
     @Override

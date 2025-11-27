@@ -77,7 +77,36 @@ public class HtmxDialect extends AbstractProcessorDialect {
         // ka:vals processor
         processors.add(new HxValsProcessor(dialectPrefix));
 
-        // TODO: HxGenericProcessor (ka:target, ka:swap, ka:trigger, etc.)
+        // Generic pass-through processors (ka:target -> hx-target, ka:swap -> hx-swap, etc.)
+        String[] genericAttributes = {
+            "target",       // hx-target: CSS selector for element to update
+            "swap",         // hx-swap: how content should be swapped
+            "trigger",      // hx-trigger: what triggers the request
+            "push-url",     // hx-push-url: update browser URL
+            "select",       // hx-select: select content from response
+            "confirm",      // hx-confirm: confirmation dialog
+            "indicator",    // hx-indicator: loading indicator selector
+            "boost",        // hx-boost: enhance regular links
+            "headers",      // hx-headers: additional headers
+            "include",      // hx-include: include additional inputs
+            "sync",         // hx-sync: synchronization strategy
+            "disabled-elt", // hx-disabled-elt: disable elements during request
+            "encoding",     // hx-encoding: form encoding
+            "ext",          // hx-ext: extensions
+            "history",      // hx-history: history behavior
+            "history-elt",  // hx-history-elt: history element
+            "preserve",     // hx-preserve: preserve element
+            "prompt",       // hx-prompt: prompt dialog
+            "replace-url",  // hx-replace-url: replace URL in history
+            "request",      // hx-request: request configuration
+            "validate"      // hx-validate: form validation
+        };
+        for (String attr : genericAttributes) {
+            processors.add(new HxGenericProcessor(dialectPrefix, attr));
+        }
+
+        // ka:data processor for Alpine.js data binding
+        processors.add(new KaDataProcessor(dialectPrefix));
 
         return processors;
     }
