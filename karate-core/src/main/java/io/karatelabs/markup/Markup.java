@@ -112,7 +112,14 @@ public class Markup {
     }
 
     public static Markup init(Engine engine, MarkupConfig config) {
-        Markup markup = new Markup(engine, config.getResolver(), new KarateProcessorDialect(config));
+        return init(engine, config, new IDialect[0]);
+    }
+
+    public static Markup init(Engine engine, MarkupConfig config, IDialect... additionalDialects) {
+        IDialect[] dialects = new IDialect[1 + additionalDialects.length];
+        dialects[0] = new KarateProcessorDialect(config);
+        System.arraycopy(additionalDialects, 0, dialects, 1, additionalDialects.length);
+        Markup markup = new Markup(engine, config.getResolver(), dialects);
         markup.wrapped.setTemplateResolver(new HtmlTemplateResolver(config));
         return markup;
     }

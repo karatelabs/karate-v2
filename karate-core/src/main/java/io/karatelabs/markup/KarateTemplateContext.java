@@ -38,7 +38,7 @@ import org.thymeleaf.templatemode.TemplateMode;
 
 import java.util.*;
 
-class KarateTemplateContext implements IEngineContext {
+public class KarateTemplateContext implements IEngineContext {
 
     private static final Logger logger = LoggerFactory.getLogger(KarateTemplateContext.class);
 
@@ -58,7 +58,7 @@ class KarateTemplateContext implements IEngineContext {
         engine.eval(src);
     }
 
-    Object evalLocalAsObject(String src) {
+    public Object evalLocalAsObject(String src) {
         String temp;
         if (src.startsWith("${")) {
             temp = "`" + src + "`";
@@ -68,7 +68,7 @@ class KarateTemplateContext implements IEngineContext {
         return evalLocal(temp);
     }
 
-    Object evalLocal(String src) {
+    public Object evalLocal(String src) {
         Map<String, Object> localVars = new HashMap<>();
         for (String name : getVariableNames()) {
             localVars.put(name, getVariable(name));

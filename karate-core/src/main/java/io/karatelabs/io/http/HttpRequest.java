@@ -30,10 +30,21 @@ import io.karatelabs.common.ResourceType;
 import io.karatelabs.common.StringUtils;
 import io.karatelabs.js.Invokable;
 import io.karatelabs.js.SimpleObject;
+import io.netty.buffer.Unpooled;
+import io.netty.handler.codec.http.DefaultFullHttpRequest;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.QueryStringDecoder;
+import io.netty.handler.codec.http.multipart.Attribute;
+import io.netty.handler.codec.http.multipart.FileUpload;
+import io.netty.handler.codec.http.multipart.HttpPostMultipartRequestDecoder;
+import io.netty.handler.codec.http.multipart.HttpPostStandardRequestDecoder;
+import io.netty.handler.codec.http.multipart.InterfaceHttpData;
+import io.netty.handler.codec.http.multipart.InterfaceHttpPostRequestDecoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.charset.Charset;
 import java.util.*;
 
 public class HttpRequest implements SimpleObject {
@@ -52,6 +63,7 @@ public class HttpRequest implements SimpleObject {
     private ResourceType resourceType;
     private Map<String, String> pathParams;
     private String pathPattern;
+    private Map<String, List<Map<String, Object>>> multiParts;
 
     public void setUrl(String url) {
         urlAndPath = url;
@@ -222,6 +234,108 @@ public class HttpRequest implements SimpleObject {
         return resourceType;
     }
 
+    /**
+     * Returns true if this is an HTMX/AJAX request (has HX-Request header).
+     * Used to determine if a partial or full page render is needed.
+     */
+    public boolean isAjax() {
+        return getHeader("HX-Request") != null;
+    }
+
+    /**
+     * Returns true if this request has multipart form data.
+     */
+    public boolean isMultiPart() {
+        return multiParts != null;
+    }
+
+    /**
+     * Get all multipart data.
+     */
+    public Map<String, List<Map<String, Object>>> getMultiParts() {
+        return multiParts;
+    }
+
+    /**
+     * Get a single multipart field by name.
+     * Returns the first part with the given name, or null if not found.
+     */
+    public Map<String, Object> getMultiPart(String name) {
+        if (multiParts == null) {
+            return null;
+        }
+        List<Map<String, Object>> parts = multiParts.get(name);
+        if (parts == null || parts.isEmpty()) {
+            return null;
+        }
+        return parts.get(0);
+    }
+
+    /**
+     * Process the request body for form-urlencoded or multipart data.
+     * For form-urlencoded, fields are merged into params.
+     * For multipart, file uploads are stored in multiParts and fields in params.
+     */
+    public void processBody() {
+        if (body == null) {
+            return;
+        }
+        String contentType = getContentType();
+        if (contentType == null) {
+            return;
+        }
+        boolean multipart;
+        if (contentType.startsWith("multipart")) {
+            multipart = true;
+            multiParts = new HashMap<>();
+        } else if (contentType.contains("form-urlencoded")) {
+            multipart = false;
+        } else {
+            return;
+        }
+        logger.trace("decoding content-type: {}", contentType);
+        // Make params mutable if needed
+        params = (params == null || params.isEmpty()) ? new HashMap<>() : new HashMap<>(params);
+        DefaultFullHttpRequest nettyRequest = new DefaultFullHttpRequest(
+                HttpVersion.HTTP_1_1, HttpMethod.valueOf(method), path, Unpooled.wrappedBuffer(body));
+        nettyRequest.headers().add("Content-Type", contentType);
+        InterfaceHttpPostRequestDecoder decoder = multipart
+                ? new HttpPostMultipartRequestDecoder(nettyRequest)
+                : new HttpPostStandardRequestDecoder(nettyRequest);
+        try {
+            for (InterfaceHttpData part : decoder.getBodyHttpDatas()) {
+                String name = part.getName();
+                if (multipart && part instanceof FileUpload) {
+                    List<Map<String, Object>> list = multiParts.computeIfAbsent(name, k -> new ArrayList<>());
+                    Map<String, Object> map = new HashMap<>();
+                    list.add(map);
+                    FileUpload fup = (FileUpload) part;
+                    map.put("name", name);
+                    map.put("filename", fup.getFilename());
+                    Charset charset = fup.getCharset();
+                    if (charset != null) {
+                        map.put("charset", charset.name());
+                    }
+                    map.put("contentType", fup.getContentType());
+                    map.put("value", fup.get()); // bytes
+                    String transferEncoding = fup.getContentTransferEncoding();
+                    if (transferEncoding != null) {
+                        map.put("transferEncoding", transferEncoding);
+                    }
+                } else {
+                    // form-field, url-encoded if not multipart
+                    Attribute attribute = (Attribute) part;
+                    List<String> list = params.computeIfAbsent(name, k -> new ArrayList<>());
+                    list.add(attribute.getValue());
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            decoder.destroy();
+        }
+    }
+
     public Object getBodyConverted() {
         ResourceType rt = getResourceType(); // derive if needed
         if (rt != null && rt.isBinary()) {
@@ -389,6 +503,16 @@ public class HttpRequest implements SimpleObject {
         };
     }
 
+    private Invokable multiPart() {
+        return args -> {
+            if (args.length > 0) {
+                return getMultiPart(args[0] + "");
+            } else {
+                throw new RuntimeException("missing argument for multiPart()");
+            }
+        };
+    }
+
     @Override
     public Object jsGet(String key) {
         switch (key) {
@@ -428,6 +552,10 @@ public class HttpRequest implements SimpleObject {
                 return pathMatches();
             case "pathParams":
                 return getPathParams();
+            case "multiPart":
+                return multiPart();
+            case "multiParts":
+                return multiParts;
             case "get":
             case "post":
             case "put":
@@ -437,6 +565,8 @@ public class HttpRequest implements SimpleObject {
             case "options":
             case "trace":
                 return method.toLowerCase().equals(key);
+            case "ajax":
+                return isAjax();
             default:
                 logger.warn("get - unexpected key: {}", key);
         }

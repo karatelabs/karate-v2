@@ -75,6 +75,9 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
         String path = request.getPath();
 
         try {
+            // Process form/multipart body if present
+            request.processBody();
+
             // Create context for this request
             ServerContext context = createContext(request, response);
 
