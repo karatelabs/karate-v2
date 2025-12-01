@@ -2,7 +2,7 @@
 
 Lessons learned from real-world usage since 2017, distilled into the principles guiding this rewrite.
 
-> See also: [Roadmap](./ROADMAP.md) | [karate-js](./karate-js) | [karate-core](./karate-core)
+> See also: [Roadmap](./ROADMAP.md) | [karate-js](../karate-js) | [karate-core](../karate-core)
 
 ---
 
@@ -51,7 +51,7 @@ One thing that sets a testing framework apart from a normal runtime is the level
 
 ## 9. Embedded HTTP server and HTML engine
 
-Thymeleaf-based HTML templating powered by our high-performance [JS engine](karate-js/README.md) enables:
+Thymeleaf-based HTML templating powered by our high-performance [JS engine](../karate-js/README.md) enables:
 * multiple report generation options
 * micro-UI rendering for LLM sessions
 * scaling from mock apps to enterprise applications

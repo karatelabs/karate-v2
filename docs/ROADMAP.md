@@ -2,7 +2,7 @@
 
 This document tracks the development roadmap for Karate v2. It serves as a persistent reference for contributors and LLM assistants working on the project.
 
-> See also: [Design Principles](./PRINCIPLES.md) | [karate-js](./karate-js) | [karate-core](./karate-core)
+> See also: [Design Principles](./PRINCIPLES.md) | [Capabilities](./CAPABILITIES.md) | [karate-js](../karate-js) | [karate-core](../karate-core)
 
 > **Status Key:**
 > - `[ ]` Not started
@@ -19,7 +19,7 @@ This document tracks the development roadmap for Karate v2. It serves as a persi
 
 The Gherkin parser lives in `karate-js` (reuses the JS lexer). The ScenarioEngine is ported from Karate 1.x.
 
-- [ ] Full Gherkin parser (Feature, Scenario, ScenarioOutline, Background, Examples)
+- [~] Gherkin parser (Feature, Scenario, tags, steps implemented; ScenarioOutline, Background, Examples pending)
 - [ ] Port ScenarioEngine (FeatureRuntime, ScenarioRuntime, StepRuntime)
 - [ ] Step definitions with regex pattern matching
 - [ ] Variable scoping (local, global, feature-level)
@@ -27,7 +27,7 @@ The Gherkin parser lives in `karate-js` (reuses the JS lexer). The ScenarioEngin
 - [ ] `retry until` keyword for polling
 - [ ] Doc strings for multi-line values
 - [ ] Data tables for parameterized steps
-- [ ] Tags and tag expressions filtering
+- [~] Tags parsing (implemented; tag expressions filtering pending)
 - [ ] Parallel scenario execution (ExecutorService/CompletableFuture)
 - [ ] Scenario hooks (Before, After, BeforeAll, AfterAll)
 - [ ] JavaScript expression evaluation in steps
@@ -35,30 +35,30 @@ The Gherkin parser lives in `karate-js` (reuses the JS lexer). The ScenarioEngin
 
 ### HTTP Client
 
-- [ ] All HTTP methods (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
-- [ ] Request/response cycle management
-- [ ] Cookie and session management
-- [ ] Custom headers and header tracking
-- [ ] Query parameters and path parameters
-- [ ] SSL/TLS (custom certs, keystore/truststore, trust-all option)
-- [ ] Proxy support with authentication
-- [ ] Timeout configuration (connect, read)
-- [ ] Follow redirects option
-- [ ] Multipart and file uploads
-- [ ] Form-encoded data
+- [x] All HTTP methods (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
+- [x] Request/response cycle management
+- [x] Cookie and session management
+- [x] Custom headers and header tracking
+- [x] Query parameters and path parameters
+- [x] SSL/TLS (custom certs, keystore/truststore, trust-all option)
+- [x] Proxy support with authentication
+- [x] Timeout configuration (connect, read)
+- [x] Follow redirects option
+- [x] Multipart and file uploads
+- [x] Form-encoded data
 - [ ] Request/response filters
 - [ ] HTTP/2 support
 - [ ] GraphQL support
 - [ ] SOAP/soapAction support
 - [ ] NTLM authentication
-- [ ] HttpLogModifier for sensitive data masking
+- [x] HttpLogModifier for sensitive data masking
 - [ ] gRPC support (if external module exists)
 
 ### Match & Assertions
 
-- [ ] Core operators: EQUALS, NOT_EQUALS, CONTAINS, NOT_CONTAINS
-- [ ] CONTAINS_ONLY, CONTAINS_ANY, CONTAINS_DEEP variants
-- [ ] EACH_* variants for array iteration
+- [x] Core operators: EQUALS, NOT_EQUALS, CONTAINS, NOT_CONTAINS
+- [x] CONTAINS_ONLY, CONTAINS_ANY, CONTAINS_DEEP variants
+- [x] EACH_* variants for array iteration
 - [ ] JSONPath expressions
 - [ ] XPath expressions (namespace-aware)
 - [ ] Regular expression matching
@@ -70,11 +70,11 @@ The Gherkin parser lives in `karate-js` (reuses the JS lexer). The ScenarioEngin
 
 ### Data Formats
 
-- [ ] JSON (parsing, serialization, pretty print, JSONPath)
-- [ ] XML (parsing, serialization, XPath, namespaces)
+- [x] JSON (parsing, serialization, pretty print)
+- [x] XML (parsing, serialization)
 - [ ] CSV (FastCSV integration)
 - [ ] YAML (SnakeYAML)
-- [ ] Binary/bytes data handling
+- [x] Binary/bytes data handling
 - [ ] Template substitution
 
 ### Configuration
@@ -119,10 +119,10 @@ Integration with [Karate CLI](https://github.com/karatelabs/karate-cli):
 ### Console & Logging
 
 - [ ] ANSI coloring for all console logs
-- [ ] Structured logging (SLF4J/Logback)
+- [x] Structured logging (SLF4J/Logback)
 - [ ] File logging support
 - [ ] Configurable verbosity levels
-- [ ] Request/response log prettification
+- [x] Request/response log prettification
 - [ ] Print statements with expression evaluation
 - [ ] LLM-friendly output mode (token-efficient)
 - [ ] Stack traces with context
@@ -142,19 +142,19 @@ Integration with [Karate CLI](https://github.com/karatelabs/karate-cli):
 > **Status:** Partially implemented (helps test API client)
 
 ### Mock Server Core
-- [~] HTTP mock server (Netty-based)
+- [x] HTTP mock server (Netty-based)
 - [ ] Feature-based mock definitions
-- [ ] Dynamic request/response handling
-- [ ] Request matching and routing
-- [ ] Header and body customization
-- [ ] Status code control
+- [x] Dynamic request/response handling
+- [x] Request matching and routing
+- [x] Header and body customization
+- [x] Status code control
 - [ ] Delay/latency simulation
-- [ ] Stateful mocks (session support)
+- [x] Stateful mocks (session support)
 
 ### CLI Mock Options
 - [ ] `-m, --mock` - Mock server feature files
 - [ ] `-P, --prefix` - Path prefix/context-path
-- [ ] `-p, --port` - Server port
+- [x] `-p, --port` - Server port
 - [ ] `-s, --ssl` - Enable HTTPS
 - [ ] `-c, --cert` and `-k, --key` - SSL cert/key files
 - [ ] `-W, --watch` - Hot-reload mock files
@@ -162,8 +162,8 @@ Integration with [Karate CLI](https://github.com/karatelabs/karate-cli):
 
 ### Advanced Features
 - [ ] Mock recording and playback
-- [ ] CORS support
-- [ ] HTMX integration
+- [x] CORS support
+- [~] HTMX integration
 - [ ] AlpineJS integration
 
 ---
@@ -264,6 +264,47 @@ Integration with [Karate CLI](https://github.com/karatelabs/karate-cli):
 
 ---
 
+## Principle Extensions
+
+These themes emerged from brainstorming but aren't explicitly covered by the current principles in `PRINCIPLES.md`. They may warrant future principle additions or can inform implementation decisions.
+
+### Soft Assertions & Error Handling Philosophy
+
+Current Karate behavior is fail-fast on assertion failures. Consider:
+- **Soft assertions mode:** Continue execution after match failures, aggregate all failures in report
+- **User-defined assertion messages:** Allow custom failure messages for better diagnostics
+- **onError hooks:** JavaScript hooks that fire on any error, enabling custom recovery or logging
+
+### Telemetry & Version Awareness
+
+Help users stay current and provide usage insights:
+- **Version out-of-date banner:** Alert users when a newer Karate version is available
+- **Usage telemetry:** Anonymous usage patterns to guide development priorities
+- **Upsell touchpoints:** Tasteful awareness of commercial offerings (e.g., report footers)
+
+### Testing AI & LLM Systems
+
+Beyond being LLM-friendly, Karate can be a tool for testing AI systems:
+- **Testing MCP servers:** Validate MCP server implementations
+- **Mocking LLM APIs:** Deterministic responses for testing LLM-dependent code
+- **Prompt injection testing:** Security testing for AI systems
+- **LLM comparison:** A/B testing different models for given tasks
+- **Similarity assertions:** Fuzzy matching using embeddings for AI-generated content
+
+### Robustness & Execution Control
+
+- **Re-run only failed tests:** Resume from failure point using report data
+- **Random seed for test order:** Detect order-dependent tests
+- **Tag execution ordering:** Some tags run on same thread, some after others
+- **Multiple environments in parallel:** Run same tests against staging and prod simultaneously
+
+### Large Data Handling
+
+- **Streaming responses:** Memory-efficient handling of large file downloads
+- **Operations on huge data:** Match/sort operations without loading everything into memory
+
+---
+
 ## Notes for Contributors
 
 This roadmap is a living document. When working on tasks:
@@ -278,7 +319,10 @@ This roadmap is a living document. When working on tasks:
 Start each session by reading:
 1. **PRINCIPLES.md** - Understand the "why" behind decisions
 2. **ROADMAP.md** (this file) - Understand current priorities and tasks
-3. **Module READMEs** - Understand architecture (`karate-js/README.md`, `karate-core/README.md`)
+3. **CAPABILITIES.yaml** - Source of truth for capabilities (edit this, not the .md)
+4. **Module READMEs** - Understand architecture (`karate-js/README.md`, `karate-core/README.md`)
+
+**Important:** `CAPABILITIES.md` is auto-generated from `CAPABILITIES.yaml`. Never edit the .md file directly. After updating the YAML, run `./etc/generate-capabilities.sh` to regenerate.
 
 Key decisions made:
 - WebSocket support deprecated from open-source, moved to commercial
