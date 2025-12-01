@@ -8,7 +8,7 @@ Lessons learned from real-world usage since 2017, distilled into the principles 
 
 ## 1. Backwards Compatible
 
-All Karate 1.x features should work. Migration should be straightforward.
+All Karate 1.x features will work and migration will be straightforward.
 
 ## 2. Clear Priorities
 
@@ -27,7 +27,7 @@ A ground-up rewrite that references 1.x code where useful. No legacy constraints
 
 ## 4. Zero-Friction Installation
 
-Non-Java teams should use Karate without wrestling with JVM setup. See [Karate CLI](https://github.com/karatelabs/karate-cli).
+Non-Java teams will be able to install and use Karate without wrestling with JVM setup. See [Karate CLI](https://github.com/karatelabs/karate-cli).
 
 ## 5. Polyglot by Design
 
