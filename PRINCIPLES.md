@@ -17,9 +17,9 @@ Most users depend on API Testing, so the first few releases of Karate v2 will fo
 1. API Testing
 2. API Mocks
 3. API Performance Testing
-4. Web Browser Automation (low priority)
+4. Web Browser Automation
 
-Cross-platform desktop automation and mobile automation will be looked at only after the top priorities are proven stable.
+Web browser automation, cross-platform desktop automation and mobile automation will be looked at only after the top priorities are proven stable.
 
 ## 3. Fresh Start, Latest Stack
 
@@ -39,21 +39,27 @@ All capabilities can be scripted using JavaScript. JS becomes a first-class way 
 
 This also enables LLMs to control Karate in interactive REPL sessions. Allowing LLMs to write code instead of using a JSON schema based tool-use protocol has been [proven to be more effective, and use less tokens](https://www.anthropic.com/engineering/code-execution-with-mcp).
 
-## 7. Embedded HTTP server and HTML engine
-
-Thymeleaf-based templating powered by our high-performance [JS engine](karate-js/README.md) enables many reporting options, micro-UI rendering for LLM sessions, and scaling from mock apps to enterprise applications. It also allows teams to customize reports. Test result rendering can be aligned to the business domain of the system under test, enabling an experience that BDD (Behavior Driven Development) was expected to deliver in the past.
- 
-Other tooling from Karate Labs such as [Karate Xplorer](https://xplorer.karatelabs.io/) re-use Karate and extend these capabilities further.
-
-## 8. Human and AI Friendly
+## 7. Human and AI Friendly
 
 Karate tests are known for being concise, business-focused, and readable—both by humans and by LLMs. A discoverable, self-describing command-line interface is essential for letting LLMs explore capabilities, invoke tools reliably, and minimize token usage.
 
 Our goal is for Karate to be the best tool an LLM can use for anything involving API or test automation. To get there, we will prioritize a first-class CLI experience, and consider MCP support only if it becomes necessary. [Industry signals](https://mariozechner.at/posts/2025-11-02-what-if-you-dont-need-mcp) suggest that a well-designed CLI [often outperforms MCP-style integrations](https://kumak.dev/cli-vs-mcp-benchmarking-browser-automation) for agentic workflows, especially as teams increasingly adopt CLI-driven coding agents like Claude Code and OpenAI’s Codex. We expect this trend to accelerate.
 
-## 9. Logging, Reporting and Observability
+## 8. Logging, Reporting and Observability
 
 One thing that sets a testing framework apart from a normal runtime is the level of detail you get from reports after running a test. This is important for debugging and as an audit trail, especially in compliance-heavy business contexts. The built-in HTML templating has been in Karate from the start, and we will continue to support industry standards such as the JUnit XML and Cucumber JSON report data-formats. We will also collaborate closely with other testing and dev-tool projects to ensure enterprises have the best developer experience in local environments and CI/CD. Karate v2 will also improve observability, with more hook and callback options. LLMs will be able to pull logs and stack traces interactively via the CLI or a JavaScript API in a REPL or sandbox.
+
+## 9. Embedded HTTP server and HTML engine
+
+Thymeleaf-based HTML templating powered by our high-performance [JS engine](karate-js/README.md) enables:
+* multiple report generation options
+* micro-UI rendering for LLM sessions
+* scaling from mock apps to enterprise applications
+* custom HTML reports
+
+Test result rendering can be aligned to the business domain of the system under test, enabling an experience that BDD (Behavior Driven Development) was expected to deliver in the past.
+ 
+Other tooling from Karate Labs such as [Karate Xplorer](https://xplorer.karatelabs.io/) re-use the above capabilities and extend them.
 
 ## 10. Extensibility and Sustainable Open-Core
 
