@@ -4,7 +4,7 @@ A lightweight JavaScript engine implemented in Java from scratch, designed to ru
 
 > See also: [Design Principles](../PRINCIPLES.md) | [Roadmap](../ROADMAP.md) | [karate-core](../karate-core)
 
-> **Note:** This module was previously maintained as a separate project at [karatelabs/karate-js](https://github.com/karatelabs/karate-js). It has been folded into karate-v2 but remains reusable by third-party projects. A lot of improvements have gone into the engine, and it supports a lot more syntax than before. We have high confidence that the JS engine supports code typically written by LLMs.
+> **Note:** This module was previously maintained as a separate project at [karatelabs/karate-js](https://github.com/karatelabs/karate-js). It has been folded into karate-v2 but remains reusable by third-party projects. A lot of improvements have been made, and the engine supports a lot more syntax. We have high confidence that the JS engine supports code typically written by LLMs.
 
 ## Why Another JavaScript Engine?
 
@@ -12,21 +12,17 @@ The JVM JavaScript landscape has a troubled history:
 
 1. **Mozilla Rhino** - The original, now legacy
 2. **Oracle Nashorn** - Included in JDK 8, deprecated and removed
-3. **GraalJS** - Current Oracle offering, but with a critical limitation
+3. **GraalJS** - Current Oracle offering, but with a critical limitation.
 
-### The Graal Problem
-
-GraalJS cannot be used by multiple threads simultaneously. The Graal team cites ECMAScript specifications, but this limitation severely impacts frameworks like Karate that rely on parallel test execution as a core feature.
-
-We need a JavaScript engine we completely control, ensuring that engine changes never impact our users.
+We need a JavaScript engine we completely control, ensuring that engine changes never impact our users. The decision to write one from scratch was not made lightly, and is explained [here](https://github.com/karatelabs/karate-js). 
 
 ## Features
 
 - **Thread-safe** - Full support for concurrent execution across threads
 - **Minimal** - adds very little to the JAR size compared to e.g. Graal. SLF4J and JSON-smart are the only dependencies.
-- **Java Interop** - Optimized for Java interop performance
+- **Java Interop** - Optimized for bridging Java and JS code in the simplest way possible. Allows full control, behavior customization and introspection from Java.
 - **Simple** - Concise and understandable codebase, easy to maintain. Plenty of unit-tests.
-- **Fast** - The parser is written by hand and not generated like ANTLR based approaches. Early benchmarks suggest a 10x performance over other Java based engines
+- **Fast** - The parser is written by hand and not generated like ANTLR based approaches. Conversions from Java to JS types are minimized. Early benchmarks suggest a 10x performance over other Java based engines
 
 ## Architecture
 

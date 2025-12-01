@@ -191,13 +191,6 @@ Integration with [Karate CLI](https://github.com/karatelabs/karate-cli):
 - [x] Create CONTRIBUTING.md
 - [x] Create SECURITY.md
 
-### Project Cleanup
-- [ ] Review and clean up code for public release
-- [ ] Ensure consistent code style across modules
-- [ ] Add license headers to all source files (if needed)
-- [ ] Review and update .gitignore
-- [ ] Remove any internal/sensitive references
-
 ### CI/CD Pipeline
 - [ ] Set up GitHub Actions workflow for CI
 - [ ] Configure automated testing on PR
@@ -211,16 +204,6 @@ Integration with [Karate CLI](https://github.com/karatelabs/karate-cli):
 - [ ] Configure GitHub repository settings (branch protection, etc.)
 - [ ] Set up issue templates
 - [ ] Set up PR templates
-
----
-
-## Announcements
-
-### Blog Post: Karate v2 Public Release
-- [ ] Draft announcement blog post
-- [ ] Highlight key improvements over v1
-- [ ] Invite enterprise users to review and contribute
-- [ ] Publish at [Karate Labs blog](https://www.karatelabs.io/blog) or similar
 
 ---
 
