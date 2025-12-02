@@ -1,7 +1,5 @@
 # Karate v2
 
-> Test Automation Made Simple
-
 Karate v2 is a complete rewrite of [Karate](https://github.com/karatelabs/karate), the popular open-source test automation framework. It combines API testing, mocking, and performance testing into a single, unified tool. 
 
 > Karate v1 supports web-browser automation, and this will be eventually added to v2 as well.
@@ -15,7 +13,7 @@ Karate v2 is a complete rewrite of [Karate](https://github.com/karatelabs/karate
 
 ## Key Features
 
-- **API Test Automation** - Write expressive tests in Gherkin syntax with powerful JSON/XML assertions
+- **API Test Automation** - Write expressive tests in Gherkin syntax with powerful JSON and XML assertions
 - **Mock Servers** - Built-in HTTP server for API mocking with dynamic responses
 - **Performance Testing** - Scale from functional tests to load tests seamlessly
 - **HTML Templating** - Thymeleaf-based templating with HTMX and AlpineJS support
@@ -30,13 +28,7 @@ Karate v2 is a complete rewrite of [Karate](https://github.com/karatelabs/karate
 
 ### Maven Dependency
 
-```xml
-<dependency>
-    <groupId>io.karatelabs</groupId>
-    <artifactId>karate-core</artifactId>
-    <version>2.0.0.RC1</version>
-</dependency>
-```
+> Coming soon.
 
 ## Documentation
 
@@ -45,11 +37,11 @@ Karate v2 is a complete rewrite of [Karate](https://github.com/karatelabs/karate
 - [Capabilities](./docs/CAPABILITIES.md) - Full taxonomy of features
 - [Contributing](./CONTRIBUTING.md) - How to contribute
 
-Full documentation: [docs.karatelabs.io](https://docs.karatelabs.io)
-
 ## For Karate 1.x Users
 
-Karate v2 maintains backwards compatibility with 1.x features. If you're migrating from 1.x, most of your existing tests should work with minimal changes. See the migration guide (coming soon) for details.
+Karate v2 maintains backwards compatibility with 1.x features. If you're migrating from 1.x, most of your existing tests should work with minimal changes.
+
+> Migration guide coming soon. This repository will be folded into the primary [github.com/karatelans/karate](https://github.com/karatelabs/karate) location when Karate v2 is generally available.
 
 ## Related Projects
 
