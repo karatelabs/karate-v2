@@ -1,5 +1,8 @@
 # Karate v2
 
+> [!NOTE]
+> 📣 **[Read the official announcement on LinkedIn](https://www.linkedin.com/pulse/announcing-karate-v2-ground-up-rewrite-karatelabs-gh9bc)**
+
 Karate v2 is a complete rewrite of [Karate](https://github.com/karatelabs/karate), the popular open-source test automation framework. It combines API testing, mocking, and performance testing into a single, unified tool. 
 
 > Karate v1 supports web-browser automation, and this will be eventually added to v2 as well.
