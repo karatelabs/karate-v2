@@ -70,4 +70,18 @@ class OperationTest {
         assertFalse(operation.execute());
     }
 
+    @Test
+    void testIssue2727() {
+        String response = "[ { a: 1, b: [ { c: 3, d: 4 } ] } ]";
+        Json pattern1 = Json.of("{ a: 1, b: [ { c: 3 } ] }");
+        Engine engine = new Engine();
+        engine.put("pattern1", pattern1.asMap());
+        Operation operation = new Operation(engine, Match.Type.CONTAINS, value(response), value("#(^+pattern1)"));
+        assertTrue(operation.execute());
+        Json pattern2 = Json.of("{ c: 3 }");
+        engine.put("pattern2", pattern2.asMap());
+        operation = new Operation(engine, Match.Type.CONTAINS, value(response), value("{ a: 1, b: [ '#(^pattern2)' ] }"));
+        assertTrue(operation.execute());
+    }
+
 }

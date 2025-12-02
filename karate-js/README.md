@@ -4,7 +4,7 @@ A lightweight JavaScript engine implemented in Java from scratch, designed to ru
 
 > See also: [Design Principles](../PRINCIPLES.md) | [Roadmap](../ROADMAP.md) | [karate-core](../karate-core)
 
-> **Note:** This module was previously maintained as a separate project at [karatelabs/karate-js](https://github.com/karatelabs/karate-js). It has been folded into karate-v2 but remains reusable by third-party projects. A lot of improvements have been made, and the engine supports a lot more syntax. We have high confidence that the JS engine supports code typically written by LLMs.
+> **Note:** This module was previously maintained as a separate project at [karatelabs/karate-js](https://github.com/karatelabs/karate-js). It has been folded into karate-v2 but remains reusable by third-party projects. A lot of improvements have been made, and extensive testing has been done against code written by LLMs.
 
 ## Why Another JavaScript Engine?
 
@@ -22,7 +22,7 @@ We need a JavaScript engine we completely control, ensuring that engine changes 
 - **Minimal** - adds very little to the JAR size compared to e.g. Graal. SLF4J and JSON-smart are the only dependencies.
 - **Java Interop** - Optimized for bridging Java and JS code in the simplest way possible. Allows full control, behavior customization and introspection from Java.
 - **Simple** - Concise and understandable codebase, easy to maintain. Plenty of unit-tests.
-- **Fast** - The parser is written by hand and not generated like ANTLR based approaches. Conversions from Java to JS types are minimized. Early benchmarks suggest a 10x performance over other Java based engines
+- **Fast** - The parser is written by hand and not generated like ANTLR based approaches. Conversions between Java and JS types are minimized. Early benchmarks suggest a 10x performance over other Java based engines
 
 ## Architecture
 
