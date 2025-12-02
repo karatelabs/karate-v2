@@ -41,7 +41,7 @@ Karate v2 is a complete rewrite of [Karate](https://github.com/karatelabs/karate
 
 Karate v2 maintains backwards compatibility with 1.x features. If you're migrating from 1.x, most of your existing tests should work with minimal changes.
 
-> Migration guide coming soon. This repository will be folded into the primary [github.com/karatelans/karate](https://github.com/karatelabs/karate) location when Karate v2 is generally available.
+> Migration guide coming soon. This repository will be folded into the primary [github.com/karatelabs/karate](https://github.com/karatelabs/karate) location when Karate v2 is generally available.
 
 ## Related Projects
 

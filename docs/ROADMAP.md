@@ -100,6 +100,7 @@ The Gherkin parser lives in `karate-js` (reuses the JS lexer). The ScenarioEngin
 
 Integration with [Karate CLI](https://github.com/karatelabs/karate-cli):
 
+- [ ] Update Karate CLI to support karate-v2 as backend
 - [ ] Feature file/directory paths
 - [ ] `-t, --tags` - Tag filtering
 - [ ] `-T, --threads` - Parallel thread count
@@ -194,9 +195,22 @@ Integration with [Karate CLI](https://github.com/karatelabs/karate-cli):
 ### CI/CD Pipeline
 - [ ] Set up GitHub Actions workflow for CI
 - [ ] Configure automated testing on PR
-- [ ] Configure build and publish workflow
 - [ ] Add code coverage reporting
 - [ ] Add dependency vulnerability scanning
+- [ ] Java version compatibility matrix (21, 22, 23, EA builds)
+
+### One-Click Release Workflow
+- [ ] GitHub Actions workflow for unified release process
+- [ ] Automated version bumping and changelog generation
+- [ ] Maven Central publish step (with GPG signing)
+- [ ] Docker image build and push to registry
+- [ ] GitHub Release creation with assets
+- [ ] Release validation tests (smoke tests against published artifacts)
+
+### Maven Artifact Publishing
+- [ ] Configure Maven Central publishing (Sonatype OSSRH)
+- [ ] Configure POM metadata (SCM, developers, licenses)
+- [ ] Document release process
 
 ### Repository Hygiene
 - [ ] Archive [karatelabs/karate-js](https://github.com/karatelabs/karate-js) repository
