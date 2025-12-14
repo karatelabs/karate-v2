@@ -96,7 +96,7 @@ public class Engine {
 
     static Object toJava(Object value) {
         if (value instanceof JavaMirror) {
-            return ((JavaMirror) value).toJava();
+            return ((JavaMirror) value).getJavaValue();
         }
         if (value == Terms.UNDEFINED) {
             return null;

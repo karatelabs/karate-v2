@@ -203,6 +203,14 @@ public class JsRegex extends JsObject {
     }
 
     @Override
+    JsRegex fromThis(Context context) {
+        if (context.getThisObject() instanceof JsRegex jr) {
+            return jr;
+        }
+        return this;
+    }
+
+    @Override
     Prototype initPrototype() {
         Prototype wrapped = super.initPrototype();
         return new Prototype(wrapped) {
@@ -213,21 +221,13 @@ public class JsRegex extends JsObject {
                         if (args.length == 0 || args[0] == null) {
                             return false;
                         }
-                        JsRegex regex = JsRegex.this;
-                        if (context.getThisObject() instanceof JsRegex jr) {
-                            regex = jr;
-                        }
-                        return regex.test(args[0].toString());
+                        return fromThis(context).test(args[0].toString());
                     };
                     case "exec" -> (JsCallable) (context, args) -> {
                         if (args.length == 0 || args[0] == null) {
                             return null;
                         }
-                        JsRegex regex = JsRegex.this;
-                        if (context.getThisObject() instanceof JsRegex jr) {
-                            regex = jr;
-                        }
-                        return regex.exec(args[0].toString());
+                        return fromThis(context).exec(args[0].toString());
                     };
                     case "source" -> pattern;
                     case "flags" -> flags;

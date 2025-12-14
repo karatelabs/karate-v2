@@ -87,6 +87,18 @@ class JsUint8Array extends JsArray implements JavaMirror {
     }
 
     @Override
+    JsUint8Array fromThis(Context context) {
+        Object thisObject = context.getThisObject();
+        if (thisObject instanceof JsUint8Array arr) {
+            return arr;
+        }
+        if (thisObject instanceof byte[] bytes) {
+            return new JsUint8Array(bytes);
+        }
+        return this;
+    }
+
+    @Override
     Prototype initPrototype() {
         Prototype wrapped = super.initPrototype();
         return new Prototype(wrapped) {
@@ -101,7 +113,7 @@ class JsUint8Array extends JsArray implements JavaMirror {
     }
 
     @Override
-    public Object toJava() {
+    public Object getJavaValue() {
         return buffer;
     }
 

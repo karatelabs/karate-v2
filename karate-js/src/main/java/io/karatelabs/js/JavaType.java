@@ -32,7 +32,7 @@ public class JavaType implements ExternalAccess {
     }
 
     @Override
-    public Object toJava() {
+    public Object getJavaValue() {
         return clazz;
     }
 

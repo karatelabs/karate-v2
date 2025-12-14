@@ -40,7 +40,7 @@ public class JsJava implements SimpleObject {
             case "type" -> (Invokable) args -> bridge.forType((String) args[0]);
             case "to" -> (Invokable) args -> {
                 if (args[0] instanceof ExternalAccess ja) {
-                    return ja.toJava();
+                    return ja.getJavaValue();
                 }
                 // TODO regex, functions, lambdas
                 return null;

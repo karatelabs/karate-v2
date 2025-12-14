@@ -236,7 +236,7 @@ class Interpreter {
             result = callable;
         }
         if (result instanceof JavaMirror jm) {
-            return newKeyword ? result : jm.toJava();
+            return newKeyword ? result : jm.getJavaValue();
         }
         return result;
     }

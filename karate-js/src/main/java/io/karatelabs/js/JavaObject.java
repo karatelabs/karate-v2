@@ -34,7 +34,7 @@ public class JavaObject implements ExternalAccess, ObjectLike {
     }
 
     @Override
-    public Object toJava() {
+    public Object getJavaValue() {
         return object;
     }
 

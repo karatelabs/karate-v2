@@ -39,6 +39,6 @@ public interface ExternalAccess extends Invokable {
         return args -> call(name, args);
     }
 
-    Object toJava();
+    Object getJavaValue();
 
 }

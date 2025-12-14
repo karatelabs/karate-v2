@@ -9,7 +9,7 @@ Added `JsPrimitive` marker interface extending `JavaMirror` for boxed primitive 
 **Benefits**:
 - Single `instanceof JsPrimitive` check instead of 3 separate checks
 - Cleaner code in `Terms.isTruthy()`, `Terms.typeOf()`, `Terms.eq()`
-- `toJava()` provides uniform unwrapping for loose equality
+- `getJavaValue()` provides uniform unwrapping for loose equality
 
 **Files changed**: `JsPrimitive.java` (new), `JsNumber.java`, `JsString.java`, `JsBoolean.java`, `Terms.java`
 
@@ -32,24 +32,24 @@ return switch (o) {
 ```
 
 **Solution**: Two methods on `JavaMirror`:
-- `toJava()` - Returns idiomatic Java type for **external** use (e.g., JsDate → Date)
+- `getJavaValue()` - Returns idiomatic Java type for **external** use (e.g., JsDate → Date)
 - `getInternalValue()` - Returns raw internal value for **internal** operations (e.g., JsDate → Long millis)
 
 **Implementation**:
 ```java
 interface JavaMirror {
-    Object toJava();
+    Object getJavaValue();
 
     default Object getInternalValue() {
-        return toJava();  // Default: same as toJava()
+        return getJavaValue();  // Default: same as getJavaValue()
     }
 }
 ```
 
 **What each type returns**:
 
-| Class | `toJava()` | `getInternalValue()` |
-|-------|------------|---------------------|
+| Class | `getJavaValue()` | `getInternalValue()` |
+|-------|------------------|---------------------|
 | JsNumber | Number | Number (default) |
 | JsString | String | String (default) |
 | JsBoolean | Boolean | Boolean (default) |
@@ -77,7 +77,7 @@ static Number objectToNumber(Object o) {
 - Cleaner code: "unwrap first, then switch on raw types" pattern
 - JsDate comparison/arithmetic works correctly (millis is a Number)
 - Single point of type unwrapping
-- Extensible: new JavaMirror types just need to implement `getInternalValue()`
+- Extensible: new JavaMirror types just implement `getJavaValue()` (and optionally `getInternalValue()` if different)
 
 **Files changed**: `JavaMirror.java`, `JsDate.java`, `Terms.java`
 
@@ -101,115 +101,127 @@ Added `CallInfo` to provide reflection-like awareness for callables about their 
 
 ---
 
-## In Progress: JsDate Internal Migration
+## Completed: JsDate Internal Migration
 
 **Goal**: Refactor JsDate internals from `java.util.Date` + `Calendar` to `long millis` + `java.time`.
 
-**Status**: Core migration DONE. Remaining: fix test failures related to `new Date(original)` copy semantics and date parsing.
+**Status**: DONE.
 
-### Completed Changes
+### Changes
 - Internal field: `private long millis` (was `private final Date value`)
 - Getters use: `ZonedDateTime.ofInstant(Instant.ofEpochMilli(millis), ZoneId.systemDefault())`
 - Setters use: `ZonedDateTime` + `plusDays/plusMonths` for overflow handling
 - Formatting uses: `DateTimeFormatter` (thread-safe)
 - Added `getInternalValue()` returning millis for numeric operations
 - `call()` method returns JsDate for `new` calls, Date for function calls (via CallInfo)
+- Uses `fromThis(context)` pattern for "this" resolution
 
-### Remaining Issues
-1. **Date parsing**: `parseToMillis()` needs to handle more formats
-2. **Test expectations**: Some tests compare `JsDate.parse()` (returns Date) with `get("a")` (returns JsDate)
-3. **Date comparison**: `date2 > date1` with JsDate objects - verify `getInternalValue()` is used
-
-### Key Implementation Details
-
-### Refactor Steps
-
-1. **Change internal field**:
-   ```java
-   // FROM
-   private final Date value;
-   // TO
-   private long millis;
-   ```
-
-2. **Update constructors** - all should set `this.millis = ...`:
-   ```java
-   JsDate() { this.millis = System.currentTimeMillis(); }
-   JsDate(long timestamp) { this.millis = timestamp; }
-   JsDate(Date date) { this.millis = date.getTime(); }
-   JsDate(Instant i) { this.millis = i.toEpochMilli(); }
-   // etc.
-   ```
-
-3. **Add helper method** for local time operations:
-   ```java
-   private ZonedDateTime toZonedDateTime() {
-       return ZonedDateTime.ofInstant(Instant.ofEpochMilli(millis), ZoneId.systemDefault());
-   }
-   ```
-
-4. **Update getters** (getFullYear, getMonth, getDate, getDay, getHours, getMinutes, getSeconds, getMilliseconds):
-   ```java
-   case "getFullYear" -> (JsCallable) (ctx, args) -> asJsDate(ctx).toZonedDateTime().getYear();
-   case "getMonth" -> (JsCallable) (ctx, args) -> asJsDate(ctx).toZonedDateTime().getMonthValue() - 1; // 0-indexed
-   case "getDate" -> (JsCallable) (ctx, args) -> asJsDate(ctx).toZonedDateTime().getDayOfMonth();
-   case "getDay" -> (JsCallable) (ctx, args) -> asJsDate(ctx).toZonedDateTime().getDayOfWeek().getValue() % 7; // Sun=0
-   case "getHours" -> (JsCallable) (ctx, args) -> asJsDate(ctx).toZonedDateTime().getHour();
-   // etc.
-   ```
-
-5. **Update setters** (setFullYear, setMonth, setDate, setHours, setMinutes, setSeconds, setMilliseconds, setTime):
-   ```java
-   case "setMonth" -> (JsCallable) (ctx, args) -> {
-       JsDate jsDate = asJsDate(ctx);
-       int month = ((Number) args[0]).intValue();
-       ZonedDateTime zdt = jsDate.toZonedDateTime().withMonth(month + 1); // 0-indexed
-       jsDate.millis = zdt.toInstant().toEpochMilli();
-       return jsDate.millis;
-   };
-   ```
-
-6. **Update formatting methods**:
-   ```java
-   private static final DateTimeFormatter ISO_FORMATTER =
-       DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
-
-   case "toISOString" -> (JsCallable) (ctx, args) ->
-       ISO_FORMATTER.format(Instant.ofEpochMilli(asJsDate(ctx).millis));
-   ```
-
-7. **Update helper methods**:
-   ```java
-   // FROM
-   Date asDate(Context context) { ... return date.value; }
-   // TO
-   JsDate asJsDate(Context context) {
-       if (context.getThisObject() instanceof JsDate date) return date;
-       return this;
-   }
-   ```
-
-8. **Update toJava()**:
-   ```java
-   @Override
-   public Object toJava() {
-       return new Date(millis); // backward compatible
-   }
-   ```
-
-9. **Update call() method** - returns `Date` for backward compat but creates JsDate internally
-
-### Benefits After Migration
+### Benefits
 - Thread-safe formatting (no `synchronized` needed)
 - Modern API (java.time is cleaner than Calendar)
 - Simpler code (no Calendar boilerplate)
 - Consistent internal representation (just millis)
 
+**Files changed**: `JsDate.java`
+
+---
+
+## Completed: fromThis() Pattern for "this" Resolution
+
+**Goal**: Unify "this" handling across all JsObject subclasses with a polymorphic `fromThis(Context)` method.
+
+**Problem solved**: Inconsistent patterns for resolving `this` in prototype methods:
+- JsDate had `asJsDate(Context)` returning `JsDate`
+- JsArray had `asList(Context)` returning raw `List<Object>`
+- JsObject had `asMap(Context)` returning raw `Map<String, Object>`
+- JsRegex had inline checks duplicated in each method
+
+**Solution**: Base method on `JsObject` with covariant overrides:
+
+```java
+// JsObject - base implementation
+JsObject fromThis(Context context) {
+    Object thisObject = context.getThisObject();
+    if (thisObject instanceof JsObject jo) return jo;
+    if (thisObject instanceof Map<?, ?> map) return new JsObject((Map<String, Object>) map);
+    return this;
+}
+```
+
+**Overrides with covariant returns**:
+
+| Class | `fromThis()` returns | Also handles raw type |
+|-------|---------------------|----------------------|
+| JsObject | JsObject | Map |
+| JsArray | JsArray | List |
+| JsDate | JsDate | - |
+| JsRegex | JsRegex | - |
+| JsString | JsString | String |
+| JsNumber | JsNumber | Number |
+| JsUint8Array | JsUint8Array | byte[] |
+
+**Convenience helpers now delegate**:
+```java
+List<Object> asList(Context c) { return fromThis(c).list; }
+Map<String, Object> asMap(Context c) { return fromThis(c).toMap(); }
+String asString(Context c) { return fromThis(c).text; }
+```
+
+**Benefits**:
+- Single consistent pattern across all types
+- Covariant returns give type safety
+- Handles both wrapper and raw types (List/Map/String/Number)
+- Enables proper `.call()` support: `Number.prototype.toFixed.call(5, 2)`
+
+**Files changed**: `JsObject.java`, `JsArray.java`, `JsDate.java`, `JsRegex.java`, `JsString.java`, `JsNumber.java`, `JsUint8Array.java`
+
+---
+
+## Completed: Terms.toObjectLike() Helper
+
+**Goal**: Consolidate object wrapping logic for property access in `JsProperty.get()`.
+
+**Problem solved**: Scattered type checks and wrapping in JsProperty.get():
+```java
+// OLD: 3 separate wrapping patterns
+if (object instanceof ObjectLike objectLike) {
+    return objectLike.get(name);
+}
+if (object instanceof List) {
+    return (new JsArray((List<Object>) object).get(name));
+}
+JavaMirror mirror = Terms.toJavaMirror(object);
+if (mirror instanceof ObjectLike ol) {
+    return ol.get(name);
+}
+```
+
+**Solution**: New helper method in `Terms.java`:
+```java
+static ObjectLike toObjectLike(Object o) {
+    if (o instanceof ObjectLike ol) return ol;
+    if (o instanceof List list) return new JsArray(list);
+    JavaMirror mirror = toJavaMirror(o);
+    return mirror instanceof ObjectLike ol ? ol : null;
+}
+```
+
+**Simplified JsProperty.get()**:
+```java
+// NEW: Single call (Map optimization preserved separately)
+ObjectLike ol = Terms.toObjectLike(object);
+if (ol != null) {
+    return ol.get(name);
+}
+```
+
+**Files changed**: `Terms.java`, `JsProperty.java`
+
 ---
 
 ## TODO: JsRegex + JavaMirror
 
-**Goal**: Make `JsRegex` implement `JavaMirror` so `toJava()` returns `java.util.regex.Pattern`.
+**Goal**: Make `JsRegex` implement `JavaMirror` so `getJavaValue()` returns `java.util.regex.Pattern`.
 
 **Challenge**: Unlike Number/String/Boolean, `RegExp('foo')` without `new` ALSO returns an object in JS (not a primitive).
 
@@ -222,11 +234,11 @@ Added `CallInfo` to provide reflection-like awareness for callables about their 
 
 **If JavaMirror added naively**, `RegExp('foo')` would return `Pattern` (wrong).
 
-**Proposed fix**: Skip `toJava()` unwrapping for JsRegex specifically:
+**Proposed fix**: Skip `getJavaValue()` unwrapping for JsRegex specifically:
 ```java
 // In Interpreter.evalFnCall()
 if (result instanceof JavaMirror jm && !(result instanceof JsRegex)) {
-    return newKeyword ? result : jm.toJava();
+    return newKeyword ? result : jm.getJavaValue();
 }
 ```
 
@@ -234,64 +246,57 @@ Or handle in `JsRegex.call()` similar to boxed primitives - always return JsRege
 
 ---
 
-## TODO: Promise ↔ Java
+## Roadmap: Prioritized TODO
 
-**Goal**: Bidirectional mapping between JS Promise and Java async constructs.
+For a JS engine focused on **JVM glue logic** (API testing, data transformation, business rules).
 
-**Options for Java side**:
-- `CompletableFuture<T>` - most flexible, supports chaining
-- `Future<T>` - simpler but blocking
-- `Function<T, R>` - for callbacks/continuations
+### High Priority
 
-**Proposed mapping**:
-```java
-class JsPromise extends JsObject implements JavaMirror {
-    private CompletableFuture<Object> future;
+| Feature | Java Type | Why | Status |
+|---------|-----------|-----|--------|
+| **BigInt** | `BigInteger` | Large IDs, timestamps, financial identifiers | TODO |
+| **BigDecimal** | `BigDecimal` | Money/finance - floating point is dangerous | TODO |
+| **ArrayBuffer** | `byte[]` | Raw binary data container | TODO |
+| **Uint8Array** | `byte[]` | TypedArray view over ArrayBuffer | DONE (`JsUint8Array`) |
 
-    @Override
-    public Object toJava() {
-        return future;
-    }
+### Medium Priority
 
-    // JS: promise.then(fn)
-    // Java: future.thenApply(fn)
-}
-```
+| Feature | Java Type | Why | Status |
+|---------|-----------|-----|--------|
+| **Set** | `java.util.Set` | Deduplication, membership checks | TODO |
+| **Map (proper JS Map)** | `java.util.Map` | Ordered keys, non-string keys | TODO (plain objects work) |
+| **Iterator/for-of** | `java.util.Iterator` | Clean iteration over Java collections | TODO |
 
-**Considerations**:
-- Error handling: `.catch()` ↔ `.exceptionally()`
-- Chaining: `.then().then()` ↔ `.thenApply().thenApply()`
-- `Promise.all()` ↔ `CompletableFuture.allOf()`
-- `Promise.race()` ↔ `CompletableFuture.anyOf()`
+### Lower Priority (Roadmap)
 
----
+| Feature | Java Type | Why | Status |
+|---------|-----------|-----|--------|
+| **Promise/async-await** | `CompletableFuture` | Async APIs | TODO |
+| **Generator/yield** | `Iterator` with state | Lazy evaluation | TODO |
+| **Symbol** | Custom `JsSymbol` | Unique identifiers (library internals) | TODO |
+| **Proxy** | Dynamic proxy | Metaprogramming | TODO |
+| **WeakMap/WeakSet** | `WeakHashMap` | GC-friendly references | TODO |
 
-## Future: Other Bidirectional Conversions
+### Notes
 
-| JS Type | Java Type | Notes |
-|---------|-----------|-------|
-| `Map` | `java.util.Map` | Already works via JsObject |
-| `Set` | `java.util.Set` | Could add JsSet |
-| `ArrayBuffer` | `byte[]` | For binary data |
-| `TypedArray` | `ByteBuffer` / primitive arrays | Int8Array, Uint8Array, etc. |
-| `Symbol` | Custom `JsSymbol` | Unique identifiers |
-| `BigInt` | `java.math.BigInteger` | Arbitrary precision |
-| `Iterator` | `java.util.Iterator` | For `for..of` interop |
-| `Generator` | `Iterator` with state | Yield support |
-| `Proxy` | Dynamic proxy | Metaprogramming |
-| `WeakMap/WeakSet` | `WeakHashMap` | GC-friendly references |
+**JsFunction → JsCallable**: When a JS function is passed to Java, users cast to `JsCallable` which has a simple contract: `Object call(Context context, Object... args)`. Wrapping into `java.util.function.Function` was considered but rejected - the `Context` dependency is fundamental to JS semantics (this binding, closures, scope). Keeping `JsCallable` as the API gives users explicit control over context with no hidden behavior.
+
+**BigDecimal**: Critical for finance/money calculations where `0.1 + 0.2 !== 0.3` is unacceptable.
+
+**ArrayBuffer vs Uint8Array**: `JsUint8Array` is a TypedArray VIEW. `ArrayBuffer` is the raw container. Both map to `byte[]` on Java side, but JS semantics differ (multiple views can share one buffer).
 
 ---
 
 ## Design Principles
 
 1. **Lazy overhead**: Only create wrapper objects when needed (e.g., `CallInfo` only for `new`)
-2. **Internal vs external representation**: Internal state can differ from `toJava()` output
+2. **Internal vs external representation**: Internal state can differ from `getJavaValue()` output
 3. **Preserve JS semantics**: `typeof`, `instanceof`, truthiness must match JS spec
-4. **Java interop friendly**: `toJava()` should return idiomatic Java types
+4. **Java interop friendly**: `getJavaValue()` should return idiomatic Java types
 5. **Performance first**: Primitives stay as Java primitives in the common case
 6. **Flexible input, consistent output**: Accept multiple Java types as input, return one preferred type
 7. **Unwrap first pattern**: Use `getInternalValue()` to unwrap JavaMirror before switching on raw types
+8. **Consistent "this" resolution**: Use `fromThis(Context)` pattern across all JsObject subclasses
 
 ---
 
@@ -349,7 +354,7 @@ void testJavaDateConversion() {
 ```
 
 **Where to implement JS → Java conversion**:
-- `JavaMirror.toJava()` - called when result leaves the JS engine
+- `JavaMirror.getJavaValue()` - called when result leaves the JS engine
 
 This pattern applies to:
 - **Date**: Date, Instant, LocalDateTime, LocalDate, ZonedDateTime → JsDate → Date/Instant

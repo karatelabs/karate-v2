@@ -49,10 +49,21 @@ class JsNumber extends JsObject implements JsPrimitive {
     }
 
     @Override
-    public Object toJava() {
+    public Object getJavaValue() {
         return value;
     }
 
+    @Override
+    JsNumber fromThis(Context context) {
+        Object thisObject = context.getThisObject();
+        if (thisObject instanceof JsNumber jn) {
+            return jn;
+        }
+        if (thisObject instanceof Number n) {
+            return new JsNumber(n);
+        }
+        return this;
+    }
 
     @Override
     Prototype initPrototype() {
@@ -61,12 +72,12 @@ class JsNumber extends JsObject implements JsPrimitive {
             @Override
             public Object getProperty(String propName) {
                 return switch (propName) {
-                    case "toFixed" -> (Invokable) args -> {
+                    case "toFixed" -> (JsCallable) (context, args) -> {
                         int digits = 0;
                         if (args.length > 0) {
                             digits = Terms.objectToNumber(args[0]).intValue();
                         }
-                        double doubleValue = value.doubleValue();
+                        double doubleValue = fromThis(context).value.doubleValue();
                         BigDecimal bd = BigDecimal.valueOf(doubleValue);
                         bd = bd.setScale(digits, RoundingMode.HALF_UP);
                         StringBuilder pattern = new StringBuilder("0");
@@ -77,8 +88,8 @@ class JsNumber extends JsObject implements JsPrimitive {
                         DecimalFormat df = new DecimalFormat(pattern.toString());
                         return df.format(bd.doubleValue());
                     };
-                    case "toPrecision" -> (Invokable) args -> {
-                        double d = value.doubleValue();
+                    case "toPrecision" -> (JsCallable) (context, args) -> {
+                        double d = fromThis(context).value.doubleValue();
                         if (args.length == 0) {
                             // same as toString()
                             return Double.toString(d);
@@ -104,8 +115,8 @@ class JsNumber extends JsObject implements JsPrimitive {
                             return result;
                         }
                     };
-                    case "toLocaleString" -> (Invokable) args -> {
-                        double d = value.doubleValue();
+                    case "toLocaleString" -> (JsCallable) (context, args) -> {
+                        double d = fromThis(context).value.doubleValue();
                         DecimalFormat df = (DecimalFormat) DecimalFormat.getInstance();
                         int optionsIndex = args.length > 1 ? 1 : 0;
                         if (args.length > optionsIndex && args[optionsIndex] instanceof Map<?, ?> options) {
@@ -121,7 +132,7 @@ class JsNumber extends JsObject implements JsPrimitive {
                         return df.format(d);
                     };
                     // static ==========================================================================================
-                    case "valueOf" -> (Invokable) args -> value;
+                    case "valueOf" -> (JsCallable) (context, args) -> fromThis(context).value;
                     case "isFinite" -> (Invokable) args -> {
                         if (args.length > 0 && args[0] instanceof Number n) {
                             return Double.isFinite(n.doubleValue());

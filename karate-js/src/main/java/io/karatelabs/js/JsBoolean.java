@@ -36,7 +36,7 @@ public class JsBoolean extends JsObject implements JsPrimitive {
     }
 
     @Override
-    public Object toJava() {
+    public Object getJavaValue() {
         return value;
     }
 

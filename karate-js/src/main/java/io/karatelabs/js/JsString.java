@@ -46,7 +46,7 @@ class JsString extends JsObject implements JsPrimitive {
     }
 
     @Override
-    public Object toJava() {
+    public Object getJavaValue() {
         return text;
     }
 
@@ -308,12 +308,20 @@ class JsString extends JsObject implements JsPrimitive {
         };
     }
 
-    public String asString(Context context) {
+    @Override
+    JsString fromThis(Context context) {
         Object thisObject = context.getThisObject();
-        if (thisObject instanceof String s) {
-            return s;
+        if (thisObject instanceof JsString js) {
+            return js;
         }
-        return text;
+        if (thisObject instanceof String s) {
+            return new JsString(s);
+        }
+        return this;
+    }
+
+    public String asString(Context context) {
+        return fromThis(context).text;
     }
 
     @Override

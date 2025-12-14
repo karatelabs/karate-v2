@@ -192,12 +192,19 @@ class JsObject implements ObjectLike, JsCallable, Iterable<KeyValue> {
     }
 
     @SuppressWarnings("unchecked")
-    Map<String, Object> asMap(Context context) {
+    JsObject fromThis(Context context) {
         Object thisObject = context.getThisObject();
-        if (thisObject instanceof Map) {
-            return (Map<String, Object>) thisObject;
+        if (thisObject instanceof JsObject jo) {
+            return jo;
         }
-        return toMap();
+        if (thisObject instanceof Map<?, ?> map) {
+            return new JsObject((Map<String, Object>) map);
+        }
+        return this;
+    }
+
+    Map<String, Object> asMap(Context context) {
+        return fromThis(context).toMap();
     }
 
     JsCallable toCallable(Object[] args) {

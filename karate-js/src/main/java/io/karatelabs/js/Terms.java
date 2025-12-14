@@ -173,10 +173,10 @@ public class Terms {
         }
         // loose equality: unwrap boxed primitives
         if (lhs instanceof JsPrimitive jp) {
-            lhs = jp.toJava();
+            lhs = jp.getJavaValue();
         }
         if (rhs instanceof JsPrimitive jp) {
-            rhs = jp.toJava();
+            rhs = jp.getJavaValue();
         }
         if (lhs.equals(rhs)) {
             return true;
@@ -316,6 +316,18 @@ public class Terms {
     }
 
     @SuppressWarnings("unchecked")
+    static ObjectLike toObjectLike(Object o) {
+        if (o instanceof ObjectLike ol) {
+            return ol;
+        }
+        if (o instanceof List list) {
+            return new JsArray((List<Object>) list);
+        }
+        JavaMirror mirror = toJavaMirror(o);
+        return mirror instanceof ObjectLike ol ? ol : null;
+    }
+
+    @SuppressWarnings("unchecked")
     static Iterable<KeyValue> toIterable(Object o) {
         // TODO strictly Objects are not iterable
         if (o instanceof JsObject jsObject) {
@@ -352,7 +364,7 @@ public class Terms {
             return true;
         }
         if (value instanceof JavaMirror mirror) {
-            value = mirror.toJava();
+            value = mirror.getJavaValue();
         }
         return switch (value) {
             case Boolean b -> b;

@@ -219,31 +219,23 @@ class JsProperty {
             }
             throw new RuntimeException("cannot read properties of " + object + " (reading '" + name + "')");
         }
+        // Map: check direct key access first (optimization), then prototype
         if (object instanceof Map) {
             Map<String, Object> map = (Map<String, Object>) object;
-            // property access, most likely case
             if (map.containsKey(name)) {
                 return map.get(name);
             }
-            // try js object api
-            JsObject jso = new JsObject(map);
-            Object result = jso.get(name);
+            Object result = new JsObject(map).get(name);
             if (result != null) {
                 return result;
             }
-            // java interop may have been the intent, will be attempted at the end
-        }
-        // covers js objects and external interop
-        if (object instanceof ObjectLike objectLike) {
-            return objectLike.get(name);
-        }
-        if (object instanceof List) {
-            return (new JsArray((List<Object>) object).get(name));
-        }
-        // primitives: string, number, boolean, etc.
-        JavaMirror mirror = Terms.toJavaMirror(object);
-        if (mirror instanceof ObjectLike ol) {
-            return ol.get(name);
+            // fallthrough to external bridge for Java interop (e.g., Properties.put())
+        } else {
+            // covers ObjectLike (JsObject, JsArray, etc.), List, and primitives (String, Number, etc.)
+            ObjectLike ol = Terms.toObjectLike(object);
+            if (ol != null) {
+                return ol.get(name);
+            }
         }
         if (object instanceof JsCallable callable) {
             // e.g. [].map.call([1, 2, 3], x => x * 2)

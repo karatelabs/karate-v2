@@ -719,12 +719,20 @@ class JsArray extends JsObject {
     }
 
     @SuppressWarnings("unchecked")
-    List<Object> asList(Context context) {
+    @Override
+    JsArray fromThis(Context context) {
         Object thisObject = context.getThisObject();
-        if (thisObject instanceof List) {
-            return (List<Object>) thisObject;
+        if (thisObject instanceof JsArray arr) {
+            return arr;
         }
-        return list;
+        if (thisObject instanceof List<?> list) {
+            return new JsArray((List<Object>) list);
+        }
+        return this;
+    }
+
+    List<Object> asList(Context context) {
+        return fromThis(context).list;
     }
 
     static JsArray toArray(Map<String, Object> map) {
