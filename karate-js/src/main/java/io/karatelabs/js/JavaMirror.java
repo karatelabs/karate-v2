@@ -23,8 +23,36 @@
  */
 package io.karatelabs.js;
 
+/**
+ * Interface for JS objects that wrap Java values.
+ * <p>
+ * Two methods provide access to the underlying value:
+ * <ul>
+ *   <li>{@link #toJava()} - Returns the idiomatic Java type for external use (e.g., JsDate → Date)</li>
+ *   <li>{@link #getInternalValue()} - Returns the raw internal value for internal operations (e.g., JsDate → Long millis)</li>
+ * </ul>
+ */
 interface JavaMirror {
 
+    /**
+     * Returns the idiomatic Java representation of this object.
+     * Used when values leave the JS engine and need to be consumed by Java code.
+     * <p>
+     * Examples: JsNumber → Number, JsDate → Date, JsArray → List
+     */
     Object toJava();
+
+    /**
+     * Returns the raw internal value for use in JS operations (comparison, arithmetic, etc.).
+     * This enables a consistent "unwrap first, then switch on raw types" pattern in Terms.java.
+     * <p>
+     * Examples: JsNumber → Number, JsDate → Long (millis), JsArray → List
+     * <p>
+     * Default implementation delegates to {@link #toJava()} which is correct for most types.
+     * Override when internal representation differs from external (e.g., JsDate stores long millis).
+     */
+    default Object getInternalValue() {
+        return toJava();
+    }
 
 }

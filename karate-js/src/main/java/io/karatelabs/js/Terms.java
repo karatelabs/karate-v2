@@ -111,10 +111,11 @@ public class Terms {
     }
 
     static Number objectToNumber(Object o) {
+        // Unwrap JavaMirror first using getInternalValue()
+        if (o instanceof JavaMirror jm) {
+            o = jm.getInternalValue();
+        }
         return switch (o) {
-            case JsNumber jn -> jn.value;
-            case JsString js -> toNumber(js.text.trim());
-            case JsBoolean jb -> jb.value ? 1 : 0;
             case Number n -> n;
             case Boolean b -> b ? 1 : 0;
             case Date d -> d.getTime();

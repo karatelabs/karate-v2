@@ -59,8 +59,8 @@ class JsDateTest extends EvalBase {
 
     @Test
     void testDateConstructor() {
-        eval("var a = new Date(2025, 2, 15)");
-        assertEquals(JsDate.parse("2025-03-15"), get("a"));
+        // Compare timestamps instead of objects (JsDate vs Date)
+        assertEquals(JsDate.parse("2025-03-15").getTime(), eval("new Date(2025, 2, 15).getTime()"));
     }
 
     @Test
@@ -84,9 +84,10 @@ class JsDateTest extends EvalBase {
     @Test
     void testDateManipulation() {
         assertEquals(1741996800000L, eval("new Date(2025, 2, 15).getTime()"));
-        assertEquals(1742860800000L, eval("var date = new Date(2025, 2, 15); date.setDate(date.getDate() + 10)"));
-        // dates are mutable in js
-        assertEquals(JsDate.parse("2025-03-25"), get("date"));
+        // dates are mutable in js - verify setDate returns timestamp and modifies the date
+        eval("var date = new Date(2025, 2, 15); var setResult = date.setDate(date.getDate() + 10); var finalTime = date.getTime();");
+        assertEquals(1742860800000L, get("setResult"));
+        assertEquals(JsDate.parse("2025-03-25").getTime(), get("finalTime"));
         assertEquals(25, eval("var date = new Date(2025, 2, 15); date.setDate(date.getDate() + 10); date.getDate()"));
     }
 

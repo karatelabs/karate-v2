@@ -23,117 +23,127 @@
  */
 package io.karatelabs.js;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.Calendar;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Date;
-import java.util.TimeZone;
 
 class JsDate extends JsObject implements JavaMirror {
 
-    private static final SimpleDateFormat ISO_FORMATTER = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
-    private static final TimeZone UTC = TimeZone.getTimeZone("UTC");
+    private static final DateTimeFormatter ISO_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
 
-    static {
-        ISO_FORMATTER.setTimeZone(UTC);
-    }
+    private static final DateTimeFormatter UTC_STRING_FORMATTER =
+            DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss 'GMT'").withZone(ZoneOffset.UTC);
 
-    private final Date value;
-
-    JsDate(Date date) {
-        this.value = date;
-    }
+    private long millis;
 
     JsDate() {
-        this(new Date());
+        this.millis = System.currentTimeMillis();
     }
 
     JsDate(long timestamp) {
-        this.value = new Date(timestamp);
+        this.millis = timestamp;
+    }
+
+    JsDate(Date date) {
+        this.millis = date.getTime();
     }
 
     JsDate(int year, int month, int date) {
-        Calendar cal = Calendar.getInstance();
-        cal.set(year, month, date, 0, 0, 0);
-        cal.set(Calendar.MILLISECOND, 0);
-        this.value = cal.getTime();
+        ZonedDateTime zdt = ZonedDateTime.of(year, month + 1, date, 0, 0, 0, 0, ZoneId.systemDefault());
+        this.millis = zdt.toInstant().toEpochMilli();
     }
 
     JsDate(int year, int month, int date, int hours, int minutes, int seconds) {
-        Calendar cal = Calendar.getInstance();
-        cal.set(year, month, date, hours, minutes, seconds);
-        cal.set(Calendar.MILLISECOND, 0);
-        this.value = cal.getTime();
+        ZonedDateTime zdt = ZonedDateTime.of(year, month + 1, date, hours, minutes, seconds, 0, ZoneId.systemDefault());
+        this.millis = zdt.toInstant().toEpochMilli();
     }
 
     JsDate(int year, int month, int date, int hours, int minutes, int seconds, int ms) {
-        Calendar cal = Calendar.getInstance();
-        cal.set(year, month, date, hours, minutes, seconds);
-        cal.set(Calendar.MILLISECOND, ms);
-        this.value = cal.getTime();
+        ZonedDateTime zdt = ZonedDateTime.of(year, month + 1, date, hours, minutes, seconds, ms * 1_000_000, ZoneId.systemDefault());
+        this.millis = zdt.toInstant().toEpochMilli();
     }
 
-    // java.time constructors
     JsDate(Instant instant) {
-        this.value = new Date(instant.toEpochMilli());
+        this.millis = instant.toEpochMilli();
     }
 
     JsDate(LocalDateTime ldt) {
-        this.value = new Date(ldt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+        this.millis = ldt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
     }
 
     JsDate(LocalDate ld) {
-        this.value = new Date(ld.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli());
+        this.millis = ld.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
     }
 
     JsDate(ZonedDateTime zdt) {
-        this.value = new Date(zdt.toInstant().toEpochMilli());
-    }
-
-    long getTime() {
-        return value.getTime();
-    }
-
-    private static final String[] FORMATS = {
-            "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
-            "yyyy-MM-dd'T'HH:mm:ss'Z'",
-            "yyyy-MM-dd'T'HH:mm:ss",
-            "yyyy-MM-dd"
-    };
-
-    static Date parse(String dateStr) {
-        for (String format : FORMATS) {
-            try {
-                SimpleDateFormat sdf = new SimpleDateFormat(format);
-                if (format.endsWith("'Z'")) {
-                    sdf.setTimeZone(UTC);
-                }
-                return sdf.parse(dateStr);
-            } catch (ParseException e) {
-                // try next format
-            }
-        }
-        // if parsing fails
-        return new Date();
+        this.millis = zdt.toInstant().toEpochMilli();
     }
 
     JsDate(String text) {
-        this.value = parse(text);
+        this.millis = parseToMillis(text);
+    }
+
+    private ZonedDateTime toZonedDateTime() {
+        return ZonedDateTime.ofInstant(Instant.ofEpochMilli(millis), ZoneId.systemDefault());
+    }
+
+    long getTime() {
+        return millis;
+    }
+
+    private static long parseToMillis(String dateStr) {
+        // Try ISO format with milliseconds: yyyy-MM-dd'T'HH:mm:ss.SSS'Z'
+        try {
+            return Instant.parse(dateStr.endsWith("Z") ? dateStr : dateStr + "Z").toEpochMilli();
+        } catch (Exception e) {
+            // continue
+        }
+        // Try ISO format: yyyy-MM-dd'T'HH:mm:ss
+        try {
+            if (dateStr.contains("T")) {
+                LocalDateTime ldt = LocalDateTime.parse(dateStr.replace("Z", ""));
+                return ldt.atZone(dateStr.endsWith("Z") ? ZoneOffset.UTC : ZoneId.systemDefault())
+                        .toInstant().toEpochMilli();
+            }
+        } catch (Exception e) {
+            // continue
+        }
+        // Try date only: yyyy-MM-dd
+        try {
+            LocalDate ld = LocalDate.parse(dateStr);
+            return ld.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        } catch (DateTimeParseException e) {
+            // continue
+        }
+        // if parsing fails, return current time
+        return System.currentTimeMillis();
+    }
+
+    // Public parse method returns Date for backward compatibility
+    static Date parse(String dateStr) {
+        return new Date(parseToMillis(dateStr));
     }
 
     @Override
     public String toString() {
-        return value.toString();
+        return toZonedDateTime().toString();
     }
 
     @Override
     public Object toJava() {
-        return value;
+        return new Date(millis);
+    }
+
+    @Override
+    public Object getInternalValue() {
+        return millis;
     }
 
     @Override
@@ -150,192 +160,166 @@ class JsDate extends JsObject implements JavaMirror {
                         }
                         try {
                             String dateStr = args[0].toString();
-                            return new JsDate(dateStr).getTime();
+                            return parseToMillis(dateStr);
                         } catch (Exception e) {
                             return Double.NaN;
                         }
                     };
-                    case "getTime", "valueOf" -> (JsCallable) (context, args) -> asDate(context).getTime();
-                    case "toString" -> (JsCallable) (context, args) -> asDate(context).toString();
-                    case "toISOString" -> (JsCallable) (context, args) -> {
-                        synchronized (ISO_FORMATTER) {
-                            return ISO_FORMATTER.format(asDate(context));
-                        }
-                    };
-                    case "toUTCString" -> (JsCallable) (context, args) -> {
-                        SimpleDateFormat formatter = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss 'GMT'");
-                        formatter.setTimeZone(UTC);
-                        return formatter.format(asDate(context));
-                    };
-                    case "getFullYear" -> (JsCallable) (context, args) -> {
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTime(asDate(context));
-                        return cal.get(Calendar.YEAR);
-                    };
-                    case "getMonth" -> (JsCallable) (context, args) -> {
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTime(asDate(context));
-                        return cal.get(Calendar.MONTH); // already 0-indexed in Java!
-                    };
-                    case "getDate" -> (JsCallable) (context, args) -> {
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTime(asDate(context));
-                        return cal.get(Calendar.DAY_OF_MONTH);
-                    };
-                    case "getDay" -> (JsCallable) (context, args) -> {
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTime(asDate(context));
-                        // convert from Java's 1=Sunday to JS's 0=Sunday
-                        return cal.get(Calendar.DAY_OF_WEEK) - 1;
-                    };
-                    case "getHours" -> (JsCallable) (context, args) -> {
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTime(asDate(context));
-                        return cal.get(Calendar.HOUR_OF_DAY);
-                    };
-                    case "getMinutes" -> (JsCallable) (context, args) -> {
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTime(asDate(context));
-                        return cal.get(Calendar.MINUTE);
-                    };
-                    case "getSeconds" -> (JsCallable) (context, args) -> {
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTime(asDate(context));
-                        return cal.get(Calendar.SECOND);
-                    };
-                    case "getMilliseconds" -> (JsCallable) (context, args) -> {
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTime(asDate(context));
-                        return cal.get(Calendar.MILLISECOND);
-                    };
+                    case "getTime", "valueOf" -> (JsCallable) (context, args) -> asJsDate(context).millis;
+                    case "toString" -> (JsCallable) (context, args) -> asJsDate(context).toString();
+                    case "toISOString" -> (JsCallable) (context, args) ->
+                            ISO_FORMATTER.format(Instant.ofEpochMilli(asJsDate(context).millis));
+                    case "toUTCString" -> (JsCallable) (context, args) ->
+                            UTC_STRING_FORMATTER.format(Instant.ofEpochMilli(asJsDate(context).millis));
+                    case "getFullYear" -> (JsCallable) (context, args) ->
+                            asJsDate(context).toZonedDateTime().getYear();
+                    case "getMonth" -> (JsCallable) (context, args) ->
+                            asJsDate(context).toZonedDateTime().getMonthValue() - 1; // 0-indexed
+                    case "getDate" -> (JsCallable) (context, args) ->
+                            asJsDate(context).toZonedDateTime().getDayOfMonth();
+                    case "getDay" -> (JsCallable) (context, args) ->
+                            asJsDate(context).toZonedDateTime().getDayOfWeek().getValue() % 7; // Sun=0
+                    case "getHours" -> (JsCallable) (context, args) ->
+                            asJsDate(context).toZonedDateTime().getHour();
+                    case "getMinutes" -> (JsCallable) (context, args) ->
+                            asJsDate(context).toZonedDateTime().getMinute();
+                    case "getSeconds" -> (JsCallable) (context, args) ->
+                            asJsDate(context).toZonedDateTime().getSecond();
+                    case "getMilliseconds" -> (JsCallable) (context, args) ->
+                            asJsDate(context).toZonedDateTime().getNano() / 1_000_000;
                     case "setDate" -> (JsCallable) (context, args) -> {
                         if (args.length == 0 || !(args[0] instanceof Number)) {
                             return Double.NaN;
                         }
                         int day = ((Number) args[0]).intValue();
-                        Date date = asDate(context);
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTime(date);
-                        // handles overflow automatically!
-                        cal.set(Calendar.DAY_OF_MONTH, day);
-                        // mutate
-                        date.setTime(cal.getTimeInMillis());
-                        return date.getTime();
+                        JsDate jsDate = asJsDate(context);
+                        ZonedDateTime zdt = jsDate.toZonedDateTime();
+                        // Set to 1st of month, then add (day-1) to handle overflow
+                        zdt = zdt.withDayOfMonth(1).plusDays(day - 1);
+                        jsDate.millis = zdt.toInstant().toEpochMilli();
+                        return jsDate.millis;
                     };
                     case "setMonth" -> (JsCallable) (context, args) -> {
                         if (args.length == 0 || !(args[0] instanceof Number)) {
                             return Double.NaN;
                         }
                         int month = ((Number) args[0]).intValue();
-                        Date date = asDate(context);
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTime(date);
-                        // handles overflow - month 12 becomes jan of next year
-                        cal.set(Calendar.MONTH, month);
+                        JsDate jsDate = asJsDate(context);
+                        ZonedDateTime zdt = jsDate.toZonedDateTime();
+                        int originalDay = zdt.getDayOfMonth();
+                        // Set to Jan 1st of current year, add months, then restore day
+                        zdt = zdt.withMonth(1).withDayOfMonth(1).plusMonths(month);
+                        int maxDay = zdt.toLocalDate().lengthOfMonth();
+                        zdt = zdt.withDayOfMonth(Math.min(originalDay, maxDay));
                         if (args.length > 1 && args[1] instanceof Number) {
-                            cal.set(Calendar.DAY_OF_MONTH, ((Number) args[1]).intValue());
+                            int day = ((Number) args[1]).intValue();
+                            zdt = zdt.withDayOfMonth(1).plusDays(day - 1);
                         }
-                        // mutate
-                        date.setTime(cal.getTimeInMillis());
-                        return date.getTime();
+                        jsDate.millis = zdt.toInstant().toEpochMilli();
+                        return jsDate.millis;
                     };
                     case "setFullYear" -> (JsCallable) (context, args) -> {
                         if (args.length == 0 || !(args[0] instanceof Number)) {
                             return Double.NaN;
                         }
                         int year = ((Number) args[0]).intValue();
-                        Date date = asDate(context);
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTime(date);
-                        cal.set(Calendar.YEAR, year);
+                        JsDate jsDate = asJsDate(context);
+                        ZonedDateTime zdt = jsDate.toZonedDateTime();
+                        int originalDay = zdt.getDayOfMonth();
+                        zdt = zdt.withYear(year);
+                        // Handle Feb 29 -> Feb 28 for non-leap years
+                        int maxDay = zdt.toLocalDate().lengthOfMonth();
+                        if (originalDay > maxDay) {
+                            zdt = zdt.withDayOfMonth(maxDay);
+                        }
                         if (args.length > 1 && args[1] instanceof Number) {
-                            cal.set(Calendar.MONTH, ((Number) args[1]).intValue());
+                            int month = ((Number) args[1]).intValue();
+                            zdt = zdt.withMonth(1).withDayOfMonth(1).plusMonths(month);
+                            maxDay = zdt.toLocalDate().lengthOfMonth();
+                            zdt = zdt.withDayOfMonth(Math.min(originalDay, maxDay));
                         }
                         if (args.length > 2 && args[2] instanceof Number) {
-                            cal.set(Calendar.DAY_OF_MONTH, ((Number) args[2]).intValue());
+                            int day = ((Number) args[2]).intValue();
+                            zdt = zdt.withDayOfMonth(1).plusDays(day - 1);
                         }
-                        // mutate
-                        date.setTime(cal.getTimeInMillis());
-                        return date.getTime();
+                        jsDate.millis = zdt.toInstant().toEpochMilli();
+                        return jsDate.millis;
                     };
                     case "setHours" -> (JsCallable) (context, args) -> {
                         if (args.length == 0 || !(args[0] instanceof Number)) {
                             return Double.NaN;
                         }
                         int hours = ((Number) args[0]).intValue();
-                        Date date = asDate(context);
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTime(date);
-                        cal.set(Calendar.HOUR_OF_DAY, hours);
+                        JsDate jsDate = asJsDate(context);
+                        ZonedDateTime zdt = jsDate.toZonedDateTime()
+                                .withHour(0).plusHours(hours);
                         if (args.length > 1 && args[1] instanceof Number) {
-                            cal.set(Calendar.MINUTE, ((Number) args[1]).intValue());
+                            int minutes = ((Number) args[1]).intValue();
+                            zdt = zdt.withMinute(0).plusMinutes(minutes);
                         }
                         if (args.length > 2 && args[2] instanceof Number) {
-                            cal.set(Calendar.SECOND, ((Number) args[2]).intValue());
+                            int seconds = ((Number) args[2]).intValue();
+                            zdt = zdt.withSecond(0).plusSeconds(seconds);
                         }
                         if (args.length > 3 && args[3] instanceof Number) {
-                            cal.set(Calendar.MILLISECOND, ((Number) args[3]).intValue());
+                            int ms = ((Number) args[3]).intValue();
+                            zdt = zdt.withNano(0).plusNanos(ms * 1_000_000L);
                         }
-                        // mutate
-                        date.setTime(cal.getTimeInMillis());
-                        return date.getTime();
+                        jsDate.millis = zdt.toInstant().toEpochMilli();
+                        return jsDate.millis;
                     };
                     case "setMinutes" -> (JsCallable) (context, args) -> {
                         if (args.length == 0 || !(args[0] instanceof Number)) {
                             return Double.NaN;
                         }
                         int minutes = ((Number) args[0]).intValue();
-                        Date date = asDate(context);
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTime(date);
-                        cal.set(Calendar.MINUTE, minutes);
+                        JsDate jsDate = asJsDate(context);
+                        ZonedDateTime zdt = jsDate.toZonedDateTime()
+                                .withMinute(0).plusMinutes(minutes);
                         if (args.length > 1 && args[1] instanceof Number) {
-                            cal.set(Calendar.SECOND, ((Number) args[1]).intValue());
+                            int seconds = ((Number) args[1]).intValue();
+                            zdt = zdt.withSecond(0).plusSeconds(seconds);
                         }
                         if (args.length > 2 && args[2] instanceof Number) {
-                            cal.set(Calendar.MILLISECOND, ((Number) args[2]).intValue());
+                            int ms = ((Number) args[2]).intValue();
+                            zdt = zdt.withNano(0).plusNanos(ms * 1_000_000L);
                         }
-                        // mutate
-                        date.setTime(cal.getTimeInMillis());
-                        return date.getTime();
+                        jsDate.millis = zdt.toInstant().toEpochMilli();
+                        return jsDate.millis;
                     };
                     case "setSeconds" -> (JsCallable) (context, args) -> {
                         if (args.length == 0 || !(args[0] instanceof Number)) {
                             return Double.NaN;
                         }
                         int seconds = ((Number) args[0]).intValue();
-                        Date date = asDate(context);
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTime(date);
-                        cal.set(Calendar.SECOND, seconds);
+                        JsDate jsDate = asJsDate(context);
+                        ZonedDateTime zdt = jsDate.toZonedDateTime()
+                                .withSecond(0).plusSeconds(seconds);
                         if (args.length > 1 && args[1] instanceof Number) {
-                            cal.set(Calendar.MILLISECOND, ((Number) args[1]).intValue());
+                            int ms = ((Number) args[1]).intValue();
+                            zdt = zdt.withNano(0).plusNanos(ms * 1_000_000L);
                         }
-                        // mutate
-                        date.setTime(cal.getTimeInMillis());
-                        return date.getTime();
+                        jsDate.millis = zdt.toInstant().toEpochMilli();
+                        return jsDate.millis;
                     };
                     case "setMilliseconds" -> (JsCallable) (context, args) -> {
                         if (args.length == 0 || !(args[0] instanceof Number)) {
                             return Double.NaN;
                         }
                         int ms = ((Number) args[0]).intValue();
-                        Date date = asDate(context);
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTime(date);
-                        cal.set(Calendar.MILLISECOND, ms);
-                        // mutate
-                        date.setTime(cal.getTimeInMillis());
-                        return date.getTime();
+                        JsDate jsDate = asJsDate(context);
+                        ZonedDateTime zdt = jsDate.toZonedDateTime()
+                                .withNano(0).plusNanos(ms * 1_000_000L);
+                        jsDate.millis = zdt.toInstant().toEpochMilli();
+                        return jsDate.millis;
                     };
                     case "setTime" -> (JsCallable) (context, args) -> {
                         if (args.length == 0 || !(args[0] instanceof Number)) {
                             return Double.NaN;
                         }
                         long timestamp = ((Number) args[0]).longValue();
-                        Date date = asDate(context);
-                        // mutate
-                        date.setTime(timestamp);
+                        JsDate jsDate = asJsDate(context);
+                        jsDate.millis = timestamp;
                         return timestamp;
                     };
                     default -> null;
@@ -344,27 +328,34 @@ class JsDate extends JsObject implements JavaMirror {
         };
     }
 
-    Date asDate(Context context) {
+    JsDate asJsDate(Context context) {
         if (context.getThisObject() instanceof JsDate date) {
-            return date.value;
+            return date;
         }
-        return value;
+        return this;
     }
 
     @Override
-    public Date call(Context context, Object... args) {
+    public Object call(Context context, Object... args) {
+        // Check if called with 'new' keyword
+        CallInfo callInfo = context.getCallInfo();
+        boolean isNew = callInfo != null && callInfo.constructor;
+
+        JsDate result;
         if (args.length == 0) {
-            return new JsDate().value;
+            result = new JsDate();
         } else if (args.length == 1) {
             Object arg = args[0];
             if (arg instanceof Number n) {
-                return new JsDate(n.longValue()).value;
+                result = new JsDate(n.longValue());
             } else if (arg instanceof String s) {
-                return new JsDate(s).value;
+                result = new JsDate(s);
             } else if (arg instanceof JsDate date) {
-                return new Date(date.value.getTime()); // clone
+                result = new JsDate(date.millis);
             } else if (arg instanceof Date date) {
-                return new Date(date.getTime()); // clone from java.util.Date
+                result = new JsDate(date);
+            } else {
+                result = new JsDate();
             }
         } else if (args.length >= 3) {
             int year = args[0] instanceof Number ? ((Number) args[0]).intValue() : 0;
@@ -376,12 +367,18 @@ class JsDate extends JsObject implements JavaMirror {
                 int seconds = args[5] instanceof Number ? ((Number) args[5]).intValue() : 0;
                 if (args.length >= 7) {
                     int ms = args[6] instanceof Number ? ((Number) args[6]).intValue() : 0;
-                    return new JsDate(year, month, day, hours, minutes, seconds, ms).value;
+                    result = new JsDate(year, month, day, hours, minutes, seconds, ms);
+                } else {
+                    result = new JsDate(year, month, day, hours, minutes, seconds);
                 }
-                return new JsDate(year, month, day, hours, minutes, seconds).value;
+            } else {
+                result = new JsDate(year, month, day);
             }
-            return new JsDate(year, month, day).value;
+        } else {
+            result = new JsDate();
         }
-        return new JsDate().value;
+
+        // Return JsDate for 'new' calls (JavaMirror), Date for function calls
+        return isNew ? result : new Date(result.millis);
     }
 }

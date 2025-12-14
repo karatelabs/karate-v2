@@ -15,6 +15,74 @@ Added `JsPrimitive` marker interface extending `JavaMirror` for boxed primitive 
 
 ---
 
+## Completed: JavaMirror.getInternalValue()
+
+Added `getInternalValue()` method to `JavaMirror` interface for consistent internal value access.
+
+**Problem solved**: Code in `Terms.java` had to handle each wrapper type separately:
+```java
+// OLD: Many cases for each wrapper type
+return switch (o) {
+    case JsNumber jn -> jn.value;
+    case JsString js -> toNumber(js.text.trim());
+    case JsBoolean jb -> jb.value ? 1 : 0;
+    case Number n -> n;
+    // ... more cases
+};
+```
+
+**Solution**: Two methods on `JavaMirror`:
+- `toJava()` - Returns idiomatic Java type for **external** use (e.g., JsDate → Date)
+- `getInternalValue()` - Returns raw internal value for **internal** operations (e.g., JsDate → Long millis)
+
+**Implementation**:
+```java
+interface JavaMirror {
+    Object toJava();
+
+    default Object getInternalValue() {
+        return toJava();  // Default: same as toJava()
+    }
+}
+```
+
+**What each type returns**:
+
+| Class | `toJava()` | `getInternalValue()` |
+|-------|------------|---------------------|
+| JsNumber | Number | Number (default) |
+| JsString | String | String (default) |
+| JsBoolean | Boolean | Boolean (default) |
+| JsDate | Date | Long (millis) |
+
+**Refactored pattern in Terms.java**:
+```java
+// NEW: Unwrap first, then switch on raw types
+static Number objectToNumber(Object o) {
+    if (o instanceof JavaMirror jm) {
+        o = jm.getInternalValue();
+    }
+    return switch (o) {
+        case Number n -> n;
+        case Boolean b -> b ? 1 : 0;
+        case Date d -> d.getTime();
+        case String s -> toNumber(s.trim());
+        case null -> 0;
+        default -> Double.NaN;
+    };
+}
+```
+
+**Benefits**:
+- Cleaner code: "unwrap first, then switch on raw types" pattern
+- JsDate comparison/arithmetic works correctly (millis is a Number)
+- Single point of type unwrapping
+- Extensible: new JavaMirror types just need to implement `getInternalValue()`
+
+**Files changed**: `JavaMirror.java`, `JsDate.java`, `Terms.java`
+
+---
+
 ## Completed: Boxed Primitives (CallInfo)
 
 Added `CallInfo` to provide reflection-like awareness for callables about their invocation context.
@@ -33,23 +101,26 @@ Added `CallInfo` to provide reflection-like awareness for callables about their 
 
 ---
 
-## TODO: JsDate Internal Migration
+## In Progress: JsDate Internal Migration
 
 **Goal**: Refactor JsDate internals from `java.util.Date` + `Calendar` to `long millis` + `java.time`.
 
-**Status**: Java → JS conversion is DONE (Instant, LocalDateTime, LocalDate, ZonedDateTime all work via `Terms.toJavaMirror()`). Internal refactor remains.
+**Status**: Core migration DONE. Remaining: fix test failures related to `new Date(original)` copy semantics and date parsing.
 
-### Current State
-- Internal field: `private final Date value`
-- Getters use: `Calendar.getInstance()` + `cal.setTime(date)` + `cal.get(Calendar.XXX)`
-- Setters use: `Calendar` + `date.setTime(cal.getTimeInMillis())` to mutate
-- Formatting uses: `SimpleDateFormat` (not thread-safe)
-
-### Target State
-- Internal field: `private long millis` (mutable)
+### Completed Changes
+- Internal field: `private long millis` (was `private final Date value`)
 - Getters use: `ZonedDateTime.ofInstant(Instant.ofEpochMilli(millis), ZoneId.systemDefault())`
-- Setters use: `ZonedDateTime.withXxx()` → convert back to millis
+- Setters use: `ZonedDateTime` + `plusDays/plusMonths` for overflow handling
 - Formatting uses: `DateTimeFormatter` (thread-safe)
+- Added `getInternalValue()` returning millis for numeric operations
+- `call()` method returns JsDate for `new` calls, Date for function calls (via CallInfo)
+
+### Remaining Issues
+1. **Date parsing**: `parseToMillis()` needs to handle more formats
+2. **Test expectations**: Some tests compare `JsDate.parse()` (returns Date) with `get("a")` (returns JsDate)
+3. **Date comparison**: `date2 > date1` with JsDate objects - verify `getInternalValue()` is used
+
+### Key Implementation Details
 
 ### Refactor Steps
 
@@ -220,6 +291,7 @@ class JsPromise extends JsObject implements JavaMirror {
 4. **Java interop friendly**: `toJava()` should return idiomatic Java types
 5. **Performance first**: Primitives stay as Java primitives in the common case
 6. **Flexible input, consistent output**: Accept multiple Java types as input, return one preferred type
+7. **Unwrap first pattern**: Use `getInternalValue()` to unwrap JavaMirror before switching on raw types
 
 ---
 
