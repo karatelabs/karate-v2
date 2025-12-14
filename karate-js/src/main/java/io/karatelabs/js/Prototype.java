@@ -27,6 +27,22 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Base class for JS prototype chains. Implements property lookup with inheritance.
+ * <p>
+ * Property resolution order in {@link #get(String)}:
+ * <ol>
+ *   <li>Check instance properties ({@code props} map)</li>
+ *   <li>Call {@link #getProperty(String)} - subclass-defined properties</li>
+ *   <li>If {@code getProperty} returns {@code null}, delegate to wrapped prototype</li>
+ * </ol>
+ * <p>
+ * Subclasses override {@link #getProperty(String)} and return:
+ * <ul>
+ *   <li>A value - to handle the property at this level</li>
+ *   <li>{@code null} - to delegate lookup to the parent prototype (wrapped)</li>
+ * </ul>
+ */
 abstract class Prototype implements ObjectLike {
 
     private final Prototype wrapped;
@@ -71,6 +87,12 @@ abstract class Prototype implements ObjectLike {
         return null;
     }
 
+    /**
+     * Returns the value for a built-in property, or {@code null} to delegate to parent prototype.
+     *
+     * @param key the property name
+     * @return the property value, or {@code null} to continue lookup in wrapped prototype
+     */
     abstract Object getProperty(String key);
 
 }

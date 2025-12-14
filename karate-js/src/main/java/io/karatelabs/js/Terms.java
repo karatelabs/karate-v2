@@ -25,6 +25,10 @@ package io.karatelabs.js;
 
 import net.minidev.json.JSONValue;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -167,17 +171,11 @@ public class Terms {
             return false;
         }
         // loose equality: unwrap boxed primitives
-        if (lhs instanceof JsString js) {
-            lhs = js.text;
+        if (lhs instanceof JsPrimitive jp) {
+            lhs = jp.toJava();
         }
-        if (rhs instanceof JsString js) {
-            rhs = js.text;
-        }
-        if (lhs instanceof JsBoolean jb) {
-            lhs = jb.value;
-        }
-        if (rhs instanceof JsBoolean jb) {
-            rhs = jb.value;
+        if (rhs instanceof JsPrimitive jp) {
+            rhs = jp.toJava();
         }
         if (lhs.equals(rhs)) {
             return true;
@@ -307,6 +305,10 @@ public class Terms {
             case Number n -> new JsNumber(n);
             case Boolean b -> new JsBoolean(b);
             case Date d -> new JsDate(d);
+            case Instant i -> new JsDate(i);
+            case LocalDateTime ldt -> new JsDate(ldt);
+            case LocalDate ld -> new JsDate(ld);
+            case ZonedDateTime zdt -> new JsDate(zdt);
             case byte[] bytes -> new JsUint8Array(bytes);
             case null, default -> null;
         };
@@ -345,7 +347,7 @@ public class Terms {
             return false;
         }
         // boxed primitives are always truthy (they are objects)
-        if (value instanceof JsNumber || value instanceof JsString || value instanceof JsBoolean) {
+        if (value instanceof JsPrimitive) {
             return true;
         }
         if (value instanceof JavaMirror mirror) {
@@ -373,7 +375,7 @@ public class Terms {
 
     public static String typeOf(Object value) {
         // boxed primitives are objects
-        if (value instanceof JsNumber || value instanceof JsString || value instanceof JsBoolean) {
+        if (value instanceof JsPrimitive) {
             return "object";
         }
         if (value instanceof String) {

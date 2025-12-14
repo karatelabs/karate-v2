@@ -87,6 +87,20 @@ class JsUint8Array extends JsArray implements JavaMirror {
     }
 
     @Override
+    Prototype initPrototype() {
+        Prototype wrapped = super.initPrototype();
+        return new Prototype(wrapped) {
+            @Override
+            public Object getProperty(String propName) {
+                if ("length".equals(propName)) {
+                    return buffer.length;
+                }
+                return null; // delegate to wrapped prototype
+            }
+        };
+    }
+
+    @Override
     public Object toJava() {
         return buffer;
     }

@@ -23,34 +23,11 @@
  */
 package io.karatelabs.js;
 
-public class JsBoolean extends JsObject implements JsPrimitive {
-
-    final boolean value;
-
-    JsBoolean() {
-        this(false);
-    }
-
-    JsBoolean(boolean value) {
-        this.value = value;
-    }
-
-    @Override
-    public Object toJava() {
-        return value;
-    }
-
-    @Override
-    public Object call(Context context, Object... args) {
-        boolean temp = false;
-        if (args.length > 0) {
-            temp = Terms.isTruthy(args[0]);
-        }
-        CallInfo callInfo = context.getCallInfo();
-        if (callInfo != null && callInfo.constructor) {
-            return new JsBoolean(temp);
-        }
-        return temp;
-    }
+/**
+ * Marker interface for JS boxed primitives (Number, String, Boolean objects).
+ * These are created via `new Number(5)`, `new String("x")`, `new Boolean(true)`.
+ * Unlike primitives, boxed primitives are objects and always truthy.
+ */
+interface JsPrimitive extends JavaMirror {
 
 }

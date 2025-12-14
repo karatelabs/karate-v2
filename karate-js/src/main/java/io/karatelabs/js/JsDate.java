@@ -25,6 +25,11 @@ package io.karatelabs.js;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
@@ -71,6 +76,23 @@ class JsDate extends JsObject implements JavaMirror {
         cal.set(year, month, date, hours, minutes, seconds);
         cal.set(Calendar.MILLISECOND, ms);
         this.value = cal.getTime();
+    }
+
+    // java.time constructors
+    JsDate(Instant instant) {
+        this.value = new Date(instant.toEpochMilli());
+    }
+
+    JsDate(LocalDateTime ldt) {
+        this.value = new Date(ldt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+    }
+
+    JsDate(LocalDate ld) {
+        this.value = new Date(ld.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli());
+    }
+
+    JsDate(ZonedDateTime zdt) {
+        this.value = new Date(zdt.toInstant().toEpochMilli());
     }
 
     long getTime() {

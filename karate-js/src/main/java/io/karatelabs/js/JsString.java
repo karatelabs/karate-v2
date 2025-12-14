@@ -28,7 +28,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-class JsString extends JsObject implements JavaMirror {
+class JsString extends JsObject implements JsPrimitive {
 
     final String text;
 

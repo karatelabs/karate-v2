@@ -3,7 +3,15 @@ package io.karatelabs.js;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -189,6 +197,142 @@ class ExternalBridgeTest extends EvalBase {
     @Test
     void testJavaInteropJdkSpecial() {
         assertEquals("aGVsbG8=", eval("var Base64 = Java.type('java.util.Base64'); Base64.getEncoder().encodeToString('hello'.getBytes())"));
+    }
+
+    // =================================================================================================================
+    // Java → JS Type Conversion Tests
+    // =================================================================================================================
+
+    @Test
+    void testDateConversion() {
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        long millis = 1609459200000L; // 2021-01-01T00:00:00Z
+
+        // java.util.Date should be usable as JS Date
+        engine.put("javaDate", new Date(millis));
+        assertEquals(millis, engine.eval("javaDate.getTime()"));
+        assertEquals(2021, engine.eval("javaDate.getFullYear()"));
+        assertEquals("object", engine.eval("typeof javaDate"));
+    }
+
+    @Test
+    void testInstantConversion() {
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        long millis = 1609459200000L;
+
+        // Instant should work as JS Date
+        engine.put("instant", Instant.ofEpochMilli(millis));
+        assertEquals(millis, engine.eval("instant.getTime()"));
+        assertEquals(2021, engine.eval("instant.getFullYear()"));
+    }
+
+    @Test
+    void testLocalDateTimeConversion() {
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+
+        // LocalDateTime should work as JS Date
+        LocalDateTime ldt = LocalDateTime.of(2025, 3, 15, 10, 30, 0);
+        engine.put("localDT", ldt);
+        assertEquals(2025, engine.eval("localDT.getFullYear()"));
+        assertEquals(2, engine.eval("localDT.getMonth()"));  // 0-indexed
+        assertEquals(15, engine.eval("localDT.getDate()"));
+        assertEquals(10, engine.eval("localDT.getHours()"));
+        assertEquals(30, engine.eval("localDT.getMinutes()"));
+    }
+
+    @Test
+    void testLocalDateConversion() {
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+
+        // LocalDate should work as JS Date (at start of day)
+        LocalDate ld = LocalDate.of(2025, 6, 20);
+        engine.put("localDate", ld);
+        assertEquals(2025, engine.eval("localDate.getFullYear()"));
+        assertEquals(5, engine.eval("localDate.getMonth()"));  // 0-indexed
+        assertEquals(20, engine.eval("localDate.getDate()"));
+        assertEquals(0, engine.eval("localDate.getHours()"));  // start of day
+    }
+
+    @Test
+    void testZonedDateTimeConversion() {
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+
+        // ZonedDateTime should work as JS Date
+        ZonedDateTime zdt = ZonedDateTime.of(2025, 12, 25, 14, 30, 0, 0, ZoneId.of("UTC"));
+        engine.put("zonedDT", zdt);
+        // Note: getFullYear etc use local timezone, so we test getTime() which is UTC millis
+        long expectedMillis = zdt.toInstant().toEpochMilli();
+        assertEquals(expectedMillis, engine.eval("zonedDT.getTime()"));
+    }
+
+    @Test
+    void testNestedMapConversion() {
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+
+        // Nested map with Date should have Date converted
+        Map<String, Object> inner = new HashMap<>();
+        inner.put("created", new Date(1609459200000L));
+        inner.put("name", "test");
+
+        Map<String, Object> outer = new HashMap<>();
+        outer.put("data", inner);
+        outer.put("timestamp", new Date(1609459200000L));
+
+        engine.put("obj", outer);
+        assertEquals(1609459200000L, engine.eval("obj.timestamp.getTime()"));
+        assertEquals(1609459200000L, engine.eval("obj.data.created.getTime()"));
+        assertEquals("test", engine.eval("obj.data.name"));
+    }
+
+    @Test
+    void testNestedListConversion() {
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+
+        // List containing Dates should have Dates converted
+        List<Object> list = List.of(
+                new Date(1609459200000L),
+                new Date(1609545600000L),
+                "not a date"
+        );
+
+        engine.put("dates", list);
+        assertEquals(1609459200000L, engine.eval("dates[0].getTime()"));
+        assertEquals(1609545600000L, engine.eval("dates[1].getTime()"));
+        assertEquals("not a date", engine.eval("dates[2]"));
+    }
+
+    @Test
+    void testEvalWithMapConversion() {
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+
+        // evalWith should also convert dates in the vars map
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("startDate", new Date(1609459200000L));
+        vars.put("endDate", Instant.ofEpochMilli(1609545600000L));
+
+        Object result = engine.evalWith("startDate.getTime() + endDate.getTime()", vars);
+        assertEquals(1609459200000L + 1609545600000L, ((Number) result).longValue());
+    }
+
+    @Test
+    void testByteArrayConversion() {
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+
+        // byte[] should be converted to JsUint8Array
+        byte[] bytes = new byte[]{1, 2, 3, (byte) 255};
+        engine.put("bytes", bytes);
+        assertEquals(4, engine.eval("bytes.length"));
+        assertEquals(1, engine.eval("bytes[0]"));
+        assertEquals(255, engine.eval("bytes[3]"));  // unsigned
     }
 
 }

@@ -2,6 +2,19 @@
 
 This document tracks the bidirectional type conversion between JS and Java in karate-js.
 
+## Completed: JsPrimitive Interface
+
+Added `JsPrimitive` marker interface extending `JavaMirror` for boxed primitive types (JsNumber, JsString, JsBoolean).
+
+**Benefits**:
+- Single `instanceof JsPrimitive` check instead of 3 separate checks
+- Cleaner code in `Terms.isTruthy()`, `Terms.typeOf()`, `Terms.eq()`
+- `toJava()` provides uniform unwrapping for loose equality
+
+**Files changed**: `JsPrimitive.java` (new), `JsNumber.java`, `JsString.java`, `JsBoolean.java`, `Terms.java`
+
+---
+
 ## Completed: Boxed Primitives (CallInfo)
 
 Added `CallInfo` to provide reflection-like awareness for callables about their invocation context.
@@ -20,73 +33,106 @@ Added `CallInfo` to provide reflection-like awareness for callables about their 
 
 ---
 
-## TODO: JsDate Migration
+## TODO: JsDate Internal Migration
 
-**Goal**: Migrate from `java.util.Date` to `java.time` classes while maintaining full Java interop.
+**Goal**: Refactor JsDate internals from `java.util.Date` + `Calendar` to `long millis` + `java.time`.
 
-**Challenge**: JS Date is mutable (`setMonth()`, `setDate()`, etc.), but java.time classes are immutable.
+**Status**: Java → JS conversion is DONE (Instant, LocalDateTime, LocalDate, ZonedDateTime all work via `Terms.toJavaMirror()`). Internal refactor remains.
 
-### Bidirectional Conversion
+### Current State
+- Internal field: `private final Date value`
+- Getters use: `Calendar.getInstance()` + `cal.setTime(date)` + `cal.get(Calendar.XXX)`
+- Setters use: `Calendar` + `date.setTime(cal.getTimeInMillis())` to mutate
+- Formatting uses: `SimpleDateFormat` (not thread-safe)
 
-**Java → JS (input)**: When Java passes date objects into the engine, convert to JsDate:
-```java
-// In the engine's input conversion logic (e.g., ExternalBridge or similar)
-if (value instanceof java.util.Date d) {
-    return new JsDate(d.getTime());
-}
-if (value instanceof Instant i) {
-    return new JsDate(i.toEpochMilli());
-}
-if (value instanceof LocalDateTime ldt) {
-    return new JsDate(ldt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
-}
-if (value instanceof LocalDate ld) {
-    return new JsDate(ld.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli());
-}
-if (value instanceof ZonedDateTime zdt) {
-    return new JsDate(zdt.toInstant().toEpochMilli());
-}
-```
+### Target State
+- Internal field: `private long millis` (mutable)
+- Getters use: `ZonedDateTime.ofInstant(Instant.ofEpochMilli(millis), ZoneId.systemDefault())`
+- Setters use: `ZonedDateTime.withXxx()` → convert back to millis
+- Formatting uses: `DateTimeFormatter` (thread-safe)
 
-**JS → Java (output)**: `toJava()` returns the appropriate type:
-```java
-@Override
-public Object toJava() {
-    // Option 1: Return java.util.Date for backward compatibility
-    return new Date(millis);
+### Refactor Steps
 
-    // Option 2: Return Instant (preferred modern approach)
-    // return Instant.ofEpochMilli(millis);
-}
-```
+1. **Change internal field**:
+   ```java
+   // FROM
+   private final Date value;
+   // TO
+   private long millis;
+   ```
 
-### Proposed Implementation
+2. **Update constructors** - all should set `this.millis = ...`:
+   ```java
+   JsDate() { this.millis = System.currentTimeMillis(); }
+   JsDate(long timestamp) { this.millis = timestamp; }
+   JsDate(Date date) { this.millis = date.getTime(); }
+   JsDate(Instant i) { this.millis = i.toEpochMilli(); }
+   // etc.
+   ```
 
-```java
-class JsDate extends JsObject implements JavaMirror {
-    private long millis;  // mutable internal representation
+3. **Add helper method** for local time operations:
+   ```java
+   private ZonedDateTime toZonedDateTime() {
+       return ZonedDateTime.ofInstant(Instant.ofEpochMilli(millis), ZoneId.systemDefault());
+   }
+   ```
 
-    // Constructors for all Java date types
-    JsDate(java.util.Date date) { this.millis = date.getTime(); }
-    JsDate(Instant instant) { this.millis = instant.toEpochMilli(); }
-    JsDate(LocalDateTime ldt) { this.millis = ldt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(); }
-    JsDate(LocalDate ld) { this.millis = ld.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(); }
-    JsDate(ZonedDateTime zdt) { this.millis = zdt.toInstant().toEpochMilli(); }
+4. **Update getters** (getFullYear, getMonth, getDate, getDay, getHours, getMinutes, getSeconds, getMilliseconds):
+   ```java
+   case "getFullYear" -> (JsCallable) (ctx, args) -> asJsDate(ctx).toZonedDateTime().getYear();
+   case "getMonth" -> (JsCallable) (ctx, args) -> asJsDate(ctx).toZonedDateTime().getMonthValue() - 1; // 0-indexed
+   case "getDate" -> (JsCallable) (ctx, args) -> asJsDate(ctx).toZonedDateTime().getDayOfMonth();
+   case "getDay" -> (JsCallable) (ctx, args) -> asJsDate(ctx).toZonedDateTime().getDayOfWeek().getValue() % 7; // Sun=0
+   case "getHours" -> (JsCallable) (ctx, args) -> asJsDate(ctx).toZonedDateTime().getHour();
+   // etc.
+   ```
 
-    @Override
-    public Object toJava() {
-        return new Date(millis);  // or Instant.ofEpochMilli(millis)
-    }
+5. **Update setters** (setFullYear, setMonth, setDate, setHours, setMinutes, setSeconds, setMilliseconds, setTime):
+   ```java
+   case "setMonth" -> (JsCallable) (ctx, args) -> {
+       JsDate jsDate = asJsDate(ctx);
+       int month = ((Number) args[0]).intValue();
+       ZonedDateTime zdt = jsDate.toZonedDateTime().withMonth(month + 1); // 0-indexed
+       jsDate.millis = zdt.toInstant().toEpochMilli();
+       return jsDate.millis;
+   };
+   ```
 
-    void setMonth(int m) {
-        LocalDateTime ldt = LocalDateTime.ofInstant(Instant.ofEpochMilli(millis), ZoneId.systemDefault());
-        ldt = ldt.withMonth(m + 1);  // JS months are 0-indexed
-        this.millis = ldt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-    }
-}
-```
+6. **Update formatting methods**:
+   ```java
+   private static final DateTimeFormatter ISO_FORMATTER =
+       DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
 
-**Key insight**: Use `long millis` internally for mutability. Accept any Java date type as input, output a consistent type via `toJava()`.
+   case "toISOString" -> (JsCallable) (ctx, args) ->
+       ISO_FORMATTER.format(Instant.ofEpochMilli(asJsDate(ctx).millis));
+   ```
+
+7. **Update helper methods**:
+   ```java
+   // FROM
+   Date asDate(Context context) { ... return date.value; }
+   // TO
+   JsDate asJsDate(Context context) {
+       if (context.getThisObject() instanceof JsDate date) return date;
+       return this;
+   }
+   ```
+
+8. **Update toJava()**:
+   ```java
+   @Override
+   public Object toJava() {
+       return new Date(millis); // backward compatible
+   }
+   ```
+
+9. **Update call() method** - returns `Date` for backward compat but creates JsDate internally
+
+### Benefits After Migration
+- Thread-safe formatting (no `synchronized` needed)
+- Modern API (java.time is cleaner than Calendar)
+- Simpler code (no Calendar boilerplate)
+- Consistent internal representation (just millis)
 
 ---
 
@@ -205,10 +251,9 @@ For types with multiple Java equivalents, use this pattern:
 - `Terms.java` or similar - for type coercion during operations
 
 **Test locations**:
-- `EngineTest.java` - test `engine.put()` with Java date types
-- `ExternalBridgeTest.java` - test `Java.type()` interop
+- `ExternalBridgeTest.java` - test `engine.put()` with Java date types and `Java.type()` interop
 
-**Example test for EngineTest.java**:
+**Example tests (in ExternalBridgeTest.java)**:
 ```java
 @Test
 void testJavaDateConversion() {
@@ -239,3 +284,85 @@ This pattern applies to:
 - **Regex**: Pattern, String → JsRegex → Pattern
 - **Promise**: CompletableFuture, Future → JsPromise → CompletableFuture
 - **Collections**: List, Set, array → JsArray → List
+
+---
+
+## Completed: Lazy Input Conversion Strategy
+
+**Decision**: Keep lazy conversion at point-of-use in `JsProperty.get()` via `Terms.toJavaMirror()`.
+
+**Why lazy over up-front**:
+1. **Thread-safety**: Engine bindings may be updated by external threads. Lazy conversion naturally handles this without synchronization issues.
+2. **Simplicity**: Single conversion point in `toJavaMirror()` handles all entry paths (Engine.put, evalWith, direct map access, ExternalBridge).
+3. **Performance**: The `instanceof` chain is fast; overhead is negligible compared to JS interpretation.
+4. **Flexibility**: Users can access `engine.getBindings()` directly and modify it; lazy conversion handles this transparently.
+
+**Implementation**: Extend `Terms.toJavaMirror()` to handle java.time types:
+
+```java
+static JavaMirror toJavaMirror(Object o) {
+    return switch (o) {
+        case String s -> new JsString(s);
+        case Number n -> new JsNumber(n);
+        case Boolean b -> new JsBoolean(b);
+        case java.util.Date d -> new JsDate(d);
+        case Instant i -> new JsDate(i);
+        case LocalDateTime ldt -> new JsDate(ldt);
+        case LocalDate ld -> new JsDate(ld);
+        case ZonedDateTime zdt -> new JsDate(zdt);
+        case byte[] bytes -> new JsUint8Array(bytes);
+        case null, default -> null;
+    };
+}
+```
+
+**Files changed**: `Terms.java`, `JsDate.java` (add constructors for java.time types)
+
+---
+
+## TODO: Engine State JSON Serialization
+
+**Goal**: Persist engine state (bindings) to JSON for session continuity, debugging, or transfer.
+
+**Types requiring special handling**:
+
+| JS/Internal Type | JSON Representation | Notes |
+|------------------|---------------------|-------|
+| `JsDate` | `{"$type":"date","value":1609459200000}` | Epoch millis |
+| `JsRegex` | `{"$type":"regex","pattern":"foo","flags":"gi"}` | Pattern + flags |
+| `JsFunction` | `{"$type":"function","source":"..."}` or skip | May not be serializable |
+| `Terms.UNDEFINED` | `{"$type":"undefined"}` | Distinguish from null |
+| `Double.NaN` | `{"$type":"NaN"}` | Not valid JSON number |
+| `Double.POSITIVE_INFINITY` | `{"$type":"Infinity"}` | Not valid JSON number |
+| `Double.NEGATIVE_INFINITY` | `{"$type":"-Infinity"}` | Not valid JSON number |
+| `JsUint8Array` / `byte[]` | `{"$type":"bytes","value":"base64..."}` | Base64 encoded |
+| Circular reference | Error or `{"$type":"circular","ref":"$.path"}` | Detect and handle |
+
+**Proposed API**:
+```java
+// Engine.java
+public String toJson() {
+    return JsSerializer.toJson(bindings);
+}
+
+public static Engine fromJson(String json) {
+    Engine engine = new Engine();
+    engine.bindings.putAll(JsSerializer.fromJson(json));
+    return engine;
+}
+```
+
+**Implementation notes**:
+- Use `$type` prefix convention for special types (unlikely to conflict with user data)
+- Functions: Option to serialize source code or skip entirely
+- Circular references: Track visited objects during serialization
+- Consider: Store metadata like engine version for compatibility checks
+
+**Types that are naturally JSON-compatible** (no special handling):
+- `null`
+- `Boolean` / `boolean`
+- `Number` (Integer, Long, Double - except NaN/Infinity)
+- `String`
+- `List` / `JsArray`
+- `Map` / `JsObject`
+
