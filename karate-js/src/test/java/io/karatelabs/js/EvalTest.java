@@ -12,6 +12,32 @@ class EvalTest extends EvalBase {
     }
 
     @Test
+    void testBoxedPrimitives() {
+        // Number() vs new Number()
+        assertEquals("number", eval("typeof Number(5)"));
+        assertEquals("object", eval("typeof new Number(5)"));
+        assertEquals(true, eval("new Number(5) == 5"));
+        assertEquals(false, eval("new Number(5) === 5"));
+        assertEquals(true, eval("new Number(5) instanceof Number"));
+        assertEquals(false, eval("(5) instanceof Number"));
+        assertEquals(6, eval("new Number(5) + 1"));
+        assertEquals(5, eval("new Number(5).valueOf()"));
+        // String() vs new String()
+        assertEquals("string", eval("typeof String('x')"));
+        assertEquals("object", eval("typeof new String('x')"));
+        assertEquals(true, eval("new String('hello') == 'hello'"));
+        assertEquals(false, eval("new String('hello') === 'hello'"));
+        assertEquals(true, eval("new String('x') instanceof String"));
+        assertEquals(false, eval("'x' instanceof String"));
+        // Boolean() vs new Boolean()
+        assertEquals("boolean", eval("typeof Boolean(true)"));
+        assertEquals("object", eval("typeof new Boolean(true)"));
+        assertEquals(true, eval("!!new Boolean(false)")); // truthy object!
+        assertEquals(true, eval("new Boolean(false) instanceof Boolean"));
+        assertEquals(false, eval("false instanceof Boolean"));
+    }
+
+    @Test
     void testArrayOutOfBounds() {
         // Empty array index access should return undefined/null (JS behavior)
         assertNull(eval("var arr = []; arr[0]"));
@@ -225,7 +251,7 @@ class EvalTest extends EvalBase {
 
     @Test
     void testLogicShortCircuit() {
-        assertEquals(null, eval("var a = {}; a.b && a.b.c"));
+        assertNull(eval("var a = {}; a.b && a.b.c"));
         assertEquals(0, eval("var a = { b: 0 }; a && a.b"));
         assertEquals(0, eval("var a = { b: 0 }; a.b && a.b.c"));
         assertEquals(2, eval("var a = { b: 1, c: 2 }; a.b && a.c"));

@@ -231,10 +231,6 @@ Integration with [Karate CLI](https://github.com/karatelabs/karate-cli):
 - [ ] ES-compliant Promises (map to CompletableFuture)
 - [ ] ES Modules (`import`/`export`) for JS reuse across tests
 
-**Known Issues / Backlog:**
-- [ ] Elvis operator (`?.`) not working
-- [ ] Define behavior for accessing empty array by index 0
-
 **Maintenance:**
 - [ ] Keep engine stable and performant
 - [ ] Monitor and address any compatibility issues

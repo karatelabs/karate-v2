@@ -224,6 +224,9 @@ class Interpreter {
         Object[] args = argsList.toArray();
         CoreContext callContext = new CoreContext(context, node, ContextScope.FUNCTION);
         callContext.thisObject = prop.object == null ? callable : prop.object;
+        if (newKeyword) {
+            callContext.callInfo = new CallInfo(true, callable);
+        }
         if (callContext.root.listener != null) {
             callContext.root.listener.onFunctionCall(callContext, args);
         }
@@ -233,7 +236,7 @@ class Interpreter {
             result = callable;
         }
         if (result instanceof JavaMirror jm) {
-            return jm.toJava();
+            return newKeyword ? result : jm.toJava();
         }
         return result;
     }

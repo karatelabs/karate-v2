@@ -317,10 +317,14 @@ class JsString extends JsObject implements JavaMirror {
     }
 
     @Override
-    public String call(Context context, Object... args) {
+    public Object call(Context context, Object... args) {
         String temp = "";
         if (args.length > 0 && args[0] != null) {
             temp = args[0].toString();
+        }
+        CallInfo callInfo = context.getCallInfo();
+        if (callInfo != null && callInfo.constructor) {
+            return new JsString(temp);
         }
         return temp;
     }

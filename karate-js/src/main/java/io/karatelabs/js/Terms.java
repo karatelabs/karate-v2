@@ -108,6 +108,9 @@ public class Terms {
 
     static Number objectToNumber(Object o) {
         return switch (o) {
+            case JsNumber jn -> jn.value;
+            case JsString js -> toNumber(js.text.trim());
+            case JsBoolean jb -> jb.value ? 1 : 0;
             case Number n -> n;
             case Boolean b -> b ? 1 : 0;
             case Date d -> d.getTime();
@@ -162,6 +165,22 @@ public class Terms {
                 return ((Number) lhs).doubleValue() == ((Number) rhs).doubleValue();
             }
             return false;
+        }
+        // loose equality: unwrap boxed primitives
+        if (lhs instanceof JsString js) {
+            lhs = js.text;
+        }
+        if (rhs instanceof JsString js) {
+            rhs = js.text;
+        }
+        if (lhs instanceof JsBoolean jb) {
+            lhs = jb.value;
+        }
+        if (rhs instanceof JsBoolean jb) {
+            rhs = jb.value;
+        }
+        if (lhs.equals(rhs)) {
+            return true;
         }
         if (lhs instanceof Number || rhs instanceof Number) { // coerce to number
             Terms terms = new Terms(lhs, rhs);
@@ -325,6 +344,10 @@ public class Terms {
         if (value == null || value.equals(UNDEFINED) || value.equals(Double.NaN)) {
             return false;
         }
+        // boxed primitives are always truthy (they are objects)
+        if (value instanceof JsNumber || value instanceof JsString || value instanceof JsBoolean) {
+            return true;
+        }
         if (value instanceof JavaMirror mirror) {
             value = mirror.toJava();
         }
@@ -349,6 +372,10 @@ public class Terms {
     }
 
     public static String typeOf(Object value) {
+        // boxed primitives are objects
+        if (value instanceof JsNumber || value instanceof JsString || value instanceof JsBoolean) {
+            return "object";
+        }
         if (value instanceof String) {
             return "string";
         }

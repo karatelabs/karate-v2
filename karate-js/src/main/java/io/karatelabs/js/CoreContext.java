@@ -39,6 +39,7 @@ class CoreContext implements Context {
     final ContextRoot root;
 
     Object thisObject = Terms.UNDEFINED;
+    CallInfo callInfo;
 
     Map<String, Object> _bindings;
     List<BindingInfo> _bindingInfos;
@@ -118,6 +119,11 @@ class CoreContext implements Context {
     @Override
     public Object getThisObject() {
         return thisObject;
+    }
+
+    @Override
+    public CallInfo getCallInfo() {
+        return callInfo;
     }
 
     @Override

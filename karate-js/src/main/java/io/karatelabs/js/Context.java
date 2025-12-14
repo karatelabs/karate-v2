@@ -43,4 +43,6 @@ public interface Context {
 
     Object getThisObject();
 
+    CallInfo getCallInfo();
+
 }
