@@ -581,6 +581,15 @@ class Interpreter {
         }
     }
 
+    private static Object evalLogicNullishExpr(Node node, CoreContext context) {
+        Object lhsValue = eval(node.get(0), context);
+        // ?? returns lhs if it's not null/undefined, otherwise rhs
+        if (lhsValue == null || lhsValue == Terms.UNDEFINED) {
+            return eval(node.get(2), context);
+        }
+        return lhsValue;
+    }
+
     private static Object evalLogicTernExpr(Node node, CoreContext context) {
         if (Terms.isTruthy(eval(node.get(0), context))) {
             return eval(node.get(2), context);
@@ -900,6 +909,7 @@ class Interpreter {
             case INSTANCEOF_EXPR -> evalInstanceOfExpr(node, context);
             case LOGIC_EXPR -> evalLogicExpr(node, context);
             case LOGIC_AND_EXPR -> evalLogicAndExpr(node, context);
+            case LOGIC_NULLISH_EXPR -> evalLogicNullishExpr(node, context);
             case LOGIC_BIT_EXPR -> evalLogicBitExpr(node, context);
             case LOGIC_TERN_EXPR -> evalLogicTernExpr(node, context);
             case MATH_ADD_EXPR -> evalMathAddExpr(node, context);

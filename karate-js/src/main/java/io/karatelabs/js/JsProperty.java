@@ -169,18 +169,33 @@ class JsProperty {
     Object get() {
         if (!functionCall && index instanceof Number n) {
             int i = n.intValue();
-            // TODO out of bounds handling, unify iterable
-            if (object instanceof List) {
-                return ((List<Object>) object).get(i);
+            if (object == null || object == Terms.UNDEFINED) {
+                if (optional) {
+                    return Terms.UNDEFINED;
+                }
+                throw new RuntimeException("cannot read properties of " + object + " (reading '[" + i + "]')");
+            }
+            if (object instanceof List list) {
+                // return undefined for out of bounds access (JS behavior)
+                if (i < 0 || i >= list.size()) {
+                    return Terms.UNDEFINED;
+                }
+                return list.get(i);
             }
             if (object instanceof JsArray array) {
                 // regex returns JsArray for exec() api
                 return array.get(i);
             }
             if (object instanceof String s) {
+                if (i < 0 || i >= s.length()) {
+                    return Terms.UNDEFINED;
+                }
                 return s.substring(i, i + 1);
             }
             if (object instanceof byte[] bytes) {
+                if (i < 0 || i >= bytes.length) {
+                    return Terms.UNDEFINED;
+                }
                 return bytes[i] & 0xFF;
             }
             // For objects (Map, ObjectLike), convert numeric index to string for property access

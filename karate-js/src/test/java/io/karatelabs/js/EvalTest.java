@@ -12,6 +12,41 @@ class EvalTest extends EvalBase {
     }
 
     @Test
+    void testArrayOutOfBounds() {
+        // Empty array index access should return undefined/null (JS behavior)
+        assertNull(eval("var arr = []; arr[0]"));
+        assertNull(eval("var arr = []; arr[99]"));
+        assertNull(eval("var arr = [1]; arr[5]"));
+        assertNull(eval("var arr = [1, 2, 3]; arr[-1]"));
+        // String out of bounds
+        assertNull(eval("var s = ''; s[0]"));
+        assertNull(eval("var s = 'abc'; s[10]"));
+    }
+
+    @Test
+    void testOptionalChainingBracket() {
+        // Optional chaining with bracket on null/undefined
+        assertNull(eval("var arr = null; arr?.[0]"));
+        assertNull(eval("var arr = undefined; arr?.[0]"));
+        assertEquals(1, eval("var arr = [1, 2, 3]; arr?.[0]"));
+    }
+
+    @Test
+    void testNullishCoalescing() {
+        // Nullish coalescing operator (??)
+        assertEquals("default", eval("var obj = null; obj ?? 'default'"));
+        assertEquals("default", eval("var obj = undefined; obj ?? 'default'"));
+        assertEquals("value", eval("var obj = 'value'; obj ?? 'default'"));
+        assertEquals(0, eval("var obj = 0; obj ?? 'default'")); // 0 is not nullish
+        assertEquals("", eval("var obj = ''; obj ?? 'default'")); // '' is not nullish
+        assertEquals(false, eval("var obj = false; obj ?? 'default'")); // false is not nullish
+        // Nullish coalescing with optional chaining
+        assertEquals("default", eval("var obj = null; obj?.foo ?? 'default'"));
+        assertEquals("default", eval("var obj = { foo: null }; obj?.foo ?? 'default'"));
+        assertEquals("value", eval("var obj = { foo: 'value' }; obj?.foo ?? 'default'"));
+    }
+
+    @Test
     void testNumbers() {
         assertEquals(1, eval("1"));
         assertEquals(1, eval("1.0"));

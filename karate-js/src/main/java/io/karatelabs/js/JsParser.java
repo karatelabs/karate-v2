@@ -344,6 +344,9 @@ public class JsParser extends Parser {
             } else if (priority < 2 && enter(NodeType.LOGIC_AND_EXPR, PIPE_PIPE)) {
                 expr(2, true);
                 exit(Shift.LEFT);
+            } else if (priority < 2 && enter(NodeType.LOGIC_NULLISH_EXPR, QUES_QUES)) {
+                expr(2, true);
+                exit(Shift.LEFT);
             } else if (priority < 3 && enter(NodeType.LOGIC_AND_EXPR, AMP_AMP)) {
                 expr(3, true);
                 exit(Shift.LEFT);

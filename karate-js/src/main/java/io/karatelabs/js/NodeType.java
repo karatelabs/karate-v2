@@ -61,6 +61,7 @@ public enum NodeType {
     ASSIGN_EXPR,
     LOGIC_EXPR,
     LOGIC_AND_EXPR,
+    LOGIC_NULLISH_EXPR,
     LOGIC_TERN_EXPR,
     LOGIC_BIT_EXPR,
     MATH_ADD_EXPR,
