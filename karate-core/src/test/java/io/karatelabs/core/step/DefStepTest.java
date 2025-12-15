@@ -36,35 +36,55 @@ class DefStepTest {
 
     @Test
     void testDefNumber() {
-        ScenarioRuntime sr = run("def a = 1 + 2");
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def a = 1 + 2
+            """);
         assertPassed(sr);
         assertEquals(3, get(sr, "a"));
     }
 
     @Test
     void testDefString() {
-        ScenarioRuntime sr = run("def name = 'hello'");
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def name = 'hello'
+            """);
         assertPassed(sr);
         assertEquals("hello", get(sr, "name"));
     }
 
     @Test
     void testDefJson() {
-        ScenarioRuntime sr = run("def foo = { name: 'bar' }");
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def foo = { name: 'bar' }
+            """);
         assertPassed(sr);
         matchVar(sr, "foo", Map.of("name", "bar"));
     }
 
     @Test
     void testDefArray() {
-        ScenarioRuntime sr = run("def arr = [1, 2, 3]");
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def arr = [1, 2, 3]
+            """);
         assertPassed(sr);
         matchVar(sr, "arr", List.of(1, 2, 3));
     }
 
     @Test
     void testDefNestedJson() {
-        ScenarioRuntime sr = run("def data = { user: { name: 'john', age: 30 } }");
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def data = { user: { name: 'john', age: 30 } }
+            """);
         assertPassed(sr);
         Object data = get(sr, "data");
         assertInstanceOf(Map.class, data);
@@ -78,51 +98,61 @@ class DefStepTest {
 
     @Test
     void testDefWithExpression() {
-        ScenarioRuntime sr = run(
-                "def x = 10",
-                "def y = x * 2"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def x = 10
+            * def y = x * 2
+            """);
         assertPassed(sr);
         assertEquals(20, get(sr, "y"));
     }
 
     @Test
     void testSetNested() {
-        ScenarioRuntime sr = run(
-                "def foo = { a: 1 }",
-                "set foo.b = 2"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def foo = { a: 1 }
+            * set foo.b = 2
+            """);
         assertPassed(sr);
         matchVar(sr, "foo", Map.of("a", 1, "b", 2));
     }
 
     @Test
     void testSetArrayIndex() {
-        ScenarioRuntime sr = run(
-                "def arr = [1, 2, 3]",
-                "set arr[1] = 99"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def arr = [1, 2, 3]
+            * set arr[1] = 99
+            """);
         assertPassed(sr);
         matchVar(sr, "arr", List.of(1, 99, 3));
     }
 
     @Test
     void testRemove() {
-        ScenarioRuntime sr = run(
-                "def foo = { a: 1, b: 2 }",
-                "remove foo.b"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def foo = { a: 1, b: 2 }
+            * remove foo.b
+            """);
         assertPassed(sr);
         matchVar(sr, "foo", Map.of("a", 1));
     }
 
     @Test
     void testCopy() {
-        ScenarioRuntime sr = run(
-                "def original = { a: 1, b: { c: 2 } }",
-                "copy clone = original",
-                "set clone.b.c = 99"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def original = { a: 1, b: { c: 2 } }
+            * copy clone = original
+            * set clone.b.c = 99
+            """);
         assertPassed(sr);
         // Original should be unchanged
         @SuppressWarnings("unchecked")
@@ -141,13 +171,15 @@ class DefStepTest {
 
     @Test
     void testText() {
-        ScenarioRuntime sr = run(
-                "text myText =",
-                "\"\"\"",
-                "hello world",
-                "this is multi-line",
-                "\"\"\""
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * text myText =
+            \"\"\"
+            hello world
+            this is multi-line
+            \"\"\"
+            """);
         assertPassed(sr);
         String text = (String) get(sr, "myText");
         assertTrue(text.contains("hello world"));
@@ -156,26 +188,34 @@ class DefStepTest {
 
     @Test
     void testJson() {
-        ScenarioRuntime sr = run(
-                "json myJson = { name: 'test', value: 123 }"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * json myJson = { name: 'test', value: 123 }
+            """);
         assertPassed(sr);
         matchVar(sr, "myJson", Map.of("name", "test", "value", 123));
     }
 
     @Test
     void testDefNull() {
-        ScenarioRuntime sr = run("def x = null");
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def x = null
+            """);
         assertPassed(sr);
         assertNull(get(sr, "x"));
     }
 
     @Test
     void testDefBoolean() {
-        ScenarioRuntime sr = run(
-                "def t = true",
-                "def f = false"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def t = true
+            * def f = false
+            """);
         assertPassed(sr);
         assertEquals(true, get(sr, "t"));
         assertEquals(false, get(sr, "f"));

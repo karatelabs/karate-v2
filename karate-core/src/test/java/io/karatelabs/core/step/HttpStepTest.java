@@ -37,11 +37,13 @@ class HttpStepTest {
     void testSimpleGet() {
         InMemoryHttpClient client = new InMemoryHttpClient(req -> json("{ \"id\": 1 }"));
 
-        ScenarioRuntime sr = run(client,
-                "url 'http://test'",
-                "method get",
-                "match response == { id: 1 }"
-        );
+        ScenarioRuntime sr = run(client, """
+            Feature:
+            Scenario:
+            * url 'http://test'
+            * method get
+            * match response == { id: 1 }
+            """);
         assertPassed(sr);
     }
 
@@ -56,12 +58,14 @@ class HttpStepTest {
             return status(404);
         });
 
-        ScenarioRuntime sr = run(client,
-                "url 'http://test'",
-                "path 'users', '123'",
-                "method get",
-                "match response.id == 123"
-        );
+        ScenarioRuntime sr = run(client, """
+            Feature:
+            Scenario:
+            * url 'http://test'
+            * path 'users', '123'
+            * method get
+            * match response.id == 123
+            """);
         assertPassed(sr);
     }
 
@@ -76,13 +80,15 @@ class HttpStepTest {
             return json("{ \"error\": \"missing params\" }");
         });
 
-        ScenarioRuntime sr = run(client,
-                "url 'http://test/items'",
-                "param page = 1",
-                "param size = 10",
-                "method get",
-                "match response == { page: 1, size: 10 }"
-        );
+        ScenarioRuntime sr = run(client, """
+            Feature:
+            Scenario:
+            * url 'http://test/items'
+            * param page = 1
+            * param size = 10
+            * method get
+            * match response == { page: 1, size: 10 }
+            """);
         assertPassed(sr);
     }
 
@@ -90,11 +96,13 @@ class HttpStepTest {
     void testStatusAssertion() {
         InMemoryHttpClient client = new InMemoryHttpClient(req -> status(404));
 
-        ScenarioRuntime sr = run(client,
-                "url 'http://test'",
-                "method get",
-                "status 200"
-        );
+        ScenarioRuntime sr = run(client, """
+            Feature:
+            Scenario:
+            * url 'http://test'
+            * method get
+            * status 200
+            """);
         assertFailed(sr);
     }
 
@@ -102,11 +110,13 @@ class HttpStepTest {
     void testStatusAssertionSuccess() {
         InMemoryHttpClient client = new InMemoryHttpClient(req -> status(201));
 
-        ScenarioRuntime sr = run(client,
-                "url 'http://test'",
-                "method post",
-                "status 201"
-        );
+        ScenarioRuntime sr = run(client, """
+            Feature:
+            Scenario:
+            * url 'http://test'
+            * method post
+            * status 201
+            """);
         assertPassed(sr);
     }
 
@@ -121,13 +131,15 @@ class HttpStepTest {
             return status(400);
         });
 
-        ScenarioRuntime sr = run(client,
-                "url 'http://test'",
-                "request { name: 'test' }",
-                "method post",
-                "status 200",
-                "match response.received == true"
-        );
+        ScenarioRuntime sr = run(client, """
+            Feature:
+            Scenario:
+            * url 'http://test'
+            * request { name: 'test' }
+            * method post
+            * status 200
+            * match response.received == true
+            """);
         assertPassed(sr);
     }
 
@@ -141,13 +153,15 @@ class HttpStepTest {
             return status(401);
         });
 
-        ScenarioRuntime sr = run(client,
-                "url 'http://test'",
-                "header Authorization = 'Bearer token123'",
-                "method get",
-                "status 200",
-                "match response.authorized == true"
-        );
+        ScenarioRuntime sr = run(client, """
+            Feature:
+            Scenario:
+            * url 'http://test'
+            * header Authorization = 'Bearer token123'
+            * method get
+            * status 200
+            * match response.authorized == true
+            """);
         assertPassed(sr);
     }
 
@@ -155,11 +169,13 @@ class HttpStepTest {
     void testResponseStatus() {
         InMemoryHttpClient client = new InMemoryHttpClient(req -> status(204));
 
-        ScenarioRuntime sr = run(client,
-                "url 'http://test'",
-                "method delete",
-                "status 204"
-        );
+        ScenarioRuntime sr = run(client, """
+            Feature:
+            Scenario:
+            * url 'http://test'
+            * method delete
+            * status 204
+            """);
         assertPassed(sr);
         assertEquals(204, get(sr, "responseStatus"));
     }
@@ -172,11 +188,13 @@ class HttpStepTest {
             return resp;
         });
 
-        ScenarioRuntime sr = run(client,
-                "url 'http://test'",
-                "method get",
-                "status 200"
-        );
+        ScenarioRuntime sr = run(client, """
+            Feature:
+            Scenario:
+            * url 'http://test'
+            * method get
+            * status 200
+            """);
         assertPassed(sr);
         Object headers = get(sr, "responseHeaders");
         assertNotNull(headers);
@@ -186,12 +204,14 @@ class HttpStepTest {
     void testUrlFromVariable() {
         InMemoryHttpClient client = new InMemoryHttpClient(req -> json("{ \"ok\": true }"));
 
-        ScenarioRuntime sr = run(client,
-                "def baseUrl = 'http://test'",
-                "url baseUrl",
-                "method get",
-                "match response.ok == true"
-        );
+        ScenarioRuntime sr = run(client, """
+            Feature:
+            Scenario:
+            * def baseUrl = 'http://test'
+            * url baseUrl
+            * method get
+            * match response.ok == true
+            """);
         assertPassed(sr);
     }
 
@@ -204,13 +224,15 @@ class HttpStepTest {
             return status(405);
         });
 
-        ScenarioRuntime sr = run(client,
-                "url 'http://test/item/1'",
-                "request { name: 'updated' }",
-                "method put",
-                "status 200",
-                "match response.updated == true"
-        );
+        ScenarioRuntime sr = run(client, """
+            Feature:
+            Scenario:
+            * url 'http://test/item/1'
+            * request { name: 'updated' }
+            * method put
+            * status 200
+            * match response.updated == true
+            """);
         assertPassed(sr);
     }
 
@@ -223,12 +245,14 @@ class HttpStepTest {
             return status(405);
         });
 
-        ScenarioRuntime sr = run(client,
-                "url 'http://test/item/1'",
-                "request { status: 'active' }",
-                "method patch",
-                "status 200"
-        );
+        ScenarioRuntime sr = run(client, """
+            Feature:
+            Scenario:
+            * url 'http://test/item/1'
+            * request { status: 'active' }
+            * method patch
+            * status 200
+            """);
         assertPassed(sr);
     }
 
@@ -242,13 +266,15 @@ class HttpStepTest {
             return status(400);
         });
 
-        ScenarioRuntime sr = run(client,
-                "url 'http://test/login'",
-                "form field username = 'admin'",
-                "form field password = 'secret'",
-                "method post",
-                "status 200"
-        );
+        ScenarioRuntime sr = run(client, """
+            Feature:
+            Scenario:
+            * url 'http://test/login'
+            * form field username = 'admin'
+            * form field password = 'secret'
+            * method post
+            * status 200
+            """);
         assertPassed(sr);
     }
 
@@ -262,12 +288,14 @@ class HttpStepTest {
             return status(401);
         });
 
-        ScenarioRuntime sr = run(client,
-                "url 'http://test'",
-                "cookie session = 'abc123'",
-                "method get",
-                "status 200"
-        );
+        ScenarioRuntime sr = run(client, """
+            Feature:
+            Scenario:
+            * url 'http://test'
+            * cookie session = 'abc123'
+            * method get
+            * status 200
+            """);
         assertPassed(sr);
     }
 

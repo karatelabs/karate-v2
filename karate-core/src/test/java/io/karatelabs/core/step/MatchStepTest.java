@@ -37,37 +37,45 @@ class MatchStepTest {
 
     @Test
     void testMatchEquals() {
-        ScenarioRuntime sr = run(
-                "def foo = { name: 'bar' }",
-                "match foo == { name: 'bar' }"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def foo = { name: 'bar' }
+            * match foo == { name: 'bar' }
+            """);
         assertPassed(sr);
     }
 
     @Test
     void testMatchEqualsFailure() {
-        ScenarioRuntime sr = run(
-                "def foo = { name: 'bar' }",
-                "match foo == { name: 'baz' }"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def foo = { name: 'bar' }
+            * match foo == { name: 'baz' }
+            """);
         assertFailed(sr);
     }
 
     @Test
     void testMatchNotEquals() {
-        ScenarioRuntime sr = run(
-                "def foo = { name: 'bar' }",
-                "match foo != { name: 'baz' }"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def foo = { name: 'bar' }
+            * match foo != { name: 'baz' }
+            """);
         assertPassed(sr);
     }
 
     @Test
     void testMatchNotEqualsFailure() {
-        ScenarioRuntime sr = run(
-                "def foo = { name: 'bar' }",
-                "match foo != { name: 'bar' }"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def foo = { name: 'bar' }
+            * match foo != { name: 'bar' }
+            """);
         assertFailed(sr);
     }
 
@@ -75,11 +83,13 @@ class MatchStepTest {
 
     @Test
     void testMatchWithVariableReference() {
-        ScenarioRuntime sr = run(
-                "def expected = { name: 'test' }",
-                "def actual = { name: 'test' }",
-                "match actual == expected"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def expected = { name: 'test' }
+            * def actual = { name: 'test' }
+            * match actual == expected
+            """);
         assertPassed(sr);
     }
 
@@ -87,37 +97,45 @@ class MatchStepTest {
 
     @Test
     void testMatchNumber() {
-        ScenarioRuntime sr = run(
-                "def x = 42",
-                "match x == 42"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def x = 42
+            * match x == 42
+            """);
         assertPassed(sr);
     }
 
     @Test
     void testMatchString() {
-        ScenarioRuntime sr = run(
-                "def s = 'hello'",
-                "match s == 'hello'"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def s = 'hello'
+            * match s == 'hello'
+            """);
         assertPassed(sr);
     }
 
     @Test
     void testMatchBoolean() {
-        ScenarioRuntime sr = run(
-                "def b = true",
-                "match b == true"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def b = true
+            * match b == true
+            """);
         assertPassed(sr);
     }
 
     @Test
     void testMatchNull() {
-        ScenarioRuntime sr = run(
-                "def n = null",
-                "match n == null"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def n = null
+            * match n == null
+            """);
         assertPassed(sr);
     }
 
@@ -125,10 +143,12 @@ class MatchStepTest {
 
     @Test
     void testMatchWithPath() {
-        ScenarioRuntime sr = run(
-                "def data = { user: { name: 'john' } }",
-                "match data.user.name == 'john'"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def data = { user: { name: 'john' } }
+            * match data.user.name == 'john'
+            """);
         assertPassed(sr);
     }
 
@@ -136,19 +156,23 @@ class MatchStepTest {
 
     @Test
     void testMatchArray() {
-        ScenarioRuntime sr = run(
-                "def arr = [1, 2, 3]",
-                "match arr == [1, 2, 3]"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def arr = [1, 2, 3]
+            * match arr == [1, 2, 3]
+            """);
         assertPassed(sr);
     }
 
     @Test
     void testMatchNestedJson() {
-        ScenarioRuntime sr = run(
-                "def data = { items: [{ id: 1 }, { id: 2 }] }",
-                "match data == { items: [{ id: 1 }, { id: 2 }] }"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def data = { items: [{ id: 1 }, { id: 2 }] }
+            * match data == { items: [{ id: 1 }, { id: 2 }] }
+            """);
         assertPassed(sr);
     }
 
@@ -156,11 +180,13 @@ class MatchStepTest {
 
     @Test
     void testMatchWithExpression() {
-        ScenarioRuntime sr = run(
-                "def x = 5",
-                "def y = 10",
-                "match x + y == 15"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def x = 5
+            * def y = 10
+            * match x + y == 15
+            """);
         assertPassed(sr);
     }
 
@@ -168,64 +194,78 @@ class MatchStepTest {
 
     @Test
     void testMatchContains() {
-        ScenarioRuntime sr = run(
-                "def foo = { name: 'bar', age: 30 }",
-                "match foo contains { name: 'bar' }"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def foo = { name: 'bar', age: 30 }
+            * match foo contains { name: 'bar' }
+            """);
         assertPassed(sr);
     }
 
     @Test
     void testMatchContainsFailure() {
-        ScenarioRuntime sr = run(
-                "def foo = { name: 'bar' }",
-                "match foo contains { name: 'baz' }"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def foo = { name: 'bar' }
+            * match foo contains { name: 'baz' }
+            """);
         assertFailed(sr);
     }
 
     @Test
     void testMatchNotContains() {
-        ScenarioRuntime sr = run(
-                "def foo = { name: 'bar' }",
-                "match foo !contains { name: 'baz' }"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def foo = { name: 'bar' }
+            * match foo !contains { name: 'baz' }
+            """);
         assertPassed(sr);
     }
 
     @Test
     void testMatchNotContainsFailure() {
-        ScenarioRuntime sr = run(
-                "def foo = { name: 'bar' }",
-                "match foo !contains { name: 'bar' }"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def foo = { name: 'bar' }
+            * match foo !contains { name: 'bar' }
+            """);
         assertFailed(sr);
     }
 
     @Test
     void testMatchContainsArray() {
-        ScenarioRuntime sr = run(
-                "def arr = [1, 2, 3]",
-                "match arr contains 2"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def arr = [1, 2, 3]
+            * match arr contains 2
+            """);
         assertPassed(sr);
     }
 
     @Test
     void testMatchContainsOnly() {
-        ScenarioRuntime sr = run(
-                "def arr = [1, 2, 3]",
-                "match arr contains only [3, 2, 1]"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def arr = [1, 2, 3]
+            * match arr contains only [3, 2, 1]
+            """);
         assertPassed(sr);
     }
 
     @Test
     void testMatchContainsAny() {
-        ScenarioRuntime sr = run(
-                "def arr = [1, 2, 3]",
-                "match arr contains any [5, 2, 7]"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def arr = [1, 2, 3]
+            * match arr contains any [5, 2, 7]
+            """);
         assertPassed(sr);
     }
 
@@ -233,10 +273,12 @@ class MatchStepTest {
 
     @Test
     void testMatchEach() {
-        ScenarioRuntime sr = run(
-                "def arr = [{ id: 1 }, { id: 2 }]",
-                "match each arr contains { id: '#number' }"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def arr = [{ id: 1 }, { id: 2 }]
+            * match each arr contains { id: '#number' }
+            """);
         assertPassed(sr);
     }
 

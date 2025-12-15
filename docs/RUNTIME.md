@@ -1326,9 +1326,9 @@ Logging refactored from 9 files to 4 files. Package moved from `io.karatelabs.co
 | **ScenarioResult** | ✅ | Scenario-level results |
 | **StepExecutor** | ✅ | Keyword dispatch for all core keywords |
 | **StepResult** | ✅ | Step-level results with timing, logs, embeds |
-| **RuntimeHook** | ✅ | Lifecycle hook interface |
-| **Config loading** | ⬜ | karate-config.js evaluation |
-| **karate-json report** | ⬜ | JSON report file generation |
+| **RuntimeHook** | ✅ | Lifecycle hook interface with all 8 hooks wired |
+| **Config loading** | ✅ | karate-config.js + env-specific config evaluation |
+| **karate-json report** | ✅ | JSON report file generation to target/karate-reports/ |
 
 **Keywords implemented:** `def`, `set`, `remove`, `copy`, `text`, `json`, `xml`, `table`, `match`, `assert`, `print`, `url`, `path`, `param`, `params`, `header`, `headers`, `cookie`, `cookies`, `form field`, `form fields`, `request`, `method`, `status`, `multipart file`, `multipart field`, `multipart fields`, `multipart files`, `multipart entity`, `call`, `callonce`, `eval`, `configure`
 
@@ -1336,7 +1336,7 @@ Logging refactored from 9 files to 4 files. Package moved from `io.karatelabs.co
 
 | File | Status | Notes |
 |------|--------|-------|
-| `TestUtils.java` | ✅ | `run(String... lines)` helper pattern |
+| `TestUtils.java` | ✅ | `run(String gherkin)` with text blocks |
 | `InMemoryHttpClient.java` | ✅ | HTTP bypass with response builders |
 | `DefStepTest.java` | ✅ | Tests for def, set, remove, copy, text, json |
 | `MatchStepTest.java` | ✅ | Tests for match `==`, `!=`, `contains`, `!contains`, `contains only`, `contains any`, `each` |
@@ -1380,13 +1380,19 @@ The Gherkin lexer `GS_STEP_MATCH` state was updated to properly handle match exp
 
 ### Next Steps
 
+**Completed:**
 1. ~~**Test infrastructure** - TestUtils, InMemoryHttpClient~~ ✅ Done
 2. ~~**Phase 1 tests** - Step-level tests for implemented keywords~~ ✅ Done
 3. ~~**Fix GS_STEP_MATCH lexer** - Handle `contains`, `[`, operators~~ ✅ Done
-4. **Config loading** - karate-config.js evaluation
-5. **karate-json file output** - Write report to target/
-6. **Full call/callonce** - Currently stubs that just eval, need FeatureRuntime nesting
-7. **RuntimeHook wiring** - beforeScenario/afterScenario hooks are empty stubs
+4. ~~**Config loading** - karate-config.js evaluation~~ ✅ Done
+5. ~~**karate-json file output** - Write report to target/karate-reports/~~ ✅ Done
+6. ~~**Full call/callonce** - FeatureRuntime nesting with caching~~ ✅ Done
+7. ~~**RuntimeHook wiring** - All 8 hook points wired~~ ✅ Done
+
+**Pending:**
+8. **BackgroundTest.java** - Tests for background feature (feature works, needs test coverage)
+9. **ScenarioOutlineTest.java** - Tests for scenario outline (feature works, needs test coverage)
+10. **Dynamic Outline** - `@setup` scenario and single-cell JS expression variants (not yet implemented)
 
 ### Architecture Notes for call/callonce
 
@@ -1404,7 +1410,9 @@ When implementing `call`/`callonce`, explore the Engine API for context delegati
 |-----------|--------|-------|
 | **Background** | ✅ Works | `Scenario.getStepsIncludingBackground()` prepends background steps |
 | **Scenario Outline** | ✅ Works | `FeatureRuntime` iterates ExamplesTables, creates Scenario with exampleData |
-| **karate-config.js** | ⬜ TODO | Should run once before all features, sets up shared variables |
+| **karate-config.js** | ✅ Works | Loaded from classpath, env-specific configs supported |
+| **call/callonce** | ✅ Works | Proper FeatureRuntime nesting with caching |
+| **RuntimeHooks** | ✅ Works | All 8 hook points wired (suite/feature/scenario/step) |
 | **Dynamic Outline** | ⬜ TODO | `@setup` scenario that produces Examples data dynamically |
 
 **karate-config.js lifecycle:**
@@ -1435,16 +1443,16 @@ When implementing `call`/`callonce`, explore the Engine API for context delegati
 
 Each feature needs dedicated test coverage before considered complete:
 
-| Feature | Test File | Test Cases Needed |
-|---------|-----------|-------------------|
-| **Background** | `BackgroundTest.java` | Background runs before each scenario, variables inherited, multiple scenarios |
-| **Scenario Outline** | `ScenarioOutlineTest.java` | Basic expansion, multiple Examples tables, placeholder substitution, tags on Examples |
-| **Dynamic Outline (@setup)** | `DynamicOutlineSetupTest.java` | Setup runs first, data available to outline, setup failure handling |
-| **Dynamic Outline (single-cell)** | `DynamicOutlineCellTest.java` | JS expression evaluation, array explosion, `karate.read()` integration |
-| **karate-config.js** | `ConfigTest.java` | Config loaded, variables available, env-specific config, config errors |
-| **call** | `CallFeatureTest.java` | Call another feature, pass arguments, receive results, nested calls |
-| **callonce** | `CallOnceTest.java` | Caching behavior, shared across scenarios, cache key handling |
-| **RuntimeHooks** | `RuntimeHookTest.java` | beforeScenario/afterScenario, beforeStep/afterStep, hook can abort |
+| Feature | Test File | Test Cases Needed | Status |
+|---------|-----------|-------------------|--------|
+| **Background** | `BackgroundTest.java` | Background runs before each scenario, variables inherited, multiple scenarios | ⬜ |
+| **Scenario Outline** | `ScenarioOutlineTest.java` | Basic expansion, multiple Examples tables, placeholder substitution, tags on Examples | ⬜ |
+| **Dynamic Outline (@setup)** | `DynamicOutlineSetupTest.java` | Setup runs first, data available to outline, setup failure handling | ⬜ |
+| **Dynamic Outline (single-cell)** | `DynamicOutlineCellTest.java` | JS expression evaluation, array explosion, `karate.read()` integration | ⬜ |
+| **karate-config.js** | `ConfigTest.java` | Config loaded, variables available, env-specific config, config errors | ✅ (4 tests) |
+| **call** | `CallFeatureTest.java` | Call another feature, pass arguments, receive results, nested calls | ✅ (5 tests) |
+| **callonce** | included in `CallFeatureTest.java` | Caching behavior, shared across scenarios | ✅ |
+| **RuntimeHooks** | `RuntimeHookTest.java` | beforeScenario/afterScenario, beforeStep/afterStep, hook can abort | ✅ (4 tests) |
 
 ---
 
@@ -1456,7 +1464,7 @@ Tests are organized to mirror implementation phases. Each phase has correspondin
 
 1. **Fast by default** - Use `InMemoryHttpClient` to bypass network
 2. **Isolated** - Each test class tests one aspect
-3. **Pattern: `run(String... lines)`** - Create and run scenario from step lines
+3. **Pattern: `run(String gherkin)`** - Create and run scenario from text blocks with valid Gherkin
 4. **No external dependencies** - Tests are self-contained
 
 ### Test Infrastructure
@@ -1475,31 +1483,18 @@ package io.karatelabs.core;
 
 public class TestUtils {
 
-    /** Run steps and return runtime for assertions. */
-    public static ScenarioRuntime run(String... lines) {
-        return run(new InMemoryHttpClient(), lines);
+    /** Run scenario from Gherkin text block. */
+    public static ScenarioRuntime run(String gherkin) {
+        return run(new InMemoryHttpClient(), gherkin);
     }
 
-    public static ScenarioRuntime run(HttpClient client, String... lines) {
-        Feature feature = toFeature(lines);
+    public static ScenarioRuntime run(HttpClient client, String gherkin) {
+        Feature feature = Feature.read(Resource.text(gherkin));
         Scenario scenario = feature.getSections().getFirst().getScenario();
         KarateJs karate = new KarateJs(Resource.path("src/test/resources"), client);
         ScenarioRuntime sr = new ScenarioRuntime(karate, scenario);
         sr.call();
         return sr;
-    }
-
-    /** Create Feature from step lines. */
-    public static Feature toFeature(String... lines) {
-        StringBuilder sb = new StringBuilder("Feature:\nScenario:\n");
-        for (String line : lines) {
-            if (line.startsWith("|") || line.startsWith("\"\"\"")) {
-                sb.append(line).append('\n');
-            } else {
-                sb.append("* ").append(line).append('\n');
-            }
-        }
-        return Feature.read(Resource.text(sb.toString()));
     }
 
     public static Object get(ScenarioRuntime sr, String name) {
@@ -1567,25 +1562,35 @@ core/
 class DefStepTest {
     @Test
     void testDefNumber() {
-        ScenarioRuntime sr = run("def a = 1 + 2");
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def a = 1 + 2
+            """);
         assertPassed(sr);
         assertEquals(3, get(sr, "a"));
     }
 
     @Test
     void testDefJson() {
-        ScenarioRuntime sr = run("def foo = { name: 'bar' }");
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def foo = { name: 'bar' }
+            """);
         assertPassed(sr);
-        matchVar(sr, "foo", "{ name: 'bar' }");
+        matchVar(sr, "foo", Map.of("name", "bar"));
     }
 
     @Test
     void testSetNested() {
-        ScenarioRuntime sr = run(
-            "def foo = { a: 1 }",
-            "set foo.b = 2"
-        );
-        matchVar(sr, "foo", "{ a: 1, b: 2 }");
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def foo = { a: 1 }
+            * set foo.b = 2
+            """);
+        matchVar(sr, "foo", Map.of("a", 1, "b", 2));
     }
 }
 ```
@@ -1596,33 +1601,29 @@ class DefStepTest {
 class HttpStepTest {
     @Test
     void testSimpleGet() {
-        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
-            HttpResponse resp = new HttpResponse();
-            resp.setBody("{ \"id\": 1 }");
-            return resp;
-        });
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> json("{ \"id\": 1 }"));
 
-        ScenarioRuntime sr = run(client,
-            "url 'http://test'",
-            "method get",
-            "match response == { id: 1 }"
-        );
+        ScenarioRuntime sr = run(client, """
+            Feature:
+            Scenario:
+            * url 'http://test'
+            * method get
+            * match response == { id: 1 }
+            """);
         assertPassed(sr);
     }
 
     @Test
     void testStatusAssertion() {
-        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
-            HttpResponse resp = new HttpResponse();
-            resp.setStatus(404);
-            return resp;
-        });
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> status(404));
 
-        ScenarioRuntime sr = run(client,
-            "url 'http://test'",
-            "method get",
-            "status 200"
-        );
+        ScenarioRuntime sr = run(client, """
+            Feature:
+            Scenario:
+            * url 'http://test'
+            * method get
+            * status 200
+            """);
         assertFailed(sr);
     }
 }

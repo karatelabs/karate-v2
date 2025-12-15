@@ -24,11 +24,16 @@
 package io.karatelabs.core;
 
 import io.karatelabs.common.Resource;
+import io.karatelabs.common.ResourceNotFoundException;
 import io.karatelabs.gherkin.Feature;
+import io.karatelabs.js.Engine;
+import io.karatelabs.log.JvmLogger;
 
 import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,6 +52,12 @@ public class Suite {
     private int threadCount = 1;
     private boolean parallel = false;
     private boolean dryRun = false;
+    private String configPath = "classpath:karate-config.js";
+    private Path outputDir = Path.of("target/karate-reports");
+    private boolean writeReport = true;
+
+    // Config variables from karate-config.js
+    private Map<String, Object> configVariables = Collections.emptyMap();
 
     // Hooks
     private final List<RuntimeHook> hooks = new ArrayList<>();
@@ -125,13 +136,119 @@ public class Suite {
         return this;
     }
 
+    public Suite configPath(String configPath) {
+        this.configPath = configPath;
+        return this;
+    }
+
+    public Suite outputDir(Path outputDir) {
+        this.outputDir = outputDir;
+        return this;
+    }
+
+    public Suite outputDir(String outputDir) {
+        this.outputDir = Path.of(outputDir);
+        return this;
+    }
+
+    public Suite writeReport(boolean writeReport) {
+        this.writeReport = writeReport;
+        return this;
+    }
+
     // ========== Execution ==========
+
+    /**
+     * Loads karate-config.js (and env-specific config) and executes it.
+     * The returned object from the config function becomes the base variables for all scenarios.
+     */
+    @SuppressWarnings("unchecked")
+    private void loadConfig() {
+        Engine engine = new Engine();
+
+        // Set karate.env in the engine
+        if (env != null) {
+            engine.put("karate", new ConfigKarateBridge(env));
+        } else {
+            engine.put("karate", new ConfigKarateBridge(null));
+        }
+
+        // Try to load main config
+        String mainConfigContent = tryLoadConfig(configPath);
+        if (mainConfigContent != null) {
+            try {
+                Object result = engine.eval(mainConfigContent);
+                if (result instanceof Map) {
+                    configVariables = new HashMap<>((Map<String, Object>) result);
+                    JvmLogger.debug("Loaded config from {}: {} variables", configPath, configVariables.size());
+                }
+            } catch (Exception e) {
+                JvmLogger.warn("Failed to evaluate {}: {}", configPath, e.getMessage());
+            }
+        }
+
+        // Try to load env-specific config (e.g., karate-config-dev.js)
+        if (env != null && !env.isEmpty()) {
+            String envConfigPath = configPath.replace(".js", "-" + env + ".js");
+            String envConfigContent = tryLoadConfig(envConfigPath);
+            if (envConfigContent != null) {
+                try {
+                    // Put existing config vars into engine so env config can access them
+                    for (Map.Entry<String, Object> entry : configVariables.entrySet()) {
+                        engine.put(entry.getKey(), entry.getValue());
+                    }
+                    Object result = engine.eval(envConfigContent);
+                    if (result instanceof Map) {
+                        configVariables.putAll((Map<String, Object>) result);
+                        JvmLogger.debug("Loaded env config from {}", envConfigPath);
+                    }
+                } catch (Exception e) {
+                    JvmLogger.warn("Failed to evaluate {}: {}", envConfigPath, e.getMessage());
+                }
+            }
+        }
+    }
+
+    private String tryLoadConfig(String path) {
+        try {
+            Resource resource = Resource.path(path);
+            return resource.getText();
+        } catch (ResourceNotFoundException e) {
+            JvmLogger.debug("Config not found: {}", path);
+            return null;
+        } catch (Exception e) {
+            JvmLogger.warn("Error loading config {}: {}", path, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Minimal karate bridge for config evaluation - just provides karate.env
+     */
+    private static class ConfigKarateBridge implements io.karatelabs.js.SimpleObject {
+        private final String env;
+
+        ConfigKarateBridge(String env) {
+            this.env = env;
+        }
+
+        @Override
+        public Object jsGet(String key) {
+            if ("env".equals(key)) {
+                return env;
+            }
+            return null;
+        }
+    }
 
     public SuiteResult run() {
         result = new SuiteResult();
         result.setStartTime(System.currentTimeMillis());
 
         try {
+            // Load config before anything else
+            loadConfig();
+
             beforeSuite();
 
             if (parallel && threadCount > 1) {
@@ -143,9 +260,44 @@ public class Suite {
             afterSuite();
         } finally {
             result.setEndTime(System.currentTimeMillis());
+
+            // Write report if enabled
+            if (writeReport) {
+                writeKarateJsonReport();
+            }
         }
 
         return result;
+    }
+
+    private void writeKarateJsonReport() {
+        try {
+            // Create output directory if it doesn't exist
+            if (!java.nio.file.Files.exists(outputDir)) {
+                java.nio.file.Files.createDirectories(outputDir);
+            }
+
+            // Write karate-summary.json
+            Path summaryPath = outputDir.resolve("karate-summary.json");
+            String json = result.toJsonPretty();
+            java.nio.file.Files.writeString(summaryPath, json);
+            JvmLogger.info("Report written to: {}", summaryPath);
+
+            // Write individual feature results
+            for (FeatureResult fr : result.getFeatureResults()) {
+                String featureName = fr.getFeature().getName();
+                if (featureName == null || featureName.isEmpty()) {
+                    featureName = "feature";
+                }
+                // Sanitize filename
+                String safeName = featureName.replaceAll("[^a-zA-Z0-9_-]", "_");
+                Path featurePath = outputDir.resolve(safeName + ".json");
+                String featureJson = io.karatelabs.common.Json.of(fr.toKarateJson()).toStringPretty();
+                java.nio.file.Files.writeString(featurePath, featureJson);
+            }
+        } catch (Exception e) {
+            JvmLogger.warn("Failed to write karate report: {}", e.getMessage());
+        }
     }
 
     private void runSequential() {
@@ -225,6 +377,14 @@ public class Suite {
 
     public SuiteResult getResult() {
         return result;
+    }
+
+    public Map<String, Object> getConfigVariables() {
+        return configVariables;
+    }
+
+    public List<RuntimeHook> getHooks() {
+        return hooks;
     }
 
 }

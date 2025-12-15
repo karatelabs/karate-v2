@@ -24,6 +24,8 @@
 package io.karatelabs.core;
 
 import io.karatelabs.common.Json;
+import io.karatelabs.common.Resource;
+import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.Step;
 import io.karatelabs.gherkin.Table;
 import io.karatelabs.io.http.HttpRequestBuilder;
@@ -32,6 +34,7 @@ import io.karatelabs.log.LogContext;
 import io.karatelabs.match.Match;
 import io.karatelabs.match.Result;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -46,6 +49,14 @@ public class StepExecutor {
     public StepResult execute(Step step) {
         long startTime = System.currentTimeMillis();
         long startNanos = System.nanoTime();
+
+        // Call beforeStep hooks
+        if (!beforeStep(step)) {
+            // Hook returned false - skip this step
+            StepResult skipped = StepResult.skipped(step, startTime);
+            skipped.setLog(LogContext.get().collect());
+            return skipped;
+        }
 
         try {
             String keyword = step.getKeyword();
@@ -104,13 +115,36 @@ public class StepExecutor {
             long elapsedNanos = System.nanoTime() - startNanos;
             StepResult result = StepResult.passed(step, startTime, elapsedNanos);
             result.setLog(LogContext.get().collect());
+            afterStep(result);
             return result;
 
         } catch (AssertionError | Exception e) {
             long elapsedNanos = System.nanoTime() - startNanos;
             StepResult result = StepResult.failed(step, startTime, elapsedNanos, e);
             result.setLog(LogContext.get().collect());
+            afterStep(result);
             return result;
+        }
+    }
+
+    private boolean beforeStep(Step step) {
+        FeatureRuntime fr = runtime.getFeatureRuntime();
+        if (fr != null && fr.getSuite() != null) {
+            for (RuntimeHook hook : fr.getSuite().getHooks()) {
+                if (!hook.beforeStep(step, runtime)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private void afterStep(StepResult result) {
+        FeatureRuntime fr = runtime.getFeatureRuntime();
+        if (fr != null && fr.getSuite() != null) {
+            for (RuntimeHook hook : fr.getSuite().getHooks()) {
+                hook.afterStep(result, runtime);
+            }
         }
     }
 
@@ -130,8 +164,80 @@ public class StepExecutor {
         }
         String name = text.substring(0, eqIndex).trim();
         String expr = text.substring(eqIndex + 1).trim();
-        Object value = runtime.eval(expr);
-        runtime.setVariable(name, value);
+
+        // Check if RHS is a call/callonce expression
+        if (expr.startsWith("call ")) {
+            String callExpr = expr.substring(5).trim();
+            executeCallWithResult(callExpr, name);
+        } else if (expr.startsWith("callonce ")) {
+            String callExpr = expr.substring(9).trim();
+            executeCallOnceWithResult(callExpr, name);
+        } else {
+            Object value = runtime.eval(expr);
+            runtime.setVariable(name, value);
+        }
+    }
+
+    private void executeCallWithResult(String callExpr, String resultVar) {
+        CallExpression call = parseCallExpression(callExpr);
+        call.resultVar = resultVar;
+
+        // Resolve the feature file relative to current feature
+        FeatureRuntime fr = runtime.getFeatureRuntime();
+        Resource calledResource = fr != null
+                ? fr.resolve(call.path)
+                : Resource.path(call.path);
+
+        Feature calledFeature = Feature.read(calledResource);
+
+        // Create nested FeatureRuntime
+        FeatureRuntime nestedFr = new FeatureRuntime(
+                fr != null ? fr.getSuite() : null,
+                calledFeature,
+                fr,
+                call.arg
+        );
+
+        // Execute the called feature
+        FeatureResult result = nestedFr.call();
+
+        // Capture result variables from the last executed scenario
+        if (nestedFr.getLastExecuted() != null) {
+            Map<String, Object> resultVars = nestedFr.getLastExecuted().getAllVariables();
+            runtime.setVariable(resultVar, resultVars);
+        }
+    }
+
+    private void executeCallOnceWithResult(String callExpr, String resultVar) {
+        String cacheKey = "callonce:" + callExpr;
+
+        // Check cache first
+        FeatureRuntime fr = runtime.getFeatureRuntime();
+        Map<String, Object> cache = fr != null && fr.getSuite() != null
+                ? fr.getSuite().getCallOnceCache()
+                : fr != null ? fr.CALLONCE_CACHE : null;
+
+        if (cache != null) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> cached = (Map<String, Object>) cache.get(cacheKey);
+            if (cached != null) {
+                // Return cached result
+                runtime.setVariable(resultVar, cached);
+                return;
+            }
+        }
+
+        // Not cached - execute the call
+        executeCallWithResult(callExpr, resultVar);
+
+        // Cache the result
+        if (cache != null) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> resultVars = (Map<String, Object>) runtime.getVariable(resultVar);
+            if (resultVars != null) {
+                cache.put(cacheKey, new HashMap<>(resultVars));
+            }
+        }
     }
 
     private void executeSet(Step step) {
@@ -453,15 +559,124 @@ public class StepExecutor {
     // ========== Control Flow ==========
 
     private void executeCall(Step step) {
-        // Basic call support - to be expanded with FeatureRuntime
-        String text = step.getText();
-        // For now, just evaluate as JS expression
-        runtime.eval(text);
+        String text = step.getText().trim();
+        CallExpression call = parseCallExpression(text);
+
+        // Resolve the feature file relative to current feature
+        FeatureRuntime fr = runtime.getFeatureRuntime();
+        Resource calledResource = fr != null
+                ? fr.resolve(call.path)
+                : Resource.path(call.path);
+
+        Feature calledFeature = Feature.read(calledResource);
+
+        // Create nested FeatureRuntime
+        FeatureRuntime nestedFr = new FeatureRuntime(
+                fr != null ? fr.getSuite() : null,
+                calledFeature,
+                fr,
+                call.arg
+        );
+
+        // Execute the called feature
+        FeatureResult result = nestedFr.call();
+
+        // Capture result variables from the last executed scenario
+        if (nestedFr.getLastExecuted() != null) {
+            Map<String, Object> resultVars = nestedFr.getLastExecuted().getAllVariables();
+            // Store result if there's a result variable specified
+            if (call.resultVar != null) {
+                runtime.setVariable(call.resultVar, resultVars);
+            }
+        }
     }
 
     private void executeCallOnce(Step step) {
-        // CallOnce requires caching - to be implemented with FeatureRuntime
+        String text = step.getText().trim();
+        String cacheKey = text;
+
+        // Check cache first
+        FeatureRuntime fr = runtime.getFeatureRuntime();
+        Map<String, Object> cache = fr != null && fr.getSuite() != null
+                ? fr.getSuite().getCallOnceCache()
+                : fr != null ? fr.CALLONCE_CACHE : null;
+
+        if (cache != null) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> cached = (Map<String, Object>) cache.get(cacheKey);
+            if (cached != null) {
+                // Apply cached variables to current runtime
+                for (Map.Entry<String, Object> entry : cached.entrySet()) {
+                    runtime.setVariable(entry.getKey(), entry.getValue());
+                }
+                return;
+            }
+        }
+
+        // Not cached - execute the call
         executeCall(step);
+
+        // Cache the result
+        if (cache != null && fr.getLastExecuted() != null) {
+            cache.put(cacheKey, new HashMap<>(runtime.getAllVariables()));
+        }
+    }
+
+    /**
+     * Parses call expression like:
+     * - read('file.feature')
+     * - read('file.feature') { arg: 1 }
+     * - read('file.feature') argVar
+     */
+    private CallExpression parseCallExpression(String text) {
+        CallExpression expr = new CallExpression();
+
+        // Check if it's a read() call
+        if (text.startsWith("read(")) {
+            int closeParen = text.indexOf(')');
+            if (closeParen > 0) {
+                // Extract path from read('path')
+                String readArg = text.substring(5, closeParen).trim();
+                // Remove quotes
+                if ((readArg.startsWith("'") && readArg.endsWith("'")) ||
+                        (readArg.startsWith("\"") && readArg.endsWith("\""))) {
+                    expr.path = readArg.substring(1, readArg.length() - 1);
+                } else {
+                    // It's a variable reference
+                    Object pathObj = runtime.eval(readArg);
+                    expr.path = pathObj != null ? pathObj.toString() : readArg;
+                }
+
+                // Check for arguments after the read()
+                String remainder = text.substring(closeParen + 1).trim();
+                if (!remainder.isEmpty()) {
+                    // Evaluate as JS - could be an object literal or variable
+                    Object argObj = runtime.eval(remainder);
+                    if (argObj instanceof Map) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> argMap = (Map<String, Object>) argObj;
+                        expr.arg = argMap;
+                    }
+                }
+            }
+        } else {
+            // Not a read() call - try evaluating as expression
+            // Could be a variable that holds a feature path
+            Object result = runtime.eval(text);
+            if (result instanceof String) {
+                expr.path = (String) result;
+            } else {
+                throw new RuntimeException("call expression must resolve to a feature path: " + text);
+            }
+        }
+
+        return expr;
+    }
+
+    private static class CallExpression {
+        String path;
+        Map<String, Object> arg;
+        String resultVar;
     }
 
     private void executeEval(Step step) {

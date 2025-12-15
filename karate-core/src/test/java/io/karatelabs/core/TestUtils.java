@@ -34,45 +34,37 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Test utilities for runtime tests.
- * Pattern: Create scenarios from step lines and run them with optional mock HTTP.
+ * Pattern: Create scenarios from Gherkin text blocks and run them with optional mock HTTP.
  */
 public class TestUtils {
 
     /**
-     * Run steps with an in-memory HTTP client (no network).
+     * Run a scenario from Gherkin text with an in-memory HTTP client (no network).
+     * Use Java text blocks for readable multi-line Gherkin:
+     * <pre>
+     * run("""
+     *     Feature: Test
+     *     Scenario: Example
+     *     * def a = 1
+     *     * match a == 1
+     *     """);
+     * </pre>
      */
-    public static ScenarioRuntime run(String... lines) {
-        return run(new InMemoryHttpClient(), lines);
+    public static ScenarioRuntime run(String gherkin) {
+        return run(new InMemoryHttpClient(), gherkin);
     }
 
     /**
-     * Run steps with a custom HTTP client.
+     * Run a scenario from Gherkin text with a custom HTTP client.
      */
-    public static ScenarioRuntime run(HttpClient client, String... lines) {
-        Feature feature = toFeature(lines);
+    public static ScenarioRuntime run(HttpClient client, String gherkin) {
+        Feature feature = Feature.read(Resource.text(gherkin));
         Scenario scenario = feature.getSections().getFirst().getScenario();
         Resource root = Resource.path("src/test/resources");
         KarateJs karate = new KarateJs(root, client);
         ScenarioRuntime sr = new ScenarioRuntime(karate, scenario);
         sr.call();
         return sr;
-    }
-
-    /**
-     * Create a Feature from step lines.
-     * Lines starting with "|" or triple-quote are kept as-is (for tables/docstrings).
-     * Other lines are prefixed with "* " automatically.
-     */
-    public static Feature toFeature(String... lines) {
-        StringBuilder sb = new StringBuilder("Feature:\nScenario:\n");
-        for (String line : lines) {
-            if (line.startsWith("|") || line.startsWith("\"\"\"")) {
-                sb.append(line).append('\n');
-            } else {
-                sb.append("* ").append(line).append('\n');
-            }
-        }
-        return Feature.read(Resource.text(sb.toString()));
     }
 
     /**

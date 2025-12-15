@@ -79,9 +79,24 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         // KarateJs already sets up "karate" object
         // Add scenario-specific variables
 
+        // Apply config variables from Suite (base layer)
+        if (featureRuntime != null && featureRuntime.getSuite() != null) {
+            Map<String, Object> configVars = featureRuntime.getSuite().getConfigVariables();
+            for (var entry : configVars.entrySet()) {
+                karate.engine.put(entry.getKey(), entry.getValue());
+            }
+        }
+
         // Inherit parent variables if called from another feature
         if (featureRuntime != null && featureRuntime.getCaller() != null) {
             inheritVariables();
+        }
+
+        // Apply call arguments if present
+        if (featureRuntime != null && featureRuntime.getCallArg() != null) {
+            for (var entry : featureRuntime.getCallArg().entrySet()) {
+                karate.engine.put(entry.getKey(), entry.getValue());
+            }
         }
 
         // Set example data for outline scenarios
@@ -143,11 +158,23 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
     }
 
     private void beforeScenario() {
-        // Hook for before scenario - can be extended for RuntimeHook
+        if (featureRuntime != null && featureRuntime.getSuite() != null) {
+            for (RuntimeHook hook : featureRuntime.getSuite().getHooks()) {
+                if (!hook.beforeScenario(this)) {
+                    // Hook returned false - skip this scenario
+                    stopped = true;
+                    return;
+                }
+            }
+        }
     }
 
     private void afterScenario() {
-        // Hook for after scenario - can be extended for RuntimeHook
+        if (featureRuntime != null && featureRuntime.getSuite() != null) {
+            for (RuntimeHook hook : featureRuntime.getSuite().getHooks()) {
+                hook.afterScenario(this);
+            }
+        }
     }
 
     // ========== Execution Context ==========

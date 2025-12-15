@@ -38,7 +38,11 @@ class PrintAssertTest {
 
     @Test
     void testPrintString() {
-        ScenarioRuntime sr = run("print 'hello world'");
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * print 'hello world'
+            """);
         assertPassed(sr);
         // Check that print output was captured in step logs
         List<StepResult> steps = sr.getResult().getStepResults();
@@ -50,10 +54,12 @@ class PrintAssertTest {
 
     @Test
     void testPrintVariable() {
-        ScenarioRuntime sr = run(
-                "def name = 'test'",
-                "print name"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def name = 'test'
+            * print name
+            """);
         assertPassed(sr);
         List<StepResult> steps = sr.getResult().getStepResults();
         // The print step is the second one
@@ -64,10 +70,12 @@ class PrintAssertTest {
 
     @Test
     void testPrintJson() {
-        ScenarioRuntime sr = run(
-                "def data = { name: 'john', age: 30 }",
-                "print data"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def data = { name: 'john', age: 30 }
+            * print data
+            """);
         assertPassed(sr);
         List<StepResult> steps = sr.getResult().getStepResults();
         assertTrue(steps.size() >= 2);
@@ -78,10 +86,12 @@ class PrintAssertTest {
 
     @Test
     void testPrintExpression() {
-        ScenarioRuntime sr = run(
-                "def x = 10",
-                "print 'x squared is:', x * x"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def x = 10
+            * print 'x squared is:', x * x
+            """);
         assertPassed(sr);
     }
 
@@ -89,49 +99,65 @@ class PrintAssertTest {
 
     @Test
     void testAssertTrue() {
-        ScenarioRuntime sr = run("assert 1 + 1 == 2");
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * assert 1 + 1 == 2
+            """);
         assertPassed(sr);
     }
 
     @Test
     void testAssertFalse() {
-        ScenarioRuntime sr = run("assert 1 + 1 == 3");
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * assert 1 + 1 == 3
+            """);
         assertFailed(sr);
     }
 
     @Test
     void testAssertWithVariable() {
-        ScenarioRuntime sr = run(
-                "def x = 10",
-                "assert x > 5"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def x = 10
+            * assert x > 5
+            """);
         assertPassed(sr);
     }
 
     @Test
     void testAssertWithVariableFailure() {
-        ScenarioRuntime sr = run(
-                "def x = 3",
-                "assert x > 5"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def x = 3
+            * assert x > 5
+            """);
         assertFailed(sr);
     }
 
     @Test
     void testAssertComplex() {
-        ScenarioRuntime sr = run(
-                "def arr = [1, 2, 3]",
-                "assert arr.length == 3"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def arr = [1, 2, 3]
+            * assert arr.length == 3
+            """);
         assertPassed(sr);
     }
 
     @Test
     void testAssertString() {
-        ScenarioRuntime sr = run(
-                "def s = 'hello'",
-                "assert s.startsWith('hel')"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def s = 'hello'
+            * assert s.startsWith('hel')
+            """);
         assertPassed(sr);
     }
 
@@ -139,22 +165,26 @@ class PrintAssertTest {
 
     @Test
     void testEval() {
-        ScenarioRuntime sr = run(
-                "def counter = 0",
-                "eval counter = counter + 1",
-                "match counter == 1"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def counter = 0
+            * eval counter = counter + 1
+            * match counter == 1
+            """);
         assertPassed(sr);
     }
 
     @Test
     void testEvalFunction() {
-        ScenarioRuntime sr = run(
-                "def result = null",
-                "def fn = function(x) { return x * 2 }",
-                "eval result = fn(5)",
-                "match result == 10"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def result = null
+            * def fn = function(x) { return x * 2 }
+            * eval result = fn(5)
+            * match result == 10
+            """);
         assertPassed(sr);
     }
 
@@ -162,10 +192,12 @@ class PrintAssertTest {
 
     @Test
     void testConfigure() {
-        ScenarioRuntime sr = run(
-                "configure ssl = true",
-                "def x = 1"
-        );
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * configure ssl = true
+            * def x = 1
+            """);
         assertPassed(sr);
         // Just verify it doesn't fail - configure is a no-op for most settings in tests
     }

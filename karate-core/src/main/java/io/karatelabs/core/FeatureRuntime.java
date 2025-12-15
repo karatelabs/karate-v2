@@ -101,16 +101,21 @@ public class FeatureRuntime implements Callable<FeatureResult> {
     }
 
     private void beforeFeature() {
-        // Hook for before feature - can be extended for RuntimeHook
         if (suite != null) {
-            // Suite-level before feature hooks
+            for (RuntimeHook hook : suite.getHooks()) {
+                if (!hook.beforeFeature(this)) {
+                    // Hook returned false - skip this feature
+                    return;
+                }
+            }
         }
     }
 
     private void afterFeature() {
-        // Hook for after feature - can be extended for RuntimeHook
         if (suite != null) {
-            // Suite-level after feature hooks
+            for (RuntimeHook hook : suite.getHooks()) {
+                hook.afterFeature(this);
+            }
         }
     }
 
