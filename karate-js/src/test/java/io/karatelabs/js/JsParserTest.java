@@ -594,4 +594,58 @@ class JsParserTest {
         assertNotNull(switchStmt);
     }
 
+    @Test
+    void testMultipleBareIdentifiersInObject() {
+        // Multiple identifiers without punctuation (e.g., uncommented comment)
+        String code = "const x = {\n    Base rates for coverages\n    bar: 1\n}";
+        JsParser parser = new JsParser(Resource.text(code), true);
+        Node ast = parser.parse();
+        assertTrue(parser.hasErrors());
+        assertNotNull(ast);
+    }
+
+    @Test
+    void testBlockWithExpressionStatementNoError() {
+        // Block containing expression statement should not be flagged as error
+        // { console.log() } is valid JS - a block with an expression statement
+        JsParser parser = new JsParser(Resource.text("{ console.log() }"), true);
+        Node ast = parser.parse();
+        assertNotNull(ast);
+        assertFalse(parser.hasErrors(), "Expected no errors for valid block statement, but got: " + parser.getErrors());
+        // Should have a BLOCK node, not LIT_OBJECT
+        Node block = ast.findFirstChild(NodeType.BLOCK);
+        assertNotNull(block, "Expected BLOCK node but didn't find one");
+    }
+
+    @Test
+    void testBlockWithMultipleStatements() {
+        // Block with multiple statements
+        JsParser parser = new JsParser(Resource.text("{ let x = 1; console.log(x) }"), true);
+        Node ast = parser.parse();
+        assertNotNull(ast);
+        assertFalse(parser.hasErrors(), "Expected no errors for valid block, but got: " + parser.getErrors());
+        Node block = ast.findFirstChild(NodeType.BLOCK);
+        assertNotNull(block, "Expected BLOCK node but didn't find one");
+    }
+
+    @Test
+    void testObjectLiteralStillWorks() {
+        // Valid object literal should still work
+        JsParser parser = new JsParser(Resource.text("let x = { a: 1, b: 2 }"), true);
+        Node ast = parser.parse();
+        assertNotNull(ast);
+        assertFalse(parser.hasErrors(), "Expected no errors for valid object, but got: " + parser.getErrors());
+        Node obj = ast.findFirstChild(NodeType.LIT_OBJECT);
+        assertNotNull(obj, "Expected LIT_OBJECT node but didn't find one");
+    }
+
+    @Test
+    void testObjectWithInvalidSecondElement() {
+        // Object where second element is invalid should still error
+        JsParser parser = new JsParser(Resource.text("let x = { a: 1, b c }"), true);
+        Node ast = parser.parse();
+        assertNotNull(ast);
+        assertTrue(parser.hasErrors(), "Expected error for invalid object element");
+    }
+
 }

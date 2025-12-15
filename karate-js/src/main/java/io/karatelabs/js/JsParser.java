@@ -678,18 +678,22 @@ public class JsParser extends Parser {
         if (!enter(NodeType.LIT_OBJECT, L_CURLY)) {
             return false;
         }
+        boolean hasElements = false;
         while (true) {
             if (peekIf(R_CURLY) || peekIf(EOF)) {
                 break;
             }
             if (!object_elem()) {
-                if (errorRecoveryEnabled) {
+                if (errorRecoveryEnabled && hasElements) {
+                    // Only error/recover if we've parsed at least one element
+                    // If first element fails, this might be a block, not an object
                     error("invalid object element");
                     recoverTo(R_CURLY, COMMA, EOF);
                     continue;
                 }
                 break;
             }
+            hasElements = true;
         }
         boolean result = consumeIf(R_CURLY);
         return exit(result, false);
