@@ -1318,20 +1318,296 @@ Logging refactored from 9 files to 4 files. Package moved from `io.karatelabs.co
 | Component | Status | Notes |
 |-----------|--------|-------|
 | **Logging** | ✅ | `io.karatelabs.log` - 4 classes |
-| **Suite** | ⬜ | Top-level orchestrator |
-| **FeatureRuntime** | ⬜ | Executes feature files |
-| **ScenarioRuntime** | ⬜ | Wraps KarateJs, manages execution |
-| **StepExecutor** | ⬜ | Keyword dispatch |
-| **Result classes** | ⬜ | StepResult, ScenarioResult, FeatureResult |
+| **Suite** | ✅ | Top-level orchestrator with parallel support |
+| **SuiteResult** | ✅ | Aggregated results with `toKarateJson()` |
+| **FeatureRuntime** | ✅ | Executes feature files, scenario iteration |
+| **FeatureResult** | ✅ | Feature-level results |
+| **ScenarioRuntime** | ✅ | Wraps KarateJs, manages execution |
+| **ScenarioResult** | ✅ | Scenario-level results |
+| **StepExecutor** | ✅ | Keyword dispatch for all core keywords |
+| **StepResult** | ✅ | Step-level results with timing, logs, embeds |
+| **RuntimeHook** | ✅ | Lifecycle hook interface |
 | **Config loading** | ⬜ | karate-config.js evaluation |
-| **karate-json report** | ⬜ | JSON report generation |
+| **karate-json report** | ⬜ | JSON report file generation |
+
+**Keywords implemented:** `def`, `set`, `remove`, `copy`, `text`, `json`, `xml`, `table`, `match`, `assert`, `print`, `url`, `path`, `param`, `params`, `header`, `headers`, `cookie`, `cookies`, `form`, `request`, `method`, `status`, `call`, `callonce`, `eval`, `configure`
 
 ### Next Steps
 
-1. **StepResult / ScenarioResult / FeatureResult** - result classes for reporting
-2. **ScenarioRuntime** - wraps KarateJs, iterates steps, collects results
-3. **StepExecutor** - keyword dispatch (start with `def`, `print`, `match`)
-4. **karate-json generation** - output report from results
+1. **Test infrastructure** - TestUtils, InMemoryHttpClient
+2. **Phase 1 tests** - Step-level tests for implemented keywords
+3. **Config loading** - karate-config.js evaluation
+4. **karate-json file output** - Write report to target/
+
+---
+
+## Test Strategy
+
+Tests are organized to mirror implementation phases. Each phase has corresponding tests that validate the implementation.
+
+### Test Principles
+
+1. **Fast by default** - Use `InMemoryHttpClient` to bypass network
+2. **Isolated** - Each test class tests one aspect
+3. **Pattern: `run(String... lines)`** - Create and run scenario from step lines
+4. **No external dependencies** - Tests are self-contained
+
+### Test Infrastructure
+
+```
+karate-core/src/test/java/io/karatelabs/core/
+├── TestUtils.java              # Shared helpers
+├── InMemoryHttpClient.java     # HTTP bypass (in io/http/)
+└── [phase tests below]
+```
+
+#### TestUtils.java
+
+```java
+package io.karatelabs.core;
+
+public class TestUtils {
+
+    /** Run steps and return runtime for assertions. */
+    public static ScenarioRuntime run(String... lines) {
+        return run(new InMemoryHttpClient(), lines);
+    }
+
+    public static ScenarioRuntime run(HttpClient client, String... lines) {
+        Feature feature = toFeature(lines);
+        Scenario scenario = feature.getSections().getFirst().getScenario();
+        KarateJs karate = new KarateJs(Resource.path("src/test/resources"), client);
+        ScenarioRuntime sr = new ScenarioRuntime(karate, scenario);
+        sr.call();
+        return sr;
+    }
+
+    /** Create Feature from step lines. */
+    public static Feature toFeature(String... lines) {
+        StringBuilder sb = new StringBuilder("Feature:\nScenario:\n");
+        for (String line : lines) {
+            if (line.startsWith("|") || line.startsWith("\"\"\"")) {
+                sb.append(line).append('\n');
+            } else {
+                sb.append("* ").append(line).append('\n');
+            }
+        }
+        return Feature.read(Resource.text(sb.toString()));
+    }
+
+    public static Object get(ScenarioRuntime sr, String name) {
+        return sr.getVariable(name);
+    }
+
+    public static void matchVar(ScenarioRuntime sr, String name, Object expected) {
+        Result result = Match.that(sr.getVariable(name))._equals(expected);
+        if (!result.pass) throw new AssertionError(result.message);
+    }
+
+    public static void assertPassed(ScenarioRuntime sr) {
+        assertTrue(sr.getResult().isPassed(),
+            "Expected pass but: " + sr.getResult().getFailureMessage());
+    }
+
+    public static void assertFailed(ScenarioRuntime sr) {
+        assertTrue(sr.getResult().isFailed(), "Expected failure");
+    }
+}
+```
+
+#### InMemoryHttpClient.java
+
+```java
+package io.karatelabs.io.http;
+
+/** HTTP client that bypasses network for fast tests. */
+public class InMemoryHttpClient implements HttpClient {
+    private Function<HttpRequest, HttpResponse> handler;
+
+    public InMemoryHttpClient() {
+        this.handler = req -> new HttpResponse(); // default 200
+    }
+
+    public InMemoryHttpClient(Function<HttpRequest, HttpResponse> handler) {
+        this.handler = handler;
+    }
+
+    @Override
+    public HttpResponse invoke(HttpRequest request) {
+        return handler.apply(request);
+    }
+}
+```
+
+---
+
+### Phase 1 Tests: Core Execution
+
+```
+core/
+├── step/                        # Step-level keyword tests
+│   ├── DefStepTest.java         # def, set, remove, copy
+│   ├── MatchStepTest.java       # match operators
+│   ├── HttpStepTest.java        # url, path, method, status
+│   └── PrintAssertTest.java     # print, assert
+├── ResultsTest.java             # StepResult, ScenarioResult, FeatureResult
+└── LogContextTest.java          # print output in step logs
+```
+
+**Example: DefStepTest.java**
+
+```java
+class DefStepTest {
+    @Test
+    void testDefNumber() {
+        ScenarioRuntime sr = run("def a = 1 + 2");
+        assertPassed(sr);
+        assertEquals(3, get(sr, "a"));
+    }
+
+    @Test
+    void testDefJson() {
+        ScenarioRuntime sr = run("def foo = { name: 'bar' }");
+        assertPassed(sr);
+        matchVar(sr, "foo", "{ name: 'bar' }");
+    }
+
+    @Test
+    void testSetNested() {
+        ScenarioRuntime sr = run(
+            "def foo = { a: 1 }",
+            "set foo.b = 2"
+        );
+        matchVar(sr, "foo", "{ a: 1, b: 2 }");
+    }
+}
+```
+
+**Example: HttpStepTest.java**
+
+```java
+class HttpStepTest {
+    @Test
+    void testSimpleGet() {
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            HttpResponse resp = new HttpResponse();
+            resp.setBody("{ \"id\": 1 }");
+            return resp;
+        });
+
+        ScenarioRuntime sr = run(client,
+            "url 'http://test'",
+            "method get",
+            "match response == { id: 1 }"
+        );
+        assertPassed(sr);
+    }
+
+    @Test
+    void testStatusAssertion() {
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            HttpResponse resp = new HttpResponse();
+            resp.setStatus(404);
+            return resp;
+        });
+
+        ScenarioRuntime sr = run(client,
+            "url 'http://test'",
+            "method get",
+            "status 200"
+        );
+        assertFailed(sr);
+    }
+}
+```
+
+---
+
+### Phase 2 Tests: Full Match Support
+
+```
+core/match/
+├── MatchOperatorsTest.java      # contains, containsOnly, containsAny, etc.
+├── MatchEachTest.java           # each variants
+├── FuzzyMarkersTest.java        # #string, #number, #notnull, #regex, etc.
+└── SchemaValidationTest.java    # schema matching
+```
+
+---
+
+### Phase 3 Tests: Advanced Features
+
+```
+core/
+├── scenario/
+│   ├── BackgroundTest.java      # Background runs before each scenario
+│   ├── ScenarioOutlineTest.java # Examples expansion
+│   └── TagFilteringTest.java    # @ignore, tag selection
+├── feature/
+│   ├── CallFeatureTest.java     # call read('other.feature')
+│   ├── CallOnceTest.java        # caching behavior
+│   └── RetryTest.java           # retry until
+└── HooksTest.java               # RuntimeHook lifecycle
+```
+
+**Example: BackgroundTest.java**
+
+```java
+class BackgroundTest {
+    @Test
+    void testBackgroundRunsBeforeEachScenario() {
+        String text = """
+            Feature: test
+            Background:
+            * def shared = 'bg'
+            Scenario: first
+            * match shared == 'bg'
+            Scenario: second
+            * match shared == 'bg'
+            """;
+        Feature feature = Feature.read(Resource.text(text));
+        FeatureRuntime fr = new FeatureRuntime(feature);
+        FeatureResult result = fr.call();
+
+        assertEquals(2, result.getPassedCount());
+    }
+}
+```
+
+---
+
+### Phase 4 Tests: Parallel Execution
+
+```
+core/suite/
+├── ParallelExecutionTest.java   # Features run in parallel
+├── ParallelFalseTagTest.java    # @parallel=false
+└── ThreadSafetyTest.java        # Result collection
+```
+
+---
+
+### Phase 5 Tests: Reporting
+
+```
+core/report/
+├── KarateJsonFormatTest.java    # Validate JSON structure
+├── StepLogsTest.java            # print output in reports
+├── EmbedTest.java               # Embedded content
+└── JunitXmlTest.java            # JUnit format
+```
+
+---
+
+### Integration Tests (Real HTTP)
+
+```
+core/integration/
+├── ServerIntegrationTest.java   # Real HTTP with HttpServer
+└── EndToEndTest.java            # Full suite execution
+```
+
+These use actual `HttpServer` for tests that need real TCP connections.
 
 ---
 

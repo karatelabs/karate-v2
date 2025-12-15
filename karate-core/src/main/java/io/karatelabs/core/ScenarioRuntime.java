@@ -23,34 +23,219 @@
  */
 package io.karatelabs.core;
 
+import io.karatelabs.common.Resource;
 import io.karatelabs.gherkin.Scenario;
 import io.karatelabs.gherkin.Step;
+import io.karatelabs.io.http.HttpRequestBuilder;
+import io.karatelabs.log.LogContext;
 
-public class ScenarioRuntime implements Runnable {
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
 
-    final Scenario scenario;
-    final KarateJs karate;
+public class ScenarioRuntime implements Callable<ScenarioResult> {
 
-    public ScenarioRuntime(KarateJs karate, Scenario scenario) {
-        this.karate = karate;
+    private final FeatureRuntime featureRuntime;
+    private final Scenario scenario;
+    private final KarateJs karate;
+    private final StepExecutor executor;
+    private final ScenarioResult result;
+    private final Map<String, Object> configSettings;
+
+    private Step currentStep;
+    private boolean stopped;
+    private boolean aborted;
+    private Throwable error;
+
+    public ScenarioRuntime(FeatureRuntime featureRuntime, Scenario scenario) {
+        this.featureRuntime = featureRuntime;
         this.scenario = scenario;
+
+        // KarateJs owns the Engine and HTTP infrastructure
+        Resource featureResource = scenario.getFeature().getResource();
+        this.karate = new KarateJs(featureResource);
+
+        this.executor = new StepExecutor(this);
+        this.result = new ScenarioResult(scenario);
+        this.configSettings = new HashMap<>();
+
+        initEngine();
+    }
+
+    /**
+     * Constructor for standalone execution without FeatureRuntime.
+     */
+    public ScenarioRuntime(KarateJs karate, Scenario scenario) {
+        this.featureRuntime = null;
+        this.scenario = scenario;
+        this.karate = karate;
+        this.executor = new StepExecutor(this);
+        this.result = new ScenarioResult(scenario);
+        this.configSettings = new HashMap<>();
+    }
+
+    private void initEngine() {
+        // KarateJs already sets up "karate" object
+        // Add scenario-specific variables
+
+        // Inherit parent variables if called from another feature
+        if (featureRuntime != null && featureRuntime.getCaller() != null) {
+            inheritVariables();
+        }
+
+        // Set example data for outline scenarios
+        if (scenario.getExampleData() != null) {
+            for (var entry : scenario.getExampleData().entrySet()) {
+                karate.engine.put(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    private void inheritVariables() {
+        FeatureRuntime caller = featureRuntime.getCaller();
+        if (caller != null && caller.getLastExecuted() != null) {
+            Map<String, Object> parentVars = caller.getLastExecuted().getAllVariables();
+            for (var entry : parentVars.entrySet()) {
+                karate.engine.put(entry.getKey(), entry.getValue());
+            }
+        }
     }
 
     @Override
-    public void run() {
-        for (Step step : scenario.getSteps()) {
-            String keyword = step.getKeyword();
-            if (keyword != null) {
-                switch (keyword) {
-                    case "url" -> {
-                        String url = (String) karate.engine.eval(step.getText());
-                        karate.http.url(url);
-                    }
-                    case "method" -> karate.http.invoke(step.getText());
-                    default -> throw new RuntimeException("unexpected keyword: " + keyword);
+    public ScenarioResult call() {
+        LogContext.set(new LogContext());
+        result.setStartTime(System.currentTimeMillis());
+        result.setThreadName(Thread.currentThread().getName());
+
+        try {
+            beforeScenario();
+
+            List<Step> steps = scenario.getStepsIncludingBackground();
+            for (Step step : steps) {
+                if (stopped || aborted) {
+                    // Mark remaining steps as skipped
+                    StepResult sr = StepResult.skipped(step, System.currentTimeMillis());
+                    result.addStepResult(sr);
+                    continue;
+                }
+
+                currentStep = step;
+                StepResult sr = executor.execute(step);
+                result.addStepResult(sr);
+
+                if (sr.isFailed()) {
+                    stopped = true;
+                    error = sr.getError();
                 }
             }
+
+        } catch (Throwable t) {
+            error = t;
+            stopped = true;
+        } finally {
+            afterScenario();
+            result.setEndTime(System.currentTimeMillis());
+            LogContext.clear();
         }
+
+        return result;
+    }
+
+    private void beforeScenario() {
+        // Hook for before scenario - can be extended for RuntimeHook
+    }
+
+    private void afterScenario() {
+        // Hook for after scenario - can be extended for RuntimeHook
+    }
+
+    // ========== Execution Context ==========
+
+    public Object eval(String expression) {
+        return karate.engine.eval(expression);
+    }
+
+    public void setVariable(String name, Object value) {
+        karate.engine.put(name, value);
+    }
+
+    public Object getVariable(String name) {
+        return karate.engine.get(name);
+    }
+
+    public Map<String, Object> getAllVariables() {
+        return karate.engine.getBindings();
+    }
+
+    public HttpRequestBuilder getHttp() {
+        return karate.http;
+    }
+
+    public KarateJs getKarate() {
+        return karate;
+    }
+
+    public void configure(String key, Object value) {
+        configSettings.put(key, value);
+        // Apply configuration to relevant components
+        switch (key) {
+            case "ssl" -> {
+                // SSL configuration
+            }
+            case "followRedirects" -> {
+                // Redirect configuration
+            }
+            case "connectTimeout" -> {
+                // Connection timeout
+            }
+            case "readTimeout" -> {
+                // Read timeout
+            }
+            // Add more configure options as needed
+        }
+    }
+
+    public Object getConfig(String key) {
+        return configSettings.get(key);
+    }
+
+    // ========== State Access ==========
+
+    public Scenario getScenario() {
+        return scenario;
+    }
+
+    public FeatureRuntime getFeatureRuntime() {
+        return featureRuntime;
+    }
+
+    public ScenarioResult getResult() {
+        return result;
+    }
+
+    public Step getCurrentStep() {
+        return currentStep;
+    }
+
+    public boolean isStopped() {
+        return stopped;
+    }
+
+    public boolean isAborted() {
+        return aborted;
+    }
+
+    public Throwable getError() {
+        return error;
+    }
+
+    public void abort() {
+        this.aborted = true;
+    }
+
+    public void stop() {
+        this.stopped = true;
     }
 
 }
