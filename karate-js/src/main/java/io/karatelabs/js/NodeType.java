@@ -24,8 +24,9 @@
 package io.karatelabs.js;
 
 public enum NodeType {
-    
+
     TOKEN,
+    ERROR,
     ROOT,
     PROGRAM,
     STATEMENT,
@@ -82,6 +83,19 @@ public enum NodeType {
     PAREN_EXPR,
     LIT_TEMPLATE,
     PLACEHOLDER,
-    LIT_REGEX
+    LIT_REGEX,
+    //====
+    G_FEATURE,
+    G_TAGS,
+    G_NAME_DESC,
+    G_BACKGROUND,
+    G_SCENARIO,
+    G_SCENARIO_OUTLINE,
+    G_EXAMPLES,
+    G_STEP,
+    G_STEP_LINE,
+    G_DOC_STRING,
+    G_TABLE,
+    G_TABLE_ROW
 
 }

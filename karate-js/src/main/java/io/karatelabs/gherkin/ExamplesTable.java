@@ -30,10 +30,15 @@ import java.util.Map;
 
 public class ExamplesTable {
 
-    private final ScenarioOutline outline;
-    private final Table table;
+    private ScenarioOutline outline;
+    private Table table;
     private List<Tag> tags;
-    
+    private int line;
+    private String name;
+
+    public ExamplesTable() {
+        this.tags = new ArrayList<>();
+    }
 
     public ExamplesTable(ScenarioOutline outline, Table table) {
         this.outline = outline;
@@ -55,6 +60,30 @@ public class ExamplesTable {
 
     public Table getTable() {
         return table;
+    }
+
+    public void setTable(Table table) {
+        this.table = table;
+    }
+
+    public int getLine() {
+        return line;
+    }
+
+    public void setLine(int line) {
+        this.line = line;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setOutline(ScenarioOutline outline) {
+        this.outline = outline;
     }
 
     public Map<String, Object> toKarateJson() {

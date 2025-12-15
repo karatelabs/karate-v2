@@ -222,7 +222,7 @@ GM_TAG = "@" {NOT_WSLF}+
 
 <GS_DESC> {
   {NOT_LF}+                     { return G_DESC; }
-  {WS_ONE_LF} / ({GM_PREFIX}|{GM_HEADER}|"@") { yybegin(GHERKIN); return WS_LF; }
+  {WS_ONE_LF} / ({GM_PREFIX}|{GM_HEADER}|"@"|"|") { yybegin(GHERKIN); return WS_LF; }
   {WS_ONE_LF}                   { return WS_LF; }
 }
 
