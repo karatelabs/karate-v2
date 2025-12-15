@@ -29,15 +29,34 @@ import static io.karatelabs.js.TokenType.*;
 
 public class JsParser extends Parser {
 
+    private Node ast;
+
     public JsParser(Resource resource) {
-        super(resource, false);
+        super(resource, false, false);
+    }
+
+    public JsParser(Resource resource, boolean errorRecovery) {
+        super(resource, false, errorRecovery);
+    }
+
+    /**
+     * @return the AST root node (PROGRAM) for IDE features
+     */
+    public Node getAst() {
+        return ast;
     }
 
     public Node parse() {
         enter(NodeType.PROGRAM);
-        final Node program = markerNode();
+        ast = markerNode();
         while (true) {
             if (!statement(false)) {
+                // In recovery mode, skip unparseable tokens to find next statement
+                if (errorRecoveryEnabled && !peekIf(EOF)) {
+                    error("cannot parse statement");
+                    recoverToStatement();
+                    continue;
+                }
                 break;
             }
         }
@@ -45,7 +64,17 @@ public class JsParser extends Parser {
             error("cannot parse statement");
         }
         exit();
-        return program;
+        return ast;
+    }
+
+    // Recovery points for statements
+    private static final TokenType[] STMT_RECOVERY = {
+            IF, FOR, WHILE, DO, SWITCH, TRY, RETURN, THROW, BREAK, CONTINUE,
+            VAR, LET, CONST, FUNCTION, L_CURLY, R_CURLY, SEMI, EOF
+    };
+
+    private void recoverToStatement() {
+        recoverTo(STMT_RECOVERY);
     }
 
     private boolean statement(boolean mandatory) {
@@ -65,6 +94,10 @@ public class JsParser extends Parser {
                 || (expr_list() && eos())
                 || block(false)
                 || consumeIf(SEMI); // empty statement
+        // In error recovery mode, accept incomplete statements if we consumed any tokens
+        if (!result && errorRecoveryEnabled && !markerNode().isEmpty()) {
+            return exitSoft();
+        }
         return exit(result, mandatory);
     }
 
@@ -99,9 +132,9 @@ public class JsParser extends Parser {
         if (!enter(NodeType.IF_STMT, IF)) {
             return false;
         }
-        consume(L_PAREN);
+        consumeSoft(L_PAREN);
         expr(-1, true);
-        consume(R_PAREN);
+        consumeSoft(R_PAREN);
         statement(true);
         if (consumeIf(ELSE)) {
             statement(true);
@@ -176,7 +209,7 @@ public class JsParser extends Parser {
         if (!enter(NodeType.FOR_STMT, FOR)) {
             return false;
         }
-        consume(L_PAREN);
+        consumeSoft(L_PAREN);
         if (!(peekIf(SEMI) || var_stmt(true) || expr(-1, false))) {
             error(NodeType.VAR_STMT, NodeType.EXPR);
         }
@@ -197,8 +230,12 @@ public class JsParser extends Parser {
         } else {
             error(SEMI, IN, OF);
         }
-        consume(R_PAREN);
-        statement(true);
+        consumeSoft(R_PAREN);
+        if (!peekIf(EOF)) {
+            statement(true);
+        } else {
+            error(NodeType.STATEMENT);
+        }
         return exit();
     }
 
@@ -206,9 +243,9 @@ public class JsParser extends Parser {
         if (!enter(NodeType.WHILE_STMT, WHILE)) {
             return false;
         }
-        consume(L_PAREN);
+        consumeSoft(L_PAREN);
         expr(-1, true);
-        consume(R_PAREN);
+        consumeSoft(R_PAREN);
         statement(true);
         return exit();
     }
@@ -218,10 +255,10 @@ public class JsParser extends Parser {
             return false;
         }
         statement(true);
-        consume(WHILE);
-        consume(L_PAREN);
+        consumeSoft(WHILE);
+        consumeSoft(L_PAREN);
         expr(-1, true);
-        consume(R_PAREN);
+        consumeSoft(R_PAREN);
         return exit();
     }
 
@@ -229,17 +266,20 @@ public class JsParser extends Parser {
         if (!enter(NodeType.SWITCH_STMT, SWITCH)) {
             return false;
         }
-        consume(L_PAREN);
+        consumeSoft(L_PAREN);
         expr(-1, true);
-        consume(R_PAREN);
-        consume(L_CURLY);
+        consumeSoft(R_PAREN);
+        consumeSoft(L_CURLY);
         while (true) {
+            if (peekIf(R_CURLY) || peekIf(DEFAULT) || peekIf(EOF)) {
+                break;
+            }
             if (!case_block()) {
                 break;
             }
         }
         default_block();
-        consume(R_CURLY);
+        consumeSoft(R_CURLY);
         return exit();
     }
 
@@ -248,8 +288,11 @@ public class JsParser extends Parser {
             return false;
         }
         expr(-1, true);
-        consume(COLON);
+        consumeSoft(COLON);
         while (true) {
+            if (peekIf(CASE) || peekIf(DEFAULT) || peekIf(R_CURLY) || peekIf(EOF)) {
+                break;
+            }
             if (!statement(false)) {
                 break;
             }
@@ -261,8 +304,11 @@ public class JsParser extends Parser {
         if (!enter(NodeType.DEFAULT_BLOCK, DEFAULT)) {
             return;
         }
-        consume(COLON);
+        consumeSoft(COLON);
         while (true) {
+            if (peekIf(R_CURLY) || peekIf(EOF)) {
+                break;
+            }
             if (!statement(false)) {
                 break;
             }
@@ -296,16 +342,34 @@ public class JsParser extends Parser {
     private boolean block(boolean mandatory) {
         if (!enter(NodeType.BLOCK, L_CURLY)) {
             if (mandatory) {
+                // In recovery mode, create empty block node
+                if (errorRecoveryEnabled) {
+                    enter(NodeType.BLOCK);
+                    error(L_CURLY);
+                    return exitSoft();
+                }
                 error(NodeType.BLOCK);
             }
             return false;
         }
         while (true) {
+            if (peekIf(R_CURLY) || peekIf(EOF)) {
+                break;
+            }
             if (!statement(false)) {
+                // In recovery mode, skip unparseable content
+                if (errorRecoveryEnabled) {
+                    error("cannot parse statement in block");
+                    recoverTo(R_CURLY, SEMI, EOF);
+                    if (peekIf(SEMI)) {
+                        consumeNext();
+                    }
+                    continue;
+                }
                 break;
             }
         }
-        consume(R_CURLY);
+        consumeSoft(R_CURLY);
         return exit();
     }
 
@@ -325,6 +389,13 @@ public class JsParser extends Parser {
         if (result) {
             expr_rhs(priority);
         }
+        if (!result && mandatory && errorRecoveryEnabled) {
+            // In recovery mode, create ERROR node for missing expression
+            enter(NodeType.ERROR);
+            error(NodeType.EXPR);
+            exit();
+            return exit(true, false); // Return true to continue parsing
+        }
         return exit(result, mandatory);
     }
 
@@ -338,7 +409,7 @@ public class JsParser extends Parser {
                 exit(Shift.RIGHT);
             } else if (priority < 1 && enter(NodeType.LOGIC_TERN_EXPR, QUES)) {
                 expr(-1, true);
-                consume(COLON);
+                consumeSoft(COLON);
                 expr(-1, true);
                 exit(Shift.RIGHT);
             } else if (priority < 2 && enter(NodeType.LOGIC_AND_EXPR, PIPE_PIPE)) {
@@ -386,7 +457,7 @@ public class JsParser extends Parser {
                 } while (peekIf(STAR_STAR));
             } else if (enter(NodeType.FN_CALL_EXPR, L_PAREN)) {
                 fn_call_args();
-                consume(R_PAREN);
+                consumeSoft(R_PAREN);
                 exit(Shift.LEFT);
             } else if (enter(NodeType.REF_DOT_EXPR, DOT, QUES_DOT)) {
                 TokenType dotType = lastConsumed();
@@ -406,7 +477,7 @@ public class JsParser extends Parser {
                 exit(Shift.LEFT);
             } else if (enter(NodeType.REF_BRACKET_EXPR, L_BRACKET)) {
                 expr(-1, true);
-                consume(R_BRACKET);
+                consumeSoft(R_BRACKET);
                 exit(Shift.LEFT);
             } else if (enter(NodeType.MATH_POST_EXPR, PLUS_PLUS, MINUS_MINUS)) {
                 exit(Shift.LEFT);
@@ -545,6 +616,7 @@ public class JsParser extends Parser {
         while (true) {
             if (peek() == EOF) { // unbalanced backticks
                 error(BACKTICK);
+                break;
             }
             if (consumeIf(BACKTICK)) {
                 break;
@@ -552,7 +624,7 @@ public class JsParser extends Parser {
             if (!consumeIf(T_STRING)) {
                 if (consumeIf(DOLLAR_L_CURLY)) {
                     expr(-1, false);
-                    consume(R_CURLY);
+                    consumeSoft(R_CURLY);
                 }
             }
         }
@@ -629,14 +701,14 @@ public class JsParser extends Parser {
             return false;
         }
         while (true) {
-            if (peekIf(R_BRACKET)) {
+            if (peekIf(R_BRACKET) || peekIf(EOF)) {
                 break;
             }
             if (!array_elem()) {
                 break;
             }
         }
-        consume(R_BRACKET);
+        consumeSoft(R_BRACKET);
         return exit();
     }
 
@@ -644,7 +716,7 @@ public class JsParser extends Parser {
         enter(NodeType.ARRAY_ELEM);
         consumeIf(DOT_DOT_DOT); // spread operator
         expr(-1, false); // optional for sparse array
-        if (!(consumeIf(COMMA) || peekIf(R_BRACKET))) {
+        if (!(consumeIf(COMMA) || peekIf(R_BRACKET) || peekIf(EOF))) {
             error(COMMA, R_BRACKET);
         }
         return exit();
@@ -662,7 +734,7 @@ public class JsParser extends Parser {
             return false;
         }
         expr(-1, true);
-        consume(R_PAREN);
+        consumeSoft(R_PAREN);
         return exit();
     }
 

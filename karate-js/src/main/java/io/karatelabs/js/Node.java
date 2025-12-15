@@ -128,6 +128,21 @@ public class Node implements Iterable<Node> {
         return null;
     }
 
+    public List<Node> findAll(NodeType type) {
+        List<Node> results = new ArrayList<>();
+        findAll(type, results);
+        return results;
+    }
+
+    private void findAll(NodeType type, List<Node> results) {
+        for (Node child : children) {
+            if (child.type == type) {
+                results.add(child);
+            }
+            child.findAll(type, results);
+        }
+    }
+
     public Node findFirstChild(TokenType token) {
         for (Node child : children) {
             if (child.token.type == token) {
@@ -224,6 +239,10 @@ public class Node implements Iterable<Node> {
 
     int size() {
         return children.size();
+    }
+
+    boolean isEmpty() {
+        return children.isEmpty();
     }
 
     @Override

@@ -78,7 +78,7 @@ abstract class Parser {
     private Marker marker;
 
     // Error recovery infrastructure
-    private boolean errorRecoveryEnabled = false;
+    protected final boolean errorRecoveryEnabled;
     private final List<SyntaxError> errors = new ArrayList<>();
 
     Node markerNode() {
@@ -89,8 +89,9 @@ abstract class Parser {
         NONE, LEFT, RIGHT
     }
 
-    Parser(Resource resource, boolean gherkin) {
+    Parser(Resource resource, boolean gherkin, boolean errorRecovery) {
         this.resource = resource;
+        this.errorRecoveryEnabled = errorRecovery;
         tokens = getTokens(resource, gherkin);
         size = tokens.size();
         marker = new Marker(position, null, new Node(NodeType.ROOT), -1);
@@ -121,11 +122,10 @@ abstract class Parser {
     }
 
     void error(String message) {
-        Token token;
-        if (position == size) {
-            token = tokens.get(position - 1);
-        } else {
-            token = tokens.get(position);
+        Token token = peekToken();
+        if (errorRecoveryEnabled) {
+            errors.add(new SyntaxError(token, message));
+            return;
         }
         if (token.resource.isFile()) {
             System.err.println("file://" + token.resource.getUri().getPath() + ":" + token.getPositionDisplay() + " " + message);
@@ -136,30 +136,22 @@ abstract class Parser {
     }
 
     void error(NodeType... expected) {
+        if (errorRecoveryEnabled) {
+            errors.add(new SyntaxError(peekToken(), "expected: " + Arrays.asList(expected), expected[0]));
+            return;
+        }
         error("expected: " + Arrays.asList(expected));
     }
 
     void error(TokenType... expected) {
+        if (errorRecoveryEnabled) {
+            errors.add(new SyntaxError(peekToken(), "expected: " + Arrays.asList(expected)));
+            return;
+        }
         error("expected: " + Arrays.asList(expected));
     }
 
     // ========== Error Recovery Methods ==========
-
-    /**
-     * Enable error recovery mode for lenient parsing.
-     * When enabled, errors are collected instead of thrown,
-     * allowing the parser to produce a partial AST.
-     */
-    protected void enableErrorRecovery() {
-        this.errorRecoveryEnabled = true;
-    }
-
-    /**
-     * @return true if error recovery mode is enabled
-     */
-    protected boolean isErrorRecoveryEnabled() {
-        return errorRecoveryEnabled;
-    }
 
     /**
      * @return list of syntax errors collected during parsing
@@ -173,43 +165,6 @@ abstract class Parser {
      */
     public boolean hasErrors() {
         return !errors.isEmpty();
-    }
-
-    /**
-     * Record an error without throwing. In error recovery mode,
-     * adds to the error list. Otherwise, throws ParserException.
-     */
-    protected void recordError(String message) {
-        if (errorRecoveryEnabled) {
-            Token token = peekToken();
-            errors.add(new SyntaxError(token, message));
-        } else {
-            error(message);
-        }
-    }
-
-    /**
-     * Record an error for expected node types.
-     */
-    protected void recordError(NodeType... expected) {
-        if (errorRecoveryEnabled) {
-            Token token = peekToken();
-            errors.add(new SyntaxError(token, "expected: " + Arrays.asList(expected), expected[0]));
-        } else {
-            error(expected);
-        }
-    }
-
-    /**
-     * Record an error for expected token types.
-     */
-    protected void recordError(TokenType... expected) {
-        if (errorRecoveryEnabled) {
-            Token token = peekToken();
-            errors.add(new SyntaxError(token, "expected: " + Arrays.asList(expected)));
-        } else {
-            error(expected);
-        }
     }
 
     /**
@@ -229,22 +184,16 @@ abstract class Parser {
     }
 
     /**
-     * Enter with recovery - creates incomplete node on mismatch instead of failing.
-     * @param type the node type to enter
-     * @param startTokens expected start tokens
-     * @return true if entered (either with matching token or in recovery mode)
+     * Consume token if present, or record error if in recovery mode.
+     * @param token the expected token type
+     * @return true if consumed successfully or in recovery mode
      */
-    protected boolean enterWithRecovery(NodeType type, TokenType... startTokens) {
-        if (peekAnyOf(startTokens)) {
-            return enter(type, startTokens);
-        }
-        if (errorRecoveryEnabled) {
-            // Create incomplete node anyway for IDE support
-            enter(type);
-            recordError("expected: " + Arrays.asList(startTokens));
+    protected boolean consumeSoft(TokenType token) {
+        if (consumeIf(token)) {
             return true;
         }
-        return false;
+        error(token);
+        return errorRecoveryEnabled; // Continue if recovering, never reached otherwise
     }
 
     /**
@@ -252,14 +201,6 @@ abstract class Parser {
      * Even if the node is incomplete, it is added to the parent.
      */
     protected boolean exitSoft() {
-        return exit(true, false, Shift.NONE);
-    }
-
-    /**
-     * Exit that marks node as having errors.
-     */
-    protected boolean exitWithError(String message) {
-        recordError(message);
         return exit(true, false, Shift.NONE);
     }
 

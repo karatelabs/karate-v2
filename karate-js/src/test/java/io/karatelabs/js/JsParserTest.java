@@ -3,8 +3,9 @@ package io.karatelabs.js;
 import io.karatelabs.common.Resource;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 class JsParserTest {
 
@@ -355,6 +356,173 @@ class JsParserTest {
     void testRegexEofEdgeCases() {
         error("<x>x</", ParserException.class);
         error("<foo>foo</foo>\n", ParserException.class);
+    }
+
+    // ========== Error Recovery Tests ==========
+
+    @Test
+    void testErrorRecoveryEnabled() {
+        JsParser parser = new JsParser(Resource.text("let x = 1"), true);
+        Node ast = parser.parse();
+        assertNotNull(ast);
+        assertFalse(parser.hasErrors());
+        assertNotNull(parser.getAst());
+    }
+
+    @Test
+    void testIncompleteExpression() {
+        // User is typing: let x = 1 +
+        JsParser parser = new JsParser(Resource.text("let x = 1 +"), true);
+        Node ast = parser.parse();
+        assertNotNull(ast);
+        assertTrue(parser.hasErrors());
+        List<SyntaxError> errors = parser.getErrors();
+        assertFalse(errors.isEmpty());
+        // Should have partial AST
+        Node varStmt = ast.findFirstChild(NodeType.VAR_STMT);
+        assertNotNull(varStmt);
+    }
+
+    @Test
+    void testIncompleteBlock() {
+        // Unclosed block
+        JsParser parser = new JsParser(Resource.text("function foo() { let x = 1"), true);
+        Node ast = parser.parse();
+        assertNotNull(ast);
+        assertTrue(parser.hasErrors());
+        // Should have partial AST
+        Node fnExpr = ast.findFirstChild(NodeType.FN_EXPR);
+        assertNotNull(fnExpr);
+    }
+
+    @Test
+    void testIncompleteIfStatement() {
+        // Missing closing paren
+        JsParser parser = new JsParser(Resource.text("if (true { x = 1 }"), true);
+        Node ast = parser.parse();
+        assertNotNull(ast);
+        assertTrue(parser.hasErrors());
+        Node ifStmt = ast.findFirstChild(NodeType.IF_STMT);
+        assertNotNull(ifStmt);
+    }
+
+    @Test
+    void testIncompleteForLoop() {
+        // Incomplete for loop
+        JsParser parser = new JsParser(Resource.text("for (let i = 0; i < 10"), true);
+        Node ast = parser.parse();
+        assertNotNull(ast);
+        assertTrue(parser.hasErrors());
+        Node forStmt = ast.findFirstChild(NodeType.FOR_STMT);
+        assertNotNull(forStmt);
+    }
+
+    @Test
+    void testIncompleteFunctionCall() {
+        // Unclosed function call
+        JsParser parser = new JsParser(Resource.text("foo(1, 2"), true);
+        Node ast = parser.parse();
+        assertNotNull(ast);
+        assertTrue(parser.hasErrors());
+        // FN_CALL_EXPR modifies REF_EXPR, so we check for FN_CALL_ARGS which is inside it
+        Node fnCallArgs = ast.findFirstChild(NodeType.FN_CALL_ARGS);
+        assertNotNull(fnCallArgs);
+    }
+
+    @Test
+    void testIncompleteArray() {
+        // Unclosed array
+        JsParser parser = new JsParser(Resource.text("[1, 2, 3"), true);
+        Node ast = parser.parse();
+        assertNotNull(ast);
+        assertTrue(parser.hasErrors());
+        Node arr = ast.findFirstChild(NodeType.LIT_ARRAY);
+        assertNotNull(arr);
+    }
+
+    @Test
+    void testIncompleteTemplate() {
+        // Unclosed template literal
+        JsParser parser = new JsParser(Resource.text("`hello ${name"), true);
+        Node ast = parser.parse();
+        assertNotNull(ast);
+        assertTrue(parser.hasErrors());
+        Node template = ast.findFirstChild(NodeType.LIT_TEMPLATE);
+        assertNotNull(template);
+    }
+
+    @Test
+    void testMultipleStatements() {
+        // First statement incomplete, second complete
+        JsParser parser = new JsParser(Resource.text("let x = 1 +\nlet y = 2"), true);
+        Node ast = parser.parse();
+        assertNotNull(ast);
+        assertTrue(parser.hasErrors());
+        // Should still parse both statements
+        List<Node> varStmts = ast.findAll(NodeType.VAR_STMT);
+        assertEquals(2, varStmts.size());
+    }
+
+    @Test
+    void testGetAstReturnsCorrectNode() {
+        JsParser parser = new JsParser(Resource.text("let x = 1"), true);
+        parser.parse();
+        Node ast = parser.getAst();
+        assertNotNull(ast);
+        assertEquals(NodeType.PROGRAM, ast.type);
+    }
+
+    @Test
+    void testErrorRecoveryPreservesAstStructure() {
+        // Complete code should have same structure with or without error recovery
+        String code = "let x = 1 + 2";
+        JsParser parser1 = new JsParser(Resource.text(code), false);
+        JsParser parser2 = new JsParser(Resource.text(code), true);
+        Node ast1 = parser1.parse();
+        Node ast2 = parser2.parse();
+        assertFalse(parser2.hasErrors());
+        // Structure should be equivalent
+        assertEquals(ast1.size(), ast2.size());
+    }
+
+    @Test
+    void testErrorPositionTracking() {
+        JsParser parser = new JsParser(Resource.text("let x = "), true);
+        parser.parse();
+        assertTrue(parser.hasErrors());
+        SyntaxError error = parser.getErrors().get(0);
+        assertNotNull(error);
+        assertTrue(error.getLine() > 0);
+        assertTrue(error.getColumn() > 0);
+    }
+
+    @Test
+    void testIncompleteTernary() {
+        // Missing colon branch
+        JsParser parser = new JsParser(Resource.text("x ? y"), true);
+        Node ast = parser.parse();
+        assertNotNull(ast);
+        assertTrue(parser.hasErrors());
+    }
+
+    @Test
+    void testDotPropertyAccessIncomplete() {
+        // Missing property after dot
+        JsParser parser = new JsParser(Resource.text("foo."), true);
+        Node ast = parser.parse();
+        assertNotNull(ast);
+        assertTrue(parser.hasErrors());
+    }
+
+    @Test
+    void testIncompleteSwitchStatement() {
+        // Unclosed switch
+        JsParser parser = new JsParser(Resource.text("switch (x) { case 1: a = 1"), true);
+        Node ast = parser.parse();
+        assertNotNull(ast);
+        assertTrue(parser.hasErrors());
+        Node switchStmt = ast.findFirstChild(NodeType.SWITCH_STMT);
+        assertNotNull(switchStmt);
     }
 
 }

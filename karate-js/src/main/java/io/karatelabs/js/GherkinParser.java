@@ -38,8 +38,11 @@ public class GherkinParser extends Parser {
     private Node ast;
 
     public GherkinParser(Resource resource) {
-        super(resource, true);
-        enableErrorRecovery();
+        super(resource, true, false);
+    }
+
+    public GherkinParser(Resource resource, boolean errorRecovery) {
+        super(resource, true, errorRecovery);
     }
 
     /**
@@ -60,7 +63,7 @@ public class GherkinParser extends Parser {
         enter(NodeType.G_FEATURE);
         tags();
         if (!consumeIf(G_FEATURE)) {
-            recordError(G_FEATURE);
+            error(G_FEATURE);
             // Try to recover - look for any section start
             recoverTo(G_SCENARIO, G_SCENARIO_OUTLINE, G_BACKGROUND, EOF);
         }
@@ -197,7 +200,7 @@ public class GherkinParser extends Parser {
             consumeNext(); // G_RHS tokens
         }
         if (!consumeIf(G_TRIPLE_QUOTE)) {
-            recordError(G_TRIPLE_QUOTE); // Unclosed docstring
+            error(G_TRIPLE_QUOTE); // Unclosed docstring
         }
         return exit();
     }
@@ -461,7 +464,7 @@ public class GherkinParser extends Parser {
     }
 
     private String extractStepText(Node stepLineNode) {
-        if (stepLineNode.size() == 0) {
+        if (stepLineNode.isEmpty()) {
             return null;
         }
         Token first = stepLineNode.getFirst().token;

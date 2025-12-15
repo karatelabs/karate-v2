@@ -12,8 +12,8 @@ This document describes the parser infrastructure for error-tolerant parsing and
 | Phase 1 | Gherkin AST Building | **COMPLETE** |
 | Phase 2 | Domain Classes Redesign | Planned |
 | Phase 3 | AST to Domain Transformation | Integrated into Phase 1 |
-| Phase 4 | JavaScript Error Recovery | **NEXT** |
-| Phase 5 | Code Formatting (JSON-based options) | Planned |
+| Phase 4 | JavaScript Error Recovery | **COMPLETE** |
+| Phase 5 | Code Formatting (JSON-based options) | **NEXT** |
 | Phase 6 | Source Reconstitution | Planned |
 | Phase 7 | Embedded Language Support (JS in Gherkin) | Planned |
 
@@ -43,21 +43,26 @@ public class SyntaxError {
 }
 ```
 
-### Parser Methods Added
+### Parser Constructor & Methods
+
+```java
+// Constructor with error recovery flag
+Parser(Resource resource, boolean gherkin, boolean errorRecovery)
+
+// Error recovery is a protected final field for JIT optimization
+protected final boolean errorRecoveryEnabled;
+```
 
 | Method | Description |
 |--------|-------------|
-| `enableErrorRecovery()` | Enables lenient parsing mode |
-| `isErrorRecoveryEnabled()` | Check if enabled |
 | `getErrors()` | Returns list of `SyntaxError` |
 | `hasErrors()` | Returns true if any errors recorded |
-| `recordError(String)` | Record error with message |
-| `recordError(NodeType...)` | Record error for expected node types |
-| `recordError(TokenType...)` | Record error for expected token types |
+| `error(String)` | Record error (or throw if not recovering) |
+| `error(NodeType...)` | Record error for expected node types |
+| `error(TokenType...)` | Record error for expected token types |
 | `recoverTo(TokenType...)` | Skip tokens until recovery point |
-| `enterWithRecovery(NodeType, TokenType...)` | Enter node with fallback for incomplete code |
+| `consumeSoft(TokenType)` | Consume or record error if missing |
 | `exitSoft()` | Exit tolerating incomplete nodes |
-| `exitWithError(String)` | Exit while recording an error |
 
 ---
 
@@ -113,45 +118,85 @@ Fixed `js.flex` GS_DESC state to recognize table rows after `Examples:`:
 
 ---
 
-## Next: Phase 4 - JavaScript Error Recovery
+## Completed: Phase 4 - JavaScript Error Recovery
 
-### Goal
+### Overview
 
-Apply error recovery to `JsParser.java` so that syntax highlighting and code completion work while typing incomplete JavaScript.
+Applied error recovery to `JsParser.java` so that syntax highlighting and code completion work while typing incomplete JavaScript.
 
-### Recovery Points for JavaScript
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `JsParser.java` | Added error recovery mode, `getAst()` method, recovery logic |
+| `Parser.java` | Added `consumeSoft()` method for soft token consumption |
+| `Node.java` | Added `findAll()` method for AST traversal |
+
+### JsParser API
+
+```java
+// Normal mode (throws on errors)
+JsParser parser = new JsParser(Resource.text(source));
+
+// Error recovery mode (for IDE)
+JsParser parser = new JsParser(Resource.text(source), true);
+Node ast = parser.parse();           // Returns AST even with errors
+Node astRef = parser.getAst();       // Same as return value
+List<SyntaxError> errors = parser.getErrors();
+boolean hasErrors = parser.hasErrors();
+```
+
+### Recovery Points
 
 | Level | Recovery Tokens | Description |
 |-------|-----------------|-------------|
-| Statement | `IF`, `FOR`, `WHILE`, `FUNCTION`, `VAR`, `LET`, `CONST`, `RETURN`, `L_CURLY` | Statement starts |
-| Block | `R_CURLY` | Block end |
-| Expression | `SEMI`, `COMMA`, `R_PAREN`, `R_BRACKET` | Expression boundaries |
-| Line | `WS_LF` | Line boundaries (for ASI) |
+| Statement | `IF`, `FOR`, `WHILE`, `DO`, `SWITCH`, `TRY`, `RETURN`, `THROW`, `BREAK`, `CONTINUE`, `VAR`, `LET`, `CONST`, `FUNCTION`, `L_CURLY`, `R_CURLY`, `SEMI`, `EOF` | Statement starts and ends |
 
-### Implementation Steps
+### Key Implementation Patterns
 
-1. Add `enableErrorRecovery()` call in JsParser constructor (optional mode)
-2. Replace `error()` calls with `recordError()` in key places
-3. Add recovery logic at statement boundaries
-4. Test with incomplete expressions like `let x = 1 +`
+1. **Constructor overload** - `new JsParser(resource, errorRecovery)`
+2. **Soft consumption** - `consumeSoft()` records error instead of throwing
+3. **Incomplete statement preservation** - Statements with consumed tokens are kept in AST
+4. **EOF handling** - All closing tokens (`}`, `)`, `]`) tolerate EOF in recovery mode
 
-### Expected AST for Incomplete Code
+### Example AST for Incomplete Code
 
 ```javascript
-// User is typing: let x = 1 +
-// Should produce AST:
-VAR_STMT
-├── TOKEN(let)
-├── VAR_NAMES
-│   └── TOKEN(x)
-├── TOKEN(=)
-└── EXPR
-    └── MATH_ADD_EXPR
-        ├── LIT_EXPR
-        │   └── TOKEN(1)
-        ├── TOKEN(+)
-        └── ERROR (missing operand)
+// Input: let x = 1 +
+// Produces partial AST with errors recorded:
+PROGRAM
+└── STATEMENT
+    └── EXPR_LIST
+        └── EXPR
+            └── VAR_STMT
+                ├── TOKEN(let)
+                ├── VAR_NAMES
+                │   └── TOKEN(x)
+                ├── TOKEN(=)
+                └── EXPR
+                    └── MATH_ADD_EXPR
+                        ├── LIT_EXPR (1)
+                        ├── TOKEN(+)
+                        └── ERROR (missing operand)
 ```
+
+### Tests Added
+
+- `testErrorRecoveryEnabled` - Basic enabling
+- `testIncompleteExpression` - `let x = 1 +`
+- `testIncompleteBlock` - Unclosed function body
+- `testIncompleteIfStatement` - Missing closing paren
+- `testIncompleteForLoop` - Incomplete for loop
+- `testIncompleteFunctionCall` - Unclosed function call
+- `testIncompleteArray` - Unclosed array
+- `testIncompleteTemplate` - Unclosed template literal
+- `testMultipleStatements` - Recovery between statements
+- `testGetAstReturnsCorrectNode` - AST access
+- `testErrorRecoveryPreservesAstStructure` - Complete code unchanged
+- `testErrorPositionTracking` - Error position info
+- `testIncompleteTernary` - Missing colon branch
+- `testDotPropertyAccessIncomplete` - Missing property after dot
+- `testIncompleteSwitchStatement` - Unclosed switch
 
 ---
 
@@ -525,12 +570,16 @@ The karate-v2 repository at `/Users/peter/dev/zcode/karate-v2` contains a parser
 ### Key APIs for Editor Integration
 
 ```java
-// Parse with error recovery (GherkinParser has this enabled by default)
-GherkinParser parser = new GherkinParser(Resource.text(source));
-Feature feature = parser.parse();
-Node ast = parser.getAst();
+// JavaScript with error recovery (for IDE)
+JsParser parser = new JsParser(Resource.text(source), true);
+Node ast = parser.parse();
 List<SyntaxError> errors = parser.getErrors();
 boolean hasErrors = parser.hasErrors();
+
+// Gherkin with error recovery (for IDE)
+GherkinParser gParser = new GherkinParser(Resource.text(source), true);
+Feature feature = gParser.parse();
+Node gAst = gParser.getAst();
 
 // Token info for styling
 Token token = node.getFirstToken();

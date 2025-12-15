@@ -102,8 +102,12 @@ class GherkinParserTest {
     private GherkinParser parser;
 
     private void parseWithAst(String text) {
+        parseWithAst(text, false);
+    }
+
+    private void parseWithAst(String text, boolean errorRecovery) {
         Resource resource = Resource.text(text);
-        parser = new GherkinParser(resource);
+        parser = new GherkinParser(resource, errorRecovery);
         feature = parser.parse();
         scenario = null;
         outline = null;
@@ -162,7 +166,7 @@ class GherkinParserTest {
                 @tag
                 Scenario: orphan
                   * print 'hello'
-                """);
+                """, true);
         // Should recover and parse scenario
         assertNotNull(scenario);
         assertEquals("orphan", scenario.getName());
@@ -180,7 +184,7 @@ class GherkinParserTest {
                 Feature: test
                 Scenario: incomplete
                   * def
-                """);
+                """, true);
         // Should parse without throwing
         assertNotNull(scenario);
         assertEquals(1, scenario.getSteps().size());
