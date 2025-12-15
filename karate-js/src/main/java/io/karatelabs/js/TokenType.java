@@ -144,7 +144,7 @@ public enum TokenType {
     G_PIPE,
     G_TABLE_CELL,
     G_KEYWORD,
-    G_RHS;
+    G_EXPR;
 
     public final boolean primary;
     public final boolean keyword;

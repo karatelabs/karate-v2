@@ -181,11 +181,12 @@ public class GherkinParser extends Parser {
     }
 
     private boolean stepLine() {
-        if (!peekAnyOf(G_KEYWORD, EQ, G_RHS)) {
+        // Step line can contain: G_KEYWORD (match operators), EQ, IDENT, DOT, G_EXPR (expression content)
+        if (!peekAnyOf(G_KEYWORD, EQ, IDENT, DOT, G_EXPR)) {
             return false;
         }
         enter(NodeType.G_STEP_LINE);
-        while (peekAnyOf(G_KEYWORD, EQ, G_RHS)) {
+        while (peekAnyOf(G_KEYWORD, EQ, IDENT, DOT, G_EXPR)) {
             consumeNext();
         }
         return exit();
@@ -197,7 +198,7 @@ public class GherkinParser extends Parser {
         }
         // Consume content until closing quotes
         while (!peekIf(G_TRIPLE_QUOTE) && !peekIf(EOF)) {
-            consumeNext(); // G_RHS tokens
+            consumeNext(); // G_EXPR tokens
         }
         if (!consumeIf(G_TRIPLE_QUOTE)) {
             error(G_TRIPLE_QUOTE); // Unclosed docstring

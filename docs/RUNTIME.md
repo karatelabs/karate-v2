@@ -1330,14 +1330,121 @@ Logging refactored from 9 files to 4 files. Package moved from `io.karatelabs.co
 | **Config loading** | ⬜ | karate-config.js evaluation |
 | **karate-json report** | ⬜ | JSON report file generation |
 
-**Keywords implemented:** `def`, `set`, `remove`, `copy`, `text`, `json`, `xml`, `table`, `match`, `assert`, `print`, `url`, `path`, `param`, `params`, `header`, `headers`, `cookie`, `cookies`, `form`, `request`, `method`, `status`, `call`, `callonce`, `eval`, `configure`
+**Keywords implemented:** `def`, `set`, `remove`, `copy`, `text`, `json`, `xml`, `table`, `match`, `assert`, `print`, `url`, `path`, `param`, `params`, `header`, `headers`, `cookie`, `cookies`, `form field`, `form fields`, `request`, `method`, `status`, `multipart file`, `multipart field`, `multipart fields`, `multipart files`, `multipart entity`, `call`, `callonce`, `eval`, `configure`
+
+### Test Infrastructure: ✅ DONE
+
+| File | Status | Notes |
+|------|--------|-------|
+| `TestUtils.java` | ✅ | `run(String... lines)` helper pattern |
+| `InMemoryHttpClient.java` | ✅ | HTTP bypass with response builders |
+| `DefStepTest.java` | ✅ | Tests for def, set, remove, copy, text, json |
+| `MatchStepTest.java` | ✅ | Tests for match `==`, `!=`, `contains`, `!contains`, `contains only`, `contains any`, `each` |
+| `HttpStepTest.java` | ✅ | Tests for url, path, param, header, method, status |
+| `PrintAssertTest.java` | ✅ | Tests for print, assert, eval, configure |
+
+### GherkinParser Fix Applied
+
+Fixed `GherkinParser.stepLine()` to handle `IDENT`, `DOT`, and `G_EXPR` tokens that appear in match expressions.
+
+```java
+// Current implementation:
+if (!peekAnyOf(G_KEYWORD, EQ, IDENT, DOT, G_EXPR)) { return false; }
+```
+
+### Lexer Fixes Applied
+
+The Gherkin lexer `GS_STEP_MATCH` state was updated to properly handle match expressions:
+
+**Fix 1: `contains` operator** - Moved `GM_MATCH_TYPE` rules before `{GM_IDENT}` in `js.flex` to ensure `contains` is recognized as an operator rather than an identifier.
+
+**Fix 2: Expression fallback** - Added a catch-all rule `[^\s] { return G_EXPR; }` at the end of `GS_STEP_MATCH` to handle any non-whitespace character as part of the expression. This elegantly handles operators (`+`, `-`, `*`, `%`), brackets (`[`, `]`, `(`, `)`), and any other JS syntax without needing to enumerate them explicitly.
+
+**Fix 3: Unified G_EXPR token** - Replaced `G_RHS` with `G_EXPR` throughout. The `G_EXPR` token type represents expression content on both sides of match operators and in docstrings. This is cleaner than having separate `G_RHS` (right-hand side) when the same token appears on the left side too.
+
+| Pattern | Status | Notes |
+|---------|--------|-------|
+| `match foo == { ... }` | ✅ Works | |
+| `match foo != { ... }` | ✅ Works | |
+| `match foo contains { ... }` | ✅ Works | Fixed by reordering lexer rules |
+| `match foo contains only [...]` | ✅ Works | |
+| `match foo !contains { ... }` | ✅ Works | |
+| `match x + y == 15` | ✅ Works | G_EXPR catch-all handles `+` |
+| `match arr[0] == 'foo'` | ✅ Works | G_EXPR catch-all handles `[`, `]` |
+| `match foo == '#number'` | ✅ Works | Fuzzy markers supported |
+
+**StepExecutor Fixes:**
+- Added `form field` and `form fields` as proper two-word keywords
+- Added multipart keyword variants (`multipart file`, `multipart field`, etc.)
+- Fixed `path` keyword to handle comma-separated segments (`path 'users', '123'`)
 
 ### Next Steps
 
-1. **Test infrastructure** - TestUtils, InMemoryHttpClient
-2. **Phase 1 tests** - Step-level tests for implemented keywords
-3. **Config loading** - karate-config.js evaluation
-4. **karate-json file output** - Write report to target/
+1. ~~**Test infrastructure** - TestUtils, InMemoryHttpClient~~ ✅ Done
+2. ~~**Phase 1 tests** - Step-level tests for implemented keywords~~ ✅ Done
+3. ~~**Fix GS_STEP_MATCH lexer** - Handle `contains`, `[`, operators~~ ✅ Done
+4. **Config loading** - karate-config.js evaluation
+5. **karate-json file output** - Write report to target/
+6. **Full call/callonce** - Currently stubs that just eval, need FeatureRuntime nesting
+7. **RuntimeHook wiring** - beforeScenario/afterScenario hooks are empty stubs
+
+### Architecture Notes for call/callonce
+
+The v1 JS engine required expensive "re-hydration" (JSON serialize/deserialize) of variables when creating nested contexts for `call`. The new v2 JS engine is much better:
+
+- **Object sharing** - Can move/share objects directly between contexts without serialization
+- **Parent delegation** - Engine may support delegating variable lookups to parent context
+- **Clean reimplementation** - Free to design a cleaner approach using modern Java features (records, sealed classes, virtual threads, etc.)
+
+When implementing `call`/`callonce`, explore the Engine API for context delegation rather than copying all variables. This could significantly simplify the implementation and improve performance.
+
+### Feature Lifecycle Status
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **Background** | ✅ Works | `Scenario.getStepsIncludingBackground()` prepends background steps |
+| **Scenario Outline** | ✅ Works | `FeatureRuntime` iterates ExamplesTables, creates Scenario with exampleData |
+| **karate-config.js** | ⬜ TODO | Should run once before all features, sets up shared variables |
+| **Dynamic Outline** | ⬜ TODO | `@setup` scenario that produces Examples data dynamically |
+
+**karate-config.js lifecycle:**
+1. Load `karate-config.js` from classpath root
+2. Execute in a fresh Engine context
+3. Returned object becomes the base variables for all scenarios
+4. Related to Background - config is like a "suite-level background"
+
+**Dynamic Scenario Outline - two variants:**
+
+*Variant 1: `@setup` tagged scenario*
+1. `@setup` tagged scenario runs first (once per feature)
+2. Setup scenario can produce data via `karate.set('data', ...)`
+3. Subsequent Scenario Outline uses `Examples:` that references setup data
+4. This requires careful ordering - setup must complete before outline iteration
+
+*Variant 2: Single-cell JS expression*
+1. Examples table has a single cell containing a JS expression
+2. Expression is evaluated and must return an array of objects
+3. Array is "exploded" into rows for the outline loop
+4. Example: `| karate.read('test-data.json') |` or `| data |`
+
+**Reference:** See karate v1 source for exact behavior:
+- `karate/karate-core/src/main/java/com/intuit/karate/core/` - ScenarioOutline handling
+- Look for dynamic examples expansion logic
+
+### Required Tests for Lifecycle Features
+
+Each feature needs dedicated test coverage before considered complete:
+
+| Feature | Test File | Test Cases Needed |
+|---------|-----------|-------------------|
+| **Background** | `BackgroundTest.java` | Background runs before each scenario, variables inherited, multiple scenarios |
+| **Scenario Outline** | `ScenarioOutlineTest.java` | Basic expansion, multiple Examples tables, placeholder substitution, tags on Examples |
+| **Dynamic Outline (@setup)** | `DynamicOutlineSetupTest.java` | Setup runs first, data available to outline, setup failure handling |
+| **Dynamic Outline (single-cell)** | `DynamicOutlineCellTest.java` | JS expression evaluation, array explosion, `karate.read()` integration |
+| **karate-config.js** | `ConfigTest.java` | Config loaded, variables available, env-specific config, config errors |
+| **call** | `CallFeatureTest.java` | Call another feature, pass arguments, receive results, nested calls |
+| **callonce** | `CallOnceTest.java` | Caching behavior, shared across scenarios, cache key handling |
+| **RuntimeHooks** | `RuntimeHookTest.java` | beforeScenario/afterScenario, beforeStep/afterStep, hook can abort |
 
 ---
 

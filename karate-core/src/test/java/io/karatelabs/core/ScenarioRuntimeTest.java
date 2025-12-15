@@ -17,7 +17,7 @@ class ScenarioRuntimeTest {
         Feature feature = Feature.read(root.resolve("http-simple.feature"));
         Scenario scenario = feature.getSections().getFirst().getScenario();
         ScenarioRuntime runtime = new ScenarioRuntime(karate, scenario);
-        runtime.run();
+        runtime.call();
     }
 
 }

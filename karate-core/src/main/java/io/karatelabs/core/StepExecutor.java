@@ -78,11 +78,16 @@ public class StepExecutor {
                     case "headers" -> executeHeaders(step);
                     case "cookie" -> executeCookie(step);
                     case "cookies" -> executeCookies(step);
-                    case "form" -> executeForm(step);
+                    case "form field" -> executeFormField(step);
+                    case "form fields" -> executeFormFields(step);
                     case "request" -> executeRequest(step);
                     case "method" -> executeMethod(step);
                     case "status" -> executeStatus(step);
-                    case "multipart" -> executeMultipart(step);
+                    case "multipart file" -> executeMultipartFile(step);
+                    case "multipart field" -> executeMultipartField(step);
+                    case "multipart fields" -> executeMultipartFields(step);
+                    case "multipart files" -> executeMultipartFiles(step);
+                    case "multipart entity" -> executeMultipartEntity(step);
 
                     // Control flow
                     case "call" -> executeCall(step);
@@ -267,8 +272,15 @@ public class StepExecutor {
     }
 
     private void executePath(Step step) {
-        String pathExpr = step.getText();
-        Object path = runtime.eval(pathExpr);
+        String pathExpr = step.getText().trim();
+        // If expression contains comma, wrap in array to handle multiple segments
+        // e.g., path 'users', '123' becomes ['users', '123']
+        Object path;
+        if (pathExpr.contains(",")) {
+            path = runtime.eval("[" + pathExpr + "]");
+        } else {
+            path = runtime.eval(pathExpr);
+        }
         if (path instanceof List<?> list) {
             for (Object item : list) {
                 http().path(item.toString());
@@ -357,18 +369,22 @@ public class StepExecutor {
         }
     }
 
-    private void executeForm(Step step) {
-        // Form field
+    private void executeFormField(Step step) {
         String text = step.getText();
         int eqIndex = findAssignmentOperator(text);
         String name = text.substring(0, eqIndex).trim();
         Object value = runtime.eval(text.substring(eqIndex + 1).trim());
-        // Set content type if not already set
-        if (http().getContentType() == null) {
-            http().contentType("application/x-www-form-urlencoded");
+        http().formField(name, value.toString());
+    }
+
+    @SuppressWarnings("unchecked")
+    private void executeFormFields(Step step) {
+        Object value = runtime.eval(step.getText());
+        if (value instanceof Map<?, ?> map) {
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                http().formField(entry.getKey().toString(), entry.getValue().toString());
+            }
         }
-        // For now, set body as form data
-        http().body(name + "=" + value);
     }
 
     private void executeRequest(Step step) {
@@ -409,16 +425,29 @@ public class StepExecutor {
         }
     }
 
-    private void executeMultipart(Step step) {
-        // Basic multipart support - to be expanded
-        String text = step.getText();
-        if (text.startsWith("file")) {
-            // multipart file
-            throw new RuntimeException("multipart file not yet implemented");
-        } else if (text.startsWith("field")) {
-            // multipart field
-            throw new RuntimeException("multipart field not yet implemented");
-        }
+    private void executeMultipartFile(Step step) {
+        // TODO: implement multipart file upload
+        throw new RuntimeException("multipart file not yet implemented");
+    }
+
+    private void executeMultipartField(Step step) {
+        // TODO: implement multipart field
+        throw new RuntimeException("multipart field not yet implemented");
+    }
+
+    private void executeMultipartFields(Step step) {
+        // TODO: implement multipart fields
+        throw new RuntimeException("multipart fields not yet implemented");
+    }
+
+    private void executeMultipartFiles(Step step) {
+        // TODO: implement multipart files
+        throw new RuntimeException("multipart files not yet implemented");
+    }
+
+    private void executeMultipartEntity(Step step) {
+        // TODO: implement multipart entity
+        throw new RuntimeException("multipart entity not yet implemented");
     }
 
     // ========== Control Flow ==========

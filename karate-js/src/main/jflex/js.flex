@@ -251,22 +251,23 @@ GM_TAG = "@" {NOT_WSLF}+
 
 <GS_STEP_MATCH> {
   "each" | "header"             { return G_KEYWORD; }
+  {GM_MATCH_TYPE} / {WS_ONE_LF} { yybegin(GHERKIN); return G_KEYWORD; } // docstring
+  {GM_MATCH_TYPE}               { yybegin(GS_RHS); return G_KEYWORD; }
   {GM_IDENT}                    { return IDENT; }
   ("$"|"@") {IDENT}?            { return IDENT; } // xpath
   "?" "(" [^)]+ ")"             { return IDENT; } // json path
   ".." | ":"                    { return DOT; } // json path
   "/" "/"? {IDENT}?             { return IDENT; } // xpath
-  {GM_MATCH_TYPE} / {WS_ONE_LF} { yybegin(GHERKIN); return G_KEYWORD; } // docstring
-  {GM_MATCH_TYPE}               { yybegin(GS_RHS); return G_KEYWORD; }
+  [^\s]                         { return G_EXPR; } // fallback: any non-whitespace is part of match expression
 }
 
 <GS_RHS> {
-  {NOT_LF}+                     { return G_RHS; }
+  {NOT_LF}+                     { return G_EXPR; }
   {WS_ONE_LF}                   { yybegin(GHERKIN); return WS_LF; }
 }
 
 <GS_DOC_STRING> {
   {GM_TRIPLE_QUOTE}             { yybegin(GHERKIN); return G_TRIPLE_QUOTE; }
-  {NOT_LF}+                     { return G_RHS; }
+  {NOT_LF}+                     { return G_EXPR; }
   {WS_ONE_LF}                   { return WS_LF; }
 }
