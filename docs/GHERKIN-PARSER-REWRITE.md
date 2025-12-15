@@ -128,8 +128,8 @@ Applied error recovery to `JsParser.java` so that syntax highlighting and code c
 
 | File | Changes |
 |------|---------|
-| `JsParser.java` | Added error recovery mode, `getAst()` method, recovery logic |
-| `Parser.java` | Added `consumeSoft()` method for soft token consumption |
+| `JsParser.java` | Added error recovery mode, `getAst()` method, element-loop recovery in 7 methods |
+| `Parser.java` | Added `consumeSoft()`, `recoverTo()` with infinite loop safeguard (`lastRecoveryPosition`) |
 | `Node.java` | Added `findAll()` method for AST traversal |
 
 ### JsParser API
@@ -151,6 +151,58 @@ boolean hasErrors = parser.hasErrors();
 | Level | Recovery Tokens | Description |
 |-------|-----------------|-------------|
 | Statement | `IF`, `FOR`, `WHILE`, `DO`, `SWITCH`, `TRY`, `RETURN`, `THROW`, `BREAK`, `CONTINUE`, `VAR`, `LET`, `CONST`, `FUNCTION`, `L_CURLY`, `R_CURLY`, `SEMI`, `EOF` | Statement starts and ends |
+
+### Element-Parsing Loop Recovery
+
+Loops that parse multiple elements (object properties, array elements, function arguments, etc.) need error recovery to prevent infinite loops when an element fails to parse and rewinds the position.
+
+| Method | Loop Parses | Recovery Tokens | Description |
+|--------|-------------|-----------------|-------------|
+| `switch_stmt()` | `case_block()` | `R_CURLY`, `CASE`, `DEFAULT`, `EOF` | Skip to next case or end |
+| `case_block()` | `statement()` | `CASE`, `DEFAULT`, `R_CURLY`, `SEMI`, `EOF` | Skip to next case/statement |
+| `default_block()` | `statement()` | `R_CURLY`, `SEMI`, `EOF` | Skip to end or next statement |
+| `fn_decl_args()` | `fn_decl_arg()` | `R_PAREN`, `COMMA`, `EOF` | Skip to next param or end |
+| `fn_call_args()` | `fn_call_arg()` | `R_PAREN`, `COMMA`, `EOF` | Skip to next arg or end |
+| `lit_object()` | `object_elem()` | `R_CURLY`, `COMMA`, `EOF` | Skip to next property or end |
+| `lit_array()` | `array_elem()` | `R_BRACKET`, `COMMA`, `EOF` | Skip to next element or end |
+
+**Pattern used:**
+```java
+while (true) {
+    if (peekIf(CLOSING_TOKEN) || peekIf(EOF)) {
+        break;
+    }
+    if (!parseElement()) {
+        if (errorRecoveryEnabled) {
+            error("invalid element");
+            recoverTo(CLOSING_TOKEN, COMMA, EOF);
+            continue;
+        }
+        break;
+    }
+}
+```
+
+### Infinite Loop Safeguard
+
+The `recoverTo()` method in `Parser.java` includes a defensive safeguard to prevent infinite loops:
+
+```java
+private int lastRecoveryPosition = -1;
+
+protected boolean recoverTo(TokenType... recoveryTokens) {
+    // If recovering from same position twice, force progress
+    if (position == lastRecoveryPosition) {
+        if (peek() != EOF) {
+            consumeNext();  // Force skip at least one token
+        }
+    }
+    lastRecoveryPosition = position;
+    // ... normal recovery logic
+}
+```
+
+This guarantees that `recoverTo()` always advances the parser position, even if called repeatedly from the same location. **Zero overhead in normal parsing** - only active when `recoverTo()` is called (which only happens in error recovery mode).
 
 ### Key Implementation Patterns
 
@@ -182,6 +234,7 @@ PROGRAM
 
 ### Tests Added
 
+**Basic error recovery:**
 - `testErrorRecoveryEnabled` - Basic enabling
 - `testIncompleteExpression` - `let x = 1 +`
 - `testIncompleteBlock` - Unclosed function body
@@ -197,6 +250,14 @@ PROGRAM
 - `testIncompleteTernary` - Missing colon branch
 - `testDotPropertyAccessIncomplete` - Missing property after dot
 - `testIncompleteSwitchStatement` - Unclosed switch
+
+**Element-parsing loop recovery (prevents infinite loops):**
+- `testIncompleteObjectProperty` - Object with identifier missing colon
+- `testIncompleteArrayElement` - Array with malformed element
+- `testIncompleteFunctionCallArg` - Function call with malformed argument
+- `testIncompleteFunctionDeclArg` - Function declaration with malformed parameter
+- `testIncompleteSwitchCase` - Switch with unexpected token in case
+- `testIncompleteSwitchDefault` - Switch with unexpected token in default
 
 ---
 

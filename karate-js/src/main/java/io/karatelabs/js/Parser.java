@@ -80,6 +80,7 @@ abstract class Parser {
     // Error recovery infrastructure
     protected final boolean errorRecoveryEnabled;
     private final List<SyntaxError> errors = new ArrayList<>();
+    private int lastRecoveryPosition = -1;
 
     Node markerNode() {
         return marker.node;
@@ -169,10 +170,19 @@ abstract class Parser {
 
     /**
      * Skip tokens until we find a recovery point.
+     * Includes infinite loop detection - if called from the same position twice,
+     * forces skip of at least one token to guarantee progress.
      * @param recoveryTokens tokens that indicate a safe recovery point
      * @return true if a recovery token was found, false if EOF reached
      */
     protected boolean recoverTo(TokenType... recoveryTokens) {
+        // Infinite loop safeguard: if recovering from same position, force progress
+        if (position == lastRecoveryPosition) {
+            if (peek() != EOF) {
+                consumeNext();
+            }
+        }
+        lastRecoveryPosition = position;
         Set<TokenType> recoverySet = Set.of(recoveryTokens);
         while (true) {
             TokenType current = peek();

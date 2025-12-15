@@ -525,4 +525,73 @@ class JsParserTest {
         assertNotNull(switchStmt);
     }
 
+    @Test
+    void testIncompleteObjectProperty() {
+        // Identifier without colon followed by another property
+        String code = "const x = {\n    f\n    bar: 1\n}";
+        JsParser parser = new JsParser(Resource.text(code), true);
+        Node ast = parser.parse();
+        assertTrue(parser.hasErrors());
+        assertNotNull(ast);
+    }
+
+    @Test
+    void testIncompleteArrayElement() {
+        // Array with malformed element (identifier without comma)
+        String code = "[1, a b, 3]";
+        JsParser parser = new JsParser(Resource.text(code), true);
+        Node ast = parser.parse();
+        assertTrue(parser.hasErrors());
+        assertNotNull(ast);
+        Node arr = ast.findFirstChild(NodeType.LIT_ARRAY);
+        assertNotNull(arr);
+    }
+
+    @Test
+    void testIncompleteFunctionCallArg() {
+        // Function call with malformed argument
+        String code = "foo(1, a b, 3)";
+        JsParser parser = new JsParser(Resource.text(code), true);
+        Node ast = parser.parse();
+        assertTrue(parser.hasErrors());
+        assertNotNull(ast);
+    }
+
+    @Test
+    void testIncompleteFunctionDeclArg() {
+        // Function declaration with malformed parameter
+        String code = "function foo(a, b c, d) { return 1 }";
+        JsParser parser = new JsParser(Resource.text(code), true);
+        Node ast = parser.parse();
+        assertTrue(parser.hasErrors());
+        assertNotNull(ast);
+        Node fn = ast.findFirstChild(NodeType.FN_EXPR);
+        assertNotNull(fn);
+    }
+
+    @Test
+    void testIncompleteSwitchCase() {
+        // Switch where case_block loop might get stuck - invalid token after case content
+        // Using 'else' which can't start a statement in this context
+        String code = "switch (x) { case 1: a; else case 2: b }";
+        JsParser parser = new JsParser(Resource.text(code), true);
+        Node ast = parser.parse();
+        // Should recover and parse, key is it doesn't hang
+        assertNotNull(ast);
+        Node switchStmt = ast.findFirstChild(NodeType.SWITCH_STMT);
+        assertNotNull(switchStmt);
+    }
+
+    @Test
+    void testIncompleteSwitchDefault() {
+        // Switch where default_block loop might get stuck
+        String code = "switch (x) { default: a; else }";
+        JsParser parser = new JsParser(Resource.text(code), true);
+        Node ast = parser.parse();
+        // Should recover and parse, key is it doesn't hang
+        assertNotNull(ast);
+        Node switchStmt = ast.findFirstChild(NodeType.SWITCH_STMT);
+        assertNotNull(switchStmt);
+    }
+
 }

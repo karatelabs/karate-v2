@@ -275,6 +275,11 @@ public class JsParser extends Parser {
                 break;
             }
             if (!case_block()) {
+                if (errorRecoveryEnabled) {
+                    error("invalid case block");
+                    recoverTo(R_CURLY, CASE, DEFAULT, EOF);
+                    continue;
+                }
                 break;
             }
         }
@@ -294,6 +299,11 @@ public class JsParser extends Parser {
                 break;
             }
             if (!statement(false)) {
+                if (errorRecoveryEnabled) {
+                    error("cannot parse statement in case block");
+                    recoverTo(CASE, DEFAULT, R_CURLY, SEMI, EOF);
+                    continue;
+                }
                 break;
             }
         }
@@ -310,6 +320,11 @@ public class JsParser extends Parser {
                 break;
             }
             if (!statement(false)) {
+                if (errorRecoveryEnabled) {
+                    error("cannot parse statement in default block");
+                    recoverTo(R_CURLY, SEMI, EOF);
+                    continue;
+                }
                 break;
             }
         }
@@ -521,10 +536,15 @@ public class JsParser extends Parser {
             return false;
         }
         while (true) {
-            if (peekIf(R_PAREN)) {
+            if (peekIf(R_PAREN) || peekIf(EOF)) {
                 break;
             }
             if (!fn_decl_arg()) {
+                if (errorRecoveryEnabled) {
+                    error("invalid function parameter");
+                    recoverTo(R_PAREN, COMMA, EOF);
+                    continue;
+                }
                 break;
             }
         }
@@ -551,10 +571,15 @@ public class JsParser extends Parser {
     private void fn_call_args() {
         enter(NodeType.FN_CALL_ARGS);
         while (true) {
-            if (peekIf(R_PAREN)) {
+            if (peekIf(R_PAREN) || peekIf(EOF)) {
                 break;
             }
             if (!fn_call_arg()) {
+                if (errorRecoveryEnabled) {
+                    error("invalid function argument");
+                    recoverTo(R_PAREN, COMMA, EOF);
+                    continue;
+                }
                 break;
             }
         }
@@ -654,10 +679,15 @@ public class JsParser extends Parser {
             return false;
         }
         while (true) {
-            if (peekIf(R_CURLY)) {
+            if (peekIf(R_CURLY) || peekIf(EOF)) {
                 break;
             }
             if (!object_elem()) {
+                if (errorRecoveryEnabled) {
+                    error("invalid object element");
+                    recoverTo(R_CURLY, COMMA, EOF);
+                    continue;
+                }
                 break;
             }
         }
@@ -705,6 +735,11 @@ public class JsParser extends Parser {
                 break;
             }
             if (!array_elem()) {
+                if (errorRecoveryEnabled) {
+                    error("invalid array element");
+                    recoverTo(R_BRACKET, COMMA, EOF);
+                    continue;
+                }
                 break;
             }
         }
