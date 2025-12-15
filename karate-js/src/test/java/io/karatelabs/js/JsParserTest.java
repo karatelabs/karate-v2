@@ -648,4 +648,36 @@ class JsParserTest {
         assertTrue(parser.hasErrors(), "Expected error for invalid object element");
     }
 
+    @Test
+    void testParenthesizedExpressionNoError() {
+        // Parenthesized expression should not be flagged as error
+        // (places + 5) is valid JS - not arrow function params
+        JsParser parser = new JsParser(Resource.text("(places + 5)"), true);
+        Node ast = parser.parse();
+        assertNotNull(ast);
+        assertFalse(parser.hasErrors(), "Expected no errors for valid paren expression, but got: " + parser.getErrors());
+        Node paren = ast.findFirstChild(NodeType.PAREN_EXPR);
+        assertNotNull(paren, "Expected PAREN_EXPR node but didn't find one");
+    }
+
+    @Test
+    void testArrowFunctionStillWorks() {
+        // Valid arrow function should still work
+        JsParser parser = new JsParser(Resource.text("(a, b) => a + b"), true);
+        Node ast = parser.parse();
+        assertNotNull(ast);
+        assertFalse(parser.hasErrors(), "Expected no errors for valid arrow fn, but got: " + parser.getErrors());
+        Node arrow = ast.findFirstChild(NodeType.FN_ARROW_EXPR);
+        assertNotNull(arrow, "Expected FN_ARROW_EXPR node but didn't find one");
+    }
+
+    @Test
+    void testArrowFunctionWithInvalidSecondParam() {
+        // Arrow function where second param is invalid should still error
+        JsParser parser = new JsParser(Resource.text("(a, b c) => a + b"), true);
+        Node ast = parser.parse();
+        assertNotNull(ast);
+        assertTrue(parser.hasErrors(), "Expected error for invalid function parameter");
+    }
+
 }

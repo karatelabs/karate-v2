@@ -535,18 +535,22 @@ public class JsParser extends Parser {
         if (!enter(NodeType.FN_DECL_ARGS, L_PAREN)) {
             return false;
         }
+        boolean hasParams = false;
         while (true) {
             if (peekIf(R_PAREN) || peekIf(EOF)) {
                 break;
             }
             if (!fn_decl_arg()) {
-                if (errorRecoveryEnabled) {
+                if (errorRecoveryEnabled && hasParams) {
+                    // Only error/recover if we've parsed at least one param
+                    // If first param fails, this might be a paren expr, not arrow fn args
                     error("invalid function parameter");
                     recoverTo(R_PAREN, COMMA, EOF);
                     continue;
                 }
                 break;
             }
+            hasParams = true;
         }
         return exit(consumeIf(R_PAREN), false);
     }
