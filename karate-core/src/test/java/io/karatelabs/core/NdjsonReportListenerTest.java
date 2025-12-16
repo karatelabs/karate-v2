@@ -60,7 +60,7 @@ class NdjsonReportListenerTest {
 
         SuiteResult result = Runner.path(feature.toString())
                 .outputDir(reportDir)
-                .outputHtmlReport(true)
+                .outputNdjson(true)  // opt-in to NDJSON
                 .parallel(1);
 
         assertTrue(result.isPassed());
@@ -89,7 +89,7 @@ class NdjsonReportListenerTest {
 
         Runner.path(feature.toString())
                 .outputDir(reportDir)
-                .outputHtmlReport(true)
+                .outputNdjson(true)
                 .karateEnv("dev")
                 .parallel(1);
 
@@ -122,7 +122,7 @@ class NdjsonReportListenerTest {
 
         Runner.path(feature.toString())
                 .outputDir(reportDir)
-                .outputHtmlReport(true)
+                .outputNdjson(true)
                 .parallel(1);
 
         Path ndjsonPath = reportDir.resolve("karate-results.ndjson");
@@ -171,7 +171,7 @@ class NdjsonReportListenerTest {
 
         Runner.path(feature.toString())
                 .outputDir(reportDir)
-                .outputHtmlReport(true)
+                .outputNdjson(true)
                 .parallel(1);
 
         Path ndjsonPath = reportDir.resolve("karate-results.ndjson");
@@ -207,7 +207,7 @@ class NdjsonReportListenerTest {
 
         SuiteResult result = Runner.path(feature.toString())
                 .outputDir(reportDir)
-                .outputHtmlReport(true)
+                .outputNdjson(true)
                 .parallel(1);
 
         assertTrue(result.isFailed());
@@ -253,7 +253,7 @@ class NdjsonReportListenerTest {
 
         Runner.path(feature.toString())
                 .outputDir(reportDir)
-                .outputHtmlReport(true)
+                .outputNdjson(true)
                 .parallel(1);
 
         Path ndjsonPath = reportDir.resolve("karate-results.ndjson");
@@ -294,7 +294,7 @@ class NdjsonReportListenerTest {
 
         Runner.path(tempDir.toString())
                 .outputDir(reportDir)
-                .outputHtmlReport(true)
+                .outputNdjson(true)
                 .parallel(1);
 
         Path ndjsonPath = reportDir.resolve("karate-results.ndjson");
@@ -322,10 +322,10 @@ class NdjsonReportListenerTest {
     }
 
     @Test
-    void testHtmlReportGeneratedFromNdjson() throws Exception {
+    void testHtmlReportGeneratedWithNdjson() throws Exception {
         Path feature = tempDir.resolve("test.feature");
         Files.writeString(feature, """
-            Feature: HTML From NDJSON Test
+            Feature: HTML With NDJSON Test
             Scenario: Test
             * def a = 1
             """);
@@ -335,9 +335,10 @@ class NdjsonReportListenerTest {
         Runner.path(feature.toString())
                 .outputDir(reportDir)
                 .outputHtmlReport(true)
+                .outputNdjson(true)  // opt-in to NDJSON alongside HTML
                 .parallel(1);
 
-        // Verify both NDJSON and HTML reports exist
+        // Verify both NDJSON and HTML reports exist when both are enabled
         assertTrue(Files.exists(reportDir.resolve("karate-results.ndjson")));
         assertTrue(Files.exists(reportDir.resolve("karate-summary.html")));
         assertTrue(Files.exists(reportDir.resolve("index.html")));

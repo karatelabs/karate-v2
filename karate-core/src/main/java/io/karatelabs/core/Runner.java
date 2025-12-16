@@ -94,6 +94,7 @@ public final class Runner {
         private Path outputDir = Path.of("target/karate-reports");
         private boolean dryRun;
         private boolean outputHtmlReport = true;
+        private boolean outputNdjson;
         private boolean outputJunitXml;
         private boolean outputCucumberJson;
 
@@ -199,6 +200,15 @@ public final class Runner {
          */
         public Builder outputHtmlReport(boolean enabled) {
             this.outputHtmlReport = enabled;
+            return this;
+        }
+
+        /**
+         * Enable/disable NDJSON streaming output.
+         * Writes feature results to karate-results.ndjson as they complete.
+         */
+        public Builder outputNdjson(boolean enabled) {
+            this.outputNdjson = enabled;
             return this;
         }
 
@@ -316,6 +326,7 @@ public final class Runner {
             }
             suite.dryRun(dryRun);
             suite.outputHtmlReport(outputHtmlReport);
+            suite.outputNdjson(outputNdjson);
             suite.outputJunitXml(outputJunitXml);
             suite.outputCucumberJson(outputCucumberJson);
 

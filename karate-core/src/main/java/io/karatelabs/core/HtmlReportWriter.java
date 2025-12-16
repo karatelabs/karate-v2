@@ -37,9 +37,11 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Generates HTML reports with inlined JSON data and Alpine.js client-side rendering.
@@ -139,6 +141,64 @@ public final class HtmlReportWriter {
                 JvmLogger.debug("HTML report error details", e);
             }
         }
+    }
+
+    /**
+     * Write a single feature HTML report.
+     * Used by {@link HtmlReportListener} for async feature HTML generation.
+     *
+     * @param result    the feature result to render
+     * @param outputDir the root output directory (features/ subdirectory will be used)
+     */
+    public static void writeFeatureHtml(FeatureResult result, Path outputDir) throws IOException {
+        Path featuresDir = outputDir.resolve("features");
+        Files.createDirectories(featuresDir);
+
+        Map<String, Object> featureData = buildFeatureData(result);
+        String template = loadTemplate("karate-feature.html");
+        String html = inlineJson(template, featureData);
+
+        String fileName = getFeatureFileName(featureData) + ".html";
+        Files.writeString(featuresDir.resolve(fileName), html);
+    }
+
+    /**
+     * Write summary pages (summary, tags, timeline, index) from feature summaries.
+     * Used by {@link HtmlReportListener} at suite end.
+     *
+     * @param summaries the collected feature summaries
+     * @param result    the suite result
+     * @param outputDir the root output directory
+     * @param env       the karate environment (may be null)
+     */
+    public static void writeSummaryPages(List<HtmlReportListener.FeatureSummary> summaries,
+                                         SuiteResult result, Path outputDir, String env) throws IOException {
+        Map<String, Object> suiteData = buildSuiteDataFromSummaries(summaries, result, env);
+        List<Map<String, Object>> featureSummaryList = buildFeatureSummaryListFromSummaries(summaries);
+
+        // Write summary page
+        Map<String, Object> summaryPageData = new LinkedHashMap<>(suiteData);
+        summaryPageData.put("features", featureSummaryList);
+        String summaryTemplate = loadTemplate("karate-summary.html");
+        String summaryHtml = inlineJson(summaryTemplate, summaryPageData);
+        Files.writeString(outputDir.resolve("karate-summary.html"), summaryHtml);
+
+        // Write tags page
+        Map<String, Object> tagsPageData = new LinkedHashMap<>(suiteData);
+        tagsPageData.put("tags", buildTagsDataFromSummaries(summaries));
+        String tagsTemplate = loadTemplate("karate-tags.html");
+        String tagsHtml = inlineJson(tagsTemplate, tagsPageData);
+        Files.writeString(outputDir.resolve("karate-tags.html"), tagsHtml);
+
+        // Write timeline page
+        Map<String, Object> timelinePageData = new LinkedHashMap<>(suiteData);
+        timelinePageData.put("timeline", buildTimelineDataFromSummaries(summaries));
+        String timelineTemplate = loadTemplate("karate-timeline.html");
+        String timelineHtml = inlineJson(timelineTemplate, timelinePageData);
+        Files.writeString(outputDir.resolve("karate-timeline.html"), timelineHtml);
+
+        // Write index redirect
+        writeIndexRedirect(outputDir);
     }
 
     /**
@@ -260,7 +320,13 @@ public final class HtmlReportWriter {
         }
     }
 
-    private static void copyStaticResources(Path resDir) throws IOException {
+    /**
+     * Copy static resources (CSS, JS, images) to the res directory.
+     * Made public for use by {@link HtmlReportListener}.
+     *
+     * @param resDir the res directory to copy resources to
+     */
+    public static void copyStaticResources(Path resDir) throws IOException {
         for (String resourceName : STATIC_RESOURCES) {
             String resourcePath = RESOURCE_ROOT + "res/" + resourceName;
             try (InputStream is = HtmlReportWriter.class.getClassLoader().getResourceAsStream(resourcePath)) {
@@ -560,6 +626,119 @@ public final class HtmlReportWriter {
     private static class NdjsonData {
         Map<String, Object> suiteData = new LinkedHashMap<>();
         List<Map<String, Object>> features = new ArrayList<>();
+    }
+
+    // ========== Data Building from FeatureSummary (for HtmlReportListener) ==========
+
+    private static Map<String, Object> buildSuiteDataFromSummaries(List<HtmlReportListener.FeatureSummary> summaries,
+                                                                    SuiteResult result, String env) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("env", env);
+        data.put("reportDate", DATE_FORMAT.format(Instant.ofEpochMilli(result.getStartTime())));
+        data.put("karateVersion", "2.0");
+
+        // Summary counts
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("feature_count", summaries.size());
+
+        int featurePassed = 0;
+        int featureFailed = 0;
+        int scenarioPassed = 0;
+        int scenarioFailed = 0;
+        int scenarioCount = 0;
+
+        for (HtmlReportListener.FeatureSummary fs : summaries) {
+            if (fs.isPassed()) {
+                featurePassed++;
+            } else {
+                featureFailed++;
+            }
+            scenarioPassed += fs.getPassedCount();
+            scenarioFailed += fs.getFailedCount();
+            scenarioCount += fs.getScenarioCount();
+        }
+
+        summary.put("feature_passed", featurePassed);
+        summary.put("feature_failed", featureFailed);
+        summary.put("scenario_count", scenarioCount);
+        summary.put("scenario_passed", scenarioPassed);
+        summary.put("scenario_failed", scenarioFailed);
+        summary.put("duration_millis", result.getDurationMillis());
+        summary.put("status", featureFailed > 0 ? "failed" : "passed");
+        data.put("summary", summary);
+
+        return data;
+    }
+
+    private static List<Map<String, Object>> buildFeatureSummaryListFromSummaries(List<HtmlReportListener.FeatureSummary> summaries) {
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (HtmlReportListener.FeatureSummary fs : summaries) {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("name", fs.getName());
+            map.put("relativePath", fs.getRelativePath());
+            map.put("fileName", fs.getFileName());
+            map.put("passed", fs.isPassed());
+            map.put("failed", !fs.isPassed());
+            map.put("durationMillis", fs.getDurationMillis());
+            map.put("scenarioCount", fs.getScenarioCount());
+            map.put("passedCount", fs.getPassedCount());
+            map.put("failedCount", fs.getFailedCount());
+            list.add(map);
+        }
+        return list;
+    }
+
+    private static Map<String, Object> buildTagsDataFromSummaries(List<HtmlReportListener.FeatureSummary> summaries) {
+        // For tags page, we only have summary-level tag info, not scenario-level
+        // This is a simplified view - shows which features have which tags
+        Map<String, Set<String>> tagToFeatures = new LinkedHashMap<>();
+
+        for (HtmlReportListener.FeatureSummary fs : summaries) {
+            for (String tag : fs.getTags()) {
+                tagToFeatures.computeIfAbsent(tag, k -> new HashSet<>()).add(fs.getName());
+            }
+        }
+
+        List<Map<String, Object>> tagList = new ArrayList<>();
+        for (var entry : tagToFeatures.entrySet()) {
+            Map<String, Object> tagEntry = new LinkedHashMap<>();
+            tagEntry.put("name", entry.getKey());
+            tagEntry.put("featureCount", entry.getValue().size());
+            tagEntry.put("features", new ArrayList<>(entry.getValue()));
+            tagList.add(tagEntry);
+        }
+
+        Map<String, Object> tagsData = new LinkedHashMap<>();
+        tagsData.put("tagList", tagList);
+        tagsData.put("tagCount", tagToFeatures.size());
+        return tagsData;
+    }
+
+    private static Map<String, Object> buildTimelineDataFromSummaries(List<HtmlReportListener.FeatureSummary> summaries) {
+        List<Map<String, Object>> items = new ArrayList<>();
+        Set<String> groupSet = new HashSet<>();
+        int id = 0;
+
+        for (HtmlReportListener.FeatureSummary fs : summaries) {
+            String thread = fs.getThreadName() != null ? fs.getThreadName() : "main";
+            groupSet.add(thread);
+
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", id++);
+            item.put("group", thread);
+            item.put("content", fs.getName());
+            item.put("className", fs.isPassed() ? "passed" : "failed");
+            item.put("featureName", fs.getName());
+            item.put("featureFile", fs.getFileName());
+            item.put("ms", fs.getDurationMillis());
+            item.put("startTime", fs.getStartTime());
+            items.add(item);
+        }
+
+        Map<String, Object> timeline = new LinkedHashMap<>();
+        timeline.put("items", items);
+        timeline.put("groups", new ArrayList<>(groupSet));
+        return timeline;
     }
 
 }

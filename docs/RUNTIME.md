@@ -44,8 +44,9 @@ Suite → FeatureRuntime → ScenarioRuntime → StepExecutor
 | `KarateJs` | `io.karatelabs.core.KarateJs` | JS engine, HTTP client, karate.* bridge |
 | `JunitXmlWriter` | `io.karatelabs.core.JunitXmlWriter` | JUnit XML report generation for CI/CD |
 | `CucumberJsonWriter` | `io.karatelabs.core.CucumberJsonWriter` | Cucumber JSON report for third-party tools |
+| `HtmlReportListener` | `io.karatelabs.core.HtmlReportListener` | Async HTML report generation (default) |
 | `HtmlReportWriter` | `io.karatelabs.core.HtmlReportWriter` | HTML report generation with inlined JSON |
-| `NdjsonReportListener` | `io.karatelabs.core.NdjsonReportListener` | NDJSON streaming during test execution |
+| `NdjsonReportListener` | `io.karatelabs.core.NdjsonReportListener` | NDJSON streaming (opt-in via `.outputNdjson(true)`) |
 | `HtmlReport` | `io.karatelabs.core.HtmlReport` | Report aggregation API |
 | `ResultListener` | `io.karatelabs.core.ResultListener` | Interface for streaming test results |
 
@@ -110,30 +111,36 @@ Uses Java 21+ virtual threads. Basic parallel execution is implemented in `Suite
 
 #### Report Architecture
 
-**Memory efficiency via disk-based aggregation:**
-The `karate-summary.json` for each feature is written to disk immediately after feature completion. This frees memory during large suite runs, allowing the runtime to focus on execution. At suite end, the report generator reads these files from disk to produce the aggregate HTML report.
+**Memory-efficient HTML report generation:**
+The `HtmlReportListener` writes feature HTML files asynchronously as each feature completes, using a single-thread executor. Only small summary data is kept in memory. At suite end, summary pages are generated from the in-memory summaries.
 
 ```
-Feature completes → Write feature JSON to disk → Free memory
-                         ↓
-Suite completes → Read all feature JSONs → Generate aggregate report
+Test Execution
+    ↓
+HtmlReportListener (default)
+    ├── onFeatureEnd() → Queue feature HTML to executor (async)
+    │                  → Collect small summary info in memory
+    └── onSuiteEnd()   → Write karate-summary.html, tags, timeline
+                       → Wait for executor to finish
+                       → Copy static resources
 ```
 
 **Async report generation:**
-Report generation should run on a separate thread to avoid blocking test execution. The `ResultListener` callbacks fire synchronously, but the actual file I/O and HTML generation can be queued for async processing.
+Report generation runs on a single-thread executor to avoid blocking test execution. Feature HTML is written as features complete, making partial results available during execution.
 
 ```java
 // In HtmlReportListener
 @Override
 public void onFeatureEnd(FeatureResult result) {
-    reportExecutor.submit(() -> writeFeatureJson(result));  // async
+    summaries.add(new FeatureSummary(result));  // small in-memory data
+    executor.submit(() -> writeFeatureHtml(result));  // async
 }
 
 @Override
 public void onSuiteEnd(SuiteResult result) {
-    reportExecutor.submit(() -> generateAggregateReport());
-    reportExecutor.shutdown();
-    reportExecutor.awaitTermination(60, TimeUnit.SECONDS);  // wait at suite end
+    writeSummaryPages(summaries, result);  // summary, tags, timeline
+    executor.shutdown();
+    executor.awaitTermination(60, TimeUnit.SECONDS);
 }
 ```
 
@@ -245,9 +252,12 @@ The v2 JSON uses **step-level source** - each step carries its own text with ind
 | `steps[].error` | Error message if failed |
 | `steps[].called` | Nested steps array for called features |
 
-#### Line-Delimited JSON (NDJSON) for Raw Data
+#### Line-Delimited JSON (NDJSON) for Raw Data (Opt-In)
 
-Instead of exploding many files during execution (v1 writes 2 files per feature), use a **single append-only NDJSON file** with **feature-level granularity**:
+NDJSON output is opt-in via `.outputNdjson(true)`. It provides a **single append-only NDJSON file** with **feature-level granularity** for use cases like:
+- Report aggregation across multiple test runs
+- Live tailing during execution for progress monitoring
+- External integrations and custom tooling
 
 ```
 {"t":"suite","time":"2025-12-16T10:30:00","threads":5,"env":"dev"}
@@ -329,18 +339,30 @@ Runner.path("features/")
 
 ### ~~Priority 1: HTML Reports~~ ✅ IMPLEMENTED
 
-HTML report generation is now available with the new single-file architecture:
+HTML report generation is now available with async feature HTML writing:
 
 ```java
+// Default: HTML reports generated automatically
 Runner.path("features/")
-    .outputHtmlReport(true)     // default: true
+    .parallel(5);
+
+// Opt-in NDJSON for aggregation/streaming
+Runner.path("features/")
+    .outputNdjson(true)
+    .parallel(5);
+
+// Disable HTML reports
+Runner.path("features/")
+    .outputHtmlReport(false)
     .parallel(5);
 ```
 
 **Key features:**
-- **NDJSON streaming** - Results streamed to `karate-results.ndjson` during execution
+- **Async HTML generation** - Feature HTML written as features complete, doesn't block execution
+- **Memory efficient** - Only small summary data kept in memory
 - **Inlined JSON + Alpine.js** - No server-side template rendering; JSON inlined in HTML, rendered client-side
-- **Report aggregation** - Merge reports from multiple test runs:
+- **NDJSON opt-in** - For report aggregation and live progress streaming
+- **Report aggregation** - Merge NDJSON files from multiple test runs:
 
 ```java
 HtmlReport.aggregate()
@@ -350,7 +372,7 @@ HtmlReport.aggregate()
     .generate();
 ```
 
-See `io.karatelabs.core.NdjsonReportListener`, `io.karatelabs.core.HtmlReportWriter`, and `io.karatelabs.core.HtmlReport` for implementation.
+See `io.karatelabs.core.HtmlReportListener`, `io.karatelabs.core.HtmlReportWriter`, `io.karatelabs.core.NdjsonReportListener`, and `io.karatelabs.core.HtmlReport` for implementation.
 
 ---
 
@@ -928,7 +950,8 @@ Tests are in `karate-core/src/test/java/io/karatelabs/core/`:
 | `RunnerTest` | Runner API |
 | `JunitXmlWriterTest` | JUnit XML report generation |
 | `CucumberJsonWriterTest` | Cucumber JSON report generation |
-| `NdjsonReportListenerTest` | NDJSON streaming |
+| `HtmlReportListenerTest` | Async HTML report generation |
+| `NdjsonReportListenerTest` | NDJSON streaming (opt-in) |
 | `HtmlReportWriterTest` | HTML report generation and aggregation |
 
 Test utilities in `TestUtils.java` and `InMemoryHttpClient.java`.

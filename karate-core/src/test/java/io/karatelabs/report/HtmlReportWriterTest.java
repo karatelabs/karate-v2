@@ -150,7 +150,7 @@ class HtmlReportWriterTest {
 
         Runner.path(feature.toString())
                 .outputDir(reportDir)
-                .outputHtmlReport(true)
+                .outputNdjson(true)  // opt-in to NDJSON
                 .parallel(1);
 
         // Verify NDJSON format
@@ -193,15 +193,15 @@ class HtmlReportWriterTest {
         Path run2Dir = tempDir.resolve("run2");
         Path combinedDir = tempDir.resolve("combined");
 
-        // Run features separately
+        // Run features separately with NDJSON enabled for aggregation
         Runner.path(feature1.toString())
                 .outputDir(run1Dir)
-                .outputHtmlReport(true)
+                .outputNdjson(true)
                 .parallel(1);
 
         Runner.path(feature2.toString())
                 .outputDir(run2Dir)
-                .outputHtmlReport(true)
+                .outputNdjson(true)
                 .parallel(1);
 
         // Verify both NDJSON files exist
