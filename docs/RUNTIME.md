@@ -32,6 +32,7 @@ Suite → FeatureRuntime → ScenarioRuntime → StepExecutor
 | `StepExecutor` | `io.karatelabs.core.StepExecutor` | Keyword-based step dispatch |
 | `KarateJs` | `io.karatelabs.core.KarateJs` | JS engine, HTTP client, karate.* bridge |
 | `JunitXmlWriter` | `io.karatelabs.core.JunitXmlWriter` | JUnit XML report generation for CI/CD |
+| `ResultListener` | `io.karatelabs.core.ResultListener` | Interface for streaming test results |
 
 ### Step Keywords (All Implemented)
 
@@ -100,9 +101,9 @@ Package `io.karatelabs.log`:
 
 ## Not Yet Implemented
 
-### Priority 1: Result Streaming
+### Priority 1: Result Streaming ✅ IMPLEMENTED
 
-Foundation for HTML reports and external integrations. Implement first.
+Foundation for HTML reports and external integrations.
 
 ```java
 public interface ResultListener {
@@ -112,8 +113,6 @@ public interface ResultListener {
     default void onFeatureEnd(FeatureResult result) {}
     default void onScenarioStart(Scenario scenario) {}
     default void onScenarioEnd(ScenarioResult result) {}
-    default void onStepStart(Step step) {}
-    default void onStepEnd(StepResult result) {}
 }
 
 // Usage
@@ -123,7 +122,12 @@ Runner.path("features/")
     .parallel(10);
 ```
 
-**Built-in listeners:**
+**Design notes:**
+- Scenario is the smallest unit of granularity (no step-level events)
+- Unlike `RuntimeHook`, `ResultListener` is purely observational and cannot abort execution
+- Multiple listeners can be registered via `Runner.Builder.resultListener()`
+
+**Built-in listeners (TODO):**
 - `HtmlReportListener` - generates HTML reports
 - `TelemetryListener` - sends daily ping
 
@@ -561,6 +565,7 @@ Tests are in `karate-core/src/test/java/io/karatelabs/core/`:
 | `CallFeatureTest` | Feature calling |
 | `ConfigTest` | Config loading |
 | `RuntimeHookTest` | Hooks |
+| `ResultListenerTest` | Result streaming |
 | `RunnerTest` | Runner API |
 | `JunitXmlWriterTest` | JUnit XML report generation |
 

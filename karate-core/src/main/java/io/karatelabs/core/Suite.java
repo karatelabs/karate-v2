@@ -63,6 +63,9 @@ public class Suite {
     // Hooks
     private final List<RuntimeHook> hooks = new ArrayList<>();
 
+    // Result listeners
+    private final List<ResultListener> resultListeners = new ArrayList<>();
+
     // Caches (shared across features)
     private final Map<String, Object> CALLONCE_CACHE = new ConcurrentHashMap<>();
 
@@ -162,6 +165,11 @@ public class Suite {
         return this;
     }
 
+    public Suite resultListener(ResultListener listener) {
+        this.resultListeners.add(listener);
+        return this;
+    }
+
     // ========== Execution ==========
 
     /**
@@ -255,6 +263,11 @@ public class Suite {
             // Load config before anything else
             loadConfig();
 
+            // Notify listeners
+            for (ResultListener listener : resultListeners) {
+                listener.onSuiteStart(this);
+            }
+
             beforeSuite();
 
             if (parallel && threadCount > 1) {
@@ -266,6 +279,11 @@ public class Suite {
             afterSuite();
         } finally {
             result.setEndTime(System.currentTimeMillis());
+
+            // Notify listeners
+            for (ResultListener listener : resultListeners) {
+                listener.onSuiteEnd(result);
+            }
 
             // Write reports if enabled
             if (writeReport) {
@@ -397,6 +415,10 @@ public class Suite {
 
     public List<RuntimeHook> getHooks() {
         return hooks;
+    }
+
+    public List<ResultListener> getResultListeners() {
+        return resultListeners;
     }
 
 }

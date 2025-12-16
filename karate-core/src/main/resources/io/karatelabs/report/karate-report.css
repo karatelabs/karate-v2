@@ -1,0 +1,365 @@
+/* Karate v2 Report Styles */
+
+/* Light mode (default) */
+:root {
+    --karate-green: #28a745;
+    --karate-red: #dc3545;
+    --karate-yellow: #ffc107;
+    --karate-blue: #007bff;
+    --karate-gray: #6c757d;
+    --karate-dark: #343a40;
+    --karate-light: #f8f9fa;
+
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-tertiary: #e9ecef;
+    --text-primary: #212529;
+    --text-secondary: #6c757d;
+    --border-color: #dee2e6;
+    --code-bg: #343a40;
+    --code-text: #f8f8f2;
+    --card-bg: #ffffff;
+    --hover-bg: #e9ecef;
+}
+
+/* Dark mode */
+[data-theme="dark"] {
+    --bg-primary: #1a1a2e;
+    --bg-secondary: #16213e;
+    --bg-tertiary: #0f3460;
+    --text-primary: #e4e4e4;
+    --text-secondary: #a0a0a0;
+    --border-color: #2d2d44;
+    --code-bg: #0d1117;
+    --code-text: #c9d1d9;
+    --card-bg: #16213e;
+    --hover-bg: #0f3460;
+
+    --karate-green: #3fb950;
+    --karate-red: #f85149;
+    --karate-yellow: #d29922;
+    --karate-blue: #58a6ff;
+}
+
+/* Auto dark mode (respects OS preference when no override) */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg-primary: #1a1a2e;
+        --bg-secondary: #16213e;
+        --bg-tertiary: #0f3460;
+        --text-primary: #e4e4e4;
+        --text-secondary: #a0a0a0;
+        --border-color: #2d2d44;
+        --code-bg: #0d1117;
+        --code-text: #c9d1d9;
+        --card-bg: #16213e;
+        --hover-bg: #0f3460;
+
+        --karate-green: #3fb950;
+        --karate-red: #f85149;
+        --karate-yellow: #d29922;
+        --karate-blue: #58a6ff;
+    }
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+
+.theme-toggle:hover {
+    background-color: var(--hover-bg);
+    color: var(--text-primary);
+}
+
+.theme-toggle svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Status badges */
+.badge-passed {
+    background-color: var(--karate-green);
+    color: white;
+}
+
+.badge-failed {
+    background-color: var(--karate-red);
+    color: white;
+}
+
+.badge-skipped {
+    background-color: var(--karate-yellow);
+    color: var(--karate-dark);
+}
+
+/* Cards */
+.card {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+/* Feature cards */
+.feature-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--karate-gray);
+    margin-bottom: 1rem;
+    border-radius: 0.375rem;
+}
+
+.feature-card.passed {
+    border-left-color: var(--karate-green);
+}
+
+.feature-card.failed {
+    border-left-color: var(--karate-red);
+}
+
+/* Scenario list */
+.scenario-item {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.scenario-item:last-child {
+    border-bottom: none;
+}
+
+.scenario-item.passed {
+    background-color: rgba(40, 167, 69, 0.08);
+}
+
+.scenario-item.failed {
+    background-color: rgba(220, 53, 69, 0.08);
+}
+
+[data-theme="dark"] .scenario-item.passed {
+    background-color: rgba(63, 185, 80, 0.1);
+}
+
+[data-theme="dark"] .scenario-item.failed {
+    background-color: rgba(248, 81, 73, 0.1);
+}
+
+/* Step details */
+.step-list {
+    font-family: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 0.875rem;
+}
+
+.step-item {
+    padding: 0.25rem 0;
+}
+
+.step-keyword {
+    color: var(--karate-blue);
+    font-weight: 600;
+}
+
+.step-passed .step-icon {
+    color: var(--karate-green);
+}
+
+.step-failed .step-icon {
+    color: var(--karate-red);
+}
+
+.step-skipped .step-icon {
+    color: var(--karate-yellow);
+}
+
+/* Log output */
+.log-output {
+    background-color: var(--code-bg);
+    color: var(--code-text);
+    padding: 1rem;
+    border-radius: 0.375rem;
+    font-family: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 0.8rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* Error messages */
+.error-message {
+    background-color: rgba(220, 53, 69, 0.1);
+    border: 1px solid var(--karate-red);
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    color: var(--karate-red);
+    font-family: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 0.875rem;
+}
+
+/* Summary stats */
+.stat-card {
+    text-align: center;
+    padding: 1rem;
+    background-color: var(--card-bg);
+    border-radius: 0.375rem;
+    border: 1px solid var(--border-color);
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.stat-value.passed {
+    color: var(--karate-green);
+}
+
+.stat-value.failed {
+    color: var(--karate-red);
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+/* Progress bar */
+.progress {
+    background-color: var(--bg-tertiary);
+}
+
+.progress-stacked {
+    height: 0.5rem;
+}
+
+/* Navigation */
+.nav-sidebar {
+    position: sticky;
+    top: 1rem;
+}
+
+.nav-sidebar .nav-link {
+    color: var(--text-primary);
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+}
+
+.nav-sidebar .nav-link:hover {
+    background-color: var(--hover-bg);
+}
+
+.nav-sidebar .nav-link.active {
+    background-color: var(--karate-blue);
+    color: white;
+}
+
+/* Timing */
+.timing {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+/* Collapsible sections */
+[x-cloak] {
+    display: none !important;
+}
+
+/* Table styles */
+.table {
+    color: var(--text-primary);
+}
+
+.table-features th {
+    background-color: var(--bg-tertiary);
+    font-weight: 600;
+    border-color: var(--border-color);
+}
+
+.table-features td {
+    border-color: var(--border-color);
+}
+
+.table-features .feature-name {
+    font-weight: 500;
+}
+
+.table-hover tbody tr:hover {
+    background-color: var(--hover-bg);
+}
+
+/* Tags */
+.tag {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    background-color: var(--bg-tertiary);
+    border-radius: 1rem;
+    margin-right: 0.25rem;
+    color: var(--text-secondary);
+}
+
+/* Screenshots */
+.screenshot-container {
+    max-width: 100%;
+    margin: 0.5rem 0;
+}
+
+.screenshot-container img {
+    max-width: 100%;
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+}
+
+/* Links */
+a {
+    color: var(--karate-blue);
+}
+
+a:hover {
+    color: var(--karate-blue);
+    filter: brightness(1.2);
+}
+
+/* Form controls (for filters) */
+.form-control, .form-select {
+    background-color: var(--bg-primary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: var(--bg-primary);
+    border-color: var(--karate-blue);
+    color: var(--text-primary);
+}
+
+/* Header */
+.report-header {
+    background-color: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 1rem 0;
+}
+
+.report-title {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* Footer */
+.report-footer {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    padding: 1rem 0;
+    border-top: 1px solid var(--border-color);
+}

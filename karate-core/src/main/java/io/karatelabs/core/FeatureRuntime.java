@@ -82,19 +82,47 @@ public class FeatureRuntime implements Callable<FeatureResult> {
     public FeatureResult call() {
         result.setStartTime(System.currentTimeMillis());
 
+        // Notify listeners of feature start
+        if (suite != null) {
+            for (ResultListener listener : suite.getResultListeners()) {
+                listener.onFeatureStart(feature);
+            }
+        }
+
         try {
             beforeFeature();
 
             for (Scenario scenario : selectedScenarios()) {
+                // Notify listeners of scenario start
+                if (suite != null) {
+                    for (ResultListener listener : suite.getResultListeners()) {
+                        listener.onScenarioStart(scenario);
+                    }
+                }
+
                 ScenarioRuntime sr = new ScenarioRuntime(this, scenario);
                 ScenarioResult scenarioResult = sr.call();
                 result.addScenarioResult(scenarioResult);
                 lastExecuted = sr;
+
+                // Notify listeners of scenario completion
+                if (suite != null) {
+                    for (ResultListener listener : suite.getResultListeners()) {
+                        listener.onScenarioEnd(scenarioResult);
+                    }
+                }
             }
 
             afterFeature();
         } finally {
             result.setEndTime(System.currentTimeMillis());
+
+            // Notify listeners of feature end
+            if (suite != null) {
+                for (ResultListener listener : suite.getResultListeners()) {
+                    listener.onFeatureEnd(result);
+                }
+            }
         }
 
         return result;

@@ -85,6 +85,7 @@ public final class Runner {
         private final List<String> paths = new ArrayList<>();
         private final List<Feature> features = new ArrayList<>();
         private final List<RuntimeHook> hooks = new ArrayList<>();
+        private final List<ResultListener> resultListeners = new ArrayList<>();
 
         private String env;
         private String tags;
@@ -237,6 +238,26 @@ public final class Runner {
         }
 
         /**
+         * Add a result listener for streaming test results.
+         */
+        public Builder resultListener(ResultListener listener) {
+            if (listener != null) {
+                resultListeners.add(listener);
+            }
+            return this;
+        }
+
+        /**
+         * Add multiple result listeners.
+         */
+        public Builder resultListeners(Collection<ResultListener> values) {
+            if (values != null) {
+                resultListeners.addAll(values);
+            }
+            return this;
+        }
+
+        /**
          * Execute the tests with the specified thread count.
          * This is the terminal operation that runs the tests.
          *
@@ -290,6 +311,11 @@ public final class Runner {
             // Add hooks
             for (RuntimeHook hook : hooks) {
                 suite.hook(hook);
+            }
+
+            // Add result listeners
+            for (ResultListener listener : resultListeners) {
+                suite.resultListener(listener);
             }
 
             return suite;
