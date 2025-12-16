@@ -95,6 +95,7 @@ public final class Runner {
         private boolean dryRun;
         private boolean outputHtmlReport = true;
         private boolean outputJunitXml;
+        private boolean outputCucumberJson;
 
         Builder() {
         }
@@ -210,6 +211,14 @@ public final class Runner {
         }
 
         /**
+         * Enable/disable Cucumber JSON report generation.
+         */
+        public Builder outputCucumberJson(boolean enabled) {
+            this.outputCucumberJson = enabled;
+            return this;
+        }
+
+        /**
          * Enable dry-run mode (parse but don't execute).
          */
         public Builder dryRun(boolean enabled) {
@@ -308,6 +317,7 @@ public final class Runner {
             suite.dryRun(dryRun);
             suite.outputHtmlReport(outputHtmlReport);
             suite.outputJunitXml(outputJunitXml);
+            suite.outputCucumberJson(outputCucumberJson);
 
             // Add hooks
             for (RuntimeHook hook : hooks) {

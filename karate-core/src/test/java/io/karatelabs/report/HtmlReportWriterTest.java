@@ -24,10 +24,12 @@
 package io.karatelabs.report;
 
 import io.karatelabs.core.Console;
+import io.karatelabs.core.HtmlReport;
 import io.karatelabs.core.Runner;
 import io.karatelabs.core.SuiteResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -71,6 +73,9 @@ class HtmlReportWriterTest {
         assertTrue(Files.exists(OUTPUT_DIR.resolve("res/bootstrap.min.css")));
         assertTrue(Files.exists(OUTPUT_DIR.resolve("res/favicon.ico")));
 
+        // Verify NDJSON file was created
+        assertTrue(Files.exists(OUTPUT_DIR.resolve("karate-results.ndjson")));
+
         System.out.println("\n=== HTML Reports Generated ===");
         System.out.println("Open: " + OUTPUT_DIR.toAbsolutePath().resolve("karate-summary.html"));
     }
@@ -86,9 +91,147 @@ class HtmlReportWriterTest {
                 .parallel(1);
 
         assertTrue(Files.exists(outputDir.resolve("karate-summary.html")));
+        assertTrue(Files.exists(outputDir.resolve("karate-results.ndjson")));
 
         System.out.println("\n=== HTML Reports (with env) Generated ===");
         System.out.println("Open: " + outputDir.toAbsolutePath().resolve("karate-summary.html"));
+    }
+
+    @Test
+    void testHtmlContainsInlinedJson(@TempDir Path tempDir) throws Exception {
+        Path feature = tempDir.resolve("test.feature");
+        Files.writeString(feature, """
+            Feature: Inlined JSON Test
+
+            Scenario: Test scenario
+            * def a = 1
+            * match a == 1
+            """);
+
+        Path reportDir = tempDir.resolve("reports");
+
+        Runner.path(feature.toString())
+                .outputDir(reportDir)
+                .outputHtmlReport(true)
+                .parallel(1);
+
+        // Verify HTML contains the JSON data placeholder replacement
+        String summaryHtml = Files.readString(reportDir.resolve("karate-summary.html"));
+        assertTrue(summaryHtml.contains("<script id=\"karate-data\" type=\"application/json\">"));
+        assertTrue(summaryHtml.contains("\"feature_count\""));
+        assertTrue(summaryHtml.contains("x-data=\"reportData()\""));
+
+        // Verify feature page also has inlined JSON
+        Path featuresDir = reportDir.resolve("features");
+        assertTrue(Files.exists(featuresDir));
+        String[] featureFiles = featuresDir.toFile().list();
+        assertNotNull(featureFiles);
+        assertTrue(featureFiles.length > 0);
+
+        String featureHtml = Files.readString(featuresDir.resolve(featureFiles[0]));
+        assertTrue(featureHtml.contains("<script id=\"karate-data\" type=\"application/json\">"));
+        assertTrue(featureHtml.contains("x-data=\"featureData()\""));
+    }
+
+    @Test
+    void testNdjsonFormat(@TempDir Path tempDir) throws Exception {
+        Path feature = tempDir.resolve("test.feature");
+        Files.writeString(feature, """
+            Feature: NDJSON Format Test
+
+            Scenario: First scenario
+            * def a = 1
+
+            Scenario: Second scenario
+            * def b = 2
+            """);
+
+        Path reportDir = tempDir.resolve("reports");
+
+        Runner.path(feature.toString())
+                .outputDir(reportDir)
+                .outputHtmlReport(true)
+                .parallel(1);
+
+        // Verify NDJSON format
+        String ndjson = Files.readString(reportDir.resolve("karate-results.ndjson"));
+        String[] lines = ndjson.trim().split("\n");
+
+        assertEquals(3, lines.length, "Should have 3 lines: suite, feature, suite_end");
+
+        // First line should be suite header
+        assertTrue(lines[0].contains("\"t\":\"suite\""));
+        assertTrue(lines[0].contains("\"version\":\"2.0.0\""));
+
+        // Second line should be feature
+        assertTrue(lines[1].contains("\"t\":\"feature\""));
+        assertTrue(lines[1].contains("\"scenarios\""));
+
+        // Last line should be suite_end
+        assertTrue(lines[2].contains("\"t\":\"suite_end\""));
+        assertTrue(lines[2].contains("\"featuresPassed\""));
+    }
+
+    @Test
+    void testReportAggregation(@TempDir Path tempDir) throws Exception {
+        // Create two feature files and run them separately
+        Path feature1 = tempDir.resolve("feature1.feature");
+        Files.writeString(feature1, """
+            Feature: Aggregation Test 1
+            Scenario: Test 1
+            * def a = 1
+            """);
+
+        Path feature2 = tempDir.resolve("feature2.feature");
+        Files.writeString(feature2, """
+            Feature: Aggregation Test 2
+            Scenario: Test 2
+            * def b = 2
+            """);
+
+        Path run1Dir = tempDir.resolve("run1");
+        Path run2Dir = tempDir.resolve("run2");
+        Path combinedDir = tempDir.resolve("combined");
+
+        // Run features separately
+        Runner.path(feature1.toString())
+                .outputDir(run1Dir)
+                .outputHtmlReport(true)
+                .parallel(1);
+
+        Runner.path(feature2.toString())
+                .outputDir(run2Dir)
+                .outputHtmlReport(true)
+                .parallel(1);
+
+        // Verify both NDJSON files exist
+        assertTrue(Files.exists(run1Dir.resolve("karate-results.ndjson")));
+        assertTrue(Files.exists(run2Dir.resolve("karate-results.ndjson")));
+
+        // Aggregate reports
+        HtmlReport.aggregate()
+                .json(run1Dir.resolve("karate-results.ndjson"))
+                .json(run2Dir.resolve("karate-results.ndjson"))
+                .outputDir(combinedDir)
+                .generate();
+
+        // Verify combined report
+        assertTrue(Files.exists(combinedDir.resolve("karate-summary.html")));
+        assertTrue(Files.exists(combinedDir.resolve("karate-results.ndjson")));
+
+        // Verify the combined NDJSON has both features
+        String combinedNdjson = Files.readString(combinedDir.resolve("karate-results.ndjson"));
+        assertTrue(combinedNdjson.contains("Aggregation Test 1"));
+        assertTrue(combinedNdjson.contains("Aggregation Test 2"));
+
+        // Count feature lines
+        int featureCount = 0;
+        for (String line : combinedNdjson.split("\n")) {
+            if (line.contains("\"t\":\"feature\"")) {
+                featureCount++;
+            }
+        }
+        assertEquals(2, featureCount, "Combined report should have 2 features");
     }
 
 }

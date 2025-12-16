@@ -6,9 +6,10 @@
     <link rel="stylesheet" href="../res/bootstrap.min.css"/>
     <link rel="stylesheet" href="../res/karate-report.css"/>
     <link rel="icon" href="../res/favicon.ico"/>
-    <title th:text="feature.name">Feature</title>
+    <script src="../res/alpine.min.js" defer></script>
+    <title>Feature Report</title>
 </head>
-<body>
+<body x-data="featureData()">
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="../karate-summary.html">
@@ -33,55 +34,95 @@
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="../karate-summary.html">Summary</a></li>
-                <li class="breadcrumb-item active" aria-current="page" th:text="feature.name">Feature</li>
+                <li class="breadcrumb-item active" aria-current="page" x-text="data.name">Feature</li>
             </ol>
         </nav>
 
-        <h1 th:text="feature.name">Feature Name</h1>
-        <p class="text-muted" th:text="feature.uri">path/to/feature</p>
+        <h1 x-text="data.name">Feature Name</h1>
+        <p class="text-muted" x-text="data.path">path/to/feature</p>
 
         <h2 class="mt-4">Scenarios</h2>
-        <div th:each="scenario : feature.elements" class="card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center"
-                 th:classappend="scenario.result.status == 'failed' ? 'bg-danger-subtle' : 'bg-success-subtle'">
-                <span>
-                    <strong th:text="scenario.name">Scenario Name</strong>
-                    <span th:each="tag : scenario.tags" class="badge bg-info ms-1" th:text="tag.name">@tag</span>
-                </span>
-                <span th:if="scenario.result.status == 'passed'" class="badge bg-success">PASSED</span>
-                <span th:if="scenario.result.status == 'failed'" class="badge bg-danger">FAILED</span>
-            </div>
-            <div class="card-body">
-                <table class="table table-sm mb-0">
-                    <tbody>
-                        <tr th:each="step : scenario.steps" th:classappend="step.result.status == 'failed' ? 'table-danger' : ''">
-                            <td style="width: 100px;">
-                                <code th:text="step.keyword">Given</code>
-                            </td>
-                            <td th:text="step.name">step text</td>
-                            <td style="width: 120px;" class="text-end text-muted small">
-                                <span th:text="(step.result.duration_nanos / 1000000.0) + ' ms'">0 ms</span>
-                            </td>
-                            <td style="width: 40px;" class="text-center">
-                                <span th:if="step.result.status == 'passed'" class="text-success">&#10003;</span>
-                                <span th:if="step.result.status == 'failed'" class="text-danger">&#10007;</span>
-                                <span th:if="step.result.status == 'skipped'" class="text-muted">&#8212;</span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div th:if="scenario.result.error_message" class="alert alert-danger mt-3 mb-0">
-                    <strong>Error:</strong>
-                    <pre class="mb-0 mt-2 small" th:text="scenario.result.error_message">Error message</pre>
+        <template x-for="(scenario, idx) in data.scenarios" :key="idx">
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center"
+                     :class="scenario.passed ? 'bg-success-subtle' : 'bg-danger-subtle'">
+                    <span>
+                        <strong x-text="scenario.name">Scenario Name</strong>
+                        <template x-for="tag in scenario.tags || []" :key="tag">
+                            <span class="badge bg-info ms-1" x-text="tag">@tag</span>
+                        </template>
+                    </span>
+                    <span x-show="scenario.passed" class="badge bg-success">PASSED</span>
+                    <span x-show="!scenario.passed" class="badge bg-danger">FAILED</span>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            <template x-for="(step, stepIdx) in scenario.steps" :key="stepIdx">
+                                <tr :class="step.status === 'failed' ? 'table-danger' : ''">
+                                    <td style="width: 40px;" class="text-center">
+                                        <span x-show="step.status === 'passed'" class="text-success">&#10003;</span>
+                                        <span x-show="step.status === 'failed'" class="text-danger">&#10007;</span>
+                                        <span x-show="step.status === 'skipped'" class="text-muted">&#8212;</span>
+                                    </td>
+                                    <td>
+                                        <code x-text="step.text">step text</code>
+                                    </td>
+                                    <td style="width: 100px;" class="text-end text-muted small">
+                                        <span x-text="step.ms + ' ms'">0 ms</span>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+
+                    <template x-if="scenario.error">
+                        <div class="alert alert-danger mt-3 mb-0">
+                            <strong>Error:</strong>
+                            <pre class="mb-0 mt-2 small" x-text="scenario.error">Error message</pre>
+                        </div>
+                    </template>
+
+                    <template x-for="(step, stepIdx) in scenario.steps" :key="'log-' + stepIdx">
+                        <template x-if="step.logs">
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-outline-secondary" type="button"
+                                        @click="step.showLogs = !step.showLogs">
+                                    <span x-text="step.showLogs ? 'Hide' : 'Show'">Show</span> Logs
+                                </button>
+                                <pre x-show="step.showLogs" class="mt-2 p-2 bg-light border rounded small" x-text="step.logs"></pre>
+                            </div>
+                        </template>
+                    </template>
                 </div>
             </div>
-        </div>
+        </template>
     </div>
 
     <footer class="bg-light text-center text-muted py-3 mt-4">
-        <small>Generated by Karate <span th:text="karateVersion">2.0</span></small>
+        <small>Generated by Karate 2.0</small>
     </footer>
 
     <script src="../res/bootstrap.bundle.min.js"></script>
+    <script src="../res/karate-report.js"></script>
+
+    <script id="karate-data" type="application/json">/* KARATE_DATA */</script>
+    <script>
+        function featureData() {
+            const jsonElement = document.getElementById('karate-data');
+            const data = JSON.parse(jsonElement.textContent);
+            // Initialize showLogs for each step
+            if (data.scenarios) {
+                data.scenarios.forEach(s => {
+                    if (s.steps) {
+                        s.steps.forEach(step => {
+                            step.showLogs = false;
+                        });
+                    }
+                });
+            }
+            return { data };
+        }
+    </script>
 </body>
 </html>

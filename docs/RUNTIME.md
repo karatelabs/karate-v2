@@ -43,6 +43,10 @@ Suite → FeatureRuntime → ScenarioRuntime → StepExecutor
 | `StepExecutor` | `io.karatelabs.core.StepExecutor` | Keyword-based step dispatch |
 | `KarateJs` | `io.karatelabs.core.KarateJs` | JS engine, HTTP client, karate.* bridge |
 | `JunitXmlWriter` | `io.karatelabs.core.JunitXmlWriter` | JUnit XML report generation for CI/CD |
+| `CucumberJsonWriter` | `io.karatelabs.core.CucumberJsonWriter` | Cucumber JSON report for third-party tools |
+| `HtmlReportWriter` | `io.karatelabs.core.HtmlReportWriter` | HTML report generation with inlined JSON |
+| `NdjsonReportListener` | `io.karatelabs.core.NdjsonReportListener` | NDJSON streaming during test execution |
+| `HtmlReport` | `io.karatelabs.core.HtmlReport` | Report aggregation API |
 | `ResultListener` | `io.karatelabs.core.ResultListener` | Interface for streaming test results |
 
 ### Step Keywords (All Implemented)
@@ -72,7 +76,8 @@ Suite → FeatureRuntime → ScenarioRuntime → StepExecutor
 SuiteResult result = Runner.path("src/test/resources")
     .tags("@smoke", "~@slow")
     .karateEnv("dev")
-    .outputJunitXml(true)  // generate JUnit XML for CI
+    .outputJunitXml(true)       // generate JUnit XML for CI
+    .outputCucumberJson(true)   // generate Cucumber JSON for Allure, etc.
     .parallel(5);
 ```
 
@@ -100,6 +105,7 @@ Uses Java 21+ virtual threads. Basic parallel execution is implemented in `Suite
 
 - Karate JSON report (`karate-summary.json`)
 - JUnit XML report (`karate-junit.xml`) for CI/CD integration
+- Cucumber JSON report (`cucumber.json`) for third-party tools (Allure, ReportPortal, etc.)
 - Console output with ANSI colors (`io.karatelabs.core.Console`)
 
 #### Report Architecture
@@ -321,17 +327,43 @@ Runner.path("features/")
 
 ## Not Yet Implemented
 
-### Priority 1: HTML Reports
+### ~~Priority 1: HTML Reports~~ ✅ IMPLEMENTED
 
-> **Note:** Initial HTML report implementation exists (`HtmlReportGenerator`, templates) but predates the single-file architecture described below. This work will need to be **rearchitected** to use the new approach (inlined JSON + Alpine.js rendering + execution sequence UX).
+HTML report generation is now available with the new single-file architecture:
 
-*See detailed spec below in [HTML Reports](#html-reports) section.*
+```java
+Runner.path("features/")
+    .outputHtmlReport(true)     // default: true
+    .parallel(5);
+```
+
+**Key features:**
+- **NDJSON streaming** - Results streamed to `karate-results.ndjson` during execution
+- **Inlined JSON + Alpine.js** - No server-side template rendering; JSON inlined in HTML, rendered client-side
+- **Report aggregation** - Merge reports from multiple test runs:
+
+```java
+HtmlReport.aggregate()
+    .json("target/run1/karate-results.ndjson")
+    .json("target/run2/karate-results.ndjson")
+    .outputDir("target/combined")
+    .generate();
+```
+
+See `io.karatelabs.core.NdjsonReportListener`, `io.karatelabs.core.HtmlReportWriter`, and `io.karatelabs.core.HtmlReport` for implementation.
 
 ---
 
-### Priority 2: Cucumber JSON Format
+### ~~Priority 2: Cucumber JSON Format~~ ✅ IMPLEMENTED
 
-*See detailed spec below in [Cucumber JSON Format](#cucumber-json-format-1) section.*
+Cucumber JSON report generation is now available via:
+```java
+Runner.path("features/")
+    .outputCucumberJson(true)     // generates cucumber.json
+    .parallel(5);
+```
+
+See `io.karatelabs.core.CucumberJsonWriter` for implementation.
 
 ---
 
@@ -608,7 +640,9 @@ target/karate-reports/
 
 ---
 
-### Cucumber JSON Format
+### Cucumber JSON Format ✅
+
+> **Status:** Implemented in `io.karatelabs.core.CucumberJsonWriter`
 
 Standard Cucumber JSON for third-party tool integration (Allure, ReportPortal, etc.).
 
@@ -893,5 +927,8 @@ Tests are in `karate-core/src/test/java/io/karatelabs/core/`:
 | `ResultListenerTest` | Result streaming |
 | `RunnerTest` | Runner API |
 | `JunitXmlWriterTest` | JUnit XML report generation |
+| `CucumberJsonWriterTest` | Cucumber JSON report generation |
+| `NdjsonReportListenerTest` | NDJSON streaming |
+| `HtmlReportWriterTest` | HTML report generation and aggregation |
 
 Test utilities in `TestUtils.java` and `InMemoryHttpClient.java`.
