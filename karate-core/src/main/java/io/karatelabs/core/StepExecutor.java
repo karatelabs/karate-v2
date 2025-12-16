@@ -34,6 +34,10 @@ import io.karatelabs.log.LogContext;
 import io.karatelabs.match.Match;
 import io.karatelabs.match.Result;
 
+import java.io.File;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -536,29 +540,211 @@ public class StepExecutor {
         }
     }
 
+    /**
+     * Handles: multipart file myFile = { read: 'file.txt', filename: 'test.txt', contentType: 'text/plain' }
+     * Or shorthand: multipart file myFile = read('file.txt')
+     */
+    @SuppressWarnings("unchecked")
     private void executeMultipartFile(Step step) {
-        // TODO: implement multipart file upload
-        throw new RuntimeException("multipart file not yet implemented");
+        String text = step.getText();
+        int eqIndex = findAssignmentOperator(text);
+        if (eqIndex < 0) {
+            throw new RuntimeException("multipart file requires '=' assignment: " + text);
+        }
+        String name = text.substring(0, eqIndex).trim();
+        String expr = text.substring(eqIndex + 1).trim();
+
+        Object value = runtime.eval(expr);
+
+        Map<String, Object> multipartMap = new HashMap<>();
+        multipartMap.put("name", name);
+
+        if (value instanceof Map) {
+            Map<String, Object> fileMap = (Map<String, Object>) value;
+            // Handle { read: 'path', filename: 'name', contentType: 'type' }
+            Object readPath = fileMap.get("read");
+            if (readPath != null) {
+                Resource resource = resolveResource(readPath.toString());
+                File file = getFileFromResource(resource);
+                if (file != null) {
+                    multipartMap.put("value", file);
+                } else {
+                    // For classpath or in-memory resources, read bytes
+                    try (InputStream is = resource.getStream()) {
+                        byte[] bytes = is.readAllBytes();
+                        multipartMap.put("value", bytes);
+                    } catch (Exception e) {
+                        throw new RuntimeException("failed to read file: " + readPath, e);
+                    }
+                }
+            } else if (fileMap.get("value") != null) {
+                multipartMap.put("value", fileMap.get("value"));
+            }
+            // Copy other properties
+            if (fileMap.get("filename") != null) {
+                multipartMap.put("filename", fileMap.get("filename"));
+            }
+            if (fileMap.get("contentType") != null) {
+                multipartMap.put("contentType", fileMap.get("contentType"));
+            }
+            if (fileMap.get("charset") != null) {
+                multipartMap.put("charset", fileMap.get("charset"));
+            }
+            if (fileMap.get("transferEncoding") != null) {
+                multipartMap.put("transferEncoding", fileMap.get("transferEncoding"));
+            }
+        } else if (value instanceof String) {
+            // Direct string value - could be file path or content
+            multipartMap.put("value", value);
+        } else if (value instanceof byte[]) {
+            multipartMap.put("value", value);
+        } else {
+            multipartMap.put("value", value);
+        }
+
+        http().multiPart(multipartMap);
     }
 
+    /**
+     * Handles: multipart field name = 'value'
+     */
     private void executeMultipartField(Step step) {
-        // TODO: implement multipart field
-        throw new RuntimeException("multipart field not yet implemented");
+        String text = step.getText();
+        int eqIndex = findAssignmentOperator(text);
+        if (eqIndex < 0) {
+            throw new RuntimeException("multipart field requires '=' assignment: " + text);
+        }
+        String name = text.substring(0, eqIndex).trim();
+        String expr = text.substring(eqIndex + 1).trim();
+
+        Object value = runtime.eval(expr);
+
+        Map<String, Object> multipartMap = new HashMap<>();
+        multipartMap.put("name", name);
+        multipartMap.put("value", value);
+
+        http().multiPart(multipartMap);
     }
 
+    /**
+     * Handles: multipart fields { name: 'value', other: 'data' }
+     */
+    @SuppressWarnings("unchecked")
     private void executeMultipartFields(Step step) {
-        // TODO: implement multipart fields
-        throw new RuntimeException("multipart fields not yet implemented");
+        Object value = runtime.eval(step.getText());
+        if (value instanceof Map) {
+            Map<String, Object> fields = (Map<String, Object>) value;
+            for (Map.Entry<String, Object> entry : fields.entrySet()) {
+                Map<String, Object> multipartMap = new HashMap<>();
+                multipartMap.put("name", entry.getKey());
+                multipartMap.put("value", entry.getValue());
+                http().multiPart(multipartMap);
+            }
+        } else {
+            throw new RuntimeException("multipart fields expects a map: " + step.getText());
+        }
     }
 
+    /**
+     * Handles: multipart files [{ read: 'file1.txt', name: 'file1' }, { read: 'file2.txt', name: 'file2' }]
+     */
+    @SuppressWarnings("unchecked")
     private void executeMultipartFiles(Step step) {
-        // TODO: implement multipart files
-        throw new RuntimeException("multipart files not yet implemented");
+        Object value = runtime.eval(step.getText());
+        if (value instanceof List) {
+            List<Object> files = (List<Object>) value;
+            for (Object item : files) {
+                if (item instanceof Map) {
+                    Map<String, Object> fileMap = (Map<String, Object>) item;
+                    Map<String, Object> multipartMap = new HashMap<>();
+
+                    // Name is required
+                    String name = (String) fileMap.get("name");
+                    if (name == null) {
+                        throw new RuntimeException("multipart files entry requires 'name': " + item);
+                    }
+                    multipartMap.put("name", name);
+
+                    // Handle file read
+                    Object readPath = fileMap.get("read");
+                    if (readPath != null) {
+                        Resource resource = resolveResource(readPath.toString());
+                        File file = getFileFromResource(resource);
+                        if (file != null) {
+                            multipartMap.put("value", file);
+                        } else {
+                            try (InputStream is = resource.getStream()) {
+                                byte[] bytes = is.readAllBytes();
+                                multipartMap.put("value", bytes);
+                            } catch (Exception e) {
+                                throw new RuntimeException("failed to read file: " + readPath, e);
+                            }
+                        }
+                    } else if (fileMap.get("value") != null) {
+                        multipartMap.put("value", fileMap.get("value"));
+                    }
+
+                    // Copy other properties
+                    if (fileMap.get("filename") != null) {
+                        multipartMap.put("filename", fileMap.get("filename"));
+                    }
+                    if (fileMap.get("contentType") != null) {
+                        multipartMap.put("contentType", fileMap.get("contentType"));
+                    }
+
+                    http().multiPart(multipartMap);
+                } else {
+                    throw new RuntimeException("multipart files entry must be a map: " + item);
+                }
+            }
+        } else {
+            throw new RuntimeException("multipart files expects a list: " + step.getText());
+        }
     }
 
+    /**
+     * Handles: multipart entity value
+     * For sending a single entity as the multipart body (advanced use case)
+     */
+    @SuppressWarnings("unchecked")
     private void executeMultipartEntity(Step step) {
-        // TODO: implement multipart entity
-        throw new RuntimeException("multipart entity not yet implemented");
+        Object value;
+        if (step.getDocString() != null) {
+            value = runtime.eval(step.getDocString());
+        } else {
+            value = runtime.eval(step.getText());
+        }
+
+        if (value instanceof Map) {
+            // Single entity map with name, value, etc.
+            http().multiPart((Map<String, Object>) value);
+        } else {
+            // Wrap in a default map
+            Map<String, Object> multipartMap = new HashMap<>();
+            multipartMap.put("name", "file");
+            multipartMap.put("value", value);
+            http().multiPart(multipartMap);
+        }
+    }
+
+    // ========== Multipart Helpers ==========
+
+    private Resource resolveResource(String path) {
+        FeatureRuntime fr = runtime.getFeatureRuntime();
+        if (fr != null) {
+            return fr.resolve(path);
+        }
+        return Resource.path(path);
+    }
+
+    private File getFileFromResource(Resource resource) {
+        if (resource.isLocalFile()) {
+            Path path = resource.getPath();
+            if (path != null && Files.exists(path)) {
+                return path.toFile();
+            }
+        }
+        return null;
     }
 
     // ========== Control Flow ==========

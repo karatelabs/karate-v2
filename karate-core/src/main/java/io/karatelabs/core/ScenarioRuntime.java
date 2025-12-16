@@ -260,19 +260,25 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         configSettings.put(key, value);
         // Apply configuration to relevant components
         switch (key) {
-            case "ssl" -> {
-                // SSL configuration
+            case "ssl", "proxy", "readTimeout", "connectTimeout", "followRedirects" -> {
+                // HTTP client configuration - delegate to client
+                karate.client.config(key, value);
             }
-            case "followRedirects" -> {
-                // Redirect configuration
+            case "headers" -> {
+                // Set default headers on HTTP request builder
+                if (value instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> headers = (Map<String, Object>) value;
+                    karate.http.headers(headers);
+                }
             }
-            case "connectTimeout" -> {
-                // Connection timeout
+            case "charset" -> {
+                // Set default charset for HTTP requests
+                if (value instanceof String) {
+                    karate.http.charset((String) value);
+                }
             }
-            case "readTimeout" -> {
-                // Read timeout
-            }
-            // Add more configure options as needed
+            // Additional configure options can be added as needed
         }
     }
 
