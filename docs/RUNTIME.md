@@ -949,10 +949,19 @@ public class StepExecutor {
 
 ### Phase 4: Parallel Execution
 
-1. Virtual thread executor
-2. Thread-safe result collection
-3. `@parallel=false` tag support
-4. Configurable thread count
+1. ✅ Virtual thread executor (basic implementation exists)
+2. ✅ Thread-safe result collection
+3. `@parallel=false` tag support (intra-feature)
+4. `@lock=<name>` tag for cross-feature mutual exclusion
+5. `@lock=*` special case for exclusive execution
+6. Stuck thread detection and timeouts
+7. Result streaming for external reporters (ReportPortal, Allure)
+8. Multiple suite parallel execution support
+9. Environment variable snapshotting per scenario
+
+#### Phase 4 Detailed Design
+
+See **Parallel Execution Design** section below for full specification.
 
 ### Phase 5: Reporting
 
@@ -1098,6 +1107,870 @@ failed features:
     - Login with invalid credentials
       match failed: EQUALS
 ```
+
+---
+
+## Parallel Execution Design
+
+### Overview
+
+Karate v2 uses Java 21+ virtual threads for lightweight, high-throughput parallel execution. The design prioritizes:
+
+1. **Correctness** - Thread-safe result collection, proper isolation
+2. **Observability** - Status reporting, stuck thread detection
+3. **Flexibility** - Lock system for resource contention, exclusive execution
+4. **Integration** - Result streaming for external reporting systems
+
+### Lock System: `@lock=<name>`
+
+The `@lock` tag provides mutual exclusion for scenarios that cannot run in parallel due to shared resources.
+
+#### Basic Lock
+
+```gherkin
+# Scenarios with same lock run sequentially (across all features)
+@lock=database
+Feature: User tests
+  Scenario: Create user      # holds "database" lock
+  Scenario: Delete user      # waits for "database" lock
+
+# Different feature, same lock
+@lock=database
+Feature: Order tests
+  Scenario: Create order     # also waits for "database" lock
+
+# No lock - runs in parallel
+Feature: API validation
+  Scenario: Validate schema  # runs freely in parallel
+```
+
+#### Scenario-Level Lock
+
+```gherkin
+Feature: Mixed tests
+  Scenario: Parallel test 1
+    # no lock - parallel
+
+  @lock=redis
+  Scenario: Cache test
+    # holds "redis" lock
+
+  @lock=database
+  Scenario: DB test
+    # holds "database" lock (can run parallel to redis tests)
+
+  Scenario: Parallel test 2
+    # no lock - parallel
+```
+
+#### Exclusive Execution: `@lock=*`
+
+The special `@lock=*` tag means "lock everything" - the scenario runs completely alone:
+
+```gherkin
+Feature: System tests
+
+  Scenario: Normal test
+    # runs in parallel
+
+  @lock=*
+  Scenario: Restart server
+    # 1. Waits for ALL running scenarios to complete
+    # 2. Runs alone (no other scenarios start)
+    # 3. Parallel execution resumes after completion
+
+  Scenario: Another test
+    # runs in parallel (after exclusive scenario completes)
+```
+
+**Use cases for `@lock=*`:**
+- Tests that restart services
+- Tests that modify global configuration
+- Tests that clear all caches/state
+- Tests with unpredictable global side effects
+
+#### Intra-Feature Sequential: `@parallel=false`
+
+The existing `@parallel=false` tag on a feature ensures scenarios within that feature run sequentially:
+
+```gherkin
+@parallel=false
+Feature: Sequential feature
+  Scenario: First    # runs first
+  Scenario: Second   # runs after First completes
+  Scenario: Third    # runs after Second completes
+```
+
+**Note:** `@parallel=false` only affects scenarios *within* the feature. Other features can still run in parallel. For cross-feature coordination, use `@lock=<name>`.
+
+### Implementation
+
+#### Lock Registry
+
+```java
+public class LockRegistry {
+    private final Map<String, ReentrantLock> locks = new ConcurrentHashMap<>();
+    private final ReentrantReadWriteLock globalLock = new ReentrantReadWriteLock();
+    private final AtomicInteger activeScenarios = new AtomicInteger(0);
+    private final Condition allIdle = globalLock.writeLock().newCondition();
+
+    public void acquireLock(String lockName) {
+        if ("*".equals(lockName)) {
+            acquireExclusive();
+        } else {
+            globalLock.readLock().lock(); // Prevent exclusive while we run
+            locks.computeIfAbsent(lockName, k -> new ReentrantLock()).lock();
+        }
+        activeScenarios.incrementAndGet();
+    }
+
+    public void releaseLock(String lockName) {
+        activeScenarios.decrementAndGet();
+        if ("*".equals(lockName)) {
+            releaseExclusive();
+        } else {
+            locks.get(lockName).unlock();
+            globalLock.readLock().unlock();
+        }
+        signalIfIdle();
+    }
+
+    private void acquireExclusive() {
+        globalLock.writeLock().lock();
+        // Wait for all active scenarios to complete
+        while (activeScenarios.get() > 0) {
+            allIdle.await();
+        }
+    }
+
+    private void releaseExclusive() {
+        globalLock.writeLock().unlock();
+    }
+}
+```
+
+#### Scenario Execution with Locks
+
+```java
+public void runScenario(Scenario scenario) {
+    String lockName = getLockTag(scenario); // null if no @lock
+
+    if (lockName != null) {
+        lockRegistry.acquireLock(lockName);
+    }
+
+    try {
+        executeScenario(scenario);
+    } finally {
+        if (lockName != null) {
+            lockRegistry.releaseLock(lockName);
+        }
+    }
+}
+```
+
+### Stuck Thread Detection
+
+To prevent stuck threads from blocking test runs indefinitely:
+
+```java
+public class ScenarioExecutor {
+    private final Duration scenarioTimeout;
+    private final ScheduledExecutorService watchdog;
+
+    public ScenarioResult execute(Scenario scenario, Duration timeout) {
+        Future<ScenarioResult> future = executor.submit(() -> runScenario(scenario));
+
+        try {
+            return future.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            return ScenarioResult.timeout(scenario, timeout);
+        }
+    }
+}
+```
+
+**Configuration:**
+```java
+Runner.path("features/")
+    .scenarioTimeout(Duration.ofMinutes(5))  // per-scenario timeout
+    .suiteTimeout(Duration.ofHours(1))       // overall suite timeout
+    .parallel(10);
+```
+
+### Result Streaming
+
+For long-running suites, results should be streamed to external systems in real-time rather than collected at the end.
+
+#### ResultListener Interface
+
+```java
+public interface ResultListener {
+
+    void onSuiteStart(Suite suite);
+    void onSuiteEnd(SuiteResult result);
+
+    void onFeatureStart(Feature feature);
+    void onFeatureEnd(FeatureResult result);
+
+    void onScenarioStart(Scenario scenario);
+    void onScenarioEnd(ScenarioResult result);
+
+    void onStepStart(Step step);
+    void onStepEnd(StepResult result);
+}
+```
+
+#### Integration with External Reporters
+
+```java
+// ReportPortal integration
+Runner.path("features/")
+    .resultListener(new ReportPortalListener(rpClient))
+    .parallel(10);
+
+// Allure integration
+Runner.path("features/")
+    .resultListener(new AllureListener())
+    .parallel(10);
+
+// Multiple listeners
+Runner.path("features/")
+    .resultListener(new ReportPortalListener(rpClient))
+    .resultListener(new AllureListener())
+    .resultListener(new SlackNotifier())
+    .parallel(10);
+```
+
+#### Built-in Listeners
+
+```java
+// Console progress (default)
+new ConsoleProgressListener()    // prints feature summaries as they complete
+
+// JSON streaming
+new JsonStreamListener(outputPath)  // writes results incrementally
+
+// Webhook
+new WebhookListener(url)  // POSTs results to endpoint
+```
+
+### Multiple Suite Execution
+
+For teams that need to run multiple suites in parallel (e.g., different test types):
+
+```java
+// Run multiple suites concurrently
+List<SuiteResult> results = Runner.suites()
+    .add(Runner.path("src/test/api/").tags("@smoke"))
+    .add(Runner.path("src/test/ui/").tags("@smoke"))
+    .add(Runner.path("src/test/integration/"))
+    .parallel(3)  // 3 suites in parallel
+    .run();
+
+// Each suite can have its own thread count
+List<SuiteResult> results = Runner.suites()
+    .add(Runner.path("src/test/api/").parallel(10))      // 10 threads for API
+    .add(Runner.path("src/test/ui/").parallel(2))        // 2 threads for UI
+    .add(Runner.path("src/test/integration/").parallel(5))
+    .run();
+```
+
+### Environment Isolation (Suite-Level)
+
+When running multiple suites in parallel, each suite needs its own isolated view of environment variables. This is critical because:
+
+1. Suite A's `karate-config.js` reads `DB_PASSWORD` from env to derive secrets
+2. Suite B runs in parallel, needs a *different* `DB_PASSWORD`
+3. If Suite B sets the env var globally, Suite A (which may not have read config yet) gets the wrong value
+
+**Solution:** Snapshot environment at suite creation time.
+
+```java
+public class Suite {
+
+    // Snapshot taken at Suite creation - immutable view for this suite
+    private final Map<String, String> envSnapshot;
+    private final Properties propsSnapshot;
+
+    private Suite() {
+        // Capture environment at suite creation time
+        this.envSnapshot = Map.copyOf(System.getenv());
+        this.propsSnapshot = new Properties();
+        this.propsSnapshot.putAll(System.getProperties());
+    }
+
+    /**
+     * Get environment variable from this suite's snapshot.
+     * Use this instead of System.getenv() in config evaluation.
+     */
+    public String getEnvVar(String name) {
+        return envSnapshot.get(name);
+    }
+
+    public Map<String, String> getEnvSnapshot() {
+        return envSnapshot;
+    }
+
+    public String getSystemProperty(String name) {
+        return propsSnapshot.getProperty(name);
+    }
+}
+```
+
+**Usage in karate-config.js evaluation:**
+
+```java
+public class ConfigKarateBridge implements SimpleObject {
+    private final Suite suite;
+
+    @Override
+    public Object jsGet(String key) {
+        if ("env".equals(key)) {
+            return suite.getEnv();
+        }
+        // Config can access env vars through suite's snapshot
+        if ("properties".equals(key)) {
+            return new EnvBridge(suite);
+        }
+        return null;
+    }
+}
+
+// In karate-config.js:
+// var dbPassword = karate.properties['DB_PASSWORD']  // reads from suite's snapshot
+// var apiKey = java.lang.System.getenv('API_KEY')    // AVOID - reads global state
+```
+
+**Multiple suite execution with different env:**
+
+```java
+// Each suite gets its own snapshot at creation time
+Runner.suites()
+    .add(Runner.path("src/test/api/"))      // snapshot taken here
+    .add(Runner.path("src/test/ui/"))       // separate snapshot taken here
+    .add(Runner.path("src/test/integration/"))
+    .parallel(3)
+    .run();
+
+// Or explicitly set env vars per suite (overrides snapshot)
+Runner.suites()
+    .add(Runner.path("src/test/api/").env("dev").envVar("DB_HOST", "dev-db"))
+    .add(Runner.path("src/test/ui/").env("staging").envVar("DB_HOST", "staging-db"))
+    .parallel(2)
+    .run();
+```
+
+**Key principle:** Suites never modify `System.getenv()` or `System.setProperty()` - they work with their isolated snapshots. This prevents race conditions when multiple suites start concurrently.
+
+### Configuration Loading Hierarchy
+
+Configuration is loaded in this order (later overrides earlier):
+
+1. **`karate-base.js`** - from `classpath:karate-base.js` (can be packaged in JAR)
+2. **`karate-config.js`** - from configDir (defaults to classpath root)
+3. **`karate-config-{env}.js`** - env-specific override
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  karate-base.js (from JAR - shared across projects)             │
+│  ↓ overridden by                                                │
+│  karate-config.js (project-specific)                            │
+│  ↓ overridden by                                                │
+│  karate-config-dev.js (env-specific when karate.env='dev')      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Use case for `karate-base.js`:**
+- Reusable config packaged in a JAR (e.g., company shared test utilities)
+- Teams depend on the JAR, get common config automatically
+- Project's `karate-config.js` can extend/override as needed
+
+```java
+// Company shared testing JAR contains:
+// src/main/resources/karate-base.js
+function fn() {
+  return {
+    authUrl: 'https://auth.company.com',
+    commonHeaders: { 'X-Company-Id': 'test' }
+  };
+}
+fn();
+
+// Project's karate-config.js can override:
+function fn() {
+  var base = karate.callSingle('classpath:karate-base.js');
+  base.apiUrl = 'http://localhost:8080'; // project-specific
+  return base;
+}
+fn();
+```
+
+**Implementation status:**
+- ✅ `karate-config.js` loading
+- ✅ `karate-config-{env}.js` loading
+- ❌ `karate-base.js` loading (TODO)
+
+### Feature File Discovery
+
+Karate needs to discover `.feature` files from various sources:
+
+1. **File system directories** - walk recursively, find `*.feature`
+2. **Classpath directories** - scan classpath (including inside JARs)
+3. **Single feature files** - direct path to a `.feature` file
+
+**v1 approach:** Used ClassGraph library for classpath scanning:
+```java
+// v1 used ClassGraph for JAR/classpath scanning
+ScanResult scanResult = new ClassGraph().acceptPaths(searchPaths).scan();
+ResourceList resources = scanResult.getResourcesWithExtension(".feature");
+```
+
+**v2 current status:**
+- ✅ File system directory scanning (`File.listFiles()` recursively)
+- ✅ Single feature file loading
+- ❌ Classpath scanning (TODO)
+- ❌ JAR scanning (TODO)
+
+**Required API:**
+```java
+// File system (works today)
+Runner.path("src/test/resources/features/")
+
+// Classpath (TODO)
+Runner.path("classpath:features/")
+
+// JAR (TODO - should work with classpath: when feature is in JAR)
+Runner.path("classpath:com/mycompany/tests/")
+```
+
+**Implementation options:**
+
+1. **ClassGraph** (like v1) - proven, handles edge cases, but adds dependency
+2. **Custom implementation** - use `ClassLoader.getResources()` + JAR scanning
+3. **Java NIO FileSystem** - use `FileSystems.newFileSystem()` for JARs
+
+**Recommendation:** Start with Java NIO approach (already partially implemented in `Resource.urlToPath()`), fall back to ClassGraph if edge cases arise.
+
+```java
+// Proposed implementation sketch
+public static List<Resource> findFeatures(String path) {
+    if (path.startsWith("classpath:")) {
+        return scanClasspath(path.substring(10));
+    } else {
+        return scanFileSystem(Path.of(path));
+    }
+}
+
+private static List<Resource> scanClasspath(String packagePath) {
+    List<Resource> features = new ArrayList<>();
+    Enumeration<URL> urls = ClassLoader.getSystemResources(packagePath);
+
+    while (urls.hasMoreElements()) {
+        URL url = urls.nextElement();
+        if ("jar".equals(url.getProtocol())) {
+            // Scan inside JAR using NIO FileSystem
+            features.addAll(scanJar(url, packagePath));
+        } else {
+            // Regular file system
+            features.addAll(scanFileSystem(Path.of(url.toURI())));
+        }
+    }
+    return features;
+}
+```
+
+**Required tests:**
+
+| Test | Description |
+|------|-------------|
+| `FeatureDiscoveryTest.testFileSystemDirectory` | Finds features in directory |
+| `FeatureDiscoveryTest.testClasspathDirectory` | Finds features from classpath |
+| `FeatureDiscoveryTest.testFeaturesInJar` | Finds features inside JAR file |
+| `FeatureDiscoveryTest.testNestedDirectories` | Recursive scanning |
+| `FeatureDiscoveryTest.testMixedSources` | File + classpath combined |
+
+#### Test Strategy for Config
+
+Tests use `@TempDir` and `.configPath()` to point to specific config files:
+
+```java
+@TempDir
+Path tempDir;
+
+@Test
+void testWithConfig() throws Exception {
+    // Create config in temp dir
+    Path configFile = tempDir.resolve("karate-config.js");
+    Files.writeString(configFile, """
+        ({ baseUrl: 'http://test', timeout: 5000 })
+        """);
+
+    // Create feature file
+    Path featureFile = tempDir.resolve("test.feature");
+    Files.writeString(featureFile, """
+        Feature: Test
+        Scenario: Use config
+        * match baseUrl == 'http://test'
+        """);
+
+    // Run with explicit config path
+    Suite suite = Suite.of(featureFile.toString())
+            .configPath(configFile.toString())
+            .writeReport(false);
+    SuiteResult result = suite.run();
+
+    assertTrue(result.isPassed());
+}
+```
+
+This approach:
+- Isolates tests from each other (each gets own temp dir)
+- Doesn't require classpath manipulation
+- Allows precise control over config content
+
+### Status Communication
+
+For external monitoring systems, expose execution status:
+
+#### JMX Monitoring (Optional)
+
+```java
+@MXBean
+public interface SuiteStatusMXBean {
+    int getTotalScenarios();
+    int getCompletedScenarios();
+    int getRunningScenarios();
+    int getFailedScenarios();
+    List<String> getRunningScenarioNames();
+    long getElapsedTimeMillis();
+}
+```
+
+#### Status File
+
+```java
+// Write periodic status to file for external tools
+Runner.path("features/")
+    .statusFile(Path.of("target/karate-status.json"))
+    .statusInterval(Duration.ofSeconds(5))
+    .parallel(10);
+```
+
+**Status file format:**
+```json
+{
+  "status": "running",
+  "startTime": "2025-01-15T10:30:00Z",
+  "elapsed": 45000,
+  "scenarios": {
+    "total": 150,
+    "completed": 45,
+    "running": 10,
+    "passed": 40,
+    "failed": 5,
+    "pending": 95
+  },
+  "activeScenarios": [
+    {"feature": "users.feature", "scenario": "Create user", "elapsed": 1200},
+    {"feature": "orders.feature", "scenario": "Process order", "elapsed": 3400}
+  ],
+  "recentFailures": [
+    {"feature": "auth.feature", "scenario": "Invalid login", "error": "match failed"}
+  ]
+}
+```
+
+### Summary: Lock Tag Behavior
+
+| Tag | Scope | Behavior |
+|-----|-------|----------|
+| `@lock=foo` | Cross-feature | Mutual exclusion with other `@lock=foo` scenarios |
+| `@lock=*` | Global | Waits for all scenarios, runs exclusively |
+| `@parallel=false` | Intra-feature | Scenarios in this feature run sequentially |
+| (no tag) | Default | Runs in parallel with available threads |
+
+---
+
+## Retry System
+
+### Overview
+
+Failed scenarios can be automatically retried at the end of the suite. This handles flaky tests (network issues, timing problems) without manual intervention.
+
+### `@retry` Tag
+
+```gherkin
+Feature: Flaky API tests
+
+  @retry
+  Scenario: Call external service
+    # If this fails, it will be retried once at end of suite
+    * url 'https://flaky-api.example.com'
+    * method get
+    * status 200
+
+  Scenario: Stable test
+    # No retry - fails immediately
+```
+
+**Behavior:**
+- `@retry` - retry once at end of suite (current implementation)
+- Future: `@retry=3` for multiple retries
+- Retry is a **fresh run** - scenario executes from scratch (including Background)
+- HTTP-level retry (e.g., `retry until`) is separate and happens inline
+
+**Inheritance:**
+```gherkin
+@retry
+Feature: All scenarios in this feature get retry
+
+  Scenario: Test A    # inherits @retry
+  Scenario: Test B    # inherits @retry
+
+  @retry=false
+  Scenario: Test C    # opt-out (no retry)
+```
+
+### Retry Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Suite Execution (parallel)                                  │
+├─────────────────────────────────────────────────────────────┤
+│  Feature 1: scenarios A, B, C                               │
+│  Feature 2: scenarios D, E, F                               │
+│  ...                                                        │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Collect failures with @retry tag                           │
+│  - Scenario B (feature1.feature:25)                         │
+│  - Scenario E (feature2.feature:42)                         │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Retry Phase (sequential or parallel)                       │
+│  - Re-run Scenario B (fresh execution)                      │
+│  - Re-run Scenario E (fresh execution)                      │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Final Results                                              │
+│  - If retry passes: scenario marked as PASSED (with note)   │
+│  - If retry fails: scenario marked as FAILED                │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Scenario Outline Retry
+
+**Static Examples (line numbers known):**
+```gherkin
+Scenario Outline: Test users
+  * match name == '<name>'
+
+  Examples:
+    | name  |
+    | John  |     # line 10 - can retry individually
+    | Jane  |     # line 11 - can retry individually
+```
+
+Failure file: `users.feature:11` (retries just Jane)
+
+**Dynamic Examples (line numbers not stable):**
+```gherkin
+@setup
+Scenario: Generate test data
+  * def users = [{name: 'John'}, {name: 'Jane'}]
+
+Scenario Outline: Test users
+  * match name == '<name>'
+
+  Examples:
+    | karate.setup().users |
+```
+
+For dynamic outlines, the **entire outline** must be retried (can't pin individual rows since data is generated at runtime).
+
+Failure file: `users.feature:8` (line of Scenario Outline, retries all examples)
+
+### Failed Scenarios File
+
+After suite completion, generate a file listing failed scenarios:
+
+**`target/karate-reports/rerun.txt`:**
+```
+src/test/features/users.feature:25
+src/test/features/orders.feature:42
+src/test/features/payments.feature:15
+```
+
+**Usage:**
+```bash
+# Re-run only failed scenarios
+karate --rerun target/karate-reports/rerun.txt
+
+# Or manually:
+karate src/test/features/users.feature:25 src/test/features/orders.feature:42
+```
+
+### Report Merging
+
+When re-running failures, results can be merged with original report:
+
+```bash
+# Original run
+karate src/test/features/ --output target/run1
+
+# Re-run failures, merge with original
+karate --rerun target/run1/rerun.txt --merge target/run1
+```
+
+**Merge behavior:**
+- For each scenario, keep the **best result** (pass > fail)
+- Track retry attempts in report metadata
+- Final report shows: "99 passed (4 on retry), 1 failed"
+
+---
+
+## CLI Configuration (JSON)
+
+### Overview
+
+A JSON file can configure the entire test run, replacing CLI arguments. This enables:
+- Version-controlled test configuration
+- Complex configurations that are awkward on CLI
+- Programmatic generation of test runs
+
+### karate.json
+
+```json
+{
+  "paths": [
+    "src/test/features/api/",
+    "src/test/features/ui/"
+  ],
+  "tags": ["@smoke", "~@slow"],
+  "env": "dev",
+  "threads": 5,
+  "timeout": {
+    "scenario": "5m",
+    "suite": "1h"
+  },
+  "output": {
+    "dir": "target/karate-reports",
+    "formats": ["json", "html", "junit"]
+  },
+  "retry": {
+    "enabled": true,
+    "rerunFile": "target/karate-reports/rerun.txt"
+  },
+  "config": {
+    "dir": "src/test/resources",
+    "env": {
+      "DB_HOST": "localhost",
+      "API_KEY": "${API_KEY}"  // from environment
+    }
+  }
+}
+```
+
+### CLI Usage
+
+```bash
+# Use JSON config
+karate --config karate.json
+
+# Override specific values
+karate --config karate.json --env staging --threads 10
+
+# Generate JSON from CLI args (for saving)
+karate src/test/features/ -t @smoke -T 5 --export-config karate.json
+```
+
+### JSON to CLI Mapping
+
+| JSON Field | CLI Equivalent |
+|------------|----------------|
+| `paths` | positional arguments |
+| `tags` | `-t, --tags` |
+| `env` | `-e, --env` |
+| `threads` | `-T, --threads` |
+| `output.dir` | `-o, --output` |
+| `config.dir` | `-g, --configdir` |
+| `timeout.scenario` | `--scenario-timeout` |
+| `timeout.suite` | `--suite-timeout` |
+
+### Implementation
+
+```java
+public class CliConfig {
+
+    // Parse JSON config file
+    public static CliConfig fromJson(Path configFile) {
+        String json = Files.readString(configFile);
+        return Json.of(json).as(CliConfig.class);
+    }
+
+    // Convert to Main (PicoCLI) parameters
+    public String[] toCliArgs() {
+        List<String> args = new ArrayList<>();
+
+        if (paths != null) {
+            args.addAll(paths);
+        }
+        if (tags != null) {
+            args.add("--tags");
+            args.add(String.join(",", tags));
+        }
+        if (env != null) {
+            args.add("--env");
+            args.add(env);
+        }
+        if (threads != null) {
+            args.add("--threads");
+            args.add(threads.toString());
+        }
+        // ... etc
+
+        return args.toArray(new String[0]);
+    }
+
+    // Build Suite directly (bypassing CLI parsing)
+    public Suite buildSuite() {
+        Runner.Builder builder = Runner.builder();
+
+        if (paths != null) {
+            builder.path(paths.toArray(new String[0]));
+        }
+        if (tags != null) {
+            builder.tags(tags.toArray(new String[0]));
+        }
+        // ... etc
+
+        return builder.buildSuite();
+    }
+}
+```
+
+### Required Tests
+
+| Test | Description |
+|------|-------------|
+| `CliConfigTest.testParseJson` | Parse karate.json file |
+| `CliConfigTest.testToCliArgs` | Convert JSON to CLI args |
+| `CliConfigTest.testBuildSuite` | Build Suite from JSON |
+| `CliConfigTest.testMergeWithCliArgs` | CLI args override JSON |
+| `CliConfigTest.testEnvVariableSubstitution` | `${VAR}` expansion |
+| `RetryTest.testRetryTagOnScenario` | `@retry` triggers retry |
+| `RetryTest.testRetryAtEndOfSuite` | Retries happen after suite |
+| `RetryTest.testRerunFile` | Failed scenarios written to file |
+| `RetryTest.testRerunFromFile` | Read and run from rerun file |
+| `RetryTest.testDynamicOutlineFullRetry` | Dynamic outline retries all |
 
 ---
 
@@ -1468,7 +2341,7 @@ Logging refactored from 9 files to 4 files. Package moved from `io.karatelabs.co
 | **StepExecutor** | ✅ | Keyword dispatch for all core keywords |
 | **StepResult** | ✅ | Step-level results with timing, logs, embeds |
 | **RuntimeHook** | ✅ | Lifecycle hook interface with all 8 hooks wired |
-| **Config loading** | ✅ | karate-config.js + env-specific config evaluation |
+| **Config loading** | ⚠️ | karate-config.js + env-specific ✅, karate-base.js ❌ TODO |
 | **karate-json report** | ✅ | JSON report file generation to target/karate-reports/ |
 
 **Keywords implemented:** `def`, `set`, `remove`, `copy`, `text`, `json`, `xml`, `table`, `match`, `assert`, `print`, `url`, `path`, `param`, `params`, `header`, `headers`, `cookie`, `cookies`, `form field`, `form fields`, `request`, `method`, `status`, `multipart file`, `multipart field`, `multipart fields`, `multipart files`, `multipart entity`, `call`, `callonce`, `eval`, `configure`
