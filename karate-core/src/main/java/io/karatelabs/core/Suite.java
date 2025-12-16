@@ -305,6 +305,7 @@ public class Suite {
             FeatureRuntime fr = new FeatureRuntime(this, feature);
             FeatureResult featureResult = fr.call();
             result.addFeatureResult(featureResult);
+            featureResult.printSummary();
         }
     }
 
@@ -315,7 +316,9 @@ public class Suite {
             for (Feature feature : features) {
                 Future<FeatureResult> future = executor.submit(() -> {
                     FeatureRuntime fr = new FeatureRuntime(this, feature);
-                    return fr.call();
+                    FeatureResult featureResult = fr.call();
+                    featureResult.printSummary();
+                    return featureResult;
                 });
                 futures.add(future);
             }

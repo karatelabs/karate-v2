@@ -46,6 +46,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
     private Step currentStep;
     private boolean stopped;
     private boolean aborted;
+    private boolean skipBackground;
     private Throwable error;
 
     public ScenarioRuntime(FeatureRuntime featureRuntime, Scenario scenario) {
@@ -105,6 +106,58 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
                 karate.engine.put(entry.getKey(), entry.getValue());
             }
         }
+
+        // Wire up karate.setup() and karate.setupOnce() functions
+        karate.setSetupProvider(this::executeSetup);
+        karate.setSetupOnceProvider(this::executeSetupOnce);
+    }
+
+    /**
+     * Execute the @setup scenario and return all its variables.
+     */
+    private Map<String, Object> executeSetup(String name) {
+        if (featureRuntime == null) {
+            throw new RuntimeException("karate.setup() requires a feature context");
+        }
+        Scenario setupScenario = scenario.getFeature().getSetup(name);
+        if (setupScenario == null) {
+            String message = "no scenario found with @setup tag";
+            if (name != null) {
+                message = message + " and name '" + name + "'";
+            }
+            throw new RuntimeException(message);
+        }
+        // Run the setup scenario without background
+        ScenarioRuntime sr = new ScenarioRuntime(featureRuntime, setupScenario);
+        sr.setSkipBackground(true);
+        sr.call();
+        return sr.getAllVariables();
+    }
+
+    /**
+     * Execute the @setup scenario with caching (only runs once per feature).
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> executeSetupOnce(String name) {
+        if (featureRuntime == null) {
+            throw new RuntimeException("karate.setupOnce() requires a feature context");
+        }
+        String cacheKey = name == null ? "__default__" : name;
+        Map<String, Object> cached = (Map<String, Object>) featureRuntime.SETUPONCE_CACHE.get(cacheKey);
+        if (cached != null) {
+            // Return a shallow copy to prevent modifications affecting other scenarios
+            return new HashMap<>(cached);
+        }
+        synchronized (featureRuntime.SETUPONCE_CACHE) {
+            // Double-check after acquiring lock
+            cached = (Map<String, Object>) featureRuntime.SETUPONCE_CACHE.get(cacheKey);
+            if (cached != null) {
+                return new HashMap<>(cached);
+            }
+            Map<String, Object> result = executeSetup(name);
+            featureRuntime.SETUPONCE_CACHE.put(cacheKey, result);
+            return new HashMap<>(result);
+        }
     }
 
     private void inheritVariables() {
@@ -126,7 +179,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         try {
             beforeScenario();
 
-            List<Step> steps = scenario.getStepsIncludingBackground();
+            List<Step> steps = skipBackground ? scenario.getSteps() : scenario.getStepsIncludingBackground();
             for (Step step : steps) {
                 if (stopped || aborted) {
                     // Mark remaining steps as skipped
@@ -263,6 +316,14 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
 
     public void stop() {
         this.stopped = true;
+    }
+
+    public void setSkipBackground(boolean skipBackground) {
+        this.skipBackground = skipBackground;
+    }
+
+    public boolean isSkipBackground() {
+        return skipBackground;
     }
 
 }

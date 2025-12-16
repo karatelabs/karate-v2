@@ -165,6 +165,11 @@ public class StepExecutor {
         String name = text.substring(0, eqIndex).trim();
         String expr = text.substring(eqIndex + 1).trim();
 
+        // Handle docstring if expression is empty
+        if (expr.isEmpty() && step.getDocString() != null) {
+            expr = step.getDocString();
+        }
+
         // Check if RHS is a call/callonce expression
         if (expr.startsWith("call ")) {
             String callExpr = expr.substring(5).trim();

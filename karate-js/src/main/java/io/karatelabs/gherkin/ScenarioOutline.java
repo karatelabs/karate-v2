@@ -69,6 +69,7 @@ public class ScenarioOutline {
             step.setLine(original.getLine());
             step.setEndLine(original.getEndLine());
             step.setPrefix(original.getPrefix());
+            step.setKeyword(original.getKeyword());
             step.setText(original.getText());
             step.setDocString(original.getDocString());
             step.setTable(original.getTable());

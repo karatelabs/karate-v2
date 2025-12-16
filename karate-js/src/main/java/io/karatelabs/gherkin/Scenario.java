@@ -92,9 +92,11 @@ public class Scenario {
             temp.setLine(step.getLine());
             temp.setEndLine(step.getEndLine());
             temp.setPrefix(step.getPrefix());
+            temp.setKeyword(step.getKeyword());
             temp.setText(step.getText());
             temp.setDocString(step.getDocString());
             temp.setTable(step.getTable());
+            temp.setComments(step.getComments());
         }
         return s;
     }

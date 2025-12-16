@@ -138,6 +138,33 @@ public class FeatureResult {
                 .orElse(null);
     }
 
+    // ========== Console Output ==========
+
+    /**
+     * Print a summary of this feature's results to the console.
+     */
+    public void printSummary() {
+        String path = getDisplayName();
+        int passed = getPassedCount();
+        int failed = getFailedCount();
+        int total = getScenarioCount();
+        double secs = getDurationMillis() / 1000.0;
+
+        String status = failed > 0
+                ? Console.fail(failed + " failed")
+                : Console.pass("passed");
+
+        String featureLine = failed > 0
+                ? Console.red(path)
+                : Console.green(path);
+
+        Console.println(Console.line(57));
+        Console.println("feature: " + featureLine);
+        Console.println(String.format("scenarios: %2d | passed: %2d | %s | time: %.4f",
+                total, passed, status, secs));
+        Console.println(Console.line(57));
+    }
+
     public Map<String, Object> toKarateJson() {
         Map<String, Object> map = new LinkedHashMap<>();
 

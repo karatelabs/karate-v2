@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class KarateJs implements SimpleObject {
 
@@ -60,6 +61,8 @@ public class KarateJs implements SimpleObject {
     private Markup _markup;
     private Consumer<String> onDoc;
     private BiConsumer<Context, Result> onMatch;
+    private Function<String, Map<String, Object>> setupProvider;
+    private Function<String, Map<String, Object>> setupOnceProvider;
 
     private final Invokable read;
 
@@ -110,6 +113,14 @@ public class KarateJs implements SimpleObject {
 
     public void setOnMatch(BiConsumer<Context, Result> onMatch) {
         this.onMatch = onMatch;
+    }
+
+    public void setSetupProvider(Function<String, Map<String, Object>> provider) {
+        this.setupProvider = provider;
+    }
+
+    public void setSetupOnceProvider(Function<String, Map<String, Object>> provider) {
+        this.setupOnceProvider = provider;
     }
 
     @SuppressWarnings("unchecked")
@@ -206,6 +217,26 @@ public class KarateJs implements SimpleObject {
         };
     }
 
+    private Invokable setup() {
+        return args -> {
+            if (setupProvider == null) {
+                throw new RuntimeException("karate.setup() is not available in this context");
+            }
+            String name = args.length > 0 && args[0] != null ? args[0].toString() : null;
+            return setupProvider.apply(name);
+        };
+    }
+
+    private Invokable setupOnce() {
+        return args -> {
+            if (setupOnceProvider == null) {
+                throw new RuntimeException("karate.setupOnce() is not available in this context");
+            }
+            String name = args.length > 0 && args[0] != null ? args[0].toString() : null;
+            return setupOnceProvider.apply(name);
+        };
+    }
+
     @Override
     public Object jsGet(String key) {
         return switch (key) {
@@ -215,6 +246,8 @@ public class KarateJs implements SimpleObject {
             case "match" -> match(false);
             case "read" -> read;
             case "readAsString" -> readAsString();
+            case "setup" -> setup();
+            case "setupOnce" -> setupOnce();
             case "toStringPretty" -> toStringPretty();
             default -> null;
         };

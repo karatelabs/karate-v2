@@ -135,4 +135,139 @@ public class SuiteResult {
         return io.karatelabs.common.Json.of(toKarateJson()).toStringPretty();
     }
 
+    // ========== Console Output ==========
+
+    /**
+     * Print a summary of the test results to the console.
+     */
+    public void printSummary() {
+        printSummary(null, 1);
+    }
+
+    /**
+     * Print a summary of the test results to the console.
+     *
+     * @param env         the karate environment (may be null)
+     * @param threadCount number of threads used
+     */
+    public void printSummary(String env, int threadCount) {
+        Console.println();
+        Console.println(Console.line());
+
+        // Header with version and env
+        String header = "Karate v2";
+        if (env != null && !env.isEmpty()) {
+            header += " | env: " + Console.cyan(env);
+        }
+        Console.println(header);
+        Console.println(Console.line());
+
+        // Timing info
+        double elapsedSecs = getDurationMillis() / 1000.0;
+        double threadTimeSecs = getThreadTimeMillis() / 1000.0;
+        double efficiency = threadCount > 0 && elapsedSecs > 0
+                ? threadTimeSecs / (elapsedSecs * threadCount)
+                : 1.0;
+
+        Console.println(String.format("elapsed: %6.2fs | threads: %3d | efficiency: %.2f",
+                elapsedSecs, threadCount, efficiency));
+        Console.println();
+
+        // Feature stats
+        int featureTotal = getFeatureCount();
+        int featurePassed = getFeaturePassedCount();
+        int featureFailed = getFeatureFailedCount();
+        String featureStatus = featureFailed > 0
+                ? Console.fail(featureFailed + " failed")
+                : Console.pass("all passed");
+
+        Console.println(String.format("features: %4d | passed: %4d | %s",
+                featureTotal, featurePassed, featureStatus));
+
+        // Scenario stats
+        int scenarioTotal = getScenarioCount();
+        int scenarioPassed = getScenarioPassedCount();
+        int scenarioFailed = getScenarioFailedCount();
+        String scenarioStatus = scenarioFailed > 0
+                ? Console.fail(scenarioFailed + " failed")
+                : Console.pass("all passed");
+
+        Console.println(String.format("scenarios: %3d | passed: %4d | %s",
+                scenarioTotal, scenarioPassed, scenarioStatus));
+
+        Console.println(Console.line());
+
+        // List failed features
+        List<FeatureResult> failedFeatures = getFailedFeatures();
+        if (!failedFeatures.isEmpty()) {
+            Console.println();
+            Console.println(Console.fail("failed features:"));
+            for (FeatureResult fr : failedFeatures) {
+                String path;
+                if (fr.getFeature().getResource() != null && fr.getFeature().getResource().getPath() != null) {
+                    path = fr.getFeature().getResource().getPath().toString();
+                } else {
+                    path = fr.getFeature().getName();
+                }
+                Console.println("  " + Console.red(path));
+
+                // Show failed scenarios
+                for (ScenarioResult sr : fr.getScenarioResults()) {
+                    if (sr.isFailed()) {
+                        String scenarioName = sr.getScenario().getName();
+                        if (scenarioName == null || scenarioName.isEmpty()) {
+                            scenarioName = "line " + sr.getScenario().getLine();
+                        }
+                        Console.println("    - " + scenarioName);
+                        if (sr.getFailureMessage() != null) {
+                            String msg = sr.getFailureMessage();
+                            if (msg.length() > 80) {
+                                msg = msg.substring(0, 77) + "...";
+                            }
+                            Console.println("      " + Console.yellow(msg));
+                        }
+                    }
+                }
+            }
+            Console.println();
+        }
+    }
+
+    /**
+     * Get sum of all scenario execution times (thread time).
+     */
+    public long getThreadTimeMillis() {
+        return featureResults.stream()
+                .mapToLong(FeatureResult::getDurationMillis)
+                .sum();
+    }
+
+    /**
+     * Get list of failed features.
+     */
+    public List<FeatureResult> getFailedFeatures() {
+        List<FeatureResult> failed = new ArrayList<>();
+        for (FeatureResult fr : featureResults) {
+            if (fr.isFailed()) {
+                failed.add(fr);
+            }
+        }
+        return failed;
+    }
+
+    /**
+     * Get all error messages from failed scenarios.
+     */
+    public List<String> getErrors() {
+        List<String> errors = new ArrayList<>();
+        for (FeatureResult fr : featureResults) {
+            for (ScenarioResult sr : fr.getScenarioResults()) {
+                if (sr.isFailed() && sr.getFailureMessage() != null) {
+                    errors.add(sr.getFailureMessage());
+                }
+            }
+        }
+        return errors;
+    }
+
 }

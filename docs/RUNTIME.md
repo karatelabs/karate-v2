@@ -956,10 +956,148 @@ public class StepExecutor {
 
 ### Phase 5: Reporting
 
-1. Karate JSON report format
+1. ✅ Karate JSON report format
 2. JUnit XML report format
 3. HTML report generation
-4. Console output with ANSI colors
+4. ✅ Console output with ANSI colors
+
+### Phase 6: CLI and Runner API
+
+1. ✅ Runner builder API (`Runner.path(...).tags(...).parallel(n)`)
+2. ✅ PicoCLI-based Main class
+3. ✅ Console utility with ANSI colors
+
+---
+
+## Runner API
+
+The `Runner` class provides a fluent builder API for running Karate tests programmatically:
+
+```java
+// Simple usage
+SuiteResult result = Runner.path("src/test/resources")
+    .parallel(5);
+
+// With configuration
+SuiteResult result = Runner.path("src/test/resources")
+    .tags("@smoke", "~@slow")
+    .karateEnv("dev")
+    .outputDir("target/reports")
+    .parallel(5);
+
+// Check results
+if (result.isFailed()) {
+    System.out.println("Failed scenarios: " + result.getScenarioFailedCount());
+    result.getErrors().forEach(System.out::println);
+}
+```
+
+### Runner.Builder Methods
+
+| Method | Description |
+|--------|-------------|
+| `path(String...)` | Add feature files or directories |
+| `features(Feature...)` | Add Feature objects directly |
+| `karateEnv(String)` | Set karate.env |
+| `tags(String...)` | Tag filter expression |
+| `scenarioName(String)` | Filter by scenario name (regex) |
+| `configDir(String)` | Directory for karate-config.js |
+| `outputDir(String)` | Report output directory |
+| `hook(RuntimeHook)` | Add runtime hook |
+| `dryRun(boolean)` | Enable dry-run mode |
+| `parallel(int)` | Execute with thread count (terminal operation) |
+
+---
+
+## Command-Line Interface
+
+The `Main` class provides a PicoCLI-based CLI:
+
+```bash
+# Run all tests in a directory
+java -jar karate.jar src/test/resources
+
+# With options
+java -jar karate.jar -t @smoke -e dev -T 5 src/test/resources
+
+# Show help
+java -jar karate.jar --help
+```
+
+### CLI Options
+
+| Option | Description |
+|--------|-------------|
+| `-t, --tags` | Tag expression (e.g., '@smoke', '~@slow') |
+| `-T, --threads` | Number of parallel threads |
+| `-e, --env` | Value of karate.env |
+| `-n, --name` | Scenario name filter (regex) |
+| `-o, --output` | Report output directory |
+| `-g, --configdir` | Directory for karate-config.js |
+| `-C, --clean` | Clean output directory first |
+| `-D, --dryrun` | Dry run mode |
+| `--no-color` | Disable ANSI colors |
+
+---
+
+## Console Output
+
+The `Console` utility provides ANSI color support for terminal output:
+
+```java
+// Semantic formatting
+Console.pass("all tests passed");   // bright green
+Console.fail("3 tests failed");     // bright red + bold
+Console.warn("deprecated API");     // yellow
+Console.info("running tests...");   // cyan
+
+// Color helpers
+Console.red("error message");
+Console.green("success");
+Console.bold("important");
+
+// Control
+Console.setColorsEnabled(false);    // disable colors
+```
+
+### Feature-Level Summary
+
+Each feature prints a summary after execution via `FeatureResult.printSummary()`:
+
+```
+=========================================================
+feature: src/test/resources/users.feature
+scenarios:  3 | passed:  3 | passed | time: 0.1234
+=========================================================
+```
+
+For failed features:
+```
+=========================================================
+feature: src/test/resources/login.feature
+scenarios:  2 | passed:  1 | 1 failed | time: 0.0890
+=========================================================
+```
+
+### Suite-Level Summary
+
+The `SuiteResult.printSummary()` method displays a final summary after all features complete:
+
+```
+============================================================
+Karate v2 | env: dev
+============================================================
+elapsed:   1.23s | threads:   5 | efficiency: 0.85
+
+features:   12 | passed:   11 | 1 failed
+scenarios:  45 | passed:   43 | 2 failed
+============================================================
+
+failed features:
+  src/test/resources/login.feature
+    - Login with invalid credentials
+      match failed: EQUALS
+```
 
 ---
 
@@ -974,17 +1112,20 @@ karate-core/src/main/java/io/karatelabs/
 │   └── JvmLogger.java
 └── core/                       # runtime execution
     ├── Suite.java
-    ├── SuiteResult.java
+    ├── SuiteResult.java              # with printSummary() for console output
     ├── Config.java
     ├── RuntimeHook.java
     ├── FeatureRuntime.java
-    ├── FeatureResult.java
+    ├── FeatureResult.java            # with printSummary() for feature output
     ├── ScenarioRuntime.java
     ├── ScenarioResult.java
     ├── ScenarioIterator.java
     ├── StepExecutor.java
     ├── StepResult.java
-    ├── KarateBridge.java           # karate.* functions
+    ├── KarateBridge.java             # karate.* functions
+    ├── Runner.java                   # ✅ builder API entry point
+    ├── Main.java                     # ✅ PicoCLI command-line interface
+    ├── Console.java                  # ✅ ANSI colors and console output
     ├── actions/
     │   ├── HttpActions.java
     │   ├── MatchActions.java
@@ -1389,10 +1530,24 @@ The Gherkin lexer `GS_STEP_MATCH` state was updated to properly handle match exp
 6. ~~**Full call/callonce** - FeatureRuntime nesting with caching~~ ✅ Done
 7. ~~**RuntimeHook wiring** - All 8 hook points wired~~ ✅ Done
 
-**Pending:**
-8. **BackgroundTest.java** - Tests for background feature (feature works, needs test coverage)
-9. **ScenarioOutlineTest.java** - Tests for scenario outline (feature works, needs test coverage)
-10. **Dynamic Outline** - `@setup` scenario and single-cell JS expression variants (not yet implemented)
+8. ~~**BackgroundTest.java** - Tests for background feature~~ ✅ Done (7 tests)
+9. ~~**ScenarioOutlineTest.java** - Tests for scenario outline~~ ✅ Done (13 tests including type hints)
+
+10. ~~**Dynamic Outline** - `@setup` scenario and single-cell JS expression variants~~ ✅ Done (10 tests)
+
+### Bug Fixes Applied
+
+**ScenarioOutline.toScenario() - Missing keyword copy:**
+The `toScenario()` method was not copying the `keyword` field when creating step copies for expanded scenarios. This caused all outline steps to execute as plain expressions instead of their intended keywords (def, match, etc.). Fixed by adding `step.setKeyword(original.getKeyword())` to the step copy loop.
+
+**FeatureRuntime - Type hints not honored:**
+The `ScenarioIterator` was using `getRowsAsMaps()` which returns `Map<String, String>`, losing type information. Changed to use `getExampleData(rowIndex)` which properly handles type hints (columns ending with `!` are evaluated as JS expressions). This enables numeric, boolean, null, array, and object values in Examples tables.
+
+**Scenario.copy() - Missing keyword and comments copy:**
+The `copy()` method used for dynamic scenario expansion was not copying the `keyword` and `comments` fields from original steps. Fixed by adding `temp.setKeyword(step.getKeyword())` and `temp.setComments(step.getComments())`.
+
+**StepExecutor.executeDef() - Missing docstring support:**
+The `def` keyword handler did not support multi-line JSON via docstrings (triple-quoted strings). Fixed by checking for docstring content when the expression after `=` is empty.
 
 ### Architecture Notes for call/callonce
 
@@ -1413,7 +1568,7 @@ When implementing `call`/`callonce`, explore the Engine API for context delegati
 | **karate-config.js** | ✅ Works | Loaded from classpath, env-specific configs supported |
 | **call/callonce** | ✅ Works | Proper FeatureRuntime nesting with caching |
 | **RuntimeHooks** | ✅ Works | All 8 hook points wired (suite/feature/scenario/step) |
-| **Dynamic Outline** | ⬜ TODO | `@setup` scenario that produces Examples data dynamically |
+| **Dynamic Outline** | ✅ Works | `@setup` scenario, `karate.setup()`, `karate.setupOnce()`, inline expressions |
 
 **karate-config.js lifecycle:**
 1. Load `karate-config.js` from classpath root
@@ -1445,14 +1600,15 @@ Each feature needs dedicated test coverage before considered complete:
 
 | Feature | Test File | Test Cases Needed | Status |
 |---------|-----------|-------------------|--------|
-| **Background** | `BackgroundTest.java` | Background runs before each scenario, variables inherited, multiple scenarios | ⬜ |
-| **Scenario Outline** | `ScenarioOutlineTest.java` | Basic expansion, multiple Examples tables, placeholder substitution, tags on Examples | ⬜ |
-| **Dynamic Outline (@setup)** | `DynamicOutlineSetupTest.java` | Setup runs first, data available to outline, setup failure handling | ⬜ |
-| **Dynamic Outline (single-cell)** | `DynamicOutlineCellTest.java` | JS expression evaluation, array explosion, `karate.read()` integration | ⬜ |
+| **Background** | `BackgroundTest.java` | Background runs before each scenario, variables inherited, multiple scenarios | ✅ (7 tests) |
+| **Scenario Outline** | `ScenarioOutlineTest.java` | Basic expansion, multiple Examples tables, placeholder substitution, type hints | ✅ (13 tests) |
+| **Dynamic Outline** | `DynamicOutlineTest.java` | @setup scenario, karate.setup(), karate.setupOnce(), named setups, inline expressions | ✅ (10 tests) |
 | **karate-config.js** | `ConfigTest.java` | Config loaded, variables available, env-specific config, config errors | ✅ (4 tests) |
 | **call** | `CallFeatureTest.java` | Call another feature, pass arguments, receive results, nested calls | ✅ (5 tests) |
 | **callonce** | included in `CallFeatureTest.java` | Caching behavior, shared across scenarios | ✅ |
 | **RuntimeHooks** | `RuntimeHookTest.java` | beforeScenario/afterScenario, beforeStep/afterStep, hook can abort | ✅ (4 tests) |
+| **Console** | `ConsoleTest.java` | ANSI colors, formatting, FeatureResult.printSummary | ✅ (6 tests) |
+| **Runner** | `RunnerTest.java` | Builder API, path resolution, parallel execution | ✅ (5 tests) |
 
 ---
 
