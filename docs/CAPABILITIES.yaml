@@ -141,7 +141,7 @@ categories:
       - name: Gherkin Parser
         description: Feature file parsing and scenario execution
         v1: true
-        v2: in_progress
+        v2: implemented
         license: oss
         tags: [core, milestone-1]
         items:
@@ -150,16 +150,16 @@ categories:
             v2: implemented
           - name: Background
             v1: true
-            v2: planned
+            v2: implemented
           - name: Scenario Outline with Examples
             v1: true
-            v2: planned
+            v2: implemented
           - name: Doc strings
             v1: true
-            v2: planned
+            v2: implemented
           - name: Data tables
             v1: true
-            v2: planned
+            v2: implemented
           - name: Tags parsing
             v1: true
             v2: implemented
@@ -168,25 +168,30 @@ categories:
             v2: planned
           - name: call and callonce keywords
             v1: true
-            v2: planned
+            v2: implemented
           - name: retry until keyword
             v1: true
             v2: planned
 
       - name: Environment & Configuration
         description: Test environment and configuration management
-        status: existing
+        v1: true
+        v2: implemented
         license: oss
         tags: [core, milestone-1]
         items:
           - name: karate-config.js
-            status: existing
+            v1: true
+            v2: implemented
           - name: Environment-based config (karate.env)
-            status: existing
+            v1: true
+            v2: implemented
           - name: API to read current config settings
-            status: future
+            v1: false
+            v2: future
           - name: Multiple environments in parallel
-            status: future
+            v1: false
+            v2: future
 
       - name: Grouping & Tags
         description: Test organization and filtering
@@ -218,22 +223,29 @@ categories:
 
       - name: Extensibility & Hooks
         description: Extension points and lifecycle hooks
-        status: existing
+        v1: true
+        v2: implemented
         license: oss
         tags: [core, milestone-1]
         items:
           - name: RuntimeHook interface
-            status: existing
+            v1: true
+            v2: implemented
           - name: Before/After scenario hooks
-            status: existing
+            v1: true
+            v2: implemented
           - name: Before/After feature hooks
-            status: existing
+            v1: true
+            v2: implemented
           - name: JavaScript hooks
-            status: future
+            v1: false
+            v2: future
           - name: onError hook
-            status: future
+            v1: false
+            v2: future
           - name: Plugin system
-            status: planned
+            v1: false
+            v2: planned
 
       - name: Artifact & Code Re-use
         description: Sharing and reusing test artifacts
@@ -680,18 +692,23 @@ categories:
 
       - name: Parallel Execution
         description: Concurrent test execution
-        status: existing
+        v1: true
+        v2: implemented
         license: oss
         tags: [devex, milestone-1]
         items:
           - name: Parallel scenarios
-            status: existing
+            v1: true
+            v2: implemented
           - name: Parallel features
-            status: existing
+            v1: true
+            v2: implemented
           - name: Thread pool configuration
-            status: existing
+            v1: true
+            v2: implemented
           - name: Virtual threads support
-            status: planned
+            v1: false
+            v2: implemented
 
       - name: Robustness & Predictability
         description: Reliable test execution
@@ -736,24 +753,32 @@ categories:
 
       - name: Logging & Traceability
         description: Logging and audit capabilities
-        status: existing
+        v1: true
+        v2: implemented
         license: oss
         tags: [devex, milestone-1]
         items:
           - name: Structured logging (SLF4J)
-            status: existing
+            v1: true
+            v2: implemented
           - name: Request/response logging
-            status: existing
+            v1: true
+            v2: implemented
           - name: Log masking for sensitive data
-            status: existing
+            v1: true
+            v2: implemented
           - name: Selective logging control
-            status: future
+            v1: false
+            v2: future
           - name: HTML report without console logs
-            status: future
+            v1: false
+            v2: future
           - name: ANSI colored console output
-            status: planned
+            v1: false
+            v2: implemented
           - name: LLM-friendly output mode
-            status: planned
+            v1: false
+            v2: planned
 
       - name: Test Runner SDK / CLI
         description: Command-line and programmatic execution
@@ -830,18 +855,23 @@ categories:
     items:
       - name: Results Output / Export
         description: Test result formats
-        status: existing
+        v1: true
+        v2: implemented
         license: oss
         tags: [reports, milestone-1]
         items:
           - name: Karate JSON report
-            status: existing
+            v1: true
+            v2: implemented
           - name: JUnit XML report
-            status: existing
+            v1: true
+            v2: implemented
           - name: Cucumber JSON report
-            status: existing
+            v1: true
+            v2: planned
           - name: PDF reports
-            status: future
+            v1: false
+            v2: future
             license: commercial
 
       - name: HTML Reports

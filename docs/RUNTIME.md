@@ -2,7 +2,18 @@
 
 This document describes the runtime architecture for Karate v2.
 
-> See also: [GHERKIN-PARSER-REWRITE.md](./GHERKIN-PARSER-REWRITE.md) | [JS-JAVA-INTEROP.md](./JS-JAVA-INTEROP.md) | [PRINCIPLES.md](./PRINCIPLES.md)
+> See also: [PARSER.md](./PARSER.md) | [JS_ENGINE.md](./JS_ENGINE.md) | [PRINCIPLES.md](./PRINCIPLES.md) | [ROADMAP.md](./ROADMAP.md)
+
+---
+
+## Implementation Guidance
+
+**Referencing v1 code:** While v2 is a fresh implementation, the Karate v1 source (`/karate/karate-core`) should be referenced to ensure format compatibility and preserve capabilities. Key areas:
+- Report JSON schemas (preserve field names for tooling compatibility)
+- Cucumber JSON format (must match spec for Allure, ReportPortal, etc.)
+- CLI options (maintain familiar interface)
+
+**v1 source location:** `/Users/peter/dev/zcode/karate/karate-core/src/main/java/com/intuit/karate/`
 
 ---
 
@@ -91,17 +102,192 @@ Uses Java 21+ virtual threads. Basic parallel execution is implemented in `Suite
 - JUnit XML report (`karate-junit.xml`) for CI/CD integration
 - Console output with ANSI colors (`io.karatelabs.core.Console`)
 
+#### Report Architecture
+
+**Memory efficiency via disk-based aggregation:**
+The `karate-summary.json` for each feature is written to disk immediately after feature completion. This frees memory during large suite runs, allowing the runtime to focus on execution. At suite end, the report generator reads these files from disk to produce the aggregate HTML report.
+
+```
+Feature completes → Write feature JSON to disk → Free memory
+                         ↓
+Suite completes → Read all feature JSONs → Generate aggregate report
+```
+
+**Async report generation:**
+Report generation should run on a separate thread to avoid blocking test execution. The `ResultListener` callbacks fire synchronously, but the actual file I/O and HTML generation can be queued for async processing.
+
+```java
+// In HtmlReportListener
+@Override
+public void onFeatureEnd(FeatureResult result) {
+    reportExecutor.submit(() -> writeFeatureJson(result));  // async
+}
+
+@Override
+public void onSuiteEnd(SuiteResult result) {
+    reportExecutor.submit(() -> generateAggregateReport());
+    reportExecutor.shutdown();
+    reportExecutor.awaitTermination(60, TimeUnit.SECONDS);  // wait at suite end
+}
+```
+
+**Report aggregation across runs:**
+The JSON-based approach enables merging reports from different test runs:
+
+```java
+HtmlReport.aggregate()
+    .json("target/run1/karate-summary.json")
+    .json("target/run2/karate-summary.json")
+    .outputDir("target/combined-report")
+    .generate();
+```
+
+**Plugin system for extended reports (commercial):**
+A plugin interface will allow collecting additional data during test execution, such as HTTP request/response details for API coverage reports:
+
+```java
+public interface ReportPlugin {
+    void onHttpRequest(HttpRequest request, HttpResponse response, ScenarioRuntime runtime);
+    void generateReport(Path outputDir);
+}
+
+// Usage - cross-reference HTTP calls to tests for OpenAPI coverage
+Runner.path("features/")
+    .reportPlugin(new ApiCoveragePlugin("openapi.yaml"))
+    .parallel(5);
+```
+
+**Karate JSON Schema (v2 - simplified, breaking change from v1):**
+
+The v2 JSON uses **step-level source** - each step carries its own text with indentation preserved. This handles:
+- **Loops** - Same step executes multiple times (each execution is a separate entry)
+- **Scenario Outline** - Same source lines in different scenario instances
+- **Called features** - Steps from other files appear nested
+- **Embedded JS** - JS execution spans files/contexts
+
+**Suite summary (`karate-summary.json`):**
+
+```json
+{
+  "version": "2.0.0",
+  "env": "dev",
+  "threads": 5,
+  "featuresPassed": 10,
+  "featuresFailed": 2,
+  "featuresSkipped": 0,
+  "scenariosPassed": 45,
+  "scenariosFailed": 3,
+  "elapsedTime": 12345.0,
+  "totalTime": 54321.0,
+  "efficiency": 0.85,
+  "resultDate": "2025-12-16T10:30:00",
+  "features": [
+    {
+      "name": "User Management",
+      "relativePath": "features/users.feature",
+      "failed": false,
+      "passedCount": 5,
+      "failedCount": 0,
+      "durationMillis": 1234.5
+    }
+  ]
+}
+```
+
+**Feature detail (inlined in HTML):**
+
+```json
+{
+  "name": "User Management",
+  "relativePath": "features/users.feature",
+  "scenarios": [
+    {
+      "name": "Create user",
+      "tags": ["@smoke"],
+      "failed": false,
+      "ms": 50,
+      "steps": [
+        { "text": "    * url baseUrl", "status": "passed", "ms": 2 },
+        { "text": "    # create payload\n    * def user = { name: 'John' }", "status": "passed", "ms": 1 },
+        { "text": "    * call read('helper.feature')", "status": "passed", "ms": 100,
+          "called": [
+            { "text": "  * print 'from helper'", "status": "passed", "ms": 1 }
+          ]
+        },
+        { "text": "    * method post", "status": "passed", "ms": 45, "logs": ["POST http://...", "< 201"] },
+        { "text": "    * status 201", "status": "passed", "ms": 0 }
+      ]
+    }
+  ]
+}
+```
+
+**Design rationale:**
+- **Step text is self-contained** - Includes indentation, preceding comments, blank lines
+- **No source array** - Execution may span multiple files (called features, JS)
+- **No line-number mapping** - Loops/outlines execute same line multiple times
+- **Nested `called` array** - Shows steps from called features inline
+- **Renderer is simple** - Just iterate steps in order, display text with status
+
+| Field | Description |
+|-------|-------------|
+| `scenarios[].steps` | Array of executed steps in order |
+| `steps[].text` | Step source with indentation preserved (may include preceding comment/blank lines) |
+| `steps[].status` | `"passed"`, `"failed"`, `"skipped"` |
+| `steps[].ms` | Duration in milliseconds |
+| `steps[].logs` | Array of log entries (HTTP, print, etc.) |
+| `steps[].error` | Error message if failed |
+| `steps[].called` | Nested steps array for called features |
+
+#### Line-Delimited JSON (NDJSON) for Raw Data
+
+Instead of exploding many files during execution (v1 writes 2 files per feature), use a **single append-only NDJSON file** with **feature-level granularity**:
+
+```
+{"t":"suite","time":"2025-12-16T10:30:00","threads":5,"env":"dev"}
+{"t":"feature","path":"features/users.feature","name":"User Management","scenarios":[...],"passed":true,"ms":1234}
+{"t":"feature","path":"features/orders.feature","name":"Order Processing","scenarios":[...],"passed":false,"ms":2345}
+{"t":"suite_end","passed":42,"failed":3,"ms":12345}
+```
+
+Each `feature` line contains the full scenario/step data as defined in the JSON schema above.
+
+**Why feature-level (not step-level) events:**
+- **Simpler clients** - Each line is a complete, self-contained feature result
+- **Easy progress tracking** - `grep '"t":"feature"' karate-results.ndjson | wc -l`
+- **Atomic writes** - No need to reconstruct partial state
+- **Web server friendly** - Serve features as they complete, clients poll/SSE for new lines
+
+**Architecture:**
+```
+Test threads ──write──► Queue ──single writer──► karate-results.ndjson
+                                                        │
+                                           (post-process on suite end)
+                                                        ▼
+                                              ┌─────────────────┐
+                                              │ index.html      │
+                                              │ features/*.html │
+                                              │ karate-summary.json │
+                                              └─────────────────┘
+```
+
+**Benefits:**
+- **Single file during execution** - No explosion of files
+- **Append-only** - Thread-safe with single writer thread
+- **Streamable** - Can tail during execution for live progress
+- **Post-process to split** - Generate per-feature HTML at suite end
+- **Easy aggregation** - `cat run1.ndjson run2.ndjson` to merge runs
+- **MB of JSON in script tag is fine** - Modern browsers handle this easily
+
+**Future possibility:** A web server can serve this data live, enabling rich client-side rendering and search while tests execute.
+
 ### Logging
 
 Package `io.karatelabs.log`:
 - `LogContext` - Thread-local collector for report output
 - `JvmLogger` - Infrastructure logging (System.err or SLF4J)
 
----
-
-## Not Yet Implemented
-
-### Priority 1: Result Streaming ✅ IMPLEMENTED
+### Result Streaming (ResultListener)
 
 Foundation for HTML reports and external integrations.
 
@@ -127,25 +313,29 @@ Runner.path("features/")
 - Unlike `RuntimeHook`, `ResultListener` is purely observational and cannot abort execution
 - Multiple listeners can be registered via `Runner.Builder.resultListener()`
 
-**Built-in listeners (TODO):**
-- `HtmlReportListener` - generates HTML reports
-- `TelemetryListener` - sends daily ping
+**Planned built-in listeners:**
+- `HtmlReportListener` - generates HTML reports (see Priority 1)
+- `TelemetryListener` - sends daily ping (see Future Phase)
 
 ---
 
-### Priority 2: HTML Reports
+## Not Yet Implemented
 
-*See detailed spec below in HTML Reports section.*
+### Priority 1: HTML Reports
 
----
+> **Note:** Initial HTML report implementation exists (`HtmlReportGenerator`, templates) but predates the single-file architecture described below. This work will need to be **rearchitected** to use the new approach (inlined JSON + Alpine.js rendering + execution sequence UX).
 
-### Priority 3: Cucumber JSON Format
-
-*See detailed spec below.*
+*See detailed spec below in [HTML Reports](#html-reports) section.*
 
 ---
 
-### Priority 4: Feature File Discovery
+### Priority 2: Cucumber JSON Format
+
+*See detailed spec below in [Cucumber JSON Format](#cucumber-json-format-1) section.*
+
+---
+
+### Priority 3: Feature File Discovery
 
 Current status:
 - File system directory scanning ✓
@@ -163,7 +353,7 @@ Runner.path("classpath:features/")
 
 ---
 
-### Priority 5: CLI JSON Configuration
+### Priority 4: CLI JSON Configuration
 
 ```json
 {
@@ -181,7 +371,7 @@ karate --config karate.json
 
 ---
 
-### Priority 6: karate-base.js
+### Priority 5: karate-base.js
 
 Shared config from classpath (e.g., company JAR):
 
@@ -255,23 +445,98 @@ Runner.path("features/")
     .parallel(5);
 ```
 
-#### Full Report (Bootstrap 5 + Alpine.js)
+#### Single-File HTML Architecture
 
-**Stack:**
-- Bootstrap 5 (CSS + minimal JS for components)
-- Alpine.js (replaces jQuery for interactivity)
+**Key insight:** Inline the JSON data in the HTML, render everything client-side with Alpine.js.
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="res/bootstrap.min.css">
+  <script src="res/alpine.min.js" defer></script>
+</head>
+<body x-data="reportData()">
+  <!-- Left nav, source view, log panel all rendered by Alpine -->
+</body>
+<script type="application/json" id="karate-data">
+  { /* inlined karate-summary.json */ }
+</script>
+<script>
+  function reportData() {
+    return {
+      data: JSON.parse(document.getElementById('karate-data').textContent),
+      // Alpine reactive state for search, filters, scroll sync
+    }
+  }
+</script>
+</html>
+```
+
+**Benefits:**
+- **Minimal I/O** - One HTML file per feature (not dozens of files)
+- **No server required** - Works with `file://` protocol
+- **Rich interactivity** - Search, filter, scroll sync all in client JS
+- **Smaller total size** - JSON + template < pre-rendered HTML for each state
+
+#### Execution Sequence UX
+
+Reports show the **execution sequence** - steps in the order they ran, with source text preserved:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Feature: User Management                            [PASS]  │
+├─────────────────────────────────────────────────────────────┤
+│ ▼ Scenario: Create user                 @smoke      [PASS]  │
+│     * url baseUrl                                ✓  [2ms]   │
+│     # create payload                                        │
+│     * def user = { name: 'John' }                ✓  [1ms]   │
+│   ▼ * call read('helper.feature')                ✓  [100ms] │ ← expandable
+│       * print 'from helper'                      ✓  [1ms]   │
+│     * method post                                ✓  [45ms]  │ ← click to expand logs
+│     * status 201                                 ✓  [0ms]   │
+└─────────────────────────────────────────────────────────────┘
+          │
+          ▼ (click to expand HTTP logs)
+┌─────────────────────────────────────────────────────────────┐
+│ > POST http://localhost:8080/users                          │
+│ > Content-Type: application/json                            │
+│ > { "name": "John" }                                        │
+│ < 201 Created                                               │
+│ < { "id": 123, "name": "John" }                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Key UX features:**
+- **Execution order** - Steps shown as they ran, not source file order
+- **Indentation preserved** - Step text includes original whitespace
+- **Comments inline** - Preceding comments included in step text
+- **Called features nested** - Expandable tree showing called feature steps
+- **Pass/fail indicators** per step with timing
+- **Click to expand** logs for HTTP, print, etc.
+- **Loops show each iteration** - Same step appears multiple times if looped
+
+**Why execution sequence (not source overlay):**
+
+| Source Overlay Problems | Execution Sequence Solution |
+|------------------------|----------------------------|
+| Loops: line 15 executes 3× | Each execution is a separate entry |
+| Outline: same lines, different scenarios | Each scenario has its own step list |
+| Called features: steps from other files | Nested in `called` array |
+| Embedded JS: execution spans contexts | All steps in execution order |
+
+**Data model:** See [Karate JSON Schema](#karate-json-schema-v2---simplified-breaking-change-from-v1) above. Each scenario has a `steps` array in execution order. The renderer iterates and displays - no line-number mapping needed.
+
+#### Stack
+
+- Bootstrap 5 (CSS only, minimal JS for dropdowns)
+- Alpine.js (reactive rendering, no build step)
 - No jQuery dependency
 
-**Features:**
-- Responsive layout with left navigation
-- Collapsible step details with log output
-- Embedded screenshots
-- Sortable/filterable tables
-- Timeline visualization using vis.js (690KB, bundled - consider lighter alternatives)
-
 **Static Resources:**
-- Bundled in JAR, copied to `res/` folder on generation (same as v1)
-- Allows offline viewing of reports
+- Bundled in JAR, copied to `res/` folder on first report generation
+- Shared across all feature reports
+- Allows offline viewing
 
 #### Pluggability Design
 
@@ -354,6 +619,66 @@ Runner.path("features/")
 ```
 
 **Output:** `target/karate-reports/cucumber.json`
+
+**Schema (per Cucumber spec):**
+```json
+[
+  {
+    "id": "users-feature",
+    "uri": "classpath:features/users.feature",
+    "name": "User Management",
+    "description": "Feature description",
+    "keyword": "Feature",
+    "line": 1,
+    "tags": [{"name": "@smoke", "line": 1}],
+    "elements": [
+      {
+        "id": "users-feature;create-user",
+        "name": "Create user",
+        "description": "",
+        "keyword": "Scenario",
+        "line": 5,
+        "type": "scenario",
+        "tags": [{"name": "@smoke", "line": 4}],
+        "steps": [
+          {
+            "keyword": "Given ",
+            "name": "url 'http://localhost:8080'",
+            "line": 6,
+            "result": {
+              "status": "passed",
+              "duration": 1234567
+            },
+            "embeddings": [
+              {
+                "mime_type": "text/plain",
+                "data": "base64-encoded-data"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
+```
+
+**Key mappings:**
+| Karate Concept | Cucumber JSON Field |
+|---------------|---------------------|
+| Feature | Top-level array element |
+| Scenario | `elements[]` with `type: "scenario"` |
+| Scenario Outline row | `elements[]` with `type: "scenario"` |
+| Background | `elements[]` with `type: "background"` (repeated per scenario) |
+| Step | `steps[]` within element |
+| Step keyword | `keyword` (includes trailing space: `"Given "`) |
+| Step text | `name` |
+| Step result | `result.status`: `"passed"`, `"failed"`, `"skipped"`, `"pending"` |
+| Duration | `result.duration` in nanoseconds |
+| Error | `result.error_message` |
+| Logs/embeds | `embeddings[]` with `mime_type` and base64 `data` |
+
+**Implementation class:** `io.karatelabs.core.CucumberJsonWriter`
 
 ---
 

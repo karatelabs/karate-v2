@@ -2,7 +2,7 @@
 
 Complete taxonomy of Karate capabilities - current, in-progress, and planned.
 
-> **Generated:** 2025-12-01 from `CAPABILITIES.yaml`
+> **Generated:** 2025-12-16 from `CAPABILITIES.yaml`
 >
 > See also: [Design Principles](./PRINCIPLES.md) | [Roadmap](./ROADMAP.md)
 
@@ -25,12 +25,11 @@ Complete taxonomy of Karate capabilities - current, in-progress, and planned.
 
 | Category | Count |
 |----------|-------|
-| v1 features ported to v2 | 27 |
-| v1 features in progress | 1 |
-| v1 features pending | 125 |
-| New in v2 (implemented) | 10 |
+| v1 features ported to v2 | 51 |
+| v1 features pending | 102 |
+| New in v2 (implemented) | 12 |
 | New in v2 (in progress) | 1 |
-| Planned | 18 |
+| Planned | 16 |
 | Future / Wish list | 170 |
 
 ## Categories
@@ -86,20 +85,20 @@ Foundation capabilities that power all test types
   - `[-]` Protobuf support `$`
   - `[-]` Avro support `$`
 
-- `[1.x ~]` Gherkin Parser
+- `[1.x ✓]` Gherkin Parser
   - `[1.x ✓]` Feature and Scenario parsing
-  - `[1.x  ]` Background
-  - `[1.x  ]` Scenario Outline with Examples
-  - `[1.x  ]` Doc strings
-  - `[1.x  ]` Data tables
+  - `[1.x ✓]` Background
+  - `[1.x ✓]` Scenario Outline with Examples
+  - `[1.x ✓]` Doc strings
+  - `[1.x ✓]` Data tables
   - `[1.x ✓]` Tags parsing
   - `[1.x  ]` Tag expressions filtering
-  - `[1.x  ]` call and callonce keywords
+  - `[1.x ✓]` call and callonce keywords
   - `[1.x  ]` retry until keyword
 
-- `[1.x  ]` Environment & Configuration
-  - `[1.x  ]` karate-config.js
-  - `[1.x  ]` Environment-based config (karate.env)
+- `[1.x ✓]` Environment & Configuration
+  - `[1.x ✓]` karate-config.js
+  - `[1.x ✓]` Environment-based config (karate.env)
   - `[-]` API to read current config settings
   - `[-]` Multiple environments in parallel
 
@@ -114,10 +113,10 @@ Foundation capabilities that power all test types
   - `[1.x  ]` Dynamic scenario generation
   - `[1.x  ]` External data sources (CSV, JSON)
 
-- `[1.x  ]` Extensibility & Hooks
-  - `[1.x  ]` RuntimeHook interface
-  - `[1.x  ]` Before/After scenario hooks
-  - `[1.x  ]` Before/After feature hooks
+- `[1.x ✓]` Extensibility & Hooks
+  - `[1.x ✓]` RuntimeHook interface
+  - `[1.x ✓]` Before/After scenario hooks
+  - `[1.x ✓]` Before/After feature hooks
   - `[-]` JavaScript hooks
   - `[-]` onError hook
   - `[ ]` Plugin system
@@ -299,11 +298,11 @@ Tools and workflows for test development
   - `[1.x  ]` Java debugging `$`
   - `[1.x  ]` Breakpoints and watch expressions `$`
 
-- `[1.x  ]` Parallel Execution
-  - `[1.x  ]` Parallel scenarios
-  - `[1.x  ]` Parallel features
-  - `[1.x  ]` Thread pool configuration
-  - `[ ]` Virtual threads support
+- `[1.x ✓]` Parallel Execution
+  - `[1.x ✓]` Parallel scenarios
+  - `[1.x ✓]` Parallel features
+  - `[1.x ✓]` Thread pool configuration
+  - `[v2]` Virtual threads support
 
 - `[1.x  ]` Robustness & Predictability
   - `[1.x  ]` Retry on failure
@@ -320,13 +319,13 @@ Tools and workflows for test development
   - `[-]` Test diff visualization
   - `[-]` Impact analysis `$`
 
-- `[1.x  ]` Logging & Traceability
-  - `[1.x  ]` Structured logging (SLF4J)
-  - `[1.x  ]` Request/response logging
-  - `[1.x  ]` Log masking for sensitive data
+- `[1.x ✓]` Logging & Traceability
+  - `[1.x ✓]` Structured logging (SLF4J)
+  - `[1.x ✓]` Request/response logging
+  - `[1.x ✓]` Log masking for sensitive data
   - `[-]` Selective logging control
   - `[-]` HTML report without console logs
-  - `[ ]` ANSI colored console output
+  - `[v2]` ANSI colored console output
   - `[ ]` LLM-friendly output mode
 
 - `[1.x  ]` Test Runner SDK / CLI
@@ -362,9 +361,9 @@ Tools and workflows for test development
 
 Test results and third-party integrations
 
-- `[1.x  ]` Results Output / Export
-  - `[1.x  ]` Karate JSON report
-  - `[1.x  ]` JUnit XML report
+- `[1.x ✓]` Results Output / Export
+  - `[1.x ✓]` Karate JSON report
+  - `[1.x ✓]` JUnit XML report
   - `[1.x  ]` Cucumber JSON report
   - `[-]` PDF reports `$`
 

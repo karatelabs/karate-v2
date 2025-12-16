@@ -17,21 +17,23 @@ This document tracks the development roadmap for Karate v2. It serves as a persi
 
 ### Gherkin Parser & Scenario Engine
 
-The Gherkin parser lives in `karate-js` (reuses the JS lexer). The ScenarioEngine is ported from Karate 1.x.
+The Gherkin parser lives in `karate-js` (reuses the JS lexer). The ScenarioEngine lives in `karate-core`.
 
-- [~] Gherkin parser (Feature, Scenario, tags, steps implemented; ScenarioOutline, Background, Examples pending)
-- [ ] Port ScenarioEngine (FeatureRuntime, ScenarioRuntime, StepRuntime)
-- [ ] Step definitions with regex pattern matching
-- [ ] Variable scoping (local, global, feature-level)
-- [ ] `call` and `callonce` keywords for feature composition
+- [x] Gherkin parser (Feature, Scenario, ScenarioOutline, Background, Examples, tags, steps)
+- [x] ScenarioEngine (Suite, FeatureRuntime, ScenarioRuntime, StepExecutor)
+- [x] Variable scoping (local, global, feature-level)
+- [x] `call` and `callonce` keywords for feature composition
+- [x] Doc strings for multi-line values
+- [x] Data tables for parameterized steps
+- [x] Tags parsing
+- [x] Parallel scenario execution (virtual threads)
+- [x] RuntimeHook interface (Before/After suite/feature/scenario)
+- [x] ResultListener interface for result streaming
+- [x] JavaScript expression evaluation in steps
+- [x] String interpolation with variable substitution
 - [ ] `retry until` keyword for polling
-- [ ] Doc strings for multi-line values
-- [ ] Data tables for parameterized steps
-- [~] Tags parsing (implemented; tag expressions filtering pending)
-- [ ] Parallel scenario execution (ExecutorService/CompletableFuture)
-- [ ] Scenario hooks (Before, After, BeforeAll, AfterAll)
-- [ ] JavaScript expression evaluation in steps
-- [ ] String interpolation with variable substitution
+- [ ] Tag expressions filtering
+- [ ] Step definitions with regex pattern matching
 
 ### HTTP Client
 
@@ -79,21 +81,22 @@ The Gherkin parser lives in `karate-js` (reuses the JS lexer). The ScenarioEngin
 
 ### Configuration
 
-- [ ] `karate-config.js` support for global configuration
-- [ ] Environment-based config (`karate.env`)
-- [ ] RuntimeHook interface (before/after suite/feature/scenario/step)
+- [x] `karate-config.js` support for global configuration
+- [x] Environment-based config (`karate.env`)
+- [x] RuntimeHook interface (before/after suite/feature/scenario)
 - [ ] Plugin system support
+- [ ] `karate-base.js` (shared config from classpath JAR)
 
 ### Reporting
 
-- [ ] Karate JSON report format
-- [ ] JUnit XML report format
+- [x] Karate JSON report format (`karate-summary.json`)
+- [x] JUnit XML report format (`karate-junit.xml`)
+- [x] Summary statistics (pass/fail counts, durations)
+- [x] Console output with ANSI colors
+- [ ] HTML report (interactive dashboard)
 - [ ] Cucumber JSON report format
-- [ ] Karate HTML report (interactive dashboard)
 - [ ] Timeline view
 - [ ] Tag-based analytics
-- [ ] Step-by-step execution logs
-- [ ] Summary statistics (pass/fail counts, durations)
 - [ ] Result embedding in reports
 
 ### CLI Compatibility
@@ -119,12 +122,12 @@ Integration with [Karate CLI](https://github.com/karatelabs/karate-cli):
 
 ### Console & Logging
 
-- [ ] ANSI coloring for all console logs
+- [x] ANSI coloring for all console logs
 - [x] Structured logging (SLF4J/Logback)
+- [x] Request/response log prettification
+- [x] Print statements with expression evaluation
 - [ ] File logging support
 - [ ] Configurable verbosity levels
-- [x] Request/response log prettification
-- [ ] Print statements with expression evaluation
 - [ ] LLM-friendly output mode (token-efficient)
 - [ ] Stack traces with context
 
@@ -225,19 +228,51 @@ Integration with [Karate CLI](https://github.com/karatelabs/karate-cli):
 
 ### JavaScript Engine (karate-js)
 
-**ES Compatibility Enhancements:**
-- [ ] `async`/`await` support (map to Java threads/virtual threads)
-- [ ] `setTimeout()` and timer functions
-- [ ] ES-compliant Promises (map to CompletableFuture)
-- [ ] ES Modules (`import`/`export`) for JS reuse across tests
+> See [JS_ENGINE.md](./JS_ENGINE.md) for detailed type system and design patterns.
 
-**Maintenance:**
-- [ ] Keep engine stable and performant
-- [ ] Monitor and address any compatibility issues
-- [ ] Document supported JavaScript features
-- [ ] Third-party integration documentation
+**High Priority - Java Interop:**
+- [ ] BigInt → `BigInteger` (large IDs, timestamps, financial identifiers)
+- [ ] BigDecimal → `BigDecimal` (money/finance - floating point is dangerous)
+- [ ] ArrayBuffer → `byte[]` (raw binary data container)
+- [ ] JsRegex + JavaMirror (return `Pattern` from `getJavaValue()`)
+
+**Medium Priority:**
+- [ ] Set → `java.util.Set` (deduplication, membership checks)
+- [ ] Map (proper JS Map) → `java.util.Map` (ordered keys, non-string keys)
+- [ ] Iterator/for-of → `java.util.Iterator` (clean iteration over Java collections)
+
+**ES Compatibility (Lower Priority):**
+- [ ] `async`/`await` → `CompletableFuture` / virtual threads
+- [ ] `setTimeout()` and timer functions
+- [ ] ES Modules (`import`/`export`) for JS reuse across tests
+- [ ] Generator/yield → Iterator with state
+- [ ] Symbol → `JsSymbol` (unique identifiers)
+- [ ] Proxy → Dynamic proxy (metaprogramming)
+- [ ] WeakMap/WeakSet → `WeakHashMap`
+
+**Utilities:**
+- [ ] Engine State JSON Serialization (persist/restore engine bindings)
 
 > Full ES compatibility is a long-term goal if there is community interest.
+
+### Parser & IDE Support
+
+> See [PARSER.md](./PARSER.md) for detailed parser architecture and APIs.
+
+Error-tolerant parsing for IDE features (syntax coloring, code completion, formatting).
+
+- [ ] Code Formatting (JSON-based options, token-based and AST-based strategies)
+- [ ] Source Reconstitution (regenerate source from AST)
+- [ ] Embedded Language Support (JS highlighting inside Gherkin steps)
+
+### Runtime Advanced Features
+
+- [ ] Lock System (`@lock=<name>`) for mutual exclusion in parallel execution
+- [ ] Retry System (`@retry`) for flaky test handling with `rerun.txt`
+- [ ] Multiple Suite Execution with environment isolation
+- [ ] Telemetry (anonymous usage stats, once per day, opt-out via `KARATE_TELEMETRY=false`)
+- [ ] Classpath scanning for feature files (`classpath:features/`)
+- [ ] CLI JSON Configuration (`karate --config karate.json`)
 
 ### Templating & Markup
 - [ ] Document Thymeleaf-based templating
@@ -328,9 +363,12 @@ This roadmap is a living document. When working on tasks:
 
 Start each session by reading:
 1. **PRINCIPLES.md** - Understand the "why" behind decisions
-2. **ROADMAP.md** (this file) - Understand current priorities and tasks
+2. **ROADMAP.md** (this file) - Single source of truth for all pending work
 3. **CAPABILITIES.yaml** - Source of truth for capabilities (edit this, not the .md)
 4. **Module READMEs** - Understand architecture (`karate-js/README.md`, `karate-core/README.md`)
+5. **RUNTIME.md** - Runtime architecture and implementation details
+6. **JS_ENGINE.md** - JavaScript engine type system and Java interop patterns
+7. **PARSER.md** - Parser infrastructure for IDE support and tooling
 
 **Important:** `CAPABILITIES.md` is auto-generated from `CAPABILITIES.yaml`. Never edit the .md file directly. After updating the YAML, run `./etc/generate-capabilities.sh` to regenerate.
 
