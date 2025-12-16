@@ -192,11 +192,29 @@ public class AuthorizationCodeAuthHandler implements AuthHandler {
 
         try {
             HttpResponse response = builder.invoke("post");
-            Map<String, Object> data = Json.of(response.getBodyString()).asMap();
+            String bodyString = response.getBodyString();
+            Json json;
+            try {
+                json = Json.of(bodyString);
+            } catch (Exception e) {
+                throw new OAuth2Exception("Token endpoint returned invalid response: " + truncate(bodyString));
+            }
+            if (!json.isObject()) {
+                throw new OAuth2Exception("Token endpoint returned unexpected response: " + truncate(bodyString));
+            }
+            Map<String, Object> data = json.asMap();
+            if (data.containsKey("error")) {
+                String error = String.valueOf(data.get("error"));
+                String desc = data.containsKey("error_description") ? String.valueOf(data.get("error_description")) : null;
+                throw new OAuth2Exception("Token request failed: " + error + (desc != null ? " - " + desc : ""));
+            }
 
             logger.info("Token exchange successful");
             return OAuth2Token.fromMap(data);
 
+        } catch (OAuth2Exception e) {
+            logger.error("Token exchange failed: {}", e.getMessage());
+            throw new OAuth2Exception("Token exchange failed: " + e.getMessage(), e);
         } catch (Exception e) {
             logger.error("Token exchange failed: {}", e.getMessage());
             throw new OAuth2Exception("Token exchange failed: " + e.getMessage(), e);
@@ -297,6 +315,16 @@ public class AuthorizationCodeAuthHandler implements AuthHandler {
         } catch (UnsupportedEncodingException e) {
             throw new OAuth2Exception("URL encoding failed", e);
         }
+    }
+
+    private String truncate(String value) {
+        if (value == null) {
+            return "(empty)";
+        }
+        if (value.length() <= 100) {
+            return value;
+        }
+        return value.substring(0, 100) + "...";
     }
 
     @Override
