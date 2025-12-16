@@ -332,4 +332,68 @@ class MarkupTest {
         assertFalse(rendered.contains("<tags>"), "Tags in attr should be escaped");
     }
 
+    // ========== Map Iteration Tests ==========
+
+    @Test
+    void testMapIterationWithKeyValue() {
+        // Test that Maps can be iterated with entry.key and entry.value like Thymeleaf
+        Engine js = new Engine();
+        Markup markup = Markup.init(js, new RootResourceResolver("classpath:markup"));
+
+        String html = """
+            <script ka:scope="global">
+                _.colors = { red: '#FF0000', green: '#00FF00', blue: '#0000FF' };
+            </script>
+            <ul>
+                <li th:each="entry : colors">
+                    <span th:text="entry.key">name</span>: <span th:text="entry.value">value</span>
+                </li>
+            </ul>
+            """;
+        String rendered = markup.processString(html, null);
+
+        assertTrue(rendered.contains("<span>red</span>: <span>#FF0000</span>"), "Should have red entry: " + rendered);
+        assertTrue(rendered.contains("<span>green</span>: <span>#00FF00</span>"), "Should have green entry: " + rendered);
+        assertTrue(rendered.contains("<span>blue</span>: <span>#0000FF</span>"), "Should have blue entry: " + rendered);
+    }
+
+    @Test
+    void testMapIterationWithNestedValues() {
+        // Test Map iteration where values are arrays/lists
+        Engine js = new Engine();
+        Markup markup = Markup.init(js, new RootResourceResolver("classpath:markup"));
+
+        String html = """
+            <script ka:scope="global">
+                _.tags = {
+                    '@smoke': ['test1', 'test2'],
+                    '@api': ['test3']
+                };
+            </script>
+            <div th:each="entry : tags">
+                <h3 th:text="entry.key">tag</h3>
+                <span th:text="entry.value.length">0</span>
+            </div>
+            """;
+        String rendered = markup.processString(html, null);
+
+        assertTrue(rendered.contains("<h3>@smoke</h3>"), "Should have @smoke tag: " + rendered);
+        assertTrue(rendered.contains("<h3>@api</h3>"), "Should have @api tag: " + rendered);
+    }
+
+    @Test
+    void testThAttrWithHyphenatedAttributeNames() {
+        // Test that hyphenated attribute names work when quoted
+        Engine js = new Engine();
+        js.put("itemId", "42");
+        Markup markup = Markup.init(js, new RootResourceResolver("classpath:markup"));
+
+        // Hyphenated attributes must be quoted to avoid parsing as subtraction
+        String html = "<button th:attr=\"'data-bs-target':'#item-' + itemId, 'data-id':itemId\">Click</button>";
+        String rendered = markup.processString(html, null);
+
+        assertTrue(rendered.contains("data-bs-target=\"#item-42\""), "Should have data-bs-target: " + rendered);
+        assertTrue(rendered.contains("data-id=\"42\""), "Should have data-id: " + rendered);
+    }
+
 }

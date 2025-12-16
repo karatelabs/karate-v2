@@ -1,16 +1,22 @@
-# Karate Server-Side Templating Guide
+# Karate Templating Guide
 
-This guide documents the server-side templating system used in Karate for building web applications. The system is based on Thymeleaf but customized to use JavaScript expressions instead of OGNL/SpEL.
+This guide documents Karate's HTML templating system, which is based on Thymeleaf syntax but uses JavaScript expressions instead of OGNL/SpEL. The templating engine supports two modes:
+
+1. **Server Mode** - For web applications with HTTP requests, sessions, HTMX
+2. **Static Mode** - For generating standalone HTML files (reports, emails, etc.)
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Template Syntax](#template-syntax)
-3. [Server-Side JavaScript](#server-side-javascript)
-4. [Built-in Objects](#built-in-objects)
-5. [HTMX Integration](#htmx-integration)
-6. [Common Patterns](#common-patterns)
-7. [Server Setup](#server-setup)
+2. [Templating Modes](#templating-modes)
+3. [Template Syntax](#template-syntax)
+4. [Server-Side JavaScript](#server-side-javascript)
+5. [Built-in Objects](#built-in-objects)
+6. [HTMX Integration](#htmx-integration)
+7. [Common Patterns](#common-patterns)
+8. [Server Setup](#server-setup)
+9. [Static HTML Generation](#static-html-generation)
+10. [Differences from Standard Thymeleaf](#differences-from-standard-thymeleaf)
 
 ---
 
@@ -18,11 +24,12 @@ This guide documents the server-side templating system used in Karate for buildi
 
 Karate's templating engine provides:
 
-- **HTML templates** with Thymeleaf-like syntax
-- **Server-side JavaScript execution** for business logic
-- **Session management** for user state
-- **HTMX integration** for dynamic, partial page updates
-- **API handlers** using plain JavaScript files
+- **HTML templates** with Thymeleaf-like syntax (`th:text`, `th:if`, `th:each`, etc.)
+- **JavaScript expressions** instead of OGNL/SpEL
+- **Two rendering modes**: server-side (web apps) and static (file generation)
+- **Server-side JavaScript execution** via `<script ka:scope="global">`
+- **HTMX integration** for dynamic, partial page updates (server mode)
+- **Session management** for user state (server mode)
 
 ### File Structure
 
@@ -47,6 +54,96 @@ app/
 | Expression Syntax | `th:text="${user.name}"` | `th:text="user.name"` |
 | Server-side Logic | Spring Controllers | `<script ka:scope="global">` |
 | Session Access | Spring Session | `session.*` JavaScript object |
+
+---
+
+## Templating Modes
+
+The templating engine operates in two distinct modes, controlled by `MarkupConfig.setServerMode()`:
+
+### Server Mode (`serverMode = true`)
+
+Used for **web applications** served by Karate's HTTP server. This is the default when using `RequestHandler`.
+
+**Features:**
+- Full access to `request`, `response`, `session`, `context` objects
+- HTMX/AJAX request detection (`request.ajax`)
+- Session management with cookies
+- Cache-busting via `ka:nocache` (appends `?ts=timestamp` to URLs)
+- `<script ka:scope="global">` for server-side JavaScript
+- CSRF protection
+
+**Example setup:**
+```java
+ServerConfig config = new ServerConfig()
+    .resourceRoot("classpath:web")
+    .sessionStore(new InMemorySessionStore())
+    .devMode(true);
+RequestHandler handler = new RequestHandler(config, resolver);
+HttpServer server = HttpServer.start(8080, handler);
+```
+
+### Static Mode (`serverMode = false`)
+
+Used for **generating standalone HTML files** like reports, emails, or documentation. No HTTP context required.
+
+**Features:**
+- Pure template processing with variable substitution
+- No `request`, `response`, `session` objects (they will be null/undefined)
+- No cache-busting (URLs remain unchanged)
+- No HTMX processing
+- Works with any data passed via `Map<String, Object>`
+
+**Key differences from Server Mode:**
+- `ka:nocache` is ignored (no timestamp appended)
+- Built-in objects like `request` and `session` are not available
+- Templates render to static HTML strings
+
+**Example setup:**
+```java
+Engine engine = new Engine();
+MarkupConfig config = new MarkupConfig();
+config.setResolver(new ClasspathResourceResolver());
+config.setServerMode(false);  // Static mode
+config.setDevMode(false);     // Disable hot reload
+
+Markup markup = Markup.init(engine, config);
+
+// Render with data
+Map<String, Object> vars = new LinkedHashMap<>();
+vars.put("title", "My Report");
+vars.put("items", itemList);
+vars.put("summary", summaryData);
+
+String html = markup.processPath("report-template.html", vars);
+Files.writeString(outputPath, html);
+```
+
+### Choosing the Right Mode
+
+| Use Case | Mode | Example |
+|----------|------|---------|
+| Web application | Server | Dashboard, admin panel |
+| REST API responses | Server | HTML fragments for HTMX |
+| Test reports | Static | JUnit/Karate HTML reports |
+| Email templates | Static | Notification emails |
+| Documentation | Static | Generated docs |
+| PDF generation | Static | Invoice templates |
+
+### Template Compatibility
+
+Templates can be written to work in both modes by checking for object availability:
+
+```html
+<!-- Works in both modes -->
+<div th:if="session" th:text="'Welcome, ' + session.user.name">Welcome</div>
+<div th:unless="session">Guest mode</div>
+
+<!-- Server-mode only features -->
+<div th:if="request">
+  <span th:if="request.ajax">AJAX request</span>
+</div>
+```
 
 ---
 
@@ -1433,6 +1530,298 @@ Markup markup = Markup.init(engine, markupConfig, new HtmxDialect());
 Map<String, Object> vars = Map.of("name", "John", "items", itemList);
 String html = markup.processPath("email-template.html", vars);
 ```
+
+---
+
+## Static HTML Generation
+
+This section covers generating standalone HTML files (reports, emails, documentation) using static mode.
+
+### Basic Setup
+
+```java
+// 1. Create JavaScript engine
+Engine engine = new Engine();
+
+// 2. Configure for static mode
+MarkupConfig config = new MarkupConfig();
+config.setResolver(new ClasspathResourceResolver());
+config.setServerMode(false);  // No HTTP context
+config.setDevMode(false);     // No hot reload needed
+
+// 3. Initialize markup processor
+Markup markup = Markup.init(engine, config);
+```
+
+### Resource Resolver
+
+The resolver tells the engine where to find templates:
+
+```java
+// Classpath resolver (for bundled templates)
+class ClasspathResourceResolver implements ResourceResolver {
+    private static final String ROOT = "io/myapp/templates/";
+
+    @Override
+    public Resource resolve(String path, Resource caller) {
+        return Resource.path("classpath:" + ROOT + path);
+    }
+}
+
+// File system resolver (for external templates)
+class FileResourceResolver implements ResourceResolver {
+    private final Path templateDir;
+
+    FileResourceResolver(Path templateDir) {
+        this.templateDir = templateDir;
+    }
+
+    @Override
+    public Resource resolve(String path, Resource caller) {
+        return Resource.from(templateDir.resolve(path));
+    }
+}
+```
+
+### Real-World Example: HTML Report Generator
+
+This example shows generating test reports (similar to Karate's HTML reports):
+
+**Template (`report-summary.html`):**
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <link rel="stylesheet" href="res/bootstrap.min.css"/>
+    <title>Test Report</title>
+</head>
+<body>
+    <h1>Test Report</h1>
+    <p th:text="reportDate">Date</p>
+
+    <!-- Summary cards -->
+    <div class="row">
+        <div class="card">
+            <h5>Features</h5>
+            <h2 th:text="summary.featureCount">0</h2>
+        </div>
+        <div class="card">
+            <h5>Passed</h5>
+            <h2 th:text="summary.passedCount">0</h2>
+        </div>
+        <div class="card">
+            <h5>Failed</h5>
+            <h2 th:text="summary.failedCount">0</h2>
+        </div>
+    </div>
+
+    <!-- Feature table -->
+    <table>
+        <thead>
+            <tr><th>Feature</th><th>Status</th><th>Duration</th></tr>
+        </thead>
+        <tbody>
+            <tr th:each="f : features">
+                <td>
+                    <a th:href="'features/' + f.fileName + '.html'"
+                       th:text="f.name">Feature</a>
+                </td>
+                <td>
+                    <span th:if="f.passed" class="badge bg-success">PASSED</span>
+                    <span th:if="f.failed" class="badge bg-danger">FAILED</span>
+                </td>
+                <td th:text="f.durationMillis + ' ms'">0 ms</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <footer>
+        <small>Generated by <span th:text="appName">App</span></small>
+    </footer>
+</body>
+</html>
+```
+
+**Java code:**
+
+```java
+public class ReportGenerator {
+
+    private final Markup markup;
+
+    public ReportGenerator() {
+        Engine engine = new Engine();
+        MarkupConfig config = new MarkupConfig();
+        config.setResolver(new ClasspathResourceResolver());
+        config.setServerMode(false);
+        this.markup = Markup.init(engine, config);
+    }
+
+    public void generate(TestResult result, Path outputDir) throws IOException {
+        // Create output directories
+        Files.createDirectories(outputDir.resolve("features"));
+        Files.createDirectories(outputDir.resolve("res"));
+
+        // Copy static resources
+        copyResources(outputDir.resolve("res"));
+
+        // Prepare template variables
+        Map<String, Object> vars = new LinkedHashMap<>();
+        vars.put("reportDate", formatDate(result.getStartTime()));
+        vars.put("appName", "My Test Framework");
+        vars.put("summary", Map.of(
+            "featureCount", result.getFeatureCount(),
+            "passedCount", result.getPassedCount(),
+            "failedCount", result.getFailedCount()
+        ));
+        vars.put("features", buildFeatureList(result));
+
+        // Render and write
+        String html = markup.processPath("report-summary.html", vars);
+        Files.writeString(outputDir.resolve("report-summary.html"), html);
+
+        // Generate individual feature pages
+        for (FeatureResult fr : result.getFeatures()) {
+            generateFeaturePage(fr, outputDir.resolve("features"));
+        }
+    }
+
+    private List<Map<String, Object>> buildFeatureList(TestResult result) {
+        // Convert to list of maps for template iteration
+        List<Map<String, Object>> features = new ArrayList<>();
+        for (FeatureResult fr : result.getFeatures()) {
+            features.add(Map.of(
+                "name", fr.getName(),
+                "fileName", sanitizeFileName(fr.getName()),
+                "passed", fr.isPassed(),
+                "failed", fr.isFailed(),
+                "durationMillis", fr.getDurationMillis()
+            ));
+        }
+        return features;
+    }
+}
+```
+
+### Tips for Static Mode Templates
+
+1. **No server objects**: `request`, `response`, `session` are not available
+2. **Use `.length` not `.size()`**: JavaScript arrays use `.length`
+3. **Convert Maps to Lists**: For `th:each` iteration, convert Java Maps to Lists of objects
+4. **Relative paths**: Use relative paths for resources (`res/style.css`, `../res/style.css`)
+5. **No `ka:nocache`**: Cache-busting is ignored in static mode
+
+### Testing Templates
+
+Create a test to quickly regenerate reports during development:
+
+```java
+@Test
+void testReportGeneration() {
+    TestResult result = runTests();
+
+    ReportGenerator generator = new ReportGenerator();
+    Path outputDir = Path.of("target/test-reports");
+    generator.generate(result, outputDir);
+
+    // Verify files exist
+    assertTrue(Files.exists(outputDir.resolve("report-summary.html")));
+
+    // Print path for easy access
+    System.out.println("Report: " + outputDir.toAbsolutePath());
+}
+```
+
+---
+
+## Differences from Standard Thymeleaf
+
+This section documents key differences when coming from standard Thymeleaf. These are important gotchas to be aware of.
+
+### Array/Collection Methods
+
+Since expressions use JavaScript, collection methods differ from Java:
+
+| Thymeleaf (Java) | Karate (JavaScript) | Notes |
+|------------------|---------------------|-------|
+| `list.size()` | `list.length` | Arrays use `.length` property |
+| `list.isEmpty()` | `list.length == 0` | No `.isEmpty()` method |
+| `map.size()` | N/A | Maps need conversion (see below) |
+
+```html
+<!-- WRONG: Java-style -->
+<span th:text="items.size()">0</span>
+
+<!-- CORRECT: JavaScript-style -->
+<span th:text="items.length">0</span>
+
+<!-- Conditional on empty -->
+<div th:if="items.length == 0">No items</div>
+<div th:if="items.length > 0">Found items</div>
+```
+
+### Map Iteration
+
+Maps are automatically converted to lists of entry objects when iterated, providing `entry.key` and `entry.value` access like standard Thymeleaf:
+
+```html
+<!-- Iterating over a Map -->
+<div th:each="entry : someMap">
+  <span th:text="entry.key">key</span>
+  <span th:text="entry.value">value</span>
+</div>
+
+<!-- With nested values -->
+<div th:each="entry : tagMap">
+  <h3 th:text="entry.key">@tagName</h3>
+  <ul>
+    <li th:each="item : entry.value" th:text="item.name">Item</li>
+  </ul>
+</div>
+```
+
+This works because Maps are converted to a list of `{key: ..., value: ...}` objects during iteration.
+
+### `th:attr` with Hyphenated Attributes
+
+Hyphenated attribute names (like `data-bs-target`) must be **quoted** in `th:attr` expressions. Without quotes, the hyphens are interpreted as subtraction operators.
+
+```html
+<!-- WRONG: hyphens parsed as subtraction -->
+<button th:attr="data-bs-target:'#item-' + id">Click</button>
+
+<!-- CORRECT: quote the attribute name -->
+<button th:attr="'data-bs-target':'#item-' + id, 'data-id':id">Click</button>
+```
+
+**Result:**
+```html
+<button data-bs-target="#item-42" data-id="42">Click</button>
+```
+
+This is consistent with JavaScript object literal syntax where hyphenated keys must be quoted.
+
+### Iteration Status Variable
+
+The iteration status variable syntax differs slightly:
+
+```html
+<!-- Standard Thymeleaf uses iterStat -->
+<tr th:each="item, iterStat : items">
+  <td th:text="iterStat.index">0</td>
+  <td th:if="iterStat.first">First!</td>
+</tr>
+
+<!-- Karate uses iter (shorter) -->
+<tr th:each="item, iter : items">
+  <td th:text="iter.index">0</td>
+  <td th:if="iter.first">First!</td>
+</tr>
+```
+
+Available properties: `iter.index`, `iter.count`, `iter.first`, `iter.last`, `iter.even`, `iter.odd`
 
 ---
 

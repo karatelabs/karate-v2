@@ -32,6 +32,11 @@ import org.thymeleaf.processor.element.AbstractAttributeTagProcessor;
 import org.thymeleaf.processor.element.IElementTagStructureHandler;
 import org.thymeleaf.templatemode.TemplateMode;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 class KarateEachTagProcessor extends AbstractAttributeTagProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(KarateEachTagProcessor.class);
@@ -68,6 +73,19 @@ class KarateEachTagProcessor extends AbstractAttributeTagProcessor {
         }
         KarateTemplateContext kec = (KarateTemplateContext) ctx;
         Object value = kec.evalLocal(av);
+        // Convert Map to list of entry objects with 'key' and 'value' properties
+        // This enables Thymeleaf-style iteration: th:each="entry : someMap"
+        // where entry.key and entry.value are accessible
+        if (value instanceof Map<?, ?> map) {
+            List<Map<String, Object>> entries = new ArrayList<>();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                Map<String, Object> entryMap = new LinkedHashMap<>();
+                entryMap.put("key", entry.getKey());
+                entryMap.put("value", entry.getValue());
+                entries.add(entryMap);
+            }
+            value = entries;
+        }
         structureHandler.iterateElement(iterVarName, statusVarName, value);
     }
 

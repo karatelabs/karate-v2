@@ -39,22 +39,43 @@ class KarateScriptSrcAttributeProcessor extends AbstractAttributeTagProcessor {
 
     private final String hostContextPath;
     private final ResourceResolver resolver;
+    private final boolean serverMode;
 
-    KarateScriptSrcAttributeProcessor(String dialectPrefix, ResourceResolver resolver, String hostContextPath) {
+    KarateScriptSrcAttributeProcessor(String dialectPrefix, ResourceResolver resolver, String hostContextPath, boolean serverMode) {
         super(TemplateMode.HTML, dialectPrefix, null, false, KarateScriptBodyProcessor.SRC, false, 1000, false);
         this.resolver = resolver;
         this.hostContextPath = hostContextPath;
+        this.serverMode = serverMode;
     }
 
     @Override
     protected void doProcess(ITemplateContext ctx, IProcessableElementTag tag, AttributeName an, String src, IElementTagStructureHandler sh) {
         String scope = tag.getAttributeValue(getDialectPrefix(), KarateScriptBodyProcessor.SCOPE);
+        String noCache = tag.getAttributeValue(getDialectPrefix(), KarateScriptBodyProcessor.NOCACHE);
+
+        // For plain HTML mode (not server), skip resource resolution for static src attributes
+        if (!serverMode && scope == null) {
+            if (noCache != null) {
+                sh.removeAttribute(getDialectPrefix(), KarateScriptBodyProcessor.NOCACHE);
+            }
+            return;
+        }
+
+        // Server mode or scope evaluation needed - resolve the resource
+        if (scope == null && noCache == null) {
+            // Plain src attribute - just update with context path if needed
+            if (hostContextPath != null) {
+                src = hostContextPath + src;
+                sh.setAttribute(KarateScriptBodyProcessor.SRC, src);
+            }
+            return;
+        }
+
         Resource srcResource = resolver.resolve(src, null);
         if (scope == null) { // no js evaluation, we just update the html for nocache
             if (hostContextPath != null) {
                 src = hostContextPath + src;
             }
-            String noCache = tag.getAttributeValue(getDialectPrefix(), KarateScriptBodyProcessor.NOCACHE);
             if (noCache != null) {
                 try {
                     src = src + "?ts=" + srcResource.getLastModified();

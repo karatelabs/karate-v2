@@ -55,6 +55,7 @@ public class Suite {
     private String configPath = "classpath:karate-config.js";
     private Path outputDir = Path.of("target/karate-reports");
     private boolean writeReport = true;
+    private boolean outputHtmlReport = true;
     private boolean outputJunitXml = false;
 
     // Config variables from karate-config.js
@@ -157,6 +158,11 @@ public class Suite {
 
     public Suite writeReport(boolean writeReport) {
         this.writeReport = writeReport;
+        return this;
+    }
+
+    public Suite outputHtmlReport(boolean outputHtmlReport) {
+        this.outputHtmlReport = outputHtmlReport;
         return this;
     }
 
@@ -288,6 +294,9 @@ public class Suite {
             // Write reports if enabled
             if (writeReport) {
                 writeKarateJsonReport();
+            }
+            if (outputHtmlReport) {
+                HtmlReportWriter.write(result, outputDir, env);
             }
             if (outputJunitXml) {
                 JunitXmlWriter.write(result, outputDir);

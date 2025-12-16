@@ -306,6 +306,7 @@ public final class Runner {
                 suite.outputDir(outputDir);
             }
             suite.dryRun(dryRun);
+            suite.outputHtmlReport(outputHtmlReport);
             suite.outputJunitXml(outputJunitXml);
 
             // Add hooks

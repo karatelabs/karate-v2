@@ -33,17 +33,19 @@ class KarateProcessorDialect extends AbstractProcessorDialect {
 
     private final ResourceResolver resolver;
     private final String contextPath;
+    private final boolean serverMode;
 
     KarateProcessorDialect(MarkupConfig config) {
         super("karate", "ka", 2000); // has to be processed after standard (default) dialect which is 1000
         this.resolver = config.getResolver();
         this.contextPath = config.getContextPath();
+        this.serverMode = config.isServerMode();
     }
 
     @Override
     public Set<IProcessor> getProcessors(String dialectPrefix) {
         Set<IProcessor> ps = new HashSet<>();
-        ps.add(new KarateScriptSrcAttributeProcessor(dialectPrefix, resolver, contextPath));
+        ps.add(new KarateScriptSrcAttributeProcessor(dialectPrefix, resolver, contextPath, serverMode));
         ps.add(new KarateScriptBodyProcessor(dialectPrefix));
         ps.add(new KarateSetAttrProcessor(dialectPrefix));
         return ps;
