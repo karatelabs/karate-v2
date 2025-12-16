@@ -55,6 +55,7 @@ public class Suite {
     private String configPath = "classpath:karate-config.js";
     private Path outputDir = Path.of("target/karate-reports");
     private boolean writeReport = true;
+    private boolean outputJunitXml = false;
 
     // Config variables from karate-config.js
     private Map<String, Object> configVariables = Collections.emptyMap();
@@ -153,6 +154,11 @@ public class Suite {
 
     public Suite writeReport(boolean writeReport) {
         this.writeReport = writeReport;
+        return this;
+    }
+
+    public Suite outputJunitXml(boolean outputJunitXml) {
+        this.outputJunitXml = outputJunitXml;
         return this;
     }
 
@@ -261,9 +267,12 @@ public class Suite {
         } finally {
             result.setEndTime(System.currentTimeMillis());
 
-            // Write report if enabled
+            // Write reports if enabled
             if (writeReport) {
                 writeKarateJsonReport();
+            }
+            if (outputJunitXml) {
+                JunitXmlWriter.write(result, outputDir);
             }
         }
 

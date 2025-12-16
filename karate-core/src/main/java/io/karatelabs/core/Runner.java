@@ -285,6 +285,7 @@ public final class Runner {
                 suite.outputDir(outputDir);
             }
             suite.dryRun(dryRun);
+            suite.outputJunitXml(outputJunitXml);
 
             // Add hooks
             for (RuntimeHook hook : hooks) {
