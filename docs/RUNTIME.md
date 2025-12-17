@@ -2,7 +2,7 @@
 
 This document describes the runtime architecture for Karate v2.
 
-> See also: [PARSER.md](./PARSER.md) | [JS_ENGINE.md](./JS_ENGINE.md) | [PRINCIPLES.md](./PRINCIPLES.md) | [ROADMAP.md](./ROADMAP.md)
+> See also: [CLI.md](./CLI.md) | [PARSER.md](./PARSER.md) | [JS_ENGINE.md](./JS_ENGINE.md) | [PRINCIPLES.md](./PRINCIPLES.md) | [ROADMAP.md](./ROADMAP.md)
 
 ---
 
@@ -90,7 +90,7 @@ See `io.karatelabs.core.Runner` for full API.
 java -jar karate.jar -t @smoke -e dev -T 5 src/test/resources
 ```
 
-See `io.karatelabs.core.Main` (PicoCLI-based).
+See `io.karatelabs.Main` (PicoCLI-based).
 
 ### Parallel Execution
 
@@ -439,6 +439,7 @@ karate --config karate.json -e prod -T 10
   "threads": 5,
   "scenarioName": ".*login.*",
   "configDir": "src/test/resources",
+  "workingDir": "/home/user/project",
   "dryRun": false,
   "clean": false,
   "output": {
@@ -457,29 +458,10 @@ See `io.karatelabs.core.KarateConfig` for implementation.
 
 ---
 
-### Priority 5: Working Directory (`-w, --workdir`)
+### ~~Priority 5: Working Directory (`-w, --workdir`)~~ ✅ IMPLEMENTED
 
-**Status:** TODO
+Working directory CLI option is now available to control relative path resolution:
 
-Add working directory CLI option to control the base path for relative path resolution in resources and reports.
-
-**v1 Reference:** `/Users/peter/dev/zcode/karate/karate-core/src/main/java/com/intuit/karate/Main.java` line 110-111
-
-**Problem:**
-Currently `FileUtils.WORKING_DIR` is a static final set to `new File("").getAbsoluteFile()`. When tests run from temp directories or non-standard locations, relative paths in reports show ugly `../../../var/folders/...` style paths.
-
-**Requirements:**
-1. Add `-w, --workdir` CLI option (default: current directory)
-2. Add `workingDir` to `KarateConfig` JSON schema
-3. Add `workingDir(File/Path)` to `Runner.Builder`
-4. Pass working directory to:
-   - `Resource.scanClasspath()` for root path computation
-   - `PathResource` creation for relative path display
-   - Feature file discovery in `Runner.resolveFeatures()`
-   - Report generation for clean relative paths
-5. Update `Suite` to store and propagate working directory
-
-**Expected behavior:**
 ```bash
 # Run from project root, features in subdir
 karate -w /home/user/project src/test/features
@@ -491,12 +473,19 @@ karate -w /home/user/project src/test/features
 }
 ```
 
-**Affected classes:**
-- `Main.java` - CLI option
-- `KarateConfig.java` - JSON field
-- `Runner.java` - Builder method, pass to Suite
-- `Suite.java` - Store and use for resource creation
-- `Resource.java` / `PathResource.java` - Use for relative path computation
+**Programmatic API:**
+```java
+Runner.path("src/test/features")
+    .workingDir("/home/user/project")
+    .parallel(5);
+```
+
+**Implementation details:**
+- `Main.java` - Added `-w, --workdir` CLI option
+- `KarateConfig.java` - Added `workingDir` JSON field
+- `Runner.Builder` - Added `workingDir(String/Path)` methods
+- `Suite` - Stores and propagates working directory for resource creation
+- `Resource.scanClasspath()` - Accepts optional root parameter for relative path computation
 
 ---
 

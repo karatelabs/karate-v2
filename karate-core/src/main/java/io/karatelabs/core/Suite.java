@@ -23,6 +23,7 @@
  */
 package io.karatelabs.core;
 
+import io.karatelabs.common.FileUtils;
 import io.karatelabs.common.Resource;
 import io.karatelabs.common.ResourceNotFoundException;
 import io.karatelabs.gherkin.Feature;
@@ -54,6 +55,7 @@ public class Suite {
     private boolean dryRun = false;
     private String configPath = "classpath:karate-config.js";
     private Path outputDir = Path.of("target/karate-reports");
+    private Path workingDir = FileUtils.WORKING_DIR.toPath();
     private boolean writeReport = true;
     private boolean outputHtmlReport = true;
     private boolean outputNdjson = false;
@@ -84,9 +86,9 @@ public class Suite {
             File file = new File(path);
             if (file.isDirectory()) {
                 // Find all .feature files in directory
-                addFeaturesFromDirectory(suite, file);
+                addFeaturesFromDirectory(suite, file, suite.workingDir);
             } else if (file.exists() && file.getName().endsWith(".feature")) {
-                Feature feature = Feature.read(Resource.from(file.toPath()));
+                Feature feature = Feature.read(Resource.from(file.toPath(), suite.workingDir));
                 suite.features.add(feature);
             }
         }
@@ -101,15 +103,15 @@ public class Suite {
         return suite;
     }
 
-    private static void addFeaturesFromDirectory(Suite suite, File dir) {
+    private static void addFeaturesFromDirectory(Suite suite, File dir, Path workingDir) {
         File[] files = dir.listFiles();
         if (files == null) return;
 
         for (File file : files) {
             if (file.isDirectory()) {
-                addFeaturesFromDirectory(suite, file);
+                addFeaturesFromDirectory(suite, file, workingDir);
             } else if (file.getName().endsWith(".feature")) {
-                Feature feature = Feature.read(Resource.from(file.toPath()));
+                Feature feature = Feature.read(Resource.from(file.toPath(), workingDir));
                 suite.features.add(feature);
             }
         }
@@ -155,6 +157,20 @@ public class Suite {
 
     public Suite outputDir(String outputDir) {
         this.outputDir = Path.of(outputDir);
+        return this;
+    }
+
+    public Suite workingDir(Path workingDir) {
+        if (workingDir != null) {
+            this.workingDir = workingDir.toAbsolutePath().normalize();
+        }
+        return this;
+    }
+
+    public Suite workingDir(String workingDir) {
+        if (workingDir != null) {
+            this.workingDir = Path.of(workingDir).toAbsolutePath().normalize();
+        }
         return this;
     }
 
@@ -427,6 +443,10 @@ public class Suite {
 
     public boolean isDryRun() {
         return dryRun;
+    }
+
+    public Path getWorkingDir() {
+        return workingDir;
     }
 
     public List<Feature> getFeatures() {

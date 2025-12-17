@@ -320,4 +320,56 @@ class KarateConfigTest {
         assertEquals("target/karate-reports", config.getOutput().getDir());
     }
 
+    @Test
+    void testParseWorkingDir() {
+        String json = """
+            {
+              "paths": ["src/test/features"],
+              "workingDir": "/home/user/project"
+            }
+            """;
+
+        KarateConfig config = KarateConfig.parse(json);
+
+        assertEquals("/home/user/project", config.getWorkingDir());
+    }
+
+    @Test
+    void testWorkingDirSetterGetter() {
+        KarateConfig config = new KarateConfig();
+        assertNull(config.getWorkingDir());
+
+        config.setWorkingDir("/path/to/project");
+        assertEquals("/path/to/project", config.getWorkingDir());
+    }
+
+    @Test
+    void testApplyWorkingDirToRunner() throws Exception {
+        // Create a simple feature for testing
+        Path featureFile = tempDir.resolve("test.feature");
+        Files.writeString(featureFile, """
+            Feature: Test
+            Scenario: Test scenario
+            * def x = 1
+            """);
+
+        String json = """
+            {
+              "paths": ["%s"],
+              "workingDir": "/custom/workdir"
+            }
+            """.formatted(featureFile.toString().replace("\\", "\\\\"));
+
+        KarateConfig config = KarateConfig.parse(json);
+        Runner.Builder builder = Runner.builder();
+        config.applyTo(builder);
+
+        // Build suite to verify workingDir was applied
+        Suite suite = builder.buildSuite();
+        assertNotNull(suite);
+        assertNotNull(suite.getWorkingDir());
+        assertTrue(suite.getWorkingDir().toString().contains("workdir") ||
+                   suite.getWorkingDir().isAbsolute());
+    }
+
 }

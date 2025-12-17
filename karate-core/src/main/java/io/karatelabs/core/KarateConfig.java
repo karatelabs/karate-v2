@@ -42,6 +42,7 @@ import java.util.List;
  *   "threads": 5,
  *   "scenarioName": ".*login.*",
  *   "configDir": "src/test/resources",
+ *   "workingDir": "/home/user/project",
  *   "dryRun": false,
  *   "clean": false,
  *   "output": {
@@ -64,6 +65,7 @@ public class KarateConfig {
     private String configDir;
     private boolean dryRun;
     private boolean clean;
+    private String workingDir;
     private OutputConfig output = new OutputConfig();
 
     /**
@@ -171,6 +173,7 @@ public class KarateConfig {
         j.<String>getOptional("configDir").ifPresent(config::setConfigDir);
         j.<Boolean>getOptional("dryRun").ifPresent(config::setDryRun);
         j.<Boolean>getOptional("clean").ifPresent(config::setClean);
+        j.<String>getOptional("workingDir").ifPresent(config::setWorkingDir);
 
         // Parse output config
         if (j.pathExists("output")) {
@@ -207,6 +210,9 @@ public class KarateConfig {
         }
         if (configDir != null) {
             builder.configDir(configDir);
+        }
+        if (workingDir != null) {
+            builder.workingDir(workingDir);
         }
         builder.dryRun(dryRun);
 
@@ -284,6 +290,14 @@ public class KarateConfig {
 
     public void setClean(boolean clean) {
         this.clean = clean;
+    }
+
+    public String getWorkingDir() {
+        return workingDir;
+    }
+
+    public void setWorkingDir(String workingDir) {
+        this.workingDir = workingDir;
     }
 
     public OutputConfig getOutput() {

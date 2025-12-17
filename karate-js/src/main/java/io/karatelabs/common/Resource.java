@@ -413,7 +413,7 @@ public interface Resource {
      * @return list of matching Resources
      */
     static java.util.List<Resource> scanClasspath(String classpathDir, String extension) {
-        return scanClasspath(classpathDir, extension, null);
+        return scanClasspath(classpathDir, extension, null, null);
     }
 
     /**
@@ -426,6 +426,21 @@ public interface Resource {
      * @return list of matching Resources
      */
     static java.util.List<Resource> scanClasspath(String classpathDir, String extension, ClassLoader classLoader) {
+        return scanClasspath(classpathDir, extension, classLoader, null);
+    }
+
+    /**
+     * Scans classpath directories for resources with the given extension.
+     * Handles both file system classpath entries and JARs.
+     *
+     * @param classpathDir the classpath directory (without "classpath:" prefix)
+     * @param extension    file extension to filter (e.g., "feature")
+     * @param classLoader  optional ClassLoader (null = use default)
+     * @param root         optional root Path for relative path computation (null = use working dir)
+     * @return list of matching Resources
+     */
+    static java.util.List<Resource> scanClasspath(String classpathDir, String extension, ClassLoader classLoader, Path root) {
+        Path effectiveRoot = root != null ? root : FileUtils.WORKING_DIR.toPath();
         java.util.List<Resource> results = new java.util.ArrayList<>();
 
         // Normalize directory path
@@ -455,7 +470,7 @@ public interface Resource {
 
             while (urls != null && urls.hasMoreElements()) {
                 URL url = urls.nextElement();
-                scanUrl(url, normalizedDir, extension, results);
+                scanUrl(url, normalizedDir, extension, results, effectiveRoot);
             }
         } catch (Exception e) {
             // Silently ignore scan failures
@@ -467,7 +482,7 @@ public interface Resource {
     /**
      * Scans a single URL for resources with the given extension.
      */
-    private static void scanUrl(URL url, String baseDir, String extension, java.util.List<Resource> results) {
+    private static void scanUrl(URL url, String baseDir, String extension, java.util.List<Resource> results, Path root) {
         try {
             Path dirPath = urlToPath(url, null);
             if (dirPath != null && java.nio.file.Files.isDirectory(dirPath)) {
@@ -475,7 +490,7 @@ public interface Resource {
                 try (java.util.stream.Stream<Path> stream = java.nio.file.Files.walk(dirPath)) {
                     stream.filter(p -> java.nio.file.Files.isRegularFile(p) && p.toString().endsWith(suffix))
                             .forEach(p -> {
-                                results.add(new PathResource(p, FileUtils.WORKING_DIR.toPath(), true));
+                                results.add(new PathResource(p, root, true));
                             });
                 }
             }

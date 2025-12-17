@@ -23,6 +23,7 @@
  */
 package io.karatelabs.core;
 
+import io.karatelabs.common.FileUtils;
 import io.karatelabs.common.Resource;
 import io.karatelabs.gherkin.Feature;
 
@@ -92,6 +93,7 @@ public final class Runner {
         private String scenarioName;
         private String configDir;
         private Path outputDir = Path.of("target/karate-reports");
+        private Path workingDir = FileUtils.WORKING_DIR.toPath();
         private boolean dryRun;
         private boolean outputHtmlReport = true;
         private boolean outputNdjson;
@@ -191,6 +193,28 @@ public final class Runner {
         public Builder outputDir(Path dir) {
             if (dir != null) {
                 this.outputDir = dir;
+            }
+            return this;
+        }
+
+        /**
+         * Set the working directory for relative path resolution.
+         * This affects how feature file paths are displayed in reports.
+         */
+        public Builder workingDir(String dir) {
+            if (dir != null) {
+                this.workingDir = Path.of(dir).toAbsolutePath().normalize();
+            }
+            return this;
+        }
+
+        /**
+         * Set the working directory for relative path resolution.
+         * This affects how feature file paths are displayed in reports.
+         */
+        public Builder workingDir(Path dir) {
+            if (dir != null) {
+                this.workingDir = dir.toAbsolutePath().normalize();
             }
             return this;
         }
@@ -303,11 +327,12 @@ public final class Runner {
             // Resolve features from paths
             List<Feature> allFeatures = new ArrayList<>(features);
             for (String path : paths) {
-                resolveFeatures(path, allFeatures);
+                resolveFeatures(path, allFeatures, workingDir);
             }
 
             // Build suite
             Suite suite = Suite.of(allFeatures.toArray(new Feature[0]));
+            suite.workingDir(workingDir);
 
             // Apply configuration
             if (env != null) {
@@ -343,13 +368,13 @@ public final class Runner {
             return suite;
         }
 
-        private void resolveFeatures(String path, List<Feature> target) {
+        private void resolveFeatures(String path, List<Feature> target, Path root) {
             File file = new File(path);
 
             if (file.isDirectory()) {
-                resolveDirectory(file, target);
+                resolveDirectory(file, target, root);
             } else if (file.exists() && file.getName().endsWith(".feature")) {
-                Feature feature = Feature.read(Resource.from(file.toPath()));
+                Feature feature = Feature.read(Resource.from(file.toPath(), root));
                 target.add(feature);
             } else if (path.startsWith("classpath:")) {
                 // Handle classpath resources
@@ -369,7 +394,7 @@ public final class Runner {
                     }
                 } else {
                     // Directory - scan for .feature files
-                    List<Resource> resources = Resource.scanClasspath(classpathPath, "feature");
+                    List<Resource> resources = Resource.scanClasspath(classpathPath, "feature", null, root);
                     for (Resource resource : resources) {
                         try {
                             Feature feature = Feature.read(resource);
@@ -382,15 +407,15 @@ public final class Runner {
             }
         }
 
-        private void resolveDirectory(File dir, List<Feature> target) {
+        private void resolveDirectory(File dir, List<Feature> target, Path root) {
             File[] files = dir.listFiles();
             if (files == null) return;
 
             for (File file : files) {
                 if (file.isDirectory()) {
-                    resolveDirectory(file, target);
+                    resolveDirectory(file, target, root);
                 } else if (file.getName().endsWith(".feature")) {
-                    Feature feature = Feature.read(Resource.from(file.toPath()));
+                    Feature feature = Feature.read(Resource.from(file.toPath(), root));
                     target.add(feature);
                 }
             }

@@ -21,8 +21,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.core;
+package io.karatelabs;
 
+import io.karatelabs.core.Console;
+import io.karatelabs.core.Globals;
+import io.karatelabs.core.KarateConfig;
+import io.karatelabs.core.Runner;
+import io.karatelabs.core.SuiteResult;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -58,10 +63,17 @@ import java.util.concurrent.Callable;
 @Command(
         name = "karate",
         mixinStandardHelpOptions = true,
-        version = "Karate 2.0",
+        versionProvider = Main.VersionProvider.class,
         description = "Run Karate API tests"
 )
 public class Main implements Callable<Integer> {
+
+    static class VersionProvider implements CommandLine.IVersionProvider {
+        @Override
+        public String[] getVersion() {
+            return new String[]{"Karate " + Globals.KARATE_VERSION};
+        }
+    }
 
     @Parameters(
             description = "Feature files or directories to run",
@@ -107,6 +119,12 @@ public class Main implements Callable<Integer> {
     String configDir;
 
     @Option(
+            names = {"-w", "--workdir"},
+            description = "Working directory for relative path resolution (default: current directory)"
+    )
+    String workingDir;
+
+    @Option(
             names = {"-C", "--clean"},
             description = "Clean output directory before running"
     )
@@ -146,7 +164,7 @@ public class Main implements Callable<Integer> {
 
         // Print header
         Console.println();
-        Console.println(Console.bold("Karate v2"));
+        Console.println(Console.bold("Karate " + Globals.KARATE_VERSION));
         Console.println();
 
         // Load JSON config if specified
@@ -166,6 +184,7 @@ public class Main implements Callable<Integer> {
         String effectiveOutputDir = outputDir;
         boolean effectiveClean = clean;
         int effectiveThreads = threads;
+        String effectiveWorkingDir = workingDir;
 
         if (config != null) {
             if ((effectivePaths == null || effectivePaths.isEmpty()) && !config.getPaths().isEmpty()) {
@@ -179,6 +198,9 @@ public class Main implements Callable<Integer> {
             }
             if (effectiveThreads == 1 && config.getThreads() > 1) {
                 effectiveThreads = config.getThreads();
+            }
+            if (effectiveWorkingDir == null && config.getWorkingDir() != null) {
+                effectiveWorkingDir = config.getWorkingDir();
             }
         }
 
@@ -227,6 +249,10 @@ public class Main implements Callable<Integer> {
 
             if (configDir != null) {
                 builder.configDir(configDir);
+            }
+
+            if (effectiveWorkingDir != null) {
+                builder.workingDir(effectiveWorkingDir);
             }
 
             // Run tests
@@ -304,6 +330,10 @@ public class Main implements Callable<Integer> {
 
     public String getConfigFile() {
         return configFile;
+    }
+
+    public String getWorkingDir() {
+        return workingDir;
     }
 
     /**
