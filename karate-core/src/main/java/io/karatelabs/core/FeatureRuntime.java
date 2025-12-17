@@ -46,6 +46,8 @@ public class FeatureRuntime implements Callable<FeatureResult> {
     private final Suite suite;
     private final Feature feature;
     private final FeatureRuntime caller;
+    private final ScenarioRuntime callerScenario;  // The calling scenario's runtime (for variable inheritance)
+    private final boolean sharedScope;  // true = pass variables by reference, false = pass copies
     private final Map<String, Object> callArg;
 
     // Caches (feature-level)
@@ -57,17 +59,23 @@ public class FeatureRuntime implements Callable<FeatureResult> {
     private FeatureResult result;
 
     public FeatureRuntime(Feature feature) {
-        this(null, feature, null, null);
+        this(null, feature, null, null, false, null);
     }
 
     public FeatureRuntime(Suite suite, Feature feature) {
-        this(suite, feature, null, null);
+        this(suite, feature, null, null, false, null);
     }
 
     public FeatureRuntime(Suite suite, Feature feature, FeatureRuntime caller, Map<String, Object> callArg) {
+        this(suite, feature, caller, null, false, callArg);
+    }
+
+    public FeatureRuntime(Suite suite, Feature feature, FeatureRuntime caller, ScenarioRuntime callerScenario, boolean sharedScope, Map<String, Object> callArg) {
         this.suite = suite;
         this.feature = feature;
         this.caller = caller;
+        this.callerScenario = callerScenario;
+        this.sharedScope = sharedScope;
         this.callArg = callArg;
         this.result = new FeatureResult(feature);
     }
@@ -463,6 +471,14 @@ public class FeatureRuntime implements Callable<FeatureResult> {
 
     public FeatureRuntime getCaller() {
         return caller;
+    }
+
+    public ScenarioRuntime getCallerScenario() {
+        return callerScenario;
+    }
+
+    public boolean isSharedScope() {
+        return sharedScope;
     }
 
     public Map<String, Object> getCallArg() {

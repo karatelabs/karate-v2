@@ -253,6 +253,7 @@ The **JUnit class name** is the category. The **method name** describes what's b
 | `MatchStepTest` | match assertions |
 | `HttpStepTest` | HTTP with InMemoryHttpClient |
 | `CallFeatureTest` | call, callonce (uses resource files) |
+| `copy/CopyTest` | shared vs isolated scope, variable inheritance |
 | `ConfigTest` | configure keyword |
 | `KarateConfigTest` | karate-config.js lifecycle |
 | `ScenarioOutlineTest` | outlines, examples |
@@ -348,6 +349,76 @@ This directory contains:
 - **63 Java test files** (46 with @Test annotations)
 - **~239 feature files**
 - **14 subdirectories** organized by feature area
+
+---
+
+## Investigating V1 Behavior
+
+When a V2 test fails, consult V1 source code to understand expected behavior:
+
+```
+/Users/peter/dev/zcode/karate/karate-core/src/main/java/com/intuit/karate/core/
+```
+
+Key V1 implementation files:
+| File | What it handles |
+|------|-----------------|
+| `ScenarioCall.java` | call/callonce scope handling, shared vs isolated |
+| `ScenarioEngine.java` | Step execution, variable management |
+| `StepRuntime.java` | Keyword parsing, special syntax handling |
+| `ScenarioBridge.java` | `karate` object methods |
+
+**Workflow when debugging:**
+1. Run V1 test against V2, note the failure
+2. Find the relevant V1 implementation code
+3. Compare behavior - understand what V1 does
+4. Fix V2 to match, or document the intentional difference
+
+---
+
+## CSV Update Guidelines
+
+When updating the CSV after testing:
+
+| Field | When to update | Example |
+|-------|----------------|---------|
+| `status` | Always | `passed`, `failed`, `adopted`, `skipped` |
+| `notes` | Action taken or failure reason | `implemented shared scope; added CopyTest` |
+| `v2_location` | Path in V2 if adopted | `io/karatelabs/core/copy/` |
+| `date_tested` | Today's date | `2025-12-17` |
+
+**Helper features:** Features that are called by other features (not standalone tests) should be marked as `adopted` with note `helper for X.feature`.
+
+**Example CSV update:**
+```
+# Main test feature
+feature-040,feature,copy.feature,...,adopted,implemented shared/isolated scope; added CopyTest,io/karatelabs/core/copy/,2025-12-17
+
+# Helper features
+feature-037,feature,copy-called-nested.feature,...,adopted,helper for copy.feature,io/karatelabs/core/copy/,2025-12-17
+```
+
+---
+
+## Lightweight Test Harness
+
+When adopting tests, prefer `FeatureRuntime` over `Suite` for simpler/faster execution:
+
+```java
+// Lightweight - no reports, just pass/fail
+Resource resource = Resource.path("src/test/resources/path/to/test.feature");
+Feature feature = Feature.read(resource);
+FeatureResult result = FeatureRuntime.of(feature).call();
+
+assertTrue(result.isPassed());
+assertEquals(6, result.getScenarioCount());
+```
+
+Use `Suite` only when you need:
+- Report generation
+- Tag filtering
+- Multiple features
+- Config path specification
 
 ---
 

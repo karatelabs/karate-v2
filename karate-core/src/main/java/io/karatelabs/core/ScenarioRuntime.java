@@ -29,7 +29,9 @@ import io.karatelabs.gherkin.Step;
 import io.karatelabs.io.http.HttpRequestBuilder;
 import io.karatelabs.log.LogContext;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -166,13 +168,43 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
     }
 
     private void inheritVariables() {
+        boolean sharedScope = featureRuntime.isSharedScope();
+        // First check for callerScenario (the currently executing scenario that made the call)
+        ScenarioRuntime callerScenario = featureRuntime.getCallerScenario();
+        if (callerScenario != null) {
+            Map<String, Object> parentVars = callerScenario.getAllVariables();
+            for (var entry : parentVars.entrySet()) {
+                Object value = entry.getValue();
+                if (!sharedScope) {
+                    // Isolated scope - shallow copy maps and lists so mutations don't affect parent
+                    value = shallowCopy(value);
+                }
+                karate.engine.put(entry.getKey(), value);
+            }
+            return;
+        }
+        // Fallback to lastExecuted for other cases (e.g., sequential scenarios in same feature)
         FeatureRuntime caller = featureRuntime.getCaller();
         if (caller != null && caller.getLastExecuted() != null) {
             Map<String, Object> parentVars = caller.getLastExecuted().getAllVariables();
             for (var entry : parentVars.entrySet()) {
-                karate.engine.put(entry.getKey(), entry.getValue());
+                Object value = entry.getValue();
+                if (!sharedScope) {
+                    value = shallowCopy(value);
+                }
+                karate.engine.put(entry.getKey(), value);
             }
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object shallowCopy(Object value) {
+        if (value instanceof Map) {
+            return new LinkedHashMap<>((Map<String, Object>) value);
+        } else if (value instanceof List) {
+            return new ArrayList<>((List<Object>) value);
+        }
+        return value;
     }
 
     @Override

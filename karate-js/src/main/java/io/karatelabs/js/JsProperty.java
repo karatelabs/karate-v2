@@ -175,7 +175,7 @@ class JsProperty {
                 }
                 throw new RuntimeException("cannot read properties of " + object + " (reading '[" + i + "]')");
             }
-            if (object instanceof List list) {
+            if (object instanceof List<?> list) {
                 // return undefined for out of bounds access (JS behavior)
                 if (i < 0 || i >= list.size()) {
                     return Terms.UNDEFINED;

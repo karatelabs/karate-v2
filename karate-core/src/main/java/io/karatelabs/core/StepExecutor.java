@@ -30,6 +30,7 @@ import io.karatelabs.gherkin.Step;
 import io.karatelabs.gherkin.Table;
 import io.karatelabs.io.http.HttpRequestBuilder;
 import io.karatelabs.io.http.HttpResponse;
+import io.karatelabs.log.JvmLogger;
 import io.karatelabs.log.LogContext;
 import io.karatelabs.match.Match;
 import io.karatelabs.match.Result;
@@ -64,7 +65,12 @@ public class StepExecutor {
 
         try {
             String keyword = step.getKeyword();
-            if (keyword == null) {
+            // If keyword contains a dot, it's a property reference (e.g., "foo.key = 'value'")
+            // Treat the whole thing as a JS expression
+            if (keyword != null && keyword.contains(".")) {
+                String fullExpr = keyword + step.getText();
+                runtime.eval(fullExpr);
+            } else if (keyword == null) {
                 // Plain expression (e.g., "* print foo" or "* foo.bar()")
                 executeExpression(step);
             } else {
@@ -199,18 +205,20 @@ public class StepExecutor {
 
         Feature calledFeature = Feature.read(calledResource);
 
-        // Create nested FeatureRuntime
+        // Create nested FeatureRuntime with isolated scope (sharedScope=false)
         FeatureRuntime nestedFr = new FeatureRuntime(
                 fr != null ? fr.getSuite() : null,
                 calledFeature,
                 fr,
+                runtime,
+                false,  // Isolated scope - copy variables, don't share
                 call.arg
         );
 
         // Execute the called feature
         FeatureResult result = nestedFr.call();
 
-        // Capture result variables from the last executed scenario
+        // Capture result variables from the last executed scenario (isolated scope)
         if (nestedFr.getLastExecuted() != null) {
             Map<String, Object> resultVars = nestedFr.getLastExecuted().getAllVariables();
             runtime.setVariable(resultVar, resultVars);
@@ -250,26 +258,10 @@ public class StepExecutor {
     }
 
     private void executeSet(Step step) {
-        // set supports nested path setting: set foo.bar = value
-        String text = step.getText();
-        int eqIndex = findAssignmentOperator(text);
-        if (eqIndex < 0) {
-            throw new RuntimeException("set requires '=' assignment: " + text);
-        }
-        String path = text.substring(0, eqIndex).trim();
-        String expr = text.substring(eqIndex + 1).trim();
-        Object value = runtime.eval(expr);
-
-        // Check if it's a simple variable or nested path
-        int dotIndex = path.indexOf('.');
-        int bracketIndex = path.indexOf('[');
-        if (dotIndex < 0 && bracketIndex < 0) {
-            // Simple variable
-            runtime.setVariable(path, value);
-        } else {
-            // Nested path - use JS engine to set
-            runtime.eval(path + " = " + Json.stringifyStrict(value));
-        }
+        // Deprecated: prefer using native JS syntax: * foo.bar = 'value'
+        JvmLogger.warn("'set' keyword is deprecated, prefer JS syntax: * {} instead", step.getText());
+        // Just evaluate the whole thing as a JS expression
+        runtime.eval(step.getText());
     }
 
     private void executeRemove(Step step) {
@@ -761,11 +753,16 @@ public class StepExecutor {
 
         Feature calledFeature = Feature.read(calledResource);
 
+        // Determine if shared scope (no resultVar) or isolated scope (has resultVar)
+        boolean sharedScope = call.resultVar == null;
+
         // Create nested FeatureRuntime
         FeatureRuntime nestedFr = new FeatureRuntime(
                 fr != null ? fr.getSuite() : null,
                 calledFeature,
                 fr,
+                runtime,
+                sharedScope,
                 call.arg
         );
 
@@ -775,9 +772,14 @@ public class StepExecutor {
         // Capture result variables from the last executed scenario
         if (nestedFr.getLastExecuted() != null) {
             Map<String, Object> resultVars = nestedFr.getLastExecuted().getAllVariables();
-            // Store result if there's a result variable specified
             if (call.resultVar != null) {
+                // Isolated scope - store result in the specified variable
                 runtime.setVariable(call.resultVar, resultVars);
+            } else {
+                // Shared scope - propagate all variables back to caller
+                for (Map.Entry<String, Object> entry : resultVars.entrySet()) {
+                    runtime.setVariable(entry.getKey(), entry.getValue());
+                }
             }
         }
     }
