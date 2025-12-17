@@ -450,21 +450,34 @@ This section is for contributors working on HTML report templates and styling.
 
 ### Quick Start
 
+**Recommended:** Run the dev test to generate reports:
+
 ```bash
-# From karate-core directory
 cd karate-core
 
-# Compile and generate reports (outputs to target/karate-reports by default)
+# Run the dev test (outputs to target/karate-report-dev/)
+mvn test -Dtest=HtmlReportWriterTest#testHtmlReportGeneration -q
+
+# Open in browser
+open target/karate-report-dev/karate-summary.html
+```
+
+**Alternative:** Use CLI directly:
+
+```bash
+# Compile and run (outputs to target/karate-reports by default)
 mvn compile -q && mvn exec:java \
   -Dexec.mainClass="io.karatelabs.Main" \
   -Dexec.args="run -T 3 src/test/resources/io/karatelabs/report"
 
-# Open in browser
-open target/karate-reports/karate-summary.html      # macOS
-xdg-open target/karate-reports/karate-summary.html  # Linux
+open target/karate-reports/karate-summary.html
 ```
 
-**Tip:** Using `target/` avoids macOS `/tmp` → `/private/tmp` symlink issues with `file://` protocol.
+**Note:** Chrome blocks favicons for `file://` URLs. For full fidelity, use a local server:
+```bash
+cd target/karate-report-dev && python3 -m http.server 8000
+# Then open http://localhost:8000/karate-summary.html
+```
 
 ### Key Files
 

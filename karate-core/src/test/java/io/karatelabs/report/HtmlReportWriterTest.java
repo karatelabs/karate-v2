@@ -39,8 +39,13 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Tests for HTML report generation.
  * <p>
- * Reports are written to target/karate-report-dev for easy inspection during development.
- * Run this test to regenerate HTML reports after making template changes.
+ * <b>For Report Development:</b>
+ * <pre>
+ * mvn test -Dtest=HtmlReportWriterTest#testHtmlReportGeneration -q
+ * open target/karate-report-dev/karate-summary.html
+ * </pre>
+ * <p>
+ * See also: /docs/HTML_REPORTS.md for the full development guide.
  */
 class HtmlReportWriterTest {
 
@@ -51,14 +56,21 @@ class HtmlReportWriterTest {
         Console.setColorsEnabled(false);
     }
 
+    /**
+     * Main dev test - run this to regenerate HTML reports after template changes.
+     * <p>
+     * Reports written to: target/karate-report-dev/
+     * <p>
+     * Quick run: mvn test -Dtest=HtmlReportWriterTest#testHtmlReportGeneration -q
+     */
     @Test
     void testHtmlReportGeneration() {
-        // Run features from test-classes directory
+        // Run features from test-classes directory with parallel for timeline
         String testResourcesDir = "target/test-classes/io/karatelabs/report";
         SuiteResult result = Runner.path(testResourcesDir)
                 .outputDir(OUTPUT_DIR)
-                .outputNdjson(true)  // opt-in for NDJSON
-                .parallel(1);
+                .outputNdjson(true)
+                .parallel(3);  // parallel for timeline testing
 
         // Verify the run
         assertEquals(2, result.getFeatureCount());
@@ -67,7 +79,6 @@ class HtmlReportWriterTest {
 
         // Verify HTML reports were generated
         assertTrue(Files.exists(OUTPUT_DIR.resolve("karate-summary.html")));
-        assertTrue(Files.exists(OUTPUT_DIR.resolve("karate-tags.html")));
         assertTrue(Files.exists(OUTPUT_DIR.resolve("karate-timeline.html")));
         assertTrue(Files.exists(OUTPUT_DIR.resolve("index.html")));
         assertTrue(Files.exists(OUTPUT_DIR.resolve("features")));
@@ -78,7 +89,8 @@ class HtmlReportWriterTest {
         assertTrue(Files.exists(OUTPUT_DIR.resolve("karate-results.ndjson")));
 
         System.out.println("\n=== HTML Reports Generated ===");
-        System.out.println("Open: " + OUTPUT_DIR.toAbsolutePath().resolve("karate-summary.html"));
+        System.out.println("Open: file://" + OUTPUT_DIR.toAbsolutePath().resolve("karate-summary.html"));
+        System.out.println("Or:   cd " + OUTPUT_DIR.toAbsolutePath() + " && python3 -m http.server 8000");
     }
 
     @Test

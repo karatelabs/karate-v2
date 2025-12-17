@@ -191,6 +191,14 @@ public class NdjsonReportListener implements ResultListener {
         Map<String, Object> scenario = new LinkedHashMap<>();
         scenario.put("name", sr.getScenario().getName());
         scenario.put("line", sr.getScenario().getLine());
+        scenario.put("passed", sr.isPassed());
+        scenario.put("ms", sr.getDurationMillis());
+
+        // RefId and outline info for UI
+        scenario.put("refId", sr.getScenario().getRefId());
+        scenario.put("sectionIndex", sr.getScenario().getSection().getIndex() + 1);
+        scenario.put("exampleIndex", sr.getScenario().getExampleIndex());
+        scenario.put("isOutlineExample", sr.getScenario().isOutlineExample());
 
         // Tags
         var tags = sr.getScenario().getTags();
@@ -201,9 +209,6 @@ public class NdjsonReportListener implements ResultListener {
             }
             scenario.put("tags", tagNames);
         }
-
-        scenario.put("passed", sr.isPassed());
-        scenario.put("ms", sr.getDurationMillis());
 
         if (sr.getThreadName() != null) {
             scenario.put("thread", sr.getThreadName());
@@ -229,12 +234,19 @@ public class NdjsonReportListener implements ResultListener {
      */
     private Map<String, Object> buildStepData(StepResult step) {
         Map<String, Object> data = new LinkedHashMap<>();
+        data.put("prefix", step.getStep().getPrefix());
+        data.put("keyword", step.getStep().getKeyword());
         data.put("text", step.getStep().getText());
         data.put("status", step.getStatus().name().toLowerCase());
         data.put("ms", step.getDurationNanos() / 1_000_000);
+        data.put("line", step.getStep().getLine());
+
+        // Log indicator for UI
+        boolean hasLogs = step.getLog() != null && !step.getLog().isEmpty();
+        data.put("hasLogs", hasLogs);
 
         // Include log if present
-        if (step.getLog() != null && !step.getLog().isEmpty()) {
+        if (hasLogs) {
             data.put("logs", step.getLog());
         }
 
