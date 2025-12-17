@@ -285,4 +285,57 @@ class StepDefTest {
         assertPassed(sr);
     }
 
+    @Test
+    void testEvalWithDocString() {
+        // eval keyword with docstring - multi-line JS with karate.set()
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * eval
+            \"\"\"
+            var foo = function(v){ return v * v };
+            var nums = [0, 1, 2, 3, 4];
+            var squares = [];
+            for (var n in nums) {
+              squares.push(foo(n));
+            }
+            karate.set('temp', squares);
+            \"\"\"
+            * match temp == [0, 1, 4, 9, 16]
+            """);
+        assertPassed(sr);
+        matchVar(sr, "temp", List.of(0, 1, 4, 9, 16));
+    }
+
+    @Test
+    void testEvalInline() {
+        // eval with inline expression (no docstring)
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * eval karate.set('x', 42)
+            """);
+        assertPassed(sr);
+        assertEquals(42, get(sr, "x"));
+    }
+
+    @Test
+    void testPropertyAssignmentWithDocString() {
+        // Property assignment with docstring value (e.g., foo.bar = """json""")
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def foo = { bar: 'one' }
+            * foo.bar =
+            \"\"\"
+            {
+              some: 'big',
+              message: 'content'
+            }
+            \"\"\"
+            * match foo == { bar: { some: 'big', message: 'content' } }
+            """);
+        assertPassed(sr);
+    }
+
 }

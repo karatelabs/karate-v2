@@ -71,6 +71,9 @@ public class StepExecutor {
             // Treat the whole thing as a JS expression
             if (keyword != null && keyword.contains(".")) {
                 String fullExpr = keyword + step.getText();
+                if (step.getDocString() != null) {
+                    fullExpr = fullExpr + step.getDocString();
+                }
                 runtime.eval(fullExpr);
             } else if (keyword == null) {
                 // Plain expression (e.g., "* print foo" or "* foo.bar()")
@@ -934,7 +937,11 @@ public class StepExecutor {
     }
 
     private void executeEval(Step step) {
-        runtime.eval(step.getText());
+        String expr = step.getDocString();
+        if (expr == null) {
+            expr = step.getText();
+        }
+        runtime.eval(expr);
     }
 
     // ========== Config ==========

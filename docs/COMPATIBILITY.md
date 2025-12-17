@@ -415,6 +415,13 @@ Key V1 implementation files:
 | `StepRuntime.java` | Keyword parsing, special syntax handling |
 | `ScenarioBridge.java` | `karate` object methods |
 
+Key V2 implementation files:
+| File | What it handles |
+|------|-----------------|
+| `StepExecutor.java` | Keyword execution (`def`, `set`, `match`, `call`, etc.) |
+| `KarateJs.java` | JS `karate.*` methods (`karate.set()`, `karate.get()`, `karate.abort()`, etc.) |
+| `ScenarioRuntime.java` | Scenario execution, variable management |
+
 **Workflow when debugging:**
 1. Run V1 test against V2, note the failure
 2. Find the relevant V1 implementation code

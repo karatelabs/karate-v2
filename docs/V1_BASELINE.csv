@@ -334,8 +334,8 @@ feature-040,feature,copy.feature,,,copy.feature,the difference with variable sco
 feature-041,feature,csv.feature,,,csv.feature,csv.feature,root,pending,,,
 feature-042,feature,dummy-ui-google.feature,,,dummy-ui-google.feature,dummy-ui-google.feature,root,pending,,,
 feature-043,feature,dummy.feature,,,dummy.feature,dummy.feature,root,pending,,,
-feature-044,feature,eval-and-set.feature,,,eval-and-set.feature,eval-and-set.feature,root,pending,,,
-feature-045,feature,eval-assign.feature,,,eval-assign.feature,eval-assign.feature,root,pending,,,
+feature-044,feature,eval-and-set.feature,,,eval-and-set.feature,eval-and-set.feature,root,passed,fixed eval docstring + karate.set(); added StepDefTest,io/karatelabs/core/StepDefTest,2025-12-18
+feature-045,feature,eval-assign.feature,,,eval-assign.feature,eval-assign.feature,root,passed,fixed property assignment with docstring; added StepDefTest,io/karatelabs/core/StepDefTest,2025-12-18
 feature-046,feature,exec.feature,,,exec.feature,exec.feature,root,pending,,,
 feature-047,feature,extract.feature,,,extract.feature,karate.extract(),root,pending,,,
 feature-048,feature,fail-api.feature,,,fail-api.feature,fail-api.feature,root,pending,,,

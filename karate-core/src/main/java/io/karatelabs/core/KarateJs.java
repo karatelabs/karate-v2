@@ -203,6 +203,16 @@ public class KarateJs implements SimpleObject {
         };
     }
 
+    private Invokable set() {
+        return args -> {
+            if (args.length < 2) {
+                throw new RuntimeException("set() needs at least two arguments: name and value");
+            }
+            engine.put(args[0] + "", args[1]);
+            return null;
+        };
+    }
+
     private Invokable match(boolean keyword) {
         return args -> {
             if (args.length == 0) {
@@ -261,6 +271,7 @@ public class KarateJs implements SimpleObject {
             case "match" -> match(false);
             case "read" -> read;
             case "readAsString" -> readAsString();
+            case "set" -> set();
             case "setup" -> setup();
             case "setupOnce" -> setupOnce();
             case "toStringPretty" -> toStringPretty();
