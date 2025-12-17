@@ -77,9 +77,10 @@ karate run [options] [paths...]
 
 ### Behavior
 
-1. **With paths:** Run specified feature files/directories
-2. **Without paths:** Look for `karate.json` in current directory
-3. **With `--config`:** Use specified config file
+1. **With paths:** Run specified feature files/directories (inherits other settings from pom)
+2. **Without paths:** Look for `karate-pom.json` in current directory
+3. **With `--pom`:** Use specified project file
+4. **With `--no-pom`:** Ignore `karate-pom.json` even if present
 
 ### Options
 
@@ -92,7 +93,8 @@ karate run [options] [paths...]
 | `-o, --output <dir>` | Output directory (default: target/karate-reports) |
 | `-w, --workdir <dir>` | Working directory for relative paths |
 | `-g, --configdir <dir>` | Directory containing karate-config.js |
-| `-c, --config <file>` | Path to karate.json config file |
+| `-p, --pom <file>` | Path to project file (default: karate-pom.json) |
+| `--no-pom` | Ignore karate-pom.json even if present |
 | `-C, --clean` | Clean output directory before running |
 | `-D, --dryrun` | Parse but don't execute |
 | `--no-color` | Disable colored output |
@@ -100,14 +102,17 @@ karate run [options] [paths...]
 ### Examples
 
 ```bash
-# Run with auto-detected karate.json
+# Run with auto-detected karate-pom.json
 karate run
 
-# Run specific paths
+# Run specific paths (inherits env, threads, etc. from pom)
 karate run src/test/features
 
-# Run with explicit config
-karate run --config karate.json
+# Run with explicit pom file
+karate run --pom my-project.json
+
+# Run ignoring karate-pom.json
+karate run --no-pom src/test/features
 
 # Run with options
 karate run -t @smoke -e dev -T 5 src/test/features
@@ -118,11 +123,13 @@ karate run -w /home/user/project src/test/features
 
 ---
 
-## Configuration File
+## Project File
 
-### Canonical Name: `karate.json`
+### Canonical Name: `karate-pom.json`
 
-The recommended configuration file name is `karate.json`. When `karate run` is invoked without paths, it automatically loads `karate.json` from the current directory.
+The project file name is `karate-pom.json` (inspired by Maven's POM concept). When `karate run` is invoked, it automatically loads `karate-pom.json` from the current directory (or workdir if specified).
+
+> **Note:** This is distinct from `karate-config.js` which handles runtime configuration (baseUrl, auth, etc.). The pom file defines *how* to run tests (paths, tags, threads, output).
 
 ### Schema
 
@@ -149,11 +156,13 @@ The recommended configuration file name is `karate.json`. When `karate run` is i
 
 ### Precedence
 
-CLI arguments override config file values:
+CLI arguments override pom file values:
 
 ```
-CLI flags → karate.json → defaults
+CLI flags → karate-pom.json → defaults
 ```
+
+The pom is always loaded if present, and CLI args override specific values. Use `--no-pom` to ignore it entirely.
 
 ---
 
@@ -183,8 +192,8 @@ public class Main implements Callable<Integer> {
             // Legacy: treat args as paths, delegate to run
             return new RunCommand().runWithPaths(unknownArgs);
         }
-        // Look for karate.json in cwd
-        if (Files.exists(Path.of("karate.json"))) {
+        // Look for karate-pom.json in cwd
+        if (Files.exists(Path.of("karate-pom.json"))) {
             return new RunCommand().call();
         }
         // Show help
@@ -202,21 +211,26 @@ Extract current `Main.java` logic into `RunCommand`:
 @Command(name = "run", description = "Run Karate tests")
 public class RunCommand implements Callable<Integer> {
 
+    public static final String DEFAULT_POM_FILE = "karate-pom.json";
+
     @Parameters(description = "Feature files or directories", arity = "0..*")
     List<String> paths;
 
-    @Option(names = {"-c", "--config"}, description = "Config file (default: karate.json)")
-    String configFile = "karate.json";
+    @Option(names = {"-p", "--pom"}, description = "Project file (default: karate-pom.json)")
+    String pomFile;
+
+    @Option(names = {"--no-pom"}, description = "Ignore karate-pom.json")
+    boolean noPom;
 
     // ... other options ...
 
     @Override
     public Integer call() {
-        // If no paths and config exists, load config
-        if ((paths == null || paths.isEmpty()) && Files.exists(Path.of(configFile))) {
-            KarateConfig config = KarateConfig.load(configFile);
-            // ... apply config and run
+        // Load pom if present (unless --no-pom)
+        if (!noPom) {
+            loadPom();
         }
+        // CLI args override pom values
         // ... rest of execution
     }
 }
@@ -251,7 +265,7 @@ For backward compatibility, bare arguments (no subcommand) are treated as paths:
 |------------|----------------|
 | `karate run src/test` | Explicit run command |
 | `karate src/test` | Legacy → delegates to `run` |
-| `karate` | Auto-load `karate.json` or show help |
+| `karate` | Auto-load `karate-pom.json` or show help |
 | `karate -t @smoke src/test` | Legacy with options → delegates to `run` |
 
 ### Migration Path
@@ -332,11 +346,14 @@ karate mcp --stdio
 After subcommand refactoring:
 
 ```
-io.karatelabs.core/
+io.karatelabs/
 ├── Main.java              # Parent command, delegates to subcommands
-├── RunCommand.java        # karate run
-├── CleanCommand.java      # karate clean
-├── KarateConfig.java      # JSON config parsing
+└── cli/
+    ├── RunCommand.java    # karate run
+    └── CleanCommand.java  # karate clean
+
+io.karatelabs.core/
+├── KarateConfig.java      # JSON pom parsing
 ├── Runner.java            # Programmatic API
 └── ...
 ```
@@ -361,7 +378,7 @@ mvn clean package -DskipTests -Pfatjar
 **Test workspace** (already set up in `home/test-project/`):
 ```
 home/test-project/
-├── karate.json           # Test config
+├── karate-pom.json       # Project file
 └── features/
     └── hello.feature     # Test feature with @smoke, @api tags
 ```
@@ -381,8 +398,8 @@ The script auto-detects fatjar or builds classpath:
 # Run with workdir
 ./etc/test-cli.sh -w home/test-project features
 
-# Run with config
-./etc/test-cli.sh -c home/test-project/karate.json
+# Run with explicit pom
+./etc/test-cli.sh -p home/test-project/karate-pom.json
 ```
 
 **Option 2: Using fatjar directly**
@@ -420,10 +437,11 @@ mvn package -DskipTests -Pfatjar
 | Help | `--help` | Shows usage with all options |
 | Version | `--version` | Shows "Karate 2.0" |
 | Run with paths | `home/test-project/features` | Executes tests, reports to default dir |
-| Run with config | `-c home/test-project/karate.json` | Loads config, uses config paths |
+| Run with pom | `-p home/test-project/karate-pom.json` | Loads pom, uses pom paths |
 | Run with workdir | `-w home/test-project features` | Clean relative paths in reports |
 | Run with env | `-e dev features` | Sets karate.env |
 | Run with tags | `-t @smoke features` | Filters by tag |
+| Run no pom | `--no-pom features` | Ignores karate-pom.json |
 | Dry run | `-D features` | Parses but doesn't execute |
 | Clean | `-C -o home/test-project/target features` | Cleans output before run |
 
