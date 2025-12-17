@@ -94,6 +94,25 @@ public class Engine {
         root.bridge = bridge;
     }
 
+    /**
+     * Invokes a JS callable (function) with the given arguments.
+     * This properly sets up the context for the function call.
+     *
+     * @param callable the callable to invoke (JsCallable or Invokable)
+     * @param args the arguments to pass to the function
+     * @return the result of the function call
+     */
+    public Object invoke(Object callable, Object... args) {
+        JsCallable jsCallable = Terms.toCallable(callable);
+        if (jsCallable == null) {
+            throw new RuntimeException("Object is not callable: " + callable);
+        }
+        // Create a proper CoreContext for the function call
+        CoreContext context = new CoreContext(root, root, 0, null, ContextScope.FUNCTION, bindings);
+        Object result = jsCallable.call(context, args);
+        return toJava(result);
+    }
+
     static Object toJava(Object value) {
         if (value instanceof JavaMirror) {
             return ((JavaMirror) value).getJavaValue();

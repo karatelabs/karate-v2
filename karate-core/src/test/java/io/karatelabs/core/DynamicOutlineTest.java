@@ -341,4 +341,148 @@ class DynamicOutlineTest {
         assertThrows(RuntimeException.class, fr::call, "Should throw error when @setup scenario is missing");
     }
 
+    // ========== Generator Function Tests ==========
+
+    @Test
+    void testDynamicOutlineWithGeneratorFunction() throws Exception {
+        Path feature = tempDir.resolve("dynamic-generator.feature");
+        Files.writeString(feature, """
+            Feature: Dynamic Outline with Generator Function
+
+            @setup
+            Scenario: Define generator
+            * def generator = function(i){ if (i == 3) return null; return { name: 'item' + i, index: i } }
+
+            Scenario Outline: Test generated item <name>
+            * match '<name>' == 'item' + <index>
+            * match __num == <index>
+
+            Examples:
+            | karate.setup().generator |
+            """);
+
+        Feature f = Feature.read(Resource.from(feature));
+        FeatureRuntime fr = new FeatureRuntime(null, f);
+        FeatureResult result = fr.call();
+
+        // Generator returns items at index 0, 1, 2 (stops at 3 with null)
+        assertEquals(3, result.getPassedCount(), "Should have 3 passing scenarios from generator function");
+        assertEquals(0, result.getFailedCount());
+    }
+
+    @Test
+    void testDynamicOutlineWithGeneratorReturningNonMap() throws Exception {
+        Path feature = tempDir.resolve("dynamic-generator-nonmap.feature");
+        Files.writeString(feature, """
+            Feature: Dynamic Outline with Generator Returning Non-Map
+
+            @setup
+            Scenario: Define generator that returns false to stop
+            * def generator = function(i){ if (i >= 2) return false; return { val: i * 10 } }
+
+            Scenario Outline: Test value <val>
+            * match <val> == __num * 10
+
+            Examples:
+            | karate.setup().generator |
+            """);
+
+        Feature f = Feature.read(Resource.from(feature));
+        FeatureRuntime fr = new FeatureRuntime(null, f);
+        FeatureResult result = fr.call();
+
+        // Generator returns items at index 0, 1 (stops at 2 with false)
+        assertEquals(2, result.getPassedCount(), "Should have 2 passing scenarios (stops when non-map returned)");
+        assertEquals(0, result.getFailedCount());
+    }
+
+    @Test
+    void testDynamicOutlineGeneratorMatchingV1Syntax() throws Exception {
+        // This test matches the v1 outline-generator.feature example
+        Path feature = tempDir.resolve("dynamic-generator-v1.feature");
+        Files.writeString(feature, """
+            Feature: Generator Function (v1 Compatible)
+
+            @setup
+            Scenario: Setup generator
+            * def generator = function(i){ if (i == 5) return null; return { name: 'cat' + i, age: i } }
+
+            Scenario Outline: Test generated cat
+            * match __num == age
+            * match __row.name == 'cat' + age
+
+            Examples:
+            | karate.setup().generator |
+            """);
+
+        Feature f = Feature.read(Resource.from(feature));
+        FeatureRuntime fr = new FeatureRuntime(null, f);
+        FeatureResult result = fr.call();
+
+        // Generator creates 5 items (index 0-4)
+        assertEquals(5, result.getPassedCount(), "Should have 5 passing scenarios matching v1 behavior");
+        assertEquals(0, result.getFailedCount());
+    }
+
+    @Test
+    void testDynamicOutlineGeneratorWithSetupOnce() throws Exception {
+        Path feature = tempDir.resolve("dynamic-generator-cached.feature");
+        Files.writeString(feature, """
+            Feature: Generator Function with SetupOnce
+
+            @setup
+            Scenario: Define generator
+            * def generator = function(i){ if (i == 2) return null; return { seq: i } }
+
+            Scenario Outline: First use of generator
+            * match <seq> == __num
+
+            Examples:
+            | karate.setupOnce().generator |
+
+            Scenario Outline: Second use (cached)
+            * match <seq> == __num
+
+            Examples:
+            | karate.setupOnce().generator |
+            """);
+
+        Feature f = Feature.read(Resource.from(feature));
+        FeatureRuntime fr = new FeatureRuntime(null, f);
+        FeatureResult result = fr.call();
+
+        // Generator evaluated once, cached result used twice: 2 + 2 = 4 scenarios
+        assertEquals(4, result.getPassedCount(), "Should have 4 passing scenarios (2 from each outline using cached data)");
+        assertEquals(0, result.getFailedCount());
+    }
+
+    @Test
+    void testDynamicOutlineGeneratorReturningEmptyImmediately() throws Exception {
+        Path feature = tempDir.resolve("dynamic-generator-empty.feature");
+        Files.writeString(feature, """
+            Feature: Generator Returns Null Immediately
+
+            @setup
+            Scenario: Generator that returns null on first call
+            * def generator = function(i){ return null }
+
+            Scenario Outline: Should not run
+            * def x = <val>
+
+            Examples:
+            | karate.setup().generator |
+
+            Scenario: Regular scenario
+            * def ran = true
+            """);
+
+        Feature f = Feature.read(Resource.from(feature));
+        FeatureRuntime fr = new FeatureRuntime(null, f);
+        FeatureResult result = fr.call();
+
+        // Generator returns null immediately, so no outline scenarios run
+        assertEquals(1, result.getPassedCount(), "Only regular scenario should run");
+        assertEquals(0, result.getFailedCount());
+    }
+
 }

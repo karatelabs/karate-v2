@@ -30,6 +30,9 @@ import io.karatelabs.gherkin.Scenario;
 import io.karatelabs.gherkin.ScenarioOutline;
 import io.karatelabs.gherkin.ExamplesTable;
 import io.karatelabs.gherkin.Tag;
+import io.karatelabs.js.Invokable;
+import io.karatelabs.js.JsCallable;
+import io.karatelabs.log.JvmLogger;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -343,13 +346,54 @@ public class FeatureRuntime implements Callable<FeatureResult> {
 
                 if (result instanceof List) {
                     return (List<?>) result;
+                } else if (result instanceof JsCallable || result instanceof Invokable) {
+                    // Generator function - call repeatedly until null/non-map
+                    return evaluateGeneratorFunction(sr, result);
                 } else {
-                    // Expression didn't return a list - error
-                    throw new RuntimeException("Dynamic expression must return a list: " + expression + ", got: " + result);
+                    // Expression didn't return a list or function - error
+                    throw new RuntimeException("Dynamic expression must return a list or function: " + expression + ", got: " + (result != null ? result.getClass().getName() : "null"));
                 }
             } catch (Exception e) {
                 throw new RuntimeException("Failed to evaluate dynamic expression: " + templateScenario.getDynamicExpression(), e);
             }
+        }
+
+        /**
+         * Evaluates a generator function by calling it repeatedly with incrementing index
+         * until it returns null or a non-Map value.
+         */
+        @SuppressWarnings("unchecked")
+        private List<Map<String, Object>> evaluateGeneratorFunction(ScenarioRuntime sr, Object function) {
+            List<Map<String, Object>> results = new ArrayList<>();
+            int index = 0;
+
+            while (true) {
+                Object rowValue;
+                try {
+                    // Invoke the function using the engine's invoke method
+                    rowValue = sr.getKarate().engine.invoke(function, index);
+                } catch (Exception e) {
+                    JvmLogger.warn("Generator function threw exception at index {}: {}", index, e.getMessage());
+                    break;
+                }
+
+                if (rowValue == null) {
+                    // null signals end of iteration
+                    break;
+                }
+
+                if (rowValue instanceof Map) {
+                    results.add((Map<String, Object>) rowValue);
+                } else {
+                    // Non-map value signals end of iteration
+                    JvmLogger.debug("Generator function returned non-map at index {}, stopping: {}", index, rowValue);
+                    break;
+                }
+
+                index++;
+            }
+
+            return results;
         }
 
         private boolean shouldSelect(Scenario scenario) {

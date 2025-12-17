@@ -312,7 +312,45 @@ Runner.path("src/test/features")
 
 ---
 
-### Priority 6: karate-base.js
+### ~~Priority 6: Dynamic Scenario Outline - Generator Function Support~~ ✅ IMPLEMENTED
+
+Generator functions are now supported for dynamic scenario outlines. The expression can return either a `List<?>` or a function that generates rows.
+
+**Usage:**
+```gherkin
+@setup
+Scenario: Define generator
+  * def generator = function(i){ if (i == 5) return null; return { name: 'item' + i, index: i } }
+
+Scenario Outline: Test generated data
+  * match __num == <index>
+  * match __row.name == 'item' + <index>
+
+Examples:
+| karate.setup().generator |
+```
+
+**How it works:**
+- If the expression returns a `List`, it's used directly
+- If the expression returns a function (JS callable), it's called repeatedly with an incrementing index (0, 1, 2, ...)
+- The function should return a `Map` for each row of data
+- Return `null` or a non-Map value to signal end of iteration
+
+**Built-in variables for outline scenarios:**
+- `__num` - The example row index (0-based)
+- `__row` - The full example data map
+
+**Implementation:**
+- `FeatureRuntime.evaluateDynamicExpression()` - Detects functions and delegates to generator evaluation
+- `FeatureRuntime.evaluateGeneratorFunction()` - Calls function repeatedly until termination
+- `Engine.invoke()` - New method to invoke JS callables with proper context
+- `ScenarioRuntime.initEngine()` - Sets `__num` and `__row` variables
+
+See `io.karatelabs.core.DynamicOutlineTest` for comprehensive test coverage.
+
+---
+
+### Priority 7: karate-base.js
 
 Shared config from classpath (e.g., company JAR):
 

@@ -102,9 +102,14 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
 
         // Set example data for outline scenarios
         if (scenario.getExampleData() != null) {
-            for (var entry : scenario.getExampleData().entrySet()) {
+            Map<String, Object> exampleData = scenario.getExampleData();
+            for (var entry : exampleData.entrySet()) {
                 karate.engine.put(entry.getKey(), entry.getValue());
             }
+            // Set __row to the full example data map
+            karate.engine.put("__row", exampleData);
+            // Set __num to the example index (0-based)
+            karate.engine.put("__num", scenario.getExampleIndex());
         }
 
         // Wire up karate.setup() and karate.setupOnce() functions
