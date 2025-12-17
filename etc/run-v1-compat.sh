@@ -150,10 +150,12 @@ if [ "$UPDATE_CSV" = true ] && [ -f "$CSV_FILE" ]; then
     FEATURE_NAME=$(basename "$FEATURE_PATH")
 
     # Find and update the matching row
-    # Look for the feature file in the CSV
-    if grep -q ",$FEATURE_NAME," "$CSV_FILE"; then
-        # Use sed to update status and date
-        sed -i '' "s/\(,$FEATURE_NAME,[^,]*,[^,]*,[^,]*,[^,]*,\)pending\(,[^,]*,[^,]*,\)/\1$RESULT\2$TODAY/" "$CSV_FILE"
+    # CSV columns: id,type,source_path,class_name,method_name,feature_name,description,subdirectory,status,notes,v2_location,date_tested
+    # We match on source_path (col 3) which contains the feature filename
+    # Pattern: (id,type,FEATURE_NAME,class,method,featname,desc,subdir,)STATUS(,notes,v2loc,)DATE
+    if grep -q ",feature,$FEATURE_NAME," "$CSV_FILE"; then
+        # Match: ,feature,FEATURE_NAME, then skip 5 fields (class,method,featname,desc,subdir), then status
+        sed -i '' "s/\(,feature,$FEATURE_NAME,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,\)pending\(,[^,]*,[^,]*,\)[^,]*/\1$RESULT\2$TODAY/" "$CSV_FILE"
         echo ""
         echo "CSV updated: $FEATURE_NAME -> $RESULT"
     else

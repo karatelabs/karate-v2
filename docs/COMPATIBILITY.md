@@ -65,7 +65,7 @@ The baseline is tracked in `docs/V1_BASELINE.csv`:
 | `subdirectory` | V1 subdirectory (root, parallel, etc.) |
 | `status` | Current status (see below) |
 | `notes` | Failure reason or notes |
-| `v2_location` | Path in V2 if adopted |
+| `v2_location` | Path to V2 test class (if bug was fixed) |
 | `date_tested` | Last test date |
 
 ### Status Values
@@ -76,7 +76,8 @@ The baseline is tracked in `docs/V1_BASELINE.csv`:
 | `passed` | Works on V2 |
 | `failed` | Fails on V2 (needs investigation) |
 | `skipped` | Out of scope (mock, browser, perf) |
-| `adopted` | Copied to V2 codebase permanently |
+
+**Note:** The `v2_location` column tracks where V2 unit tests exist (for review purposes).
 
 ---
 
@@ -117,17 +118,39 @@ Test result?
 │   ├── Feature not in V2 scope → Mark skipped, document
 │   ├── Feature planned for V2 → Mark pending, link to CAPABILITIES.yaml
 │   └── Should work → Investigate
-│       ├── V2 bug → Fix V2, add regression test
+│       ├── V2 bug → Fix V2 (see below)
 │       └── Test needs adaptation → Adapt and re-test
 ```
 
-### Phase 3: Adoption
+### When Fixing V2 Bugs
 
-When a test passes and is valuable:
+**IMPORTANT:** Every V2 fix MUST include a unit test. This is non-negotiable.
 
-1. Adapt to V2 testing patterns (see below)
-2. Add to appropriate V2 test class
-3. Update CSV: status=`adopted`, v2_location=path
+1. **Fix the bug** in V2 source code
+2. **Add unit test** to the appropriate `Step<Keyword>Test` class:
+   - Use inline feature strings (Java text blocks)
+   - Follow existing test patterns in the class
+   - Test both the fix and edge cases
+3. **Run the test** to verify: `mvn test -Dtest=StepDefTest -pl karate-core`
+4. **Then re-run** the V1 compat test to confirm it passes
+
+Example test locations:
+| Fix Area | Test Class |
+|----------|------------|
+| def, set, copy, table, replace | `StepDefTest` |
+| match assertions | `StepMatchTest` |
+| HTTP keywords | `StepHttpTest` |
+| multipart | `StepMultipartTest` |
+| karate.abort() | `StepAbortTest` |
+| call/callonce | `CallFeatureTest` |
+
+### Phase 3: Recording Results
+
+When a test passes:
+
+1. Update CSV: status=`passed`, add notes if fix was needed
+2. If a bug was fixed, the `v2_location` column can reference the test class
+3. Mark helper files (called features) as `passed` with note `helper for X.feature`
 
 **Lifecycle tests** (bootstrap, karateenv, config) typically need real feature files on disk - don't try to inline these.
 
@@ -406,20 +429,20 @@ When updating the CSV after testing:
 
 | Field | When to update | Example |
 |-------|----------------|---------|
-| `status` | Always | `passed`, `failed`, `adopted`, `skipped` |
-| `notes` | Action taken or failure reason | `implemented shared scope; added CopyTest` |
-| `v2_location` | Path in V2 if adopted | `io/karatelabs/core/copy/` |
+| `status` | Always | `passed`, `failed`, `skipped` |
+| `notes` | Action taken or failure reason | `fixed table eval; added StepDefTest` |
+| `v2_location` | Path to V2 test (if bug was fixed) | `io/karatelabs/core/StepDefTest` |
 | `date_tested` | Today's date | `2025-12-17` |
 
-**Helper features:** Features that are called by other features (not standalone tests) should be marked as `adopted` with note `helper for X.feature`.
+**Helper features:** Features that are called by other features (not standalone tests) should be marked as `passed` with note `helper for X.feature`.
 
 **Example CSV update:**
 ```
-# Main test feature
-feature-040,feature,copy.feature,...,adopted,implemented shared/isolated scope; added CopyTest,io/karatelabs/core/copy/,2025-12-17
+# Main test feature with bug fix
+feature-040,feature,copy.feature,...,passed,fixed shared/isolated scope; added CopyTest,io/karatelabs/core/copy/,2025-12-17
 
 # Helper features
-feature-037,feature,copy-called-nested.feature,...,adopted,helper for copy.feature,io/karatelabs/core/copy/,2025-12-17
+feature-037,feature,copy-called-nested.feature,...,passed,helper for copy.feature,,2025-12-17
 ```
 
 ---

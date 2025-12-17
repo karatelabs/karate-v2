@@ -220,4 +220,69 @@ class StepDefTest {
         assertEquals(false, get(sr, "f"));
     }
 
+    @Test
+    void testTableEvaluatesCellExpressions() {
+        // Table cells should be evaluated as Karate expressions (V1 behavior)
+        // 'Bob' becomes string Bob, 2 becomes number 2
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * table cats
+              | name   | age |
+              | 'Bob'  | 2   |
+              | 'Nyan' | 5   |
+            * match cats == [{name: 'Bob', age: 2}, {name: 'Nyan', age: 5}]
+            """);
+        assertPassed(sr);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> cats = (List<Map<String, Object>>) get(sr, "cats");
+        assertEquals(2, cats.size());
+        assertEquals("Bob", cats.get(0).get("name"));
+        assertEquals(2, cats.get(0).get("age"));
+    }
+
+    @Test
+    void testTableWithVariableReference() {
+        // Table cells can reference variables
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def myName = 'Alice'
+            * def myAge = 25
+            * table people
+              | name   | age   |
+              | myName | myAge |
+            * match people[0].name == 'Alice'
+            * match people[0].age == 25
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testReplace() {
+        // Replace <token> with value in a string variable
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def text = 'hello <name> world'
+            * replace text.name = 'foo'
+            * match text == 'hello foo world'
+            """);
+        assertPassed(sr);
+        assertEquals("hello foo world", get(sr, "text"));
+    }
+
+    @Test
+    void testReplaceMultipleTokens() {
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def text = '<greeting> <name>!'
+            * replace text.greeting = 'Hello'
+            * replace text.name = 'World'
+            * match text == 'Hello World!'
+            """);
+        assertPassed(sr);
+    }
+
 }

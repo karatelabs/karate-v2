@@ -292,13 +292,13 @@ java-290,java_test,tags/TagsTest.java,TagsTest,testEnvNotFoo,,testEnvNotFoo,tags
 java-291,java_test,tags/TagsTest.java,TagsTest,testEnvFoo,,testEnvFoo,tags,pending,,,
 java-292,java_test,xml/XmlTest.java,XmlTest,testXml,,testXml,xml,pending,,,
 feature-001,feature,abort.feature,,,abort.feature,abort.feature,root,passed,implemented karate.abort(),,2025-12-17
-feature-002,feature,align.feature,,,align.feature,align.feature,root,pending,,,
-feature-003,feature,big-decimal.feature,,,big-decimal.feature,big-decimal.feature,root,pending,,,
+feature-002,feature,align.feature,,,align.feature,align.feature,root,passed,,,2025-12-17
+feature-003,feature,big-decimal.feature,,,big-decimal.feature,big-decimal.feature,root,passed,,,2025-12-17
 feature-004,feature,call-arg-called.feature,,,call-arg-called.feature,call-arg-called.feature,root,pending,,,
 feature-005,feature,call-arg-common.feature,,,call-arg-common.feature,call-arg-common.feature,root,pending,,,
 feature-006,feature,call-arg-null-called.feature,,,call-arg-null-called.feature,call-arg-null-called.feature,root,pending,,,
 feature-007,feature,call-arg-null.feature,,,call-arg-null.feature,call-arg-null.feature,root,pending,,,
-feature-008,feature,call-arg.feature,,,call-arg.feature,call-arg.feature,root,pending,,,
+feature-008,feature,call-arg.feature,,,call-arg.feature,call-arg.feature,root,passed,,,2025-12-17
 feature-009,feature,call-by-tag-called.feature,,,call-by-tag-called.feature,call-by-tag-called.feature,root,pending,,,
 feature-010,feature,call-by-tag.feature,,,call-by-tag.feature,call-by-tag.feature,root,pending,,,
 feature-011,feature,call-feature-called.feature,,,call-feature-called.feature,call-feature-called.feature,root,pending,,,
@@ -327,10 +327,10 @@ feature-033,feature,callonce-config.feature,,,callonce-config.feature,callonce-c
 feature-034,feature,callonce-global-called.feature,,,callonce-global-called.feature,callonce-global-called.feature,root,pending,,,
 feature-035,feature,callonce-global.feature,,,callonce-global.feature,make sure a callonce (with shared scope) in the background ,root,pending,,,
 feature-036,feature,configure-in-js.feature,,,configure-in-js.feature,configure-in-js.feature,root,pending,,,
-feature-037,feature,copy-called-nested.feature,,,copy-called-nested.feature,called file that overwites nested data,root,adopted,helper for copy.feature,io/karatelabs/core/copy/,2025-12-17
-feature-038,feature,copy-called-overwrite.feature,,,copy-called-overwrite.feature,called file that may or may not over-write variable in caller,root,adopted,helper for copy.feature,io/karatelabs/core/copy/,2025-12-17
-feature-039,feature,copy-called.feature,,,copy-called.feature,called file should not clobber vars in caller,root,adopted,helper for copy.feature,io/karatelabs/core/copy/,2025-12-17
-feature-040,feature,copy.feature,,,copy.feature,the difference with variable scoping in 'isolated' and 'shared' mode,root,adopted,implemented shared/isolated scope; added CopyTest,io/karatelabs/core/copy/,2025-12-17
+feature-037,feature,copy-called-nested.feature,,,copy-called-nested.feature,called file that overwites nested data,root,passed,helper for copy.feature,io/karatelabs/core/copy/,2025-12-17
+feature-038,feature,copy-called-overwrite.feature,,,copy-called-overwrite.feature,called file that may or may not over-write variable in caller,root,passed,helper for copy.feature,io/karatelabs/core/copy/,2025-12-17
+feature-039,feature,copy-called.feature,,,copy-called.feature,called file should not clobber vars in caller,root,passed,helper for copy.feature,io/karatelabs/core/copy/,2025-12-17
+feature-040,feature,copy.feature,,,copy.feature,the difference with variable scoping in 'isolated' and 'shared' mode,root,passed,implemented shared/isolated scope; added CopyTest,io/karatelabs/core/copy/,2025-12-17
 feature-041,feature,csv.feature,,,csv.feature,csv.feature,root,pending,,,
 feature-042,feature,dummy-ui-google.feature,,,dummy-ui-google.feature,dummy-ui-google.feature,root,pending,,,
 feature-043,feature,dummy.feature,,,dummy.feature,dummy.feature,root,pending,,,

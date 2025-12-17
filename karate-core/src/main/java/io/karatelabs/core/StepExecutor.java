@@ -39,7 +39,9 @@ import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -84,6 +86,7 @@ public class StepExecutor {
                     case "xml" -> executeXml(step);
                     case "copy" -> executeCopy(step);
                     case "table" -> executeTable(step);
+                    case "replace" -> executeReplace(step);
 
                     // Assertions
                     case "match" -> executeMatch(step);
@@ -330,8 +333,66 @@ public class StepExecutor {
         if (table == null) {
             throw new RuntimeException("table keyword requires a data table");
         }
-        List<Map<String, Object>> rows = table.getRowsAsMapsConverted();
-        runtime.setVariable(text, rows);
+        // Get raw string values, then evaluate each as a Karate expression (V1 behavior)
+        List<Map<String, String>> rawRows = table.getRowsAsMaps();
+        List<Map<String, Object>> result = new ArrayList<>(rawRows.size());
+        for (Map<String, String> rawRow : rawRows) {
+            Map<String, Object> row = new LinkedHashMap<>(rawRow.size());
+            for (Map.Entry<String, String> entry : rawRow.entrySet()) {
+                String expr = entry.getValue();
+                if (expr == null || expr.isEmpty()) {
+                    // Skip null/empty values (V1 strips these by default)
+                    continue;
+                }
+                Object value = runtime.eval(expr);
+                if (value != null) {
+                    row.put(entry.getKey(), value);
+                }
+                // If value is null and not explicitly "(null)", skip it (V1 behavior)
+            }
+            result.add(row);
+        }
+        runtime.setVariable(text, result);
+    }
+
+    private void executeReplace(Step step) {
+        // Syntax: replace varName.token = 'replacement'
+        // This replaces <token> with 'replacement' in the variable varName
+        String text = step.getText();
+        int eqIndex = findAssignmentOperator(text);
+        if (eqIndex < 0) {
+            throw new RuntimeException("replace requires '=' assignment: " + text);
+        }
+        String nameAndToken = text.substring(0, eqIndex).trim();
+        String replaceExpr = text.substring(eqIndex + 1).trim();
+
+        // Parse varName.token
+        int dotIndex = nameAndToken.indexOf('.');
+        if (dotIndex < 0) {
+            throw new RuntimeException("replace requires varName.token syntax: " + nameAndToken);
+        }
+        String varName = nameAndToken.substring(0, dotIndex).trim();
+        String token = nameAndToken.substring(dotIndex + 1).trim();
+
+        // Get the variable value as string
+        Object varValue = runtime.getVariable(varName);
+        if (varValue == null) {
+            throw new RuntimeException("no variable found with name: " + varName);
+        }
+        String varText = varValue.toString();
+
+        // Evaluate the replacement expression
+        Object replaceValue = runtime.eval(replaceExpr);
+        String replacement = replaceValue != null ? replaceValue.toString() : "";
+
+        // If token is alphanumeric, wrap with < >
+        if (!token.isEmpty() && Character.isLetterOrDigit(token.charAt(0))) {
+            token = '<' + token + '>';
+        }
+
+        // Perform replacement and update variable
+        String replaced = varText.replace(token, replacement);
+        runtime.setVariable(varName, replaced);
     }
 
     // ========== Assertions ==========
