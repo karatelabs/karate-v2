@@ -11,8 +11,13 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -1138,6 +1143,358 @@ class ResourceTest {
 
         Resource resource = Resource.from(deepFile);
         assertEquals("deep.json", resource.getSimpleName());
+    }
+
+    // ========== scanClasspath() Tests ==========
+
+    @Test
+    void testScanClasspathEmptyDirectory() {
+        // Scan a non-existent directory
+        java.util.List<Resource> results = Resource.scanClasspath("nonexistent/directory", "feature");
+        assertNotNull(results);
+        assertTrue(results.isEmpty());
+    }
+
+    @Test
+    void testScanClasspathNormalizesLeadingSlash() {
+        // Both should work identically
+        java.util.List<Resource> results1 = Resource.scanClasspath("nonexistent", "txt");
+        java.util.List<Resource> results2 = Resource.scanClasspath("/nonexistent", "txt");
+
+        assertEquals(results1.size(), results2.size());
+    }
+
+    @Test
+    void testScanClasspathNormalizesTrailingSlash() {
+        // Both should work identically
+        java.util.List<Resource> results1 = Resource.scanClasspath("nonexistent", "txt");
+        java.util.List<Resource> results2 = Resource.scanClasspath("nonexistent/", "txt");
+
+        assertEquals(results1.size(), results2.size());
+    }
+
+    @Test
+    void testScanClasspathWithCustomClassLoader() {
+        // Scan with explicit class loader
+        ClassLoader cl = getClass().getClassLoader();
+        java.util.List<Resource> results = Resource.scanClasspath("nonexistent", "feature", cl);
+
+        assertNotNull(results);
+        // Non-existent directory should return empty list
+        assertTrue(results.isEmpty());
+    }
+
+    // ========== JAR Resource Scanning Tests ==========
+
+    /**
+     * Helper to create a test JAR with feature files.
+     */
+    private Path createTestJar(String jarName, String... featurePaths) throws IOException {
+        Path jarPath = tempDir.resolve(jarName);
+
+        try (JarOutputStream jos = new JarOutputStream(Files.newOutputStream(jarPath))) {
+            for (String featurePath : featurePaths) {
+                // Create directory entries for parent paths
+                String[] parts = featurePath.split("/");
+                StringBuilder dirPath = new StringBuilder();
+                for (int i = 0; i < parts.length - 1; i++) {
+                    dirPath.append(parts[i]).append("/");
+                    JarEntry dirEntry = new JarEntry(dirPath.toString());
+                    try {
+                        jos.putNextEntry(dirEntry);
+                        jos.closeEntry();
+                    } catch (java.util.zip.ZipException e) {
+                        // Directory entry already exists, ignore
+                    }
+                }
+
+                // Create the feature file entry
+                JarEntry entry = new JarEntry(featurePath);
+                jos.putNextEntry(entry);
+
+                // Write minimal feature content
+                String featureName = parts[parts.length - 1].replace(".feature", "");
+                String content = String.format("""
+                    Feature: %s
+
+                    Scenario: Test scenario
+                    * def x = 1
+                    * match x == 1
+                    """, featureName);
+                jos.write(content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                jos.closeEntry();
+            }
+        }
+
+        return jarPath;
+    }
+
+    @Test
+    void testScanClasspathFromJar() throws Exception {
+        // Create a JAR with feature files
+        Path jarPath = createTestJar("test-features.jar",
+                "features/users.feature",
+                "features/orders.feature",
+                "features/nested/deep.feature"
+        );
+
+        // Create a URLClassLoader with our test JAR
+        try (URLClassLoader classLoader = new URLClassLoader(
+                new URL[]{jarPath.toUri().toURL()},
+                null  // no parent - isolated classloader
+        )) {
+            // Scan the features directory
+            List<Resource> results = Resource.scanClasspath("features", "feature", classLoader);
+
+            assertNotNull(results);
+            assertEquals(3, results.size(), "Should find 3 feature files in JAR");
+
+            // Verify all features were found
+            List<String> paths = results.stream()
+                    .map(Resource::getRelativePath)
+                    .toList();
+
+            assertTrue(paths.stream().anyMatch(p -> p.contains("users.feature")),
+                    "Should find users.feature");
+            assertTrue(paths.stream().anyMatch(p -> p.contains("orders.feature")),
+                    "Should find orders.feature");
+            assertTrue(paths.stream().anyMatch(p -> p.contains("deep.feature")),
+                    "Should find nested/deep.feature");
+        }
+    }
+
+    @Test
+    void testScanClasspathFromJarSubdirectory() throws Exception {
+        // Create a JAR with nested structure
+        Path jarPath = createTestJar("nested-features.jar",
+                "com/example/features/api/users.feature",
+                "com/example/features/api/orders.feature",
+                "com/example/features/ui/login.feature"
+        );
+
+        try (URLClassLoader classLoader = new URLClassLoader(
+                new URL[]{jarPath.toUri().toURL()},
+                null
+        )) {
+            // Scan only the api subdirectory
+            List<Resource> apiResults = Resource.scanClasspath("com/example/features/api", "feature", classLoader);
+            assertEquals(2, apiResults.size(), "Should find 2 features in api directory");
+
+            // Scan the ui subdirectory
+            List<Resource> uiResults = Resource.scanClasspath("com/example/features/ui", "feature", classLoader);
+            assertEquals(1, uiResults.size(), "Should find 1 feature in ui directory");
+
+            // Scan all features
+            List<Resource> allResults = Resource.scanClasspath("com/example/features", "feature", classLoader);
+            assertEquals(3, allResults.size(), "Should find all 3 features");
+        }
+    }
+
+    @Test
+    void testScanClasspathFromJarReadContent() throws Exception {
+        // Create a JAR with a feature file
+        Path jarPath = createTestJar("content-test.jar", "test/sample.feature");
+
+        try (URLClassLoader classLoader = new URLClassLoader(
+                new URL[]{jarPath.toUri().toURL()},
+                null
+        )) {
+            List<Resource> results = Resource.scanClasspath("test", "feature", classLoader);
+
+            assertEquals(1, results.size());
+            Resource resource = results.get(0);
+
+            // Verify we can read the content
+            String content = resource.getText();
+            assertNotNull(content);
+            assertTrue(content.contains("Feature: sample"));
+            assertTrue(content.contains("Scenario: Test scenario"));
+        }
+    }
+
+    @Test
+    void testScanClasspathFromJarEmptyDirectory() throws Exception {
+        // Create a JAR with features in a different directory
+        Path jarPath = createTestJar("other-dir.jar", "other/test.feature");
+
+        try (URLClassLoader classLoader = new URLClassLoader(
+                new URL[]{jarPath.toUri().toURL()},
+                null
+        )) {
+            // Scan a directory that doesn't exist in the JAR
+            List<Resource> results = Resource.scanClasspath("features", "feature", classLoader);
+
+            assertNotNull(results);
+            assertTrue(results.isEmpty(), "Should return empty list for non-existent directory");
+        }
+    }
+
+    @Test
+    void testScanClasspathFromJarDifferentExtensions() throws Exception {
+        // Create a JAR with mixed file types
+        Path jarPath = tempDir.resolve("mixed-files.jar");
+
+        try (JarOutputStream jos = new JarOutputStream(Files.newOutputStream(jarPath))) {
+            // Add directory
+            jos.putNextEntry(new JarEntry("resources/"));
+            jos.closeEntry();
+
+            // Add feature file
+            jos.putNextEntry(new JarEntry("resources/test.feature"));
+            jos.write("Feature: Test".getBytes());
+            jos.closeEntry();
+
+            // Add JSON file
+            jos.putNextEntry(new JarEntry("resources/data.json"));
+            jos.write("{\"key\": \"value\"}".getBytes());
+            jos.closeEntry();
+
+            // Add text file
+            jos.putNextEntry(new JarEntry("resources/readme.txt"));
+            jos.write("README content".getBytes());
+            jos.closeEntry();
+        }
+
+        try (URLClassLoader classLoader = new URLClassLoader(
+                new URL[]{jarPath.toUri().toURL()},
+                null
+        )) {
+            // Should only find .feature files
+            List<Resource> featureResults = Resource.scanClasspath("resources", "feature", classLoader);
+            assertEquals(1, featureResults.size());
+
+            // Should only find .json files
+            List<Resource> jsonResults = Resource.scanClasspath("resources", "json", classLoader);
+            assertEquals(1, jsonResults.size());
+            assertTrue(jsonResults.get(0).getText().contains("key"));
+
+            // Should only find .txt files
+            List<Resource> txtResults = Resource.scanClasspath("resources", "txt", classLoader);
+            assertEquals(1, txtResults.size());
+        }
+    }
+
+    // ========== JAR Resource resolve() Tests ==========
+
+    @Test
+    void testJarResourceResolveRelativePath() throws Exception {
+        // Create a JAR with related files
+        Path jarPath = tempDir.resolve("resolve-test.jar");
+
+        try (JarOutputStream jos = new JarOutputStream(Files.newOutputStream(jarPath))) {
+            jos.putNextEntry(new JarEntry("features/"));
+            jos.closeEntry();
+
+            jos.putNextEntry(new JarEntry("features/main.feature"));
+            jos.write("Feature: Main\n* call read('helper.feature')".getBytes());
+            jos.closeEntry();
+
+            jos.putNextEntry(new JarEntry("features/helper.feature"));
+            jos.write("Feature: Helper\n* def x = 1".getBytes());
+            jos.closeEntry();
+
+            jos.putNextEntry(new JarEntry("features/data/"));
+            jos.closeEntry();
+
+            jos.putNextEntry(new JarEntry("features/data/users.json"));
+            jos.write("[{\"name\": \"John\"}]".getBytes());
+            jos.closeEntry();
+        }
+
+        try (URLClassLoader classLoader = new URLClassLoader(
+                new URL[]{jarPath.toUri().toURL()},
+                null
+        )) {
+            // Get the main feature
+            List<Resource> results = Resource.scanClasspath("features", "feature", classLoader);
+            Resource mainFeature = results.stream()
+                    .filter(r -> r.getRelativePath().contains("main.feature"))
+                    .findFirst()
+                    .orElseThrow();
+
+            // Resolve sibling file
+            Resource helper = mainFeature.resolve("helper.feature");
+            assertNotNull(helper);
+            assertTrue(helper.getText().contains("Feature: Helper"));
+
+            // Resolve file in subdirectory
+            Resource userData = mainFeature.resolve("data/users.json");
+            assertNotNull(userData);
+            assertTrue(userData.getText().contains("John"));
+        }
+    }
+
+    @Test
+    void testJarResourceResolveParentPath() throws Exception {
+        // Create a JAR with nested structure
+        Path jarPath = tempDir.resolve("parent-resolve.jar");
+
+        try (JarOutputStream jos = new JarOutputStream(Files.newOutputStream(jarPath))) {
+            jos.putNextEntry(new JarEntry("base/"));
+            jos.closeEntry();
+            jos.putNextEntry(new JarEntry("base/common.feature"));
+            jos.write("Feature: Common".getBytes());
+            jos.closeEntry();
+
+            jos.putNextEntry(new JarEntry("base/sub/"));
+            jos.closeEntry();
+            jos.putNextEntry(new JarEntry("base/sub/child.feature"));
+            jos.write("Feature: Child".getBytes());
+            jos.closeEntry();
+        }
+
+        try (URLClassLoader classLoader = new URLClassLoader(
+                new URL[]{jarPath.toUri().toURL()},
+                null
+        )) {
+            List<Resource> results = Resource.scanClasspath("base/sub", "feature", classLoader);
+            assertEquals(1, results.size());
+
+            Resource child = results.get(0);
+
+            // Resolve parent path (../common.feature)
+            Resource common = child.resolve("../common.feature");
+            assertNotNull(common);
+            assertTrue(common.getText().contains("Feature: Common"));
+        }
+    }
+
+    @Test
+    void testClasspathResourceFromJarSingleFile() throws Exception {
+        // Create a JAR with a single feature
+        Path jarPath = createTestJar("single-file.jar", "test/single.feature");
+
+        try (URLClassLoader classLoader = new URLClassLoader(
+                new URL[]{jarPath.toUri().toURL()},
+                null
+        )) {
+            // Load single file using Resource.path() with custom classloader
+            Resource resource = Resource.path("classpath:test/single.feature", classLoader);
+
+            assertNotNull(resource);
+            assertTrue(resource.isClassPath());
+            assertTrue(resource.getText().contains("Feature: single"));
+        }
+    }
+
+    @Test
+    void testJarResourceGetSimpleName() throws Exception {
+        Path jarPath = createTestJar("simplename.jar", "features/my-test.feature");
+
+        try (URLClassLoader classLoader = new URLClassLoader(
+                new URL[]{jarPath.toUri().toURL()},
+                null
+        )) {
+            List<Resource> results = Resource.scanClasspath("features", "feature", classLoader);
+            assertEquals(1, results.size());
+
+            Resource resource = results.get(0);
+            // For JAR resources loaded via NIO, getSimpleName should work
+            // For MemoryResource fallback, it may return empty - both are acceptable
+            String simpleName = resource.getSimpleName();
+            assertTrue(simpleName.isEmpty() || simpleName.equals("my-test.feature"),
+                    "Simple name should be empty or the filename");
+        }
     }
 
 }

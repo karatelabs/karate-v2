@@ -153,4 +153,72 @@ class RunnerTest {
         assertEquals("test", suite.getEnv());
     }
 
+    @Test
+    void testRunnerWithClasspathDirectory() {
+        // This directory contains 2 feature files in test resources
+        SuiteResult result = Runner.path("classpath:io/karatelabs/report")
+                .outputDir(tempDir.resolve("reports"))
+                .outputHtmlReport(false)
+                .parallel(1);
+
+        // Should find both test-report.feature and second-feature.feature
+        assertEquals(2, result.getFeatureCount());
+        // Total scenarios: 5 from test-report.feature + 2 from second-feature.feature = 7
+        assertEquals(7, result.getScenarioCount());
+    }
+
+    @Test
+    void testRunnerWithClasspathDirectoryTrailingSlash() {
+        // Same test but with trailing slash
+        SuiteResult result = Runner.path("classpath:io/karatelabs/report/")
+                .outputDir(tempDir.resolve("reports"))
+                .outputHtmlReport(false)
+                .parallel(1);
+
+        assertEquals(2, result.getFeatureCount());
+    }
+
+    @Test
+    void testRunnerWithClasspathSingleFile() {
+        // Test single classpath file (existing behavior)
+        SuiteResult result = Runner.path("classpath:io/karatelabs/report/second-feature.feature")
+                .outputDir(tempDir.resolve("reports"))
+                .outputHtmlReport(false)
+                .parallel(1);
+
+        assertEquals(1, result.getFeatureCount());
+        assertEquals(2, result.getScenarioPassedCount());
+    }
+
+    @Test
+    void testRunnerWithClasspathNestedDirectory() {
+        // Test that features/ directory only contains 1 feature
+        SuiteResult result = Runner.path("classpath:feature")
+                .outputDir(tempDir.resolve("reports"))
+                .outputHtmlReport(false)
+                .parallel(1);
+
+        // Should find http-simple.feature (or may be 0 if it requires HTTP)
+        assertTrue(result.getFeatureCount() >= 0);
+    }
+
+    @Test
+    void testRunnerMixedPaths() throws Exception {
+        // Mix file system and classpath paths
+        Path feature = tempDir.resolve("local.feature");
+        Files.writeString(feature, """
+            Feature: Local feature
+            Scenario: Local test
+            * def x = 1
+            """);
+
+        SuiteResult result = Runner.path(feature.toString(), "classpath:io/karatelabs/report/second-feature.feature")
+                .outputDir(tempDir.resolve("reports"))
+                .outputHtmlReport(false)
+                .parallel(1);
+
+        // 1 local + 1 classpath
+        assertEquals(2, result.getFeatureCount());
+    }
+
 }

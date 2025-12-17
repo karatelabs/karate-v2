@@ -35,15 +35,16 @@ public class MemoryResource implements Resource {
 
     private final Path root;
     private final byte[] bytes;
+    private final String relativePath;
 
     private String[] lines;
 
     MemoryResource(String text) {
-        this(text, null);
+        this(text, (Path) null);
     }
 
     MemoryResource(byte[] bytes) {
-        this(bytes, null);
+        this(bytes, (Path) null);
     }
 
     MemoryResource(String text, Path root) {
@@ -53,6 +54,20 @@ public class MemoryResource implements Resource {
     MemoryResource(byte[] bytes, Path root) {
         this.root = root != null ? root : SYSTEM_TEMP;
         this.bytes = bytes;
+        this.relativePath = "";
+    }
+
+    /**
+     * Creates an in-memory resource with an explicit relative path.
+     * Useful for resources loaded from JARs that need a path identity.
+     *
+     * @param text         the text content
+     * @param relativePath the relative path (e.g., "features/test.feature")
+     */
+    MemoryResource(String text, String relativePath) {
+        this.root = SYSTEM_TEMP;
+        this.bytes = FileUtils.toBytes(text);
+        this.relativePath = relativePath != null ? relativePath : "";
     }
 
     @Override
@@ -94,7 +109,7 @@ public class MemoryResource implements Resource {
 
     @Override
     public String getRelativePath() {
-        return "";
+        return relativePath;
     }
 
     @Override

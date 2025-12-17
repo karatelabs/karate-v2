@@ -47,6 +47,12 @@ import java.util.concurrent.Callable;
  *
  * # Run with multiple threads
  * java -jar karate.jar -T 5 src/test/resources
+ *
+ * # Run with JSON configuration file
+ * java -jar karate.jar --config karate.json
+ *
+ * # Override config file options with CLI args
+ * java -jar karate.jar --config karate.json -e prod -T 10
  * </pre>
  */
 @Command(
@@ -118,6 +124,12 @@ public class Main implements Callable<Integer> {
     )
     boolean noColor;
 
+    @Option(
+            names = {"-c", "--config"},
+            description = "Path to JSON configuration file (karate.json)"
+    )
+    String configFile;
+
     public static void main(String[] args) {
         int exitCode = new CommandLine(new Main())
                 .setCaseInsensitiveEnumValuesAllowed(true)
@@ -137,25 +149,69 @@ public class Main implements Callable<Integer> {
         Console.println(Console.bold("Karate v2"));
         Console.println();
 
+        // Load JSON config if specified
+        KarateConfig config = null;
+        if (configFile != null) {
+            try {
+                config = KarateConfig.load(configFile);
+                Console.println(Console.info("Loaded config: " + configFile));
+            } catch (Exception e) {
+                Console.println(Console.fail("Failed to load config: " + e.getMessage()));
+                return 1;
+            }
+        }
+
+        // Determine effective values (CLI overrides config)
+        List<String> effectivePaths = paths;
+        String effectiveOutputDir = outputDir;
+        boolean effectiveClean = clean;
+        int effectiveThreads = threads;
+
+        if (config != null) {
+            if ((effectivePaths == null || effectivePaths.isEmpty()) && !config.getPaths().isEmpty()) {
+                effectivePaths = config.getPaths();
+            }
+            if (effectiveOutputDir.equals("target/karate-reports") && config.getOutput().getDir() != null) {
+                effectiveOutputDir = config.getOutput().getDir();
+            }
+            if (!effectiveClean && config.isClean()) {
+                effectiveClean = true;
+            }
+            if (effectiveThreads == 1 && config.getThreads() > 1) {
+                effectiveThreads = config.getThreads();
+            }
+        }
+
         // Clean output directory if requested
-        if (clean) {
-            cleanOutputDir();
+        if (effectiveClean) {
+            cleanOutputDir(effectiveOutputDir);
         }
 
         // Check if paths are provided
-        if (paths == null || paths.isEmpty()) {
+        if (effectivePaths == null || effectivePaths.isEmpty()) {
             Console.println(Console.yellow("No test paths specified."));
             Console.println("Usage: karate [options] <paths...>");
+            Console.println("       karate --config karate.json");
             Console.println("Run 'karate --help' for more information.");
             return 0;
         }
 
         // Build and run
         try {
-            Runner.Builder builder = Runner.builder()
-                    .path(paths)
-                    .outputDir(outputDir)
-                    .dryRun(dryRun);
+            Runner.Builder builder = Runner.builder();
+
+            // Apply config file settings first (if present)
+            if (config != null) {
+                config.applyTo(builder);
+            }
+
+            // CLI options override config file
+            builder.path(effectivePaths);
+            builder.outputDir(effectiveOutputDir);
+
+            if (dryRun) {
+                builder.dryRun(true);
+            }
 
             if (env != null) {
                 builder.karateEnv(env);
@@ -174,7 +230,7 @@ public class Main implements Callable<Integer> {
             }
 
             // Run tests
-            SuiteResult result = builder.parallel(threads);
+            SuiteResult result = builder.parallel(effectiveThreads);
 
             // Return exit code based on test results
             return result.isFailed() ? 1 : 0;
@@ -186,12 +242,12 @@ public class Main implements Callable<Integer> {
         }
     }
 
-    private void cleanOutputDir() {
-        Path output = Path.of(outputDir);
+    private void cleanOutputDir(String dir) {
+        Path output = Path.of(dir);
         if (Files.exists(output)) {
             try {
                 deleteDirectory(output.toFile());
-                Console.println(Console.info("Cleaned: " + outputDir));
+                Console.println(Console.info("Cleaned: " + dir));
             } catch (Exception e) {
                 Console.println(Console.warn("Failed to clean output directory: " + e.getMessage()));
             }
@@ -244,6 +300,10 @@ public class Main implements Callable<Integer> {
 
     public boolean isDryRun() {
         return dryRun;
+    }
+
+    public String getConfigFile() {
+        return configFile;
     }
 
     /**

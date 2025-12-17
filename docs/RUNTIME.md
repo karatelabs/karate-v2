@@ -389,43 +389,118 @@ See `io.karatelabs.core.CucumberJsonWriter` for implementation.
 
 ---
 
-### Priority 3: Feature File Discovery
+### ~~Priority 3: Feature File Discovery~~ ✅ IMPLEMENTED
 
-Current status:
+Feature file discovery now supports:
 - File system directory scanning ✓
 - Single feature file loading ✓
-- **TODO:** Classpath scanning (`classpath:features/`)
-- **TODO:** JAR scanning
+- Classpath directory scanning ✓
+- JAR resource scanning ✓
 
 ```java
-// File system (works today)
+// File system paths
 Runner.path("src/test/resources/features/")
 
-// Classpath (TODO)
+// Classpath directory - scans for all .feature files
 Runner.path("classpath:features/")
+
+// Classpath single file
+Runner.path("classpath:features/users.feature")
+
+// Mixed paths
+Runner.path("src/test/local/", "classpath:features/")
 ```
+
+**Implementation details:**
+- Uses `ClassLoader.getResources()` to locate classpath directories
+- NIO FileSystem API for walking directories (handles both file system and JAR entries)
+- Fallback to manual JAR scanning when NIO FileSystem provider unavailable
+- See `Resource.scanClasspath()` in `io.karatelabs.common.Resource`
 
 ---
 
-### Priority 4: CLI JSON Configuration
+### ~~Priority 4: CLI JSON Configuration~~ ✅ IMPLEMENTED
 
-```json
-{
-  "paths": ["src/test/features/"],
-  "tags": ["@smoke"],
-  "env": "dev",
-  "threads": 5,
-  "output": { "dir": "target/reports" }
-}
-```
+Run Karate tests using a JSON configuration file:
 
 ```bash
 karate --config karate.json
+
+# Override config file options with CLI args
+karate --config karate.json -e prod -T 10
 ```
+
+**JSON Schema:**
+```json
+{
+  "paths": ["src/test/features/", "classpath:features/"],
+  "tags": ["@smoke", "~@slow"],
+  "env": "dev",
+  "threads": 5,
+  "scenarioName": ".*login.*",
+  "configDir": "src/test/resources",
+  "dryRun": false,
+  "clean": false,
+  "output": {
+    "dir": "target/karate-reports",
+    "html": true,
+    "junitXml": false,
+    "cucumberJson": false,
+    "ndjson": false
+  }
+}
+```
+
+**Precedence:** CLI arguments override config file values.
+
+See `io.karatelabs.core.KarateConfig` for implementation.
 
 ---
 
-### Priority 5: karate-base.js
+### Priority 5: Working Directory (`-w, --workdir`)
+
+**Status:** TODO
+
+Add working directory CLI option to control the base path for relative path resolution in resources and reports.
+
+**v1 Reference:** `/Users/peter/dev/zcode/karate/karate-core/src/main/java/com/intuit/karate/Main.java` line 110-111
+
+**Problem:**
+Currently `FileUtils.WORKING_DIR` is a static final set to `new File("").getAbsoluteFile()`. When tests run from temp directories or non-standard locations, relative paths in reports show ugly `../../../var/folders/...` style paths.
+
+**Requirements:**
+1. Add `-w, --workdir` CLI option (default: current directory)
+2. Add `workingDir` to `KarateConfig` JSON schema
+3. Add `workingDir(File/Path)` to `Runner.Builder`
+4. Pass working directory to:
+   - `Resource.scanClasspath()` for root path computation
+   - `PathResource` creation for relative path display
+   - Feature file discovery in `Runner.resolveFeatures()`
+   - Report generation for clean relative paths
+5. Update `Suite` to store and propagate working directory
+
+**Expected behavior:**
+```bash
+# Run from project root, features in subdir
+karate -w /home/user/project src/test/features
+
+# JSON config
+{
+  "workingDir": "/home/user/project",
+  "paths": ["src/test/features"]
+}
+```
+
+**Affected classes:**
+- `Main.java` - CLI option
+- `KarateConfig.java` - JSON field
+- `Runner.java` - Builder method, pass to Suite
+- `Suite.java` - Store and use for resource creation
+- `Resource.java` / `PathResource.java` - Use for relative path computation
+
+---
+
+### Priority 6: karate-base.js
 
 Shared config from classpath (e.g., company JAR):
 
@@ -947,7 +1022,8 @@ Tests are in `karate-core/src/test/java/io/karatelabs/core/`:
 | `ConfigTest` | Config loading |
 | `RuntimeHookTest` | Hooks |
 | `ResultListenerTest` | Result streaming |
-| `RunnerTest` | Runner API |
+| `RunnerTest` | Runner API, classpath directory scanning |
+| `KarateConfigTest` | JSON config file parsing and loading |
 | `JunitXmlWriterTest` | JUnit XML report generation |
 | `CucumberJsonWriterTest` | Cucumber JSON report generation |
 | `HtmlReportListenerTest` | Async HTML report generation |

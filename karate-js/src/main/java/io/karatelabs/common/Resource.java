@@ -404,6 +404,129 @@ public interface Resource {
         }
     }
 
+    /**
+     * Scans classpath directories for resources with the given extension.
+     * Handles both file system classpath entries and JARs.
+     *
+     * @param classpathDir the classpath directory (without "classpath:" prefix)
+     * @param extension    file extension to filter (e.g., "feature")
+     * @return list of matching Resources
+     */
+    static java.util.List<Resource> scanClasspath(String classpathDir, String extension) {
+        return scanClasspath(classpathDir, extension, null);
+    }
+
+    /**
+     * Scans classpath directories for resources with the given extension.
+     * Handles both file system classpath entries and JARs.
+     *
+     * @param classpathDir the classpath directory (without "classpath:" prefix)
+     * @param extension    file extension to filter (e.g., "feature")
+     * @param classLoader  optional ClassLoader (null = use default)
+     * @return list of matching Resources
+     */
+    static java.util.List<Resource> scanClasspath(String classpathDir, String extension, ClassLoader classLoader) {
+        java.util.List<Resource> results = new java.util.ArrayList<>();
+
+        // Normalize directory path
+        String normalizedDir = classpathDir;
+        if (normalizedDir.startsWith("/")) {
+            normalizedDir = normalizedDir.substring(1);
+        }
+        if (!normalizedDir.isEmpty() && !normalizedDir.endsWith("/")) {
+            normalizedDir = normalizedDir + "/";
+        }
+
+        try {
+            // Get all resources matching this path from all classloaders
+            java.util.Enumeration<URL> urls = null;
+            if (classLoader != null) {
+                urls = classLoader.getResources(normalizedDir);
+            }
+            if (urls == null || !urls.hasMoreElements()) {
+                ClassLoader contextCL = Thread.currentThread().getContextClassLoader();
+                if (contextCL != null) {
+                    urls = contextCL.getResources(normalizedDir);
+                }
+            }
+            if (urls == null || !urls.hasMoreElements()) {
+                urls = ClassLoader.getSystemResources(normalizedDir);
+            }
+
+            while (urls != null && urls.hasMoreElements()) {
+                URL url = urls.nextElement();
+                scanUrl(url, normalizedDir, extension, results);
+            }
+        } catch (Exception e) {
+            // Silently ignore scan failures
+        }
+
+        return results;
+    }
+
+    /**
+     * Scans a single URL for resources with the given extension.
+     */
+    private static void scanUrl(URL url, String baseDir, String extension, java.util.List<Resource> results) {
+        try {
+            Path dirPath = urlToPath(url, null);
+            if (dirPath != null && java.nio.file.Files.isDirectory(dirPath)) {
+                String suffix = "." + extension;
+                try (java.util.stream.Stream<Path> stream = java.nio.file.Files.walk(dirPath)) {
+                    stream.filter(p -> java.nio.file.Files.isRegularFile(p) && p.toString().endsWith(suffix))
+                            .forEach(p -> {
+                                results.add(new PathResource(p, FileUtils.WORKING_DIR.toPath(), true));
+                            });
+                }
+            }
+        } catch (java.nio.file.ProviderNotFoundException e) {
+            // JAR file system not available - fallback to manual JAR scanning
+            scanJarManually(url, baseDir, extension, results);
+        } catch (Exception e) {
+            // Silently ignore scan failures for this URL
+        }
+    }
+
+    /**
+     * Manually scans a JAR for resources when NIO FileSystem is not available.
+     */
+    private static void scanJarManually(URL url, String baseDir, String extension, java.util.List<Resource> results) {
+        String urlStr = url.toString();
+        if (!urlStr.startsWith("jar:")) {
+            return;
+        }
+        try {
+            // Extract JAR path from URL like "jar:file:/path/to/file.jar!/some/dir/"
+            String jarPath = urlStr.substring(4); // Remove "jar:"
+            int bangIndex = jarPath.indexOf("!/");
+            if (bangIndex == -1) {
+                return;
+            }
+            String jarFilePath = jarPath.substring(0, bangIndex);
+            if (jarFilePath.startsWith("file:")) {
+                jarFilePath = jarFilePath.substring(5);
+            }
+
+            String suffix = "." + extension;
+            try (java.util.jar.JarFile jarFile = new java.util.jar.JarFile(jarFilePath)) {
+                java.util.Enumeration<java.util.jar.JarEntry> entries = jarFile.entries();
+                while (entries.hasMoreElements()) {
+                    java.util.jar.JarEntry entry = entries.nextElement();
+                    String entryName = entry.getName();
+                    if (!entry.isDirectory() && entryName.startsWith(baseDir) && entryName.endsWith(suffix)) {
+                        // Read content and create MemoryResource
+                        try (java.io.InputStream is = jarFile.getInputStream(entry)) {
+                            String content = FileUtils.toString(is);
+                            results.add(new MemoryResource(content, entryName));
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Silently ignore scan failures
+        }
+    }
+
     static Resource text(String text) {
         return new MemoryResource(text);
     }

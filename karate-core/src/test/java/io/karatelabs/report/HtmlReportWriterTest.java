@@ -57,6 +57,7 @@ class HtmlReportWriterTest {
         String testResourcesDir = "target/test-classes/io/karatelabs/report";
         SuiteResult result = Runner.path(testResourcesDir)
                 .outputDir(OUTPUT_DIR)
+                .outputNdjson(true)  // opt-in for NDJSON
                 .parallel(1);
 
         // Verify the run
@@ -88,6 +89,7 @@ class HtmlReportWriterTest {
         SuiteResult result = Runner.path(testResourcesDir)
                 .karateEnv("staging")
                 .outputDir(outputDir)
+                .outputNdjson(true)  // opt-in for NDJSON
                 .parallel(1);
 
         assertTrue(Files.exists(outputDir.resolve("karate-summary.html")));
