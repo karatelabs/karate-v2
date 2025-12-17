@@ -342,8 +342,7 @@ Examples:
 
 **Implementation:**
 - `FeatureRuntime.evaluateDynamicExpression()` - Detects functions and delegates to generator evaluation
-- `FeatureRuntime.evaluateGeneratorFunction()` - Calls function repeatedly until termination
-- `Engine.invoke()` - New method to invoke JS callables with proper context
+- `FeatureRuntime.evaluateGeneratorFunction()` - Calls function repeatedly via `JsCallable.call(null, index)` until termination
 - `ScenarioRuntime.initEngine()` - Sets `__num` and `__row` variables
 
 See `io.karatelabs.core.DynamicOutlineTest` for comprehensive test coverage.

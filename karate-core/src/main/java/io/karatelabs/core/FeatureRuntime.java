@@ -30,7 +30,6 @@ import io.karatelabs.gherkin.Scenario;
 import io.karatelabs.gherkin.ScenarioOutline;
 import io.karatelabs.gherkin.ExamplesTable;
 import io.karatelabs.gherkin.Tag;
-import io.karatelabs.js.Invokable;
 import io.karatelabs.js.JsCallable;
 import io.karatelabs.log.JvmLogger;
 
@@ -346,9 +345,9 @@ public class FeatureRuntime implements Callable<FeatureResult> {
 
                 if (result instanceof List) {
                     return (List<?>) result;
-                } else if (result instanceof JsCallable || result instanceof Invokable) {
+                } else if (result instanceof JsCallable) {
                     // Generator function - call repeatedly until null/non-map
-                    return evaluateGeneratorFunction(sr, result);
+                    return evaluateGeneratorFunction(result);
                 } else {
                     // Expression didn't return a list or function - error
                     throw new RuntimeException("Dynamic expression must return a list or function: " + expression + ", got: " + (result != null ? result.getClass().getName() : "null"));
@@ -363,15 +362,16 @@ public class FeatureRuntime implements Callable<FeatureResult> {
          * until it returns null or a non-Map value.
          */
         @SuppressWarnings("unchecked")
-        private List<Map<String, Object>> evaluateGeneratorFunction(ScenarioRuntime sr, Object function) {
+        private List<Map<String, Object>> evaluateGeneratorFunction(Object function) {
             List<Map<String, Object>> results = new ArrayList<>();
+            JsCallable callable = (JsCallable) function;
             int index = 0;
 
             while (true) {
                 Object rowValue;
                 try {
-                    // Invoke the function using the engine's invoke method
-                    rowValue = sr.getKarate().engine.invoke(function, index);
+                    // JsCallable.call() works with null context (uses declared context internally)
+                    rowValue = callable.call(null, index);
                 } catch (Exception e) {
                     JvmLogger.warn("Generator function threw exception at index {}: {}", index, e.getMessage());
                     break;
