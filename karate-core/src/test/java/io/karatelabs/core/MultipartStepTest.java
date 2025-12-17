@@ -21,15 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.core.step;
+package io.karatelabs.core;
 
-import io.karatelabs.core.InMemoryHttpClient;
-import io.karatelabs.core.ScenarioRuntime;
 import org.junit.jupiter.api.Test;
 
 import static io.karatelabs.core.InMemoryHttpClient.*;
 import static io.karatelabs.core.TestUtils.*;
-import static org.junit.jupiter.api.Assertions.*;
 
 class MultipartStepTest {
 

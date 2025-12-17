@@ -21,9 +21,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.core.step;
+package io.karatelabs.core;
 
-import io.karatelabs.core.ScenarioRuntime;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
