@@ -76,6 +76,9 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         this.executor = new StepExecutor(this);
         this.result = new ScenarioResult(scenario);
         this.configSettings = new HashMap<>();
+
+        // Wire up karate.abort() for standalone execution
+        karate.setAbortHandler(this::abort);
     }
 
     private void initEngine() {
@@ -117,6 +120,9 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         // Wire up karate.setup() and karate.setupOnce() functions
         karate.setSetupProvider(this::executeSetup);
         karate.setSetupOnceProvider(this::executeSetupOnce);
+
+        // Wire up karate.abort()
+        karate.setAbortHandler(this::abort);
     }
 
     /**

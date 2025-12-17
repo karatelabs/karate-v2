@@ -63,6 +63,7 @@ public class KarateJs implements SimpleObject {
     private BiConsumer<Context, Result> onMatch;
     private Function<String, Map<String, Object>> setupProvider;
     private Function<String, Map<String, Object>> setupOnceProvider;
+    private Runnable abortHandler;
 
     private final Invokable read;
 
@@ -121,6 +122,19 @@ public class KarateJs implements SimpleObject {
 
     public void setSetupOnceProvider(Function<String, Map<String, Object>> provider) {
         this.setupOnceProvider = provider;
+    }
+
+    public void setAbortHandler(Runnable handler) {
+        this.abortHandler = handler;
+    }
+
+    private Invokable abort() {
+        return args -> {
+            if (abortHandler != null) {
+                abortHandler.run();
+            }
+            return null;
+        };
     }
 
     @SuppressWarnings("unchecked")
@@ -240,6 +254,7 @@ public class KarateJs implements SimpleObject {
     @Override
     public Object jsGet(String key) {
         return switch (key) {
+            case "abort" -> abort();
             case "doc" -> doc();
             case "get" -> get();
             case "http" -> http();

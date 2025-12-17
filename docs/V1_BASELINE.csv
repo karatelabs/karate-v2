@@ -291,7 +291,7 @@ java-289,java_test,tags/TagsTest.java,TagsTest,testNoneOrBoth,,testNoneOrBoth,ta
 java-290,java_test,tags/TagsTest.java,TagsTest,testEnvNotFoo,,testEnvNotFoo,tags,pending,,,
 java-291,java_test,tags/TagsTest.java,TagsTest,testEnvFoo,,testEnvFoo,tags,pending,,,
 java-292,java_test,xml/XmlTest.java,XmlTest,testXml,,testXml,xml,pending,,,
-feature-001,feature,abort.feature,,,abort.feature,abort.feature,root,pending,,,
+feature-001,feature,abort.feature,,,abort.feature,abort.feature,root,passed,implemented karate.abort(),,2025-12-17
 feature-002,feature,align.feature,,,align.feature,align.feature,root,pending,,,
 feature-003,feature,big-decimal.feature,,,big-decimal.feature,big-decimal.feature,root,pending,,,
 feature-004,feature,call-arg-called.feature,,,call-arg-called.feature,call-arg-called.feature,root,pending,,,

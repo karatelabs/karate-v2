@@ -30,7 +30,7 @@ import static io.karatelabs.core.TestUtils.*;
 /**
  * Tests for match keyword.
  */
-class MatchStepTest {
+class StepMatchTest {
 
     // ========== Basic Equality ==========
 

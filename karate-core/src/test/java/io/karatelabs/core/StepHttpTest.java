@@ -29,7 +29,7 @@ import static io.karatelabs.core.InMemoryHttpClient.*;
 import static io.karatelabs.core.TestUtils.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-class HttpStepTest {
+class StepHttpTest {
 
     @Test
     void testSimpleGet() {

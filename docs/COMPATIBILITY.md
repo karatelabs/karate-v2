@@ -247,11 +247,34 @@ Key utilities in `io.karatelabs.core.TestUtils`:
 
 The **JUnit class name** is the category. The **method name** describes what's being tested. Keep related tests together to avoid duplicates.
 
+#### Naming Convention: `Step<Keyword>Test`
+
+For tests that use **inline Gherkin text-blocks** (no feature files on disk), use the `Step<Keyword>Test` naming pattern:
+
 | Class | What it tests |
 |-------|---------------|
-| `DefStepTest` | def, set, copy, remove, text, json |
-| `MatchStepTest` | match assertions |
-| `HttpStepTest` | HTTP with InMemoryHttpClient |
+| `StepDefTest` | def, set, copy, remove, text, json |
+| `StepMatchTest` | match assertions |
+| `StepHttpTest` | HTTP with InMemoryHttpClient |
+| `StepMultipartTest` | multipart/form-data |
+| `StepAbortTest` | karate.abort() |
+
+These tests use `TestUtils.run()` with Java text blocks:
+```java
+ScenarioRuntime sr = run("""
+    Feature:
+    Scenario:
+    * def foo = 'bar'
+    """);
+assertPassed(sr);
+```
+
+#### Other Test Classes
+
+Tests that require **feature files on disk** or test non-keyword functionality:
+
+| Class | What it tests |
+|-------|---------------|
 | `CallFeatureTest` | call, callonce (uses resource files) |
 | `copy/CopyTest` | shared vs isolated scope, variable inheritance |
 | `ConfigTest` | configure keyword |
@@ -280,10 +303,11 @@ karate-v2/
 ├── target/
 │   └── v1-compat-results/      # Test logs (gitignored)
 └── karate-core/src/test/java/io/karatelabs/core/
-    ├── DefStepTest.java        # def, set, copy, remove, text, json
-    ├── MatchStepTest.java      # match assertions
-    ├── HttpStepTest.java       # HTTP with InMemoryHttpClient
-    ├── CallFeatureTest.java    # call, callonce
+    ├── StepDefTest.java        # def, set, copy, remove, text, json
+    ├── StepMatchTest.java      # match assertions
+    ├── StepHttpTest.java       # HTTP with InMemoryHttpClient
+    ├── StepAbortTest.java      # karate.abort()
+    ├── CallFeatureTest.java    # call, callonce (needs files on disk)
     ├── ConfigTest.java         # configure, karate-config
     └── ...                     # Add to existing or create new as needed
 ```

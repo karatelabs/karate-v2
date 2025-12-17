@@ -31,7 +31,7 @@ import java.util.Map;
 import static io.karatelabs.core.TestUtils.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-class DefStepTest {
+class StepDefTest {
 
     @Test
     void testDefNumber() {

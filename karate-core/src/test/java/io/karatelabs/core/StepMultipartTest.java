@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 import static io.karatelabs.core.InMemoryHttpClient.*;
 import static io.karatelabs.core.TestUtils.*;
 
-class MultipartStepTest {
+class StepMultipartTest {
 
     @Test
     void testMultipartField() {
