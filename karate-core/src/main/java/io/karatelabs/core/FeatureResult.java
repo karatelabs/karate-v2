@@ -98,6 +98,16 @@ public class FeatureResult {
         return scenarioResults;
     }
 
+    /**
+     * Sort scenario results by section index, example index, and line number.
+     * This ensures deterministic ordering in reports regardless of parallel execution order.
+     */
+    public void sortScenarioResults() {
+        synchronized (scenarioResults) {
+            Collections.sort(scenarioResults);
+        }
+    }
+
     public int getScenarioCount() {
         return scenarioResults.size();
     }

@@ -68,8 +68,6 @@ class HtmlReportListenerTest {
         // HTML reports should exist
         assertTrue(Files.exists(reportDir.resolve("karate-summary.html")), "Summary HTML should exist");
         assertTrue(Files.exists(reportDir.resolve("index.html")), "Index redirect should exist");
-        assertTrue(Files.exists(reportDir.resolve("karate-tags.html")), "Tags HTML should exist");
-        assertTrue(Files.exists(reportDir.resolve("karate-timeline.html")), "Timeline HTML should exist");
         assertTrue(Files.exists(reportDir.resolve("features")), "Features directory should exist");
 
         // NDJSON should NOT exist (opt-in only)

@@ -31,7 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class ScenarioResult {
+public class ScenarioResult implements Comparable<ScenarioResult> {
 
     private final Scenario scenario;
     private final List<StepResult> stepResults = new ArrayList<>();
@@ -164,6 +164,34 @@ public class ScenarioResult {
         map.put("result", result);
 
         return map;
+    }
+
+    @Override
+    public int compareTo(ScenarioResult other) {
+        if (other == null) {
+            return 1;
+        }
+        // Compare by section index first
+        int sectionCmp = Integer.compare(
+                this.scenario.getSection().getIndex(),
+                other.scenario.getSection().getIndex()
+        );
+        if (sectionCmp != 0) {
+            return sectionCmp;
+        }
+        // Then by example index (-1 means not an outline example)
+        int exampleCmp = Integer.compare(
+                this.scenario.getExampleIndex(),
+                other.scenario.getExampleIndex()
+        );
+        if (exampleCmp != 0) {
+            return exampleCmp;
+        }
+        // Finally by line number
+        return Integer.compare(
+                this.scenario.getLine(),
+                other.scenario.getLine()
+        );
     }
 
 }

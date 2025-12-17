@@ -96,6 +96,9 @@ public class HtmlReportListener implements ResultListener {
 
     @Override
     public void onFeatureEnd(FeatureResult result) {
+        // Sort scenarios for deterministic ordering in reports
+        result.sortScenarioResults();
+
         // Collect summary in memory (small)
         summaries.add(new FeatureSummary(result));
 
@@ -118,6 +121,9 @@ public class HtmlReportListener implements ResultListener {
 
             // Write summary pages
             HtmlReportWriter.writeSummaryPages(summaries, result, outputDir, env);
+
+            // Write timeline page
+            HtmlReportWriter.writeTimelineHtml(summaries, result, outputDir, env, threadCount);
 
             JvmLogger.info("HTML report written to: {}", outputDir.resolve("karate-summary.html"));
 
@@ -150,6 +156,37 @@ public class HtmlReportListener implements ResultListener {
     }
 
     /**
+     * Small in-memory summary of a scenario result for timeline.
+     */
+    public static class ScenarioSummary {
+        private final String name;
+        private final String refId;
+        private final String featureName;
+        private final boolean passed;
+        private final long startTime;
+        private final long endTime;
+        private final String threadName;
+
+        public ScenarioSummary(ScenarioResult sr, String featureName) {
+            this.name = sr.getScenario().getName();
+            this.refId = sr.getScenario().getRefId();
+            this.featureName = featureName;
+            this.passed = sr.isPassed();
+            this.startTime = sr.getStartTime();
+            this.endTime = sr.getEndTime();
+            this.threadName = sr.getThreadName();
+        }
+
+        public String getName() { return name; }
+        public String getRefId() { return refId; }
+        public String getFeatureName() { return featureName; }
+        public boolean isPassed() { return passed; }
+        public long getStartTime() { return startTime; }
+        public long getEndTime() { return endTime; }
+        public String getThreadName() { return threadName; }
+    }
+
+    /**
      * Small in-memory summary of a feature result.
      * Contains only the data needed for summary pages, not full step details.
      */
@@ -165,11 +202,12 @@ public class HtmlReportListener implements ResultListener {
         private final long startTime;
         private final String threadName;
         private final Set<String> tags;
+        private final List<ScenarioSummary> scenarios;
 
         public FeatureSummary(FeatureResult result) {
             this.name = result.getFeature().getName();
             this.relativePath = result.getDisplayName();
-            this.fileName = sanitizeFileName(name != null ? name : relativePath);
+            this.fileName = pathToFileName(relativePath);
             this.passed = result.isPassed();
             this.passedCount = result.getPassedCount();
             this.failedCount = result.getFailedCount();
@@ -177,9 +215,21 @@ public class HtmlReportListener implements ResultListener {
             this.durationMillis = result.getDurationMillis();
             this.startTime = result.getStartTime();
 
-            // Collect thread name from first scenario
+            // Collect thread name from first scenario and scenario summaries for timeline
             String thread = null;
             this.tags = new HashSet<>();
+            this.scenarios = new ArrayList<>();
+            // Get just the filename without extension for timeline display
+            String featureFileName = result.getFeature().getResource().getFileNameWithoutExtension();
+            // Extract just the filename from any path prefix
+            int lastSlash = featureFileName.lastIndexOf('/');
+            if (lastSlash >= 0) {
+                featureFileName = featureFileName.substring(lastSlash + 1);
+            }
+            lastSlash = featureFileName.lastIndexOf('\\');
+            if (lastSlash >= 0) {
+                featureFileName = featureFileName.substring(lastSlash + 1);
+            }
             for (ScenarioResult sr : result.getScenarioResults()) {
                 if (thread == null && sr.getThreadName() != null) {
                     thread = sr.getThreadName();
@@ -190,6 +240,8 @@ public class HtmlReportListener implements ResultListener {
                         tags.add(tag.toString());
                     }
                 }
+                // Collect scenario summary for timeline
+                scenarios.add(new ScenarioSummary(sr, featureFileName));
             }
             this.threadName = thread;
         }
@@ -238,8 +290,24 @@ public class HtmlReportListener implements ResultListener {
             return tags;
         }
 
-        private static String sanitizeFileName(String name) {
-            return name.replaceAll("[^a-zA-Z0-9_-]", "_").toLowerCase();
+        public List<ScenarioSummary> getScenarios() {
+            return scenarios;
+        }
+
+        /**
+         * Convert a relative path to a file name using dot-based flattening.
+         * Example: "users/list.feature" → "users.list"
+         */
+        private static String pathToFileName(String path) {
+            if (path == null || path.isEmpty()) {
+                return "unknown";
+            }
+            // Remove .feature extension and replace path separators with dots
+            return path.replace(".feature", "")
+                    .replace("/", ".")
+                    .replace("\\", ".")
+                    .replaceAll("[^a-zA-Z0-9_.-]", "_")
+                    .toLowerCase();
         }
     }
 

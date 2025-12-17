@@ -99,6 +99,7 @@ public final class Runner {
         private boolean outputNdjson;
         private boolean outputJunitXml;
         private boolean outputCucumberJson;
+        private boolean backupReportDir;
 
         Builder() {
         }
@@ -253,6 +254,16 @@ public final class Runner {
         }
 
         /**
+         * Enable/disable backup of existing report directory.
+         * When enabled, the existing report directory is renamed with a timestamp
+         * suffix (e.g., karate-reports_2025-01-15_143022) before new reports are written.
+         */
+        public Builder backupReportDir(boolean enabled) {
+            this.backupReportDir = enabled;
+            return this;
+        }
+
+        /**
          * Enable dry-run mode (parse but don't execute).
          */
         public Builder dryRun(boolean enabled) {
@@ -354,6 +365,7 @@ public final class Runner {
             suite.outputNdjson(outputNdjson);
             suite.outputJunitXml(outputJunitXml);
             suite.outputCucumberJson(outputCucumberJson);
+            suite.backupReportDir(backupReportDir);
 
             // Add hooks
             for (RuntimeHook hook : hooks) {

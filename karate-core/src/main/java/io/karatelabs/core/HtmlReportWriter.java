@@ -37,11 +37,9 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Generates HTML reports with inlined JSON data and Alpine.js client-side rendering.
@@ -56,13 +54,11 @@ import java.util.Set;
  * Output structure:
  * <pre>
  * target/karate-reports/
- * ├── karate-results.ndjson     (streamed during execution)
+ * ├── karate-results.ndjson     (streamed during execution, optional)
  * ├── index.html                (redirects to karate-summary.html)
- * ├── karate-summary.html       (summary page)
- * ├── karate-tags.html          (tags view)
- * ├── karate-timeline.html      (timeline view)
+ * ├── karate-summary.html       (summary page with tag filtering)
  * ├── features/
- * │   └── {feature-name}.html   (per-feature reports)
+ * │   └── {feature.path}.html   (per-feature reports, dot-based naming)
  * └── res/
  *     ├── bootstrap.min.css
  *     ├── alpine.min.js
@@ -163,7 +159,7 @@ public final class HtmlReportWriter {
     }
 
     /**
-     * Write summary pages (summary, tags, timeline, index) from feature summaries.
+     * Write summary pages (summary, index) from feature summaries.
      * Used by {@link HtmlReportListener} at suite end.
      *
      * @param summaries the collected feature summaries
@@ -182,20 +178,6 @@ public final class HtmlReportWriter {
         String summaryTemplate = loadTemplate("karate-summary.html");
         String summaryHtml = inlineJson(summaryTemplate, summaryPageData);
         Files.writeString(outputDir.resolve("karate-summary.html"), summaryHtml);
-
-        // Write tags page
-        Map<String, Object> tagsPageData = new LinkedHashMap<>(suiteData);
-        tagsPageData.put("tags", buildTagsDataFromSummaries(summaries));
-        String tagsTemplate = loadTemplate("karate-tags.html");
-        String tagsHtml = inlineJson(tagsTemplate, tagsPageData);
-        Files.writeString(outputDir.resolve("karate-tags.html"), tagsHtml);
-
-        // Write timeline page
-        Map<String, Object> timelinePageData = new LinkedHashMap<>(suiteData);
-        timelinePageData.put("timeline", buildTimelineDataFromSummaries(summaries));
-        String timelineTemplate = loadTemplate("karate-timeline.html");
-        String timelineHtml = inlineJson(timelineTemplate, timelinePageData);
-        Files.writeString(outputDir.resolve("karate-timeline.html"), timelineHtml);
 
         // Write index redirect
         writeIndexRedirect(outputDir);
@@ -224,12 +206,6 @@ public final class HtmlReportWriter {
             writeFeatureHtml(feature, featuresDir);
         }
 
-        // Generate tags page
-        writeTagsHtml(suiteData, features, outputDir);
-
-        // Generate timeline page
-        writeTimelineHtml(suiteData, features, outputDir);
-
         // Generate index redirect
         writeIndexRedirect(outputDir);
     }
@@ -253,28 +229,6 @@ public final class HtmlReportWriter {
 
         String fileName = getFeatureFileName(feature) + ".html";
         Files.writeString(featuresDir.resolve(fileName), html);
-    }
-
-    private static void writeTagsHtml(Map<String, Object> suiteData,
-                                      List<Map<String, Object>> features,
-                                      Path outputDir) throws IOException {
-        Map<String, Object> pageData = new LinkedHashMap<>(suiteData);
-        pageData.put("tags", buildTagsData(features));
-
-        String template = loadTemplate("karate-tags.html");
-        String html = inlineJson(template, pageData);
-        Files.writeString(outputDir.resolve("karate-tags.html"), html);
-    }
-
-    private static void writeTimelineHtml(Map<String, Object> suiteData,
-                                          List<Map<String, Object>> features,
-                                          Path outputDir) throws IOException {
-        Map<String, Object> pageData = new LinkedHashMap<>(suiteData);
-        pageData.put("timeline", buildTimelineData(features));
-
-        String template = loadTemplate("karate-timeline.html");
-        String html = inlineJson(template, pageData);
-        Files.writeString(outputDir.resolve("karate-timeline.html"), html);
     }
 
     private static void writeIndexRedirect(Path outputDir) throws IOException {
@@ -446,6 +400,12 @@ public final class HtmlReportWriter {
         data.put("passed", sr.isPassed());
         data.put("ms", sr.getDurationMillis());
 
+        // RefId and outline info for v1-style UI
+        data.put("refId", sr.getScenario().getRefId());
+        data.put("sectionIndex", sr.getScenario().getSection().getIndex() + 1);
+        data.put("exampleIndex", sr.getScenario().getExampleIndex());
+        data.put("isOutlineExample", sr.getScenario().isOutlineExample());
+
         if (sr.getThreadName() != null) {
             data.put("thread", sr.getThreadName());
         }
@@ -477,11 +437,18 @@ public final class HtmlReportWriter {
 
     private static Map<String, Object> buildStepData(StepResult step) {
         Map<String, Object> data = new LinkedHashMap<>();
+        data.put("prefix", step.getStep().getPrefix());
+        data.put("keyword", step.getStep().getKeyword());
         data.put("text", step.getStep().getText());
         data.put("status", step.getStatus().name().toLowerCase());
         data.put("ms", step.getDurationNanos() / 1_000_000);
+        data.put("line", step.getStep().getLine());
 
-        if (step.getLog() != null && !step.getLog().isEmpty()) {
+        // Log indicator for UI
+        boolean hasLogs = step.getLog() != null && !step.getLog().isEmpty();
+        data.put("hasLogs", hasLogs);
+
+        if (hasLogs) {
             data.put("logs", step.getLog());
         }
 
@@ -505,12 +472,13 @@ public final class HtmlReportWriter {
             summary.put("failed", !((Boolean) feature.get("passed")));
             summary.put("durationMillis", feature.get("ms"));
 
-            // Count scenarios
+            // Count scenarios and build scenario summaries for tag filtering
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> scenarios = (List<Map<String, Object>>) feature.get("scenarios");
             int total = scenarios != null ? scenarios.size() : 0;
             int passed = 0;
             int failed = 0;
+            List<Map<String, Object>> scenarioSummaries = new ArrayList<>();
             if (scenarios != null) {
                 for (Map<String, Object> s : scenarios) {
                     if (Boolean.TRUE.equals(s.get("passed"))) {
@@ -518,106 +486,46 @@ public final class HtmlReportWriter {
                     } else {
                         failed++;
                     }
+                    // Include scenario data for tag filtering in summary page
+                    Map<String, Object> scenarioSummary = new LinkedHashMap<>();
+                    scenarioSummary.put("name", s.get("name"));
+                    scenarioSummary.put("refId", s.get("refId"));
+                    scenarioSummary.put("passed", s.get("passed"));
+                    scenarioSummary.put("ms", s.get("ms"));
+                    scenarioSummary.put("tags", s.get("tags"));
+                    scenarioSummaries.add(scenarioSummary);
                 }
             }
             summary.put("scenarioCount", total);
             summary.put("passedCount", passed);
             summary.put("failedCount", failed);
+            summary.put("scenarios", scenarioSummaries);
 
             summaryList.add(summary);
         }
         return summaryList;
     }
 
-    // ========== Data Building for Tags Page ==========
-
-    private static Map<String, Object> buildTagsData(List<Map<String, Object>> features) {
-        Map<String, List<Map<String, Object>>> tagMap = new LinkedHashMap<>();
-
-        for (Map<String, Object> feature : features) {
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> scenarios = (List<Map<String, Object>>) feature.get("scenarios");
-            if (scenarios == null) continue;
-
-            for (Map<String, Object> scenario : scenarios) {
-                @SuppressWarnings("unchecked")
-                List<String> tags = (List<String>) scenario.get("tags");
-                if (tags == null) continue;
-
-                for (String tag : tags) {
-                    tagMap.computeIfAbsent(tag, k -> new ArrayList<>()).add(Map.of(
-                            "featureName", feature.get("name"),
-                            "featureFile", getFeatureFileName(feature),
-                            "scenarioName", scenario.get("name"),
-                            "passed", scenario.get("passed"),
-                            "failed", !((Boolean) scenario.get("passed")),
-                            "durationMillis", scenario.get("ms")
-                    ));
-                }
-            }
-        }
-
-        // Convert to list for template
-        List<Map<String, Object>> tagList = new ArrayList<>();
-        for (var entry : tagMap.entrySet()) {
-            Map<String, Object> tagEntry = new LinkedHashMap<>();
-            tagEntry.put("name", entry.getKey());
-            tagEntry.put("scenarios", entry.getValue());
-            tagList.add(tagEntry);
-        }
-
-        Map<String, Object> tagsData = new LinkedHashMap<>();
-        tagsData.put("tagList", tagList);
-        tagsData.put("tagCount", tagMap.size());
-        return tagsData;
-    }
-
-    // ========== Data Building for Timeline Page ==========
-
-    private static Map<String, Object> buildTimelineData(List<Map<String, Object>> features) {
-        List<Map<String, Object>> items = new ArrayList<>();
-        List<String> groups = new ArrayList<>();
-        int id = 0;
-        long minStart = Long.MAX_VALUE;
-        long maxEnd = 0;
-
-        for (Map<String, Object> feature : features) {
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> scenarios = (List<Map<String, Object>>) feature.get("scenarios");
-            if (scenarios == null) continue;
-
-            for (Map<String, Object> scenario : scenarios) {
-                String thread = scenario.get("thread") != null ? (String) scenario.get("thread") : "main";
-                if (!groups.contains(thread)) {
-                    groups.add(thread);
-                }
-
-                Map<String, Object> item = new LinkedHashMap<>();
-                item.put("id", id++);
-                item.put("group", thread);
-                item.put("content", scenario.get("name"));
-                item.put("className", Boolean.TRUE.equals(scenario.get("passed")) ? "passed" : "failed");
-                item.put("featureName", feature.get("name"));
-                item.put("featureFile", getFeatureFileName(feature));
-                item.put("ms", scenario.get("ms"));
-                items.add(item);
-            }
-        }
-
-        Map<String, Object> timeline = new LinkedHashMap<>();
-        timeline.put("items", items);
-        timeline.put("groups", groups);
-        return timeline;
-    }
-
     // ========== Utility ==========
 
+    /**
+     * Convert a feature path to a file name using dot-based flattening.
+     * Example: "users/list.feature" → "users.list"
+     */
     private static String getFeatureFileName(Map<String, Object> feature) {
-        String name = (String) feature.get("name");
-        if (name == null || name.isEmpty()) {
-            name = (String) feature.get("path");
+        String path = (String) feature.get("path");
+        if (path == null || path.isEmpty()) {
+            path = (String) feature.get("name");
         }
-        return name.replaceAll("[^a-zA-Z0-9_-]", "_").toLowerCase();
+        if (path == null || path.isEmpty()) {
+            return "unknown";
+        }
+        // Remove .feature extension and replace path separators with dots
+        return path.replace(".feature", "")
+                .replace("/", ".")
+                .replace("\\", ".")
+                .replaceAll("[^a-zA-Z0-9_.-]", "_")
+                .toLowerCase();
     }
 
     /**
@@ -688,57 +596,105 @@ public final class HtmlReportWriter {
         return list;
     }
 
-    private static Map<String, Object> buildTagsDataFromSummaries(List<HtmlReportListener.FeatureSummary> summaries) {
-        // For tags page, we only have summary-level tag info, not scenario-level
-        // This is a simplified view - shows which features have which tags
-        Map<String, Set<String>> tagToFeatures = new LinkedHashMap<>();
+    // ========== Timeline Generation ==========
+
+    private static final DateTimeFormatter TIME_FORMAT =
+            DateTimeFormatter.ofPattern("HH:mm:ss.SSS").withZone(ZoneId.systemDefault());
+
+    /**
+     * Write the timeline HTML page showing scenario execution across threads.
+     * Used by {@link HtmlReportListener} at suite end.
+     *
+     * @param summaries   the collected feature summaries (containing scenario timing data)
+     * @param result      the suite result
+     * @param outputDir   the root output directory
+     * @param env         the karate environment (may be null)
+     * @param threadCount the number of threads used for parallel execution
+     */
+    public static void writeTimelineHtml(List<HtmlReportListener.FeatureSummary> summaries,
+                                         SuiteResult result, Path outputDir, String env,
+                                         int threadCount) throws IOException {
+        Map<String, Object> timelineData = buildTimelineData(summaries, result, env, threadCount);
+        String template = loadTemplate("karate-timeline.html");
+        String html = inlineJson(template, timelineData);
+        Files.writeString(outputDir.resolve("karate-timeline.html"), html);
+    }
+
+    /**
+     * Build the timeline data structure for vis.js Timeline.
+     */
+    private static Map<String, Object> buildTimelineData(List<HtmlReportListener.FeatureSummary> summaries,
+                                                          SuiteResult result, String env,
+                                                          int threadCount) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("env", env);
+        data.put("reportDate", DATE_FORMAT.format(Instant.ofEpochMilli(result.getStartTime())));
+        data.put("threads", threadCount);
+        data.put("karateVersion", "2.0");
+
+        // Build groups (one per thread) and items (one per scenario)
+        Map<String, Integer> threadToGroupId = new LinkedHashMap<>();
+        List<Map<String, Object>> groups = new ArrayList<>();
+        List<Map<String, Object>> items = new ArrayList<>();
+        int itemId = 0;
 
         for (HtmlReportListener.FeatureSummary fs : summaries) {
-            for (String tag : fs.getTags()) {
-                tagToFeatures.computeIfAbsent(tag, k -> new HashSet<>()).add(fs.getName());
+            for (HtmlReportListener.ScenarioSummary ss : fs.getScenarios()) {
+                String threadName = ss.getThreadName();
+                if (threadName == null || threadName.isEmpty()) {
+                    threadName = "main";
+                }
+
+                // Get or create group for this thread
+                Integer groupId = threadToGroupId.get(threadName);
+                if (groupId == null) {
+                    groupId = threadToGroupId.size() + 1;
+                    threadToGroupId.put(threadName, groupId);
+
+                    Map<String, Object> group = new LinkedHashMap<>();
+                    group.put("id", groupId);
+                    group.put("content", threadName);
+                    groups.add(group);
+                }
+
+                // Create item for this scenario
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("id", ++itemId);
+                item.put("group", groupId);
+
+                String content = ss.getFeatureName() + ss.getRefId();
+                item.put("content", content);
+
+                long startTime = ss.getStartTime();
+                long endTime = ss.getEndTime() - 1; // -1 to avoid overlap in vis.js
+                if (endTime < startTime) {
+                    endTime = startTime; // Handle zero-duration scenarios
+                }
+                item.put("start", startTime);
+                item.put("end", endTime);
+
+                // Build tooltip title
+                String startTimeStr = TIME_FORMAT.format(Instant.ofEpochMilli(startTime));
+                String endTimeStr = TIME_FORMAT.format(Instant.ofEpochMilli(endTime));
+                String title = content + " " + startTimeStr + "-" + endTimeStr;
+                String scenarioName = ss.getName();
+                if (scenarioName != null && !scenarioName.isEmpty()) {
+                    title = title + " " + scenarioName;
+                }
+                item.put("title", title);
+
+                // CSS class for pass/fail styling
+                item.put("className", ss.isPassed() ? "passed" : "failed");
+
+                items.add(item);
             }
         }
 
-        List<Map<String, Object>> tagList = new ArrayList<>();
-        for (var entry : tagToFeatures.entrySet()) {
-            Map<String, Object> tagEntry = new LinkedHashMap<>();
-            tagEntry.put("name", entry.getKey());
-            tagEntry.put("featureCount", entry.getValue().size());
-            tagEntry.put("features", new ArrayList<>(entry.getValue()));
-            tagList.add(tagEntry);
-        }
+        data.put("groups", groups);
+        data.put("items", items);
 
-        Map<String, Object> tagsData = new LinkedHashMap<>();
-        tagsData.put("tagList", tagList);
-        tagsData.put("tagCount", tagToFeatures.size());
-        return tagsData;
-    }
-
-    private static Map<String, Object> buildTimelineDataFromSummaries(List<HtmlReportListener.FeatureSummary> summaries) {
-        List<Map<String, Object>> items = new ArrayList<>();
-        Set<String> groupSet = new HashSet<>();
-        int id = 0;
-
-        for (HtmlReportListener.FeatureSummary fs : summaries) {
-            String thread = fs.getThreadName() != null ? fs.getThreadName() : "main";
-            groupSet.add(thread);
-
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id", id++);
-            item.put("group", thread);
-            item.put("content", fs.getName());
-            item.put("className", fs.isPassed() ? "passed" : "failed");
-            item.put("featureName", fs.getName());
-            item.put("featureFile", fs.getFileName());
-            item.put("ms", fs.getDurationMillis());
-            item.put("startTime", fs.getStartTime());
-            items.add(item);
-        }
-
-        Map<String, Object> timeline = new LinkedHashMap<>();
-        timeline.put("items", items);
-        timeline.put("groups", new ArrayList<>(groupSet));
-        return timeline;
+        return data;
     }
 
 }
+

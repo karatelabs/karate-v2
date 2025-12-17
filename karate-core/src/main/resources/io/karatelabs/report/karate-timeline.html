@@ -1,58 +1,61 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="light">
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <link rel="stylesheet" href="res/bootstrap.min.css"/>
     <link rel="stylesheet" href="res/karate-report.css"/>
     <link rel="icon" href="res/favicon.ico"/>
+    <link rel="stylesheet" href="https://unpkg.com/vis-timeline@7/styles/vis-timeline-graph2d.min.css"/>
+    <script src="https://unpkg.com/vis-timeline@7/standalone/umd/vis-timeline-graph2d.min.js"></script>
     <script src="res/alpine.min.js" defer></script>
-    <title>Timeline Report</title>
+    <title>Karate Timeline</title>
     <style>
-        .timeline-container {
-            overflow-x: auto;
-            padding: 20px 0;
+        #timeline {
+            width: 100%;
+            height: calc(100vh - 150px);
+            min-height: 400px;
         }
-        .timeline-row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-            min-height: 40px;
+        .vis-item.failed {
+            background-color: #dc3545 !important;
+            border-color: #b02a37 !important;
+            color: white !important;
         }
-        .timeline-label {
-            min-width: 100px;
-            font-weight: bold;
-            padding-right: 10px;
+        .vis-item.passed {
+            background-color: #198754 !important;
+            border-color: #146c43 !important;
+            color: white !important;
         }
-        .timeline-track {
-            flex: 1;
-            height: 30px;
-            background: #f0f0f0;
-            position: relative;
-            border-radius: 4px;
+        .vis-label {
+            font-size: 0.9rem;
         }
-        .timeline-item {
-            position: absolute;
-            height: 24px;
-            top: 3px;
-            border-radius: 4px;
-            padding: 2px 6px;
-            font-size: 11px;
+        .vis-item-content {
+            font-size: 0.8rem;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            cursor: pointer;
-            color: white;
         }
-        .timeline-item.passed {
-            background-color: #198754;
+        /* Dark mode support */
+        [data-bs-theme="dark"] .vis-timeline {
+            border-color: #495057;
         }
-        .timeline-item.failed {
-            background-color: #dc3545;
+        [data-bs-theme="dark"] .vis-panel.vis-background,
+        [data-bs-theme="dark"] .vis-panel.vis-center {
+            background-color: #212529;
         }
-        .timeline-item:hover {
-            z-index: 10;
-            overflow: visible;
+        [data-bs-theme="dark"] .vis-labelset .vis-label {
+            background-color: #343a40;
+            color: #f8f9fa;
+            border-color: #495057;
+        }
+        [data-bs-theme="dark"] .vis-time-axis .vis-text {
+            color: #adb5bd;
+        }
+        [data-bs-theme="dark"] .vis-time-axis .vis-grid.vis-minor {
+            border-color: #495057;
+        }
+        [data-bs-theme="dark"] .vis-time-axis .vis-grid.vis-major {
+            border-color: #6c757d;
         }
     </style>
 </head>
@@ -60,89 +63,39 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="karate-summary.html">
-                <img src="res/karate-logo.svg" alt="Karate" height="30" class="d-inline-block align-text-top me-2"/>
-                Karate Test Report
+                <img src="res/karate-logo.svg" alt="Karate" height="32" class="d-inline-block align-middle me-2"/>
+                Karate Timeline
             </a>
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
                     <a class="nav-link" href="karate-summary.html">Summary</a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="karate-tags.html">Tags</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="karate-timeline.html">Timeline</a>
-                </li>
             </ul>
+            <button class="btn btn-sm btn-outline-light ms-2" @click="toggleTheme()" title="Toggle theme">
+                <span x-show="theme === 'light'">&#9790;</span>
+                <span x-show="theme === 'dark'">&#9788;</span>
+            </button>
         </div>
     </nav>
 
-    <div class="container-fluid p-4">
-        <h1>Timeline Report</h1>
-        <p class="text-muted">
-            Duration: <span x-text="data.summary?.duration_millis || 0">0</span> ms
-            | Threads: <span x-text="data.timeline?.groups?.length || 1">1</span>
-        </p>
-
-        <div x-show="!data.timeline?.items?.length" class="alert alert-info">
-            No scenarios executed.
-        </div>
-
-        <div x-show="data.timeline?.items?.length > 0" class="timeline-container">
-            <template x-for="group in data.timeline?.groups || []" :key="group">
-                <div class="timeline-row">
-                    <div class="timeline-label" x-text="group">Thread</div>
-                    <div class="timeline-track">
-                        <template x-for="item in getItemsForGroup(group)" :key="item.id">
-                            <div class="timeline-item"
-                                 :class="item.className"
-                                 :style="getItemStyle(item)"
-                                 :title="item.content + ' (' + item.ms + 'ms)'"
-                                 x-text="item.content">
-                            </div>
-                        </template>
-                    </div>
+    <div class="container-fluid p-3">
+        <div class="row mb-3">
+            <div class="col">
+                <p class="text-muted mb-2">
+                    <span x-text="data.reportDate">Date</span>
+                    <span x-show="data.env" class="ms-2">| env: <span class="badge bg-info" x-text="data.env"></span></span>
+                    <span class="ms-2">| threads: <span class="badge bg-secondary" x-text="data.threads || 1"></span></span>
+                </p>
+                <div class="d-flex gap-3">
+                    <span><span class="badge bg-success">&nbsp;</span> Passed</span>
+                    <span><span class="badge bg-danger">&nbsp;</span> Failed</span>
                 </div>
-            </template>
+            </div>
         </div>
-
-        <h2 class="mt-4">Execution Details</h2>
-        <table class="table table-sm table-hover">
-            <thead class="table-dark">
-                <tr>
-                    <th>Thread</th>
-                    <th>Feature</th>
-                    <th>Scenario</th>
-                    <th>Duration</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                <template x-for="item in data.timeline?.items || []" :key="item.id">
-                    <tr>
-                        <td x-text="item.group">main</td>
-                        <td>
-                            <a :href="'features/' + item.featureFile + '.html'"
-                               x-text="item.featureName">Feature</a>
-                        </td>
-                        <td x-text="item.content">Scenario</td>
-                        <td><span x-text="item.ms">0</span> ms</td>
-                        <td>
-                            <span x-show="item.className === 'passed'" class="badge bg-success">PASSED</span>
-                            <span x-show="item.className === 'failed'" class="badge bg-danger">FAILED</span>
-                        </td>
-                    </tr>
-                </template>
-            </tbody>
-        </table>
+        <div id="timeline"></div>
     </div>
 
-    <footer class="bg-light text-center text-muted py-3 mt-4">
-        <small>Generated by Karate <span x-text="data.karateVersion">2.0</span></small>
-    </footer>
-
     <script src="res/bootstrap.bundle.min.js"></script>
-    <script src="res/karate-report.js"></script>
 
     <script id="karate-data" type="application/json">/* KARATE_DATA */</script>
     <script>
@@ -150,33 +103,43 @@
             const jsonElement = document.getElementById('karate-data');
             const data = JSON.parse(jsonElement.textContent);
 
-            // Calculate total duration for positioning
-            let totalMs = 0;
-            if (data.timeline && data.timeline.items) {
-                data.timeline.items.forEach(item => {
-                    totalMs += item.ms || 0;
-                });
-            }
+            // Theme state
+            const savedTheme = localStorage.getItem('karate-theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', savedTheme);
+
+            // Initialize timeline after Alpine mounts
+            setTimeout(() => initTimeline(data), 0);
 
             return {
                 data,
-                totalMs: totalMs || 1,
-                getItemsForGroup(group) {
-                    if (!data.timeline || !data.timeline.items) return [];
-                    return data.timeline.items.filter(item => item.group === group);
-                },
-                getItemStyle(item) {
-                    // Simple positioning - distribute items along the track
-                    const groupItems = this.getItemsForGroup(item.group);
-                    const idx = groupItems.indexOf(item);
-                    const width = Math.max(10, (item.ms / Math.max(1, this.totalMs)) * 100);
-                    let left = 0;
-                    for (let i = 0; i < idx; i++) {
-                        left += Math.max(10, (groupItems[i].ms / Math.max(1, this.totalMs)) * 100);
-                    }
-                    return `left: ${left}%; width: ${width}%;`;
+                theme: savedTheme,
+
+                toggleTheme() {
+                    this.theme = this.theme === 'light' ? 'dark' : 'light';
+                    document.documentElement.setAttribute('data-bs-theme', this.theme);
+                    localStorage.setItem('karate-theme', this.theme);
                 }
             };
+        }
+
+        function initTimeline(data) {
+            const container = document.getElementById('timeline');
+            if (!container || !data.groups || !data.items) return;
+
+            // Create datasets
+            const groups = new vis.DataSet(data.groups);
+            const items = new vis.DataSet(data.items);
+
+            // Configuration - keep minimal like v1
+            const options = {
+                groupOrder: 'content'
+            };
+
+            // Create timeline
+            const timeline = new vis.Timeline(container, items, groups, options);
+
+            // Fit all items in view
+            timeline.fit();
         }
     </script>
 </body>

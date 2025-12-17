@@ -174,7 +174,13 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
     public ScenarioResult call() {
         LogContext.set(new LogContext());
         result.setStartTime(System.currentTimeMillis());
-        result.setThreadName(Thread.currentThread().getName());
+        // For virtual threads, use the thread ID to distinguish lanes in timeline
+        Thread currentThread = Thread.currentThread();
+        String threadName = currentThread.getName();
+        if (threadName == null || threadName.isEmpty() || "main".equals(threadName) || threadName.isBlank()) {
+            threadName = "thread-" + currentThread.threadId();
+        }
+        result.setThreadName(threadName);
 
         try {
             beforeScenario();

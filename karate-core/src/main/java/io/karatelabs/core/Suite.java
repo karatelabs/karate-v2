@@ -31,7 +31,10 @@ import io.karatelabs.js.Engine;
 import io.karatelabs.log.JvmLogger;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -41,6 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 
 public class Suite {
 
@@ -61,6 +65,7 @@ public class Suite {
     private boolean outputNdjson = false;
     private boolean outputJunitXml = false;
     private boolean outputCucumberJson = false;
+    private boolean backupReportDir = false;
 
     // Config variables from karate-config.js
     private Map<String, Object> configVariables = Collections.emptyMap();
@@ -199,6 +204,11 @@ public class Suite {
         return this;
     }
 
+    public Suite backupReportDir(boolean backupReportDir) {
+        this.backupReportDir = backupReportDir;
+        return this;
+    }
+
     public Suite resultListener(ResultListener listener) {
         this.resultListeners.add(listener);
         return this;
@@ -293,6 +303,11 @@ public class Suite {
         result = new SuiteResult();
         result.setStartTime(System.currentTimeMillis());
 
+        // Backup existing report directory if enabled
+        if (backupReportDir) {
+            backupReportDirIfExists();
+        }
+
         // Auto-register HTML report listener (writes feature HTML async, summary at end)
         if (outputHtmlReport) {
             resultListeners.add(new HtmlReportListener(outputDir, env));
@@ -385,15 +400,22 @@ public class Suite {
     }
 
     private void runParallel() {
+        // Use semaphore to limit concurrent executions to threadCount
+        Semaphore semaphore = new Semaphore(threadCount);
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
             List<Future<FeatureResult>> futures = new ArrayList<>();
 
             for (Feature feature : features) {
                 Future<FeatureResult> future = executor.submit(() -> {
-                    FeatureRuntime fr = new FeatureRuntime(this, feature);
-                    FeatureResult featureResult = fr.call();
-                    featureResult.printSummary();
-                    return featureResult;
+                    semaphore.acquire();
+                    try {
+                        FeatureRuntime fr = new FeatureRuntime(this, feature);
+                        FeatureResult featureResult = fr.call();
+                        featureResult.printSummary();
+                        return featureResult;
+                    } finally {
+                        semaphore.release();
+                    }
                 });
                 futures.add(future);
             }
@@ -420,6 +442,30 @@ public class Suite {
     private void afterSuite() {
         for (RuntimeHook hook : hooks) {
             hook.afterSuite(this);
+        }
+    }
+
+    private static final DateTimeFormatter BACKUP_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
+
+    private void backupReportDirIfExists() {
+        if (!Files.exists(outputDir)) {
+            return;
+        }
+        String timestamp = LocalDateTime.now().format(BACKUP_DATE_FORMAT);
+        String baseName = outputDir.getFileName() + "_" + timestamp;
+        Path backupPath = outputDir.resolveSibling(baseName);
+        // If backup path already exists, increment suffix
+        int suffix = 1;
+        while (Files.exists(backupPath)) {
+            backupPath = outputDir.resolveSibling(baseName + "_" + suffix);
+            suffix++;
+        }
+        try {
+            Files.move(outputDir, backupPath);
+            JvmLogger.info("Backed up existing '{}' to: {}", outputDir.getFileName(), backupPath);
+        } catch (Exception e) {
+            JvmLogger.warn("Failed to backup existing dir '{}': {}", outputDir, e.getMessage());
         }
     }
 

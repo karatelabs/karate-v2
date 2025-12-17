@@ -123,6 +123,15 @@ public class RunCommand implements Callable<Integer> {
     Boolean clean;
 
     @Option(
+            names = {"-B", "--backup-reportdir"},
+            defaultValue = "true",
+            fallbackValue = "true",
+            arity = "0..1",
+            description = "Backup report directory before running tests (default: true)"
+    )
+    Boolean backup;
+
+    @Option(
             names = {"-D", "--dryrun"},
             description = "Dry run mode (parse but don't execute)"
     )
@@ -162,6 +171,7 @@ public class RunCommand implements Callable<Integer> {
         int effectiveThreads = resolveThreads();
         boolean effectiveClean = resolveClean();
         boolean effectiveDryRun = resolveDryRun();
+        boolean effectiveBackup = resolveBackup();
 
         // Clean output directory if requested
         if (effectiveClean) {
@@ -221,6 +231,8 @@ public class RunCommand implements Callable<Integer> {
             if (effectiveWorkingDir != null) {
                 builder.workingDir(effectiveWorkingDir);
             }
+
+            builder.backupReportDir(effectiveBackup);
 
             // Run tests
             SuiteResult result = builder.parallel(effectiveThreads);
@@ -314,6 +326,15 @@ public class RunCommand implements Callable<Integer> {
             return pom.isDryRun();
         }
         return false;
+    }
+
+    private boolean resolveBackup() {
+        if (backup != null) {
+            return backup;
+        }
+        // Note: KarateConfig doesn't support backup yet
+        // Default is true (matches v1 behavior)
+        return true;
     }
 
     /**
