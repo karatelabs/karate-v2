@@ -156,12 +156,14 @@ public class Table {
     public List<Map<String, String>> getRowsAsMaps() {
         int rowCount = rows.size();
         List<Map<String, String>> list = new ArrayList<>(rowCount - 1);
-        for (int i = 1; i < rowCount; i++) { // don't include header row    
+        for (int i = 1; i < rowCount; i++) { // don't include header row
             Map<String, String> map = new LinkedHashMap<>(cols.size());
             list.add(map);
             List<String> row = rows.get(i);
             for (Column col : cols) {
-                map.put(col.key, row.get(col.index));
+                // Handle rows with fewer cells than headers (trailing empty cells)
+                String value = col.index < row.size() ? row.get(col.index) : "";
+                map.put(col.key, value);
             }
         }
         return list;
@@ -170,12 +172,14 @@ public class Table {
     public List<Map<String, Object>> getRowsAsMapsConverted() {
         int rowCount = rows.size();
         List<Map<String, Object>> list = new ArrayList<>(rowCount - 1);
-        for (int i = 1; i < rowCount; i++) { // don't include header row    
+        for (int i = 1; i < rowCount; i++) { // don't include header row
             Map<String, Object> map = new LinkedHashMap<>(cols.size());
             list.add(map);
             List<String> row = rows.get(i);
             for (Column col : cols) {
-                map.put(col.key, convert(row.get(col.index), col));
+                // Handle rows with fewer cells than headers (trailing empty cells)
+                String raw = col.index < row.size() ? row.get(col.index) : "";
+                map.put(col.key, convert(raw, col));
             }
         }
         return list;

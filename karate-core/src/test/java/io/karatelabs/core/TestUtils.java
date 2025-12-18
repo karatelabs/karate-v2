@@ -39,25 +39,50 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class TestUtils {
 
     /**
-     * Run a scenario from Gherkin text with an in-memory HTTP client (no network).
-     * Use Java text blocks for readable multi-line Gherkin:
+     * Run scenario steps with an in-memory HTTP client (no network).
+     * Auto-prepends "Feature:\nScenario:\n" for convenience.
      * <pre>
      * run("""
-     *     Feature: Test
-     *     Scenario: Example
      *     * def a = 1
      *     * match a == 1
      *     """);
      * </pre>
+     * For full Gherkin (tags, background, etc.), use {@link #runFeature(String)}.
      */
-    public static ScenarioRuntime run(String gherkin) {
-        return run(new InMemoryHttpClient(), gherkin);
+    public static ScenarioRuntime run(String steps) {
+        return run(new InMemoryHttpClient(), steps);
     }
 
     /**
-     * Run a scenario from Gherkin text with a custom HTTP client.
+     * Run scenario steps with a custom HTTP client.
+     * Auto-prepends "Feature:\nScenario:\n" for convenience.
      */
-    public static ScenarioRuntime run(HttpClient client, String gherkin) {
+    public static ScenarioRuntime run(HttpClient client, String steps) {
+        return runFeature(client, "Feature:\nScenario:\n" + steps);
+    }
+
+    /**
+     * Run a full Gherkin feature with an in-memory HTTP client.
+     * Use this when you need tags, background, or other feature-level constructs.
+     * <pre>
+     * runFeature("""
+     *     @smoke
+     *     Feature: Test
+     *     Background:
+     *     * def base = 'http://localhost'
+     *     Scenario: Example
+     *     * def a = 1
+     *     """);
+     * </pre>
+     */
+    public static ScenarioRuntime runFeature(String gherkin) {
+        return runFeature(new InMemoryHttpClient(), gherkin);
+    }
+
+    /**
+     * Run a full Gherkin feature with a custom HTTP client.
+     */
+    public static ScenarioRuntime runFeature(HttpClient client, String gherkin) {
         Feature feature = Feature.read(Resource.text(gherkin));
         Scenario scenario = feature.getSections().getFirst().getScenario();
         Resource root = Resource.path("src/test/resources");

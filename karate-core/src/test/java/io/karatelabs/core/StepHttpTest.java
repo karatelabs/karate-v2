@@ -36,8 +36,6 @@ class StepHttpTest {
         InMemoryHttpClient client = new InMemoryHttpClient(req -> json("{ \"id\": 1 }"));
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test'
             * method get
             * match response == { id: 1 }
@@ -57,8 +55,6 @@ class StepHttpTest {
         });
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test'
             * path 'users', '123'
             * method get
@@ -79,8 +75,6 @@ class StepHttpTest {
         });
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test/items'
             * param page = 1
             * param size = 10
@@ -95,8 +89,6 @@ class StepHttpTest {
         InMemoryHttpClient client = new InMemoryHttpClient(req -> status(404));
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test'
             * method get
             * status 200
@@ -109,8 +101,6 @@ class StepHttpTest {
         InMemoryHttpClient client = new InMemoryHttpClient(req -> status(201));
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test'
             * method post
             * status 201
@@ -130,8 +120,6 @@ class StepHttpTest {
         });
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test'
             * request { name: 'test' }
             * method post
@@ -152,8 +140,6 @@ class StepHttpTest {
         });
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test'
             * header Authorization = 'Bearer token123'
             * method get
@@ -168,8 +154,6 @@ class StepHttpTest {
         InMemoryHttpClient client = new InMemoryHttpClient(req -> status(204));
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test'
             * method delete
             * status 204
@@ -187,8 +171,6 @@ class StepHttpTest {
         });
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test'
             * method get
             * status 200
@@ -203,8 +185,6 @@ class StepHttpTest {
         InMemoryHttpClient client = new InMemoryHttpClient(req -> json("{ \"ok\": true }"));
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * def baseUrl = 'http://test'
             * url baseUrl
             * method get
@@ -223,8 +203,6 @@ class StepHttpTest {
         });
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test/item/1'
             * request { name: 'updated' }
             * method put
@@ -244,8 +222,6 @@ class StepHttpTest {
         });
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test/item/1'
             * request { status: 'active' }
             * method patch
@@ -265,8 +241,6 @@ class StepHttpTest {
         });
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test/login'
             * form field username = 'admin'
             * form field password = 'secret'
@@ -287,8 +261,6 @@ class StepHttpTest {
         });
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test'
             * cookie session = 'abc123'
             * method get

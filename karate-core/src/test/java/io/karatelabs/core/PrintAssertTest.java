@@ -37,8 +37,6 @@ class PrintAssertTest {
     @Test
     void testPrintString() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * print 'hello world'
             """);
         assertPassed(sr);
@@ -53,8 +51,6 @@ class PrintAssertTest {
     @Test
     void testPrintVariable() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def name = 'test'
             * print name
             """);
@@ -69,8 +65,6 @@ class PrintAssertTest {
     @Test
     void testPrintJson() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def data = { name: 'john', age: 30 }
             * print data
             """);
@@ -85,8 +79,6 @@ class PrintAssertTest {
     @Test
     void testPrintExpression() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def x = 10
             * print 'x squared is:', x * x
             """);
@@ -98,8 +90,6 @@ class PrintAssertTest {
     @Test
     void testAssertTrue() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * assert 1 + 1 == 2
             """);
         assertPassed(sr);
@@ -108,8 +98,6 @@ class PrintAssertTest {
     @Test
     void testAssertFalse() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * assert 1 + 1 == 3
             """);
         assertFailed(sr);
@@ -118,8 +106,6 @@ class PrintAssertTest {
     @Test
     void testAssertWithVariable() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def x = 10
             * assert x > 5
             """);
@@ -129,8 +115,6 @@ class PrintAssertTest {
     @Test
     void testAssertWithVariableFailure() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def x = 3
             * assert x > 5
             """);
@@ -140,8 +124,6 @@ class PrintAssertTest {
     @Test
     void testAssertComplex() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def arr = [1, 2, 3]
             * assert arr.length == 3
             """);
@@ -151,8 +133,6 @@ class PrintAssertTest {
     @Test
     void testAssertString() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def s = 'hello'
             * assert s.startsWith('hel')
             """);
@@ -164,8 +144,6 @@ class PrintAssertTest {
     @Test
     void testEval() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def counter = 0
             * eval counter = counter + 1
             * match counter == 1
@@ -176,8 +154,6 @@ class PrintAssertTest {
     @Test
     void testEvalFunction() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def result = null
             * def fn = function(x) { return x * 2 }
             * eval result = fn(5)
@@ -191,8 +167,6 @@ class PrintAssertTest {
     @Test
     void testConfigure() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * configure ssl = true
             * def x = 1
             """);

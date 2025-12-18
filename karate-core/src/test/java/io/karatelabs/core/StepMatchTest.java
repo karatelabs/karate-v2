@@ -37,8 +37,6 @@ class StepMatchTest {
     @Test
     void testMatchEquals() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = { name: 'bar' }
             * match foo == { name: 'bar' }
             """);
@@ -48,8 +46,6 @@ class StepMatchTest {
     @Test
     void testMatchEqualsFailure() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = { name: 'bar' }
             * match foo == { name: 'baz' }
             """);
@@ -59,8 +55,6 @@ class StepMatchTest {
     @Test
     void testMatchNotEquals() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = { name: 'bar' }
             * match foo != { name: 'baz' }
             """);
@@ -70,8 +64,6 @@ class StepMatchTest {
     @Test
     void testMatchNotEqualsFailure() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = { name: 'bar' }
             * match foo != { name: 'bar' }
             """);
@@ -83,8 +75,6 @@ class StepMatchTest {
     @Test
     void testMatchWithVariableReference() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def expected = { name: 'test' }
             * def actual = { name: 'test' }
             * match actual == expected
@@ -97,8 +87,6 @@ class StepMatchTest {
     @Test
     void testMatchNumber() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def x = 42
             * match x == 42
             """);
@@ -108,8 +96,6 @@ class StepMatchTest {
     @Test
     void testMatchString() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def s = 'hello'
             * match s == 'hello'
             """);
@@ -119,8 +105,6 @@ class StepMatchTest {
     @Test
     void testMatchBoolean() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def b = true
             * match b == true
             """);
@@ -130,8 +114,6 @@ class StepMatchTest {
     @Test
     void testMatchNull() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def n = null
             * match n == null
             """);
@@ -143,8 +125,6 @@ class StepMatchTest {
     @Test
     void testMatchWithPath() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def data = { user: { name: 'john' } }
             * match data.user.name == 'john'
             """);
@@ -156,8 +136,6 @@ class StepMatchTest {
     @Test
     void testMatchArray() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def arr = [1, 2, 3]
             * match arr == [1, 2, 3]
             """);
@@ -167,8 +145,6 @@ class StepMatchTest {
     @Test
     void testMatchNestedJson() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def data = { items: [{ id: 1 }, { id: 2 }] }
             * match data == { items: [{ id: 1 }, { id: 2 }] }
             """);
@@ -180,8 +156,6 @@ class StepMatchTest {
     @Test
     void testMatchWithExpression() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def x = 5
             * def y = 10
             * match x + y == 15
@@ -194,8 +168,6 @@ class StepMatchTest {
     @Test
     void testMatchContains() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = { name: 'bar', age: 30 }
             * match foo contains { name: 'bar' }
             """);
@@ -205,8 +177,6 @@ class StepMatchTest {
     @Test
     void testMatchContainsFailure() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = { name: 'bar' }
             * match foo contains { name: 'baz' }
             """);
@@ -216,8 +186,6 @@ class StepMatchTest {
     @Test
     void testMatchNotContains() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = { name: 'bar' }
             * match foo !contains { name: 'baz' }
             """);
@@ -227,8 +195,6 @@ class StepMatchTest {
     @Test
     void testMatchNotContainsFailure() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = { name: 'bar' }
             * match foo !contains { name: 'bar' }
             """);
@@ -238,8 +204,6 @@ class StepMatchTest {
     @Test
     void testMatchContainsArray() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def arr = [1, 2, 3]
             * match arr contains 2
             """);
@@ -249,8 +213,6 @@ class StepMatchTest {
     @Test
     void testMatchContainsOnly() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def arr = [1, 2, 3]
             * match arr contains only [3, 2, 1]
             """);
@@ -260,8 +222,6 @@ class StepMatchTest {
     @Test
     void testMatchContainsAny() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def arr = [1, 2, 3]
             * match arr contains any [5, 2, 7]
             """);
@@ -273,8 +233,6 @@ class StepMatchTest {
     @Test
     void testMatchEach() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def arr = [{ id: 1 }, { id: 2 }]
             * match each arr contains { id: '#number' }
             """);

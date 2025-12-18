@@ -501,12 +501,22 @@ public class GherkinParser extends Parser {
             if (rowNode.type == NodeType.G_TABLE_ROW) {
                 List<String> cells = new ArrayList<>();
                 int line = 0;
+                boolean expectingCell = false; // Track if we're expecting a cell after a pipe
+
                 for (Node cellNode : rowNode) {
                     if (cellNode.isToken()) {
-                        if (cellNode.token.type == G_TABLE_CELL) {
+                        if (cellNode.token.type == G_PIPE) {
+                            if (line == 0) {
+                                line = cellNode.token.line + 1;
+                            }
+                            if (expectingCell) {
+                                // Consecutive pipes mean empty cell
+                                cells.add("");
+                            }
+                            expectingCell = true;
+                        } else if (cellNode.token.type == G_TABLE_CELL) {
                             cells.add(cellNode.token.text.trim());
-                        } else if (cellNode.token.type == G_PIPE && line == 0) {
-                            line = cellNode.token.line + 1;
+                            expectingCell = false;
                         }
                     }
                 }

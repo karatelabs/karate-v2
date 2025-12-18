@@ -36,8 +36,6 @@ class StepDefTest {
     @Test
     void testDefNumber() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def a = 1 + 2
             """);
         assertPassed(sr);
@@ -47,8 +45,6 @@ class StepDefTest {
     @Test
     void testDefString() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def name = 'hello'
             """);
         assertPassed(sr);
@@ -58,8 +54,6 @@ class StepDefTest {
     @Test
     void testDefJson() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = { name: 'bar' }
             """);
         assertPassed(sr);
@@ -69,8 +63,6 @@ class StepDefTest {
     @Test
     void testDefArray() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def arr = [1, 2, 3]
             """);
         assertPassed(sr);
@@ -80,8 +72,6 @@ class StepDefTest {
     @Test
     void testDefNestedJson() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def data = { user: { name: 'john', age: 30 } }
             """);
         assertPassed(sr);
@@ -98,8 +88,6 @@ class StepDefTest {
     @Test
     void testDefWithExpression() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def x = 10
             * def y = x * 2
             """);
@@ -110,8 +98,6 @@ class StepDefTest {
     @Test
     void testSetNested() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = { a: 1 }
             * set foo.b = 2
             """);
@@ -122,8 +108,6 @@ class StepDefTest {
     @Test
     void testSetArrayIndex() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def arr = [1, 2, 3]
             * set arr[1] = 99
             """);
@@ -134,8 +118,6 @@ class StepDefTest {
     @Test
     void testRemove() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = { a: 1, b: 2 }
             * remove foo.b
             """);
@@ -146,8 +128,6 @@ class StepDefTest {
     @Test
     void testCopy() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def original = { a: 1, b: { c: 2 } }
             * copy clone = original
             * set clone.b.c = 99
@@ -171,8 +151,6 @@ class StepDefTest {
     @Test
     void testText() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * text myText =
             \"\"\"
             hello world
@@ -188,8 +166,6 @@ class StepDefTest {
     @Test
     void testJson() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * json myJson = { name: 'test', value: 123 }
             """);
         assertPassed(sr);
@@ -199,8 +175,6 @@ class StepDefTest {
     @Test
     void testDefNull() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def x = null
             """);
         assertPassed(sr);
@@ -210,8 +184,6 @@ class StepDefTest {
     @Test
     void testDefBoolean() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def t = true
             * def f = false
             """);
@@ -225,8 +197,6 @@ class StepDefTest {
         // Table cells should be evaluated as Karate expressions (V1 behavior)
         // 'Bob' becomes string Bob, 2 becomes number 2
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * table cats
               | name   | age |
               | 'Bob'  | 2   |
@@ -245,8 +215,6 @@ class StepDefTest {
     void testTableWithVariableReference() {
         // Table cells can reference variables
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def myName = 'Alice'
             * def myAge = 25
             * table people
@@ -262,8 +230,6 @@ class StepDefTest {
     void testReplace() {
         // Replace <token> with value in a string variable
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def text = 'hello <name> world'
             * replace text.name = 'foo'
             * match text == 'hello foo world'
@@ -275,8 +241,6 @@ class StepDefTest {
     @Test
     void testReplaceMultipleTokens() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def text = '<greeting> <name>!'
             * replace text.greeting = 'Hello'
             * replace text.name = 'World'
@@ -289,8 +253,6 @@ class StepDefTest {
     void testEvalWithDocString() {
         // eval keyword with docstring - multi-line JS with karate.set()
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * eval
             \"\"\"
             var foo = function(v){ return v * v };
@@ -311,8 +273,6 @@ class StepDefTest {
     void testEvalInline() {
         // eval with inline expression (no docstring)
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * eval karate.set('x', 42)
             """);
         assertPassed(sr);
@@ -323,8 +283,6 @@ class StepDefTest {
     void testPropertyAssignmentWithDocString() {
         // Property assignment with docstring value (e.g., foo.bar = """json""")
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = { bar: 'one' }
             * foo.bar =
             \"\"\"

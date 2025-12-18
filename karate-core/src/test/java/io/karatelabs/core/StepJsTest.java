@@ -38,8 +38,6 @@ class StepJsTest {
     @Test
     void testArraysReturnedFromJsCanBeUsedInMatch() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def fun = function(){ return ['foo', 'bar', 'baz'] }
             * def json = ['foo', 'bar', 'baz']
             * match json == fun()
@@ -52,8 +50,6 @@ class StepJsTest {
     @Test
     void testArraysReturnedFromJsCanBeModifiedUsingSet() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def fun = function(){ return [{a: 1}, {a: 2}, {b: 3}] }
             * def json = fun()
             * set json[1].a = 5
@@ -65,8 +61,6 @@ class StepJsTest {
     @Test
     void testNestedArraysConvertCorrectly() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def actual = ({ a: [1, 2, 3] })
             * match actual == { a: [1, 2, 3] }
             """);
@@ -78,8 +72,6 @@ class StepJsTest {
     @Test
     void testComparingTwoPayloads() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = { hello: 'world', baz: 'ban' }
             * def bar = { baz: 'ban', hello: 'world' }
             * match foo == bar
@@ -90,8 +82,6 @@ class StepJsTest {
     @Test
     void testContainsDeepNestedJson() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def original = { a: 1, b: 2, c: 3, d: { a: 1, b: 2 } }
             * def expected = { a: 1, c: 3, d: { b: 2 } }
             * match original !contains expected
@@ -103,8 +93,6 @@ class StepJsTest {
     @Test
     void testContainsDeepNestedArray() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def original = { a: 1, arr: [ { b: 2, c: 3 }, { b: 3, c: 4 } ] }
             * def expected = { a: 1, arr: [ { b: 2 }, { c: 4 } ] }
             * match original !contains expected
@@ -118,8 +106,6 @@ class StepJsTest {
     @Test
     void testOptionalJsonValues() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def response = [{a: 'one', b: 'two'}, { a: 'one' }]
             * match each response contains { a: 'one', b: '##string' }
             """);
@@ -131,8 +117,6 @@ class StepJsTest {
     @Test
     void testNullAndNotPresentChecks() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = { }
             * match foo != { a: '#present' }
             * match foo == { a: '#notpresent' }
@@ -149,8 +133,6 @@ class StepJsTest {
     @Test
     void testNullValueChecks() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = { a: null }
             * match foo == { a: null }
             * match foo == { a: '#null' }
@@ -167,8 +149,6 @@ class StepJsTest {
     @Test
     void testPresentValueChecks() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = { a: 1 }
             * match foo == { a: 1 }
             * match foo == { a: '#number' }
@@ -188,8 +168,6 @@ class StepJsTest {
     @Test
     void testTableToJsonWithExpressions() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def one = 'hello'
             * def two = { baz: 'world' }
             * table json
@@ -206,8 +184,6 @@ class StepJsTest {
     @Test
     void testTableToJsonWithNestedJson() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def one = 'hello'
             * def two = { baz: 'world' }
             * table json
@@ -225,8 +201,6 @@ class StepJsTest {
     @Test
     void testJsMatchIsStrictForDataTypes() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = { a: '5', b: 5, c: true, d: 'true' }
             * match foo !contains { a: 5 }
             * match foo !contains { b: '5' }
@@ -242,8 +216,6 @@ class StepJsTest {
     @Test
     void testJsonKeysWithSpecialCharacters() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def json = { 'hy-phen': 'bar', 'full.stop': 'baz' }
             * match json['hy-phen'] == 'bar'
             * match json['full.stop'] == 'baz'
@@ -259,8 +231,6 @@ class StepJsTest {
     @Test
     void testKarateMatchTwoArgs() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = { hello: 'world' }
             * def res = karate.match(foo, { hello: '#string' })
             * match res.pass == true
@@ -271,8 +241,6 @@ class StepJsTest {
     @Test
     void testKarateMatchStringExpression() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = { a: 1, b: 'x' }
             * def res = karate.match("foo contains { a: '#number' }")
             * match res.pass == true
@@ -283,8 +251,6 @@ class StepJsTest {
     @Test
     void testKarateMatchEachExpression() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = [1, 2, 3]
             * def res = karate.match("each foo == '#number'")
             * match res.pass == true
@@ -296,8 +262,6 @@ class StepJsTest {
     void testKarateMatchQuotedOperator() {
         // Edge case: operator inside quoted string
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = 'hello == world'
             * def res = karate.match(foo, 'hello == world')
             * match res.pass == true
@@ -309,8 +273,6 @@ class StepJsTest {
     void testGlobalMatchFluent() {
         // Global match() returns Value for fluent API
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def foo = { name: 'test' }
             * def res = match(foo).contains({ name: '#string' })
             * match res.pass == true

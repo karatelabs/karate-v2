@@ -41,8 +41,6 @@ class StepMultipartTest {
         });
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test/upload'
             * multipart field name = 'John'
             * method post
@@ -63,8 +61,6 @@ class StepMultipartTest {
         });
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test/upload'
             * multipart fields { name: 'John', email: 'john@test.com' }
             * method post
@@ -84,8 +80,6 @@ class StepMultipartTest {
         });
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * def userName = 'Alice'
             * url 'http://test/upload'
             * multipart field name = userName
@@ -106,8 +100,6 @@ class StepMultipartTest {
         });
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test/upload'
             * multipart entity { name: 'file', value: 'test content', contentType: 'text/plain' }
             * method post
@@ -127,8 +119,6 @@ class StepMultipartTest {
         });
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test/upload'
             * multipart file document = { value: 'file contents', filename: 'test.txt', contentType: 'text/plain' }
             * method post
@@ -148,8 +138,6 @@ class StepMultipartTest {
         });
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test/upload'
             * multipart field firstName = 'John'
             * multipart field lastName = 'Doe'
@@ -171,8 +159,6 @@ class StepMultipartTest {
         });
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * def data = { name: 'test', count: 42 }
             * url 'http://test/upload'
             * multipart file jsonData = { value: data, filename: 'data.json', contentType: 'application/json' }
@@ -193,8 +179,6 @@ class StepMultipartTest {
         });
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test/upload'
             * multipart files [{ name: 'file1', value: 'content1', filename: 'a.txt' }, { name: 'file2', value: 'content2', filename: 'b.txt' }]
             * method post
@@ -208,8 +192,6 @@ class StepMultipartTest {
         InMemoryHttpClient client = new InMemoryHttpClient(req -> json("{}"));
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test/upload'
             * multipart fields 'not a map'
             * method post
@@ -222,8 +204,6 @@ class StepMultipartTest {
         InMemoryHttpClient client = new InMemoryHttpClient(req -> json("{}"));
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test/upload'
             * multipart files { notAList: true }
             * method post
@@ -242,8 +222,6 @@ class StepMultipartTest {
         });
 
         ScenarioRuntime sr = run(client, """
-            Feature:
-            Scenario:
             * url 'http://test/upload'
             * multipart field description = 'My document'
             * multipart file document = { value: 'file contents', filename: 'doc.txt' }

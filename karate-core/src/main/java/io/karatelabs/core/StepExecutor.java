@@ -423,15 +423,21 @@ public class StepExecutor {
         }
 
         if (isPathValueFormat) {
-            // path | value format
+            // path | value format - skip header row (index 0)
             int pathIdx = headers.indexOf("path");
             int valueIdx = headers.indexOf("value");
-            for (List<String> row : rows) {
+            for (int i = 1; i < rows.size(); i++) {
+                List<String> row = rows.get(i);
                 String path = row.get(pathIdx);
-                String valueExpr = row.get(valueIdx);
+                // Handle bounds - value column might not exist if row is shorter
+                String valueExpr = valueIdx < row.size() ? row.get(valueIdx) : "";
                 if (valueExpr == null || valueExpr.isEmpty()) continue;
+                // V1 behavior: (expr) with parens means "keep this value even if null"
+                boolean keepNull = valueExpr.startsWith("(") && valueExpr.endsWith(")");
                 Object value = runtime.eval(valueExpr);
-                setValueAtPath(target, path, value);
+                if (value != null || keepNull) {
+                    setValueAtPath(target, path, value);
+                }
             }
         } else if (isArrayFormat) {
             // Column headers are array indices or just positional
@@ -462,11 +468,14 @@ public class StepExecutor {
                 resultList.add(new LinkedHashMap<>());
             }
 
-            // Fill in values
-            for (List<String> row : rows) {
+            // Fill in values - skip header row (index 0)
+            for (int rowIdx = 1; rowIdx < rows.size(); rowIdx++) {
+                List<String> row = rows.get(rowIdx);
                 String path = row.get(pathIdx);
                 for (int i = 0; i < headers.size(); i++) {
                     if (i == pathIdx) continue;
+                    // Check bounds - rows may have fewer cells than headers if trailing cells are empty
+                    if (i >= row.size()) continue;
                     String valueExpr = row.get(i);
                     if (valueExpr == null || valueExpr.isEmpty()) continue;
 
@@ -557,15 +566,81 @@ public class StepExecutor {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void executeRemove(Step step) {
-        String path = step.getText().trim();
-        int dotIndex = path.indexOf('.');
-        if (dotIndex < 0) {
-            // Remove entire variable
-            runtime.setVariable(path, null);
+        String text = step.getText().trim();
+
+        // Check for jsonpath syntax: "varName $.path" or "varName $path"
+        int spaceIndex = text.indexOf(' ');
+        if (spaceIndex > 0) {
+            String varName = text.substring(0, spaceIndex);
+            String jsonPath = text.substring(spaceIndex + 1).trim();
+
+            Object target = runtime.getVariable(varName);
+            if (target == null) return;
+
+            // Handle jsonpath removal
+            if (jsonPath.startsWith("$")) {
+                // Extract the path after $ - e.g., "$.foo" -> "foo", "$['foo']" -> handle bracket notation
+                String pathWithoutDollar = jsonPath.substring(1);
+                if (pathWithoutDollar.startsWith(".")) {
+                    pathWithoutDollar = pathWithoutDollar.substring(1);
+                }
+
+                // For simple paths like "foo" or "foo.bar", traverse and remove
+                if (target instanceof Map) {
+                    Map<String, Object> map = (Map<String, Object>) target;
+                    removeAtPath(map, pathWithoutDollar);
+                }
+            }
         } else {
-            // Remove nested property - use delete in JS
-            runtime.eval("delete " + path);
+            // Check for dot notation: "varName.key" or just "varName"
+            int dotIndex = text.indexOf('.');
+            if (dotIndex < 0) {
+                // Remove entire variable
+                runtime.setVariable(text, null);
+            } else {
+                // Remove nested property - use delete in JS
+                runtime.eval("delete " + text);
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void removeAtPath(Map<String, Object> map, String path) {
+        // Handle bracket notation like "['foo']"
+        if (path.startsWith("[")) {
+            int closeIdx = path.indexOf(']');
+            if (closeIdx > 0) {
+                String key = path.substring(1, closeIdx);
+                // Remove quotes from key if present
+                if ((key.startsWith("'") && key.endsWith("'")) ||
+                    (key.startsWith("\"") && key.endsWith("\""))) {
+                    key = key.substring(1, key.length() - 1);
+                }
+                String remainder = closeIdx + 1 < path.length() ? path.substring(closeIdx + 1) : "";
+                if (remainder.isEmpty()) {
+                    map.remove(key);
+                } else {
+                    Object nested = map.get(key);
+                    if (nested instanceof Map) {
+                        String nextPath = remainder.startsWith(".") ? remainder.substring(1) : remainder;
+                        removeAtPath((Map<String, Object>) nested, nextPath);
+                    }
+                }
+            }
+        } else if (path.contains(".")) {
+            // Dot notation: "foo.bar"
+            int dotIdx = path.indexOf('.');
+            String key = path.substring(0, dotIdx);
+            String rest = path.substring(dotIdx + 1);
+            Object nested = map.get(key);
+            if (nested instanceof Map) {
+                removeAtPath((Map<String, Object>) nested, rest);
+            }
+        } else {
+            // Simple key
+            map.remove(path);
         }
     }
 
@@ -642,14 +717,16 @@ public class StepExecutor {
             for (Map.Entry<String, String> entry : rawRow.entrySet()) {
                 String expr = entry.getValue();
                 if (expr == null || expr.isEmpty()) {
-                    // Skip null/empty values (V1 strips these by default)
+                    // Skip empty values (V1 strips these by default)
                     continue;
                 }
+                // V1 behavior: (expr) with parens means "keep this value even if null"
+                // Without parens, null values are skipped
+                boolean keepNull = expr.startsWith("(") && expr.endsWith(")");
                 Object value = runtime.eval(expr);
-                if (value != null) {
+                if (value != null || keepNull) {
                     row.put(entry.getKey(), value);
                 }
-                // If value is null and not explicitly "(null)", skip it (V1 behavior)
             }
             result.add(row);
         }
@@ -702,14 +779,49 @@ public class StepExecutor {
         String text = step.getText();
         MatchExpression expr = GherkinParser.parseMatchExpression(text);
 
-        Object actual = runtime.eval(expr.getActualExpr());
-        Object expected = runtime.eval(expr.getExpectedExpr());
+        Object actual = evalMatchExpression(expr.getActualExpr());
+        Object expected = evalMatchExpression(expr.getExpectedExpr());
         Match.Type matchType = Match.Type.valueOf(expr.getMatchTypeName());
 
         Result result = Match.that(actual).is(matchType, expected);
         if (!result.pass) {
             throw new AssertionError(result.message);
         }
+    }
+
+    /**
+     * Evaluates expressions in match statements, handling both JS and jsonpath.
+     * Detects jsonpath patterns like var[*].path, $var[*].path, and uses
+     * jsonpath evaluation for those instead of JS.
+     */
+    private Object evalMatchExpression(String expr) {
+        if (expr == null || expr.isEmpty()) {
+            return null;
+        }
+
+        // Check if expression contains jsonpath wildcard [*] or filter [?(...)]
+        if (expr.contains("[*]") || expr.contains("[?")) {
+            // Check if it starts with $ (explicit jsonpath on variable)
+            if (expr.startsWith("$")) {
+                return evalJsonPathShortcut(expr);
+            }
+            // Check if it's var[*].path or var[?...].path pattern
+            int bracketIdx = expr.indexOf('[');
+            if (bracketIdx > 0) {
+                String varName = expr.substring(0, bracketIdx);
+                // Verify it's a simple variable name (no dots before bracket)
+                if (!varName.contains(".") && varName.matches("[a-zA-Z_][a-zA-Z0-9_]*")) {
+                    Object target = runtime.getVariable(varName);
+                    if (target != null) {
+                        String jsonPath = "$" + expr.substring(bracketIdx);
+                        return JsonPath.read(target, jsonPath);
+                    }
+                }
+            }
+        }
+
+        // Default: evaluate as JS
+        return runtime.eval(expr);
     }
 
     private void executeAssert(Step step) {

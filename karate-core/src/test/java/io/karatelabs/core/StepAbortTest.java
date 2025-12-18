@@ -35,8 +35,6 @@ class StepAbortTest {
     @Test
     void testKarateAbort() {
         ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
             * def before = true
             * karate.abort()
             * def after = true
