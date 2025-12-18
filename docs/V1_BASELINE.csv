@@ -350,7 +350,7 @@ feature-056,feature,features/feature2.feature,,,feature2.feature,feature2.featur
 feature-057,feature,fork-listener.feature,,,fork-listener.feature,log listener example,root,pending,,,
 feature-058,feature,fork.feature,,,fork.feature,fork.feature,root,pending,,,
 feature-059,feature,ignore-step-failure.feature,,,ignore-step-failure.feature,continue on step failure keyword,root,pending,,,
-feature-060,feature,js-arrays.feature,,,js-arrays.feature,various javascript tests,root,pending,,,
+feature-060,feature,js-arrays.feature,,,js-arrays.feature,various javascript tests,root,passed,73/73 scenarios; tests in StepJsTest StepTableTest,io/karatelabs/core/StepJsTest io/karatelabs/core/StepTableTest,2025-12-18
 feature-061,feature,js-map-repeat.feature,,,js-map-repeat.feature,js-map-repeat.feature,root,pending,,,
 feature-062,feature,jscall/dummy.feature,,,dummy.feature,dummy.feature,jscall,pending,,,
 feature-063,feature,jscall/js-call.feature,,,js-call.feature,js-call.feature,jscall,pending,,,

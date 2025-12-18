@@ -75,9 +75,8 @@ public class StepExecutor {
 
             // Check if keyword contains punctuation (except underscore) - means it's a JS expression
             // Examples: foo.bar, foo(), foo['bar'].baz('blah')
-            // Also check if text starts with ( - means keyword is a function name like fun('a')
             String text = step.getText();
-            if (keyword != null && (hasPunctuation(keyword) || (text != null && text.startsWith("(")))) {
+            if (keyword != null && hasPunctuation(keyword)) {
                 String fullExpr = keyword + text;
                 if (step.getDocString() != null) {
                     fullExpr = fullExpr + step.getDocString();
@@ -133,7 +132,16 @@ public class StepExecutor {
                     // Config
                     case "configure" -> executeConfigure(step);
 
-                    default -> throw new RuntimeException("unknown keyword: " + keyword);
+                    default -> {
+                        // Check if text starts with ( - means keyword is a function name like myFunc('a')
+                        // We only do this check here (not earlier) because valid keywords like "eval"
+                        // could have text starting with ( like "eval (1 + 2)"
+                        if (text != null && text.trim().startsWith("(")) {
+                            runtime.eval(keyword + text);
+                        } else {
+                            throw new RuntimeException("unknown keyword: " + keyword);
+                        }
+                    }
                 }
             }
 
