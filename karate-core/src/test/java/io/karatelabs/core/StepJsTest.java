@@ -31,7 +31,7 @@ import static io.karatelabs.core.TestUtils.*;
  * Tests for JavaScript integration with Gherkin steps.
  * Based on V1's js-arrays.feature.
  */
-class JsStepTest {
+class StepJsTest {
 
     // ========== JS Arrays in Match ==========
 
@@ -253,5 +253,69 @@ class JsStepTest {
 
     // TODO: testGetKeywordWithSpecialPath - needs 'get' keyword with $['key'] syntax
     // TODO: testStringTypeConversion - needs 'string' keyword for type conversion
+
+    // ========== karate.match() API ==========
+
+    @Test
+    void testKarateMatchTwoArgs() {
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def foo = { hello: 'world' }
+            * def res = karate.match(foo, { hello: '#string' })
+            * match res.pass == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testKarateMatchStringExpression() {
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def foo = { a: 1, b: 'x' }
+            * def res = karate.match("foo contains { a: '#number' }")
+            * match res.pass == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testKarateMatchEachExpression() {
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def foo = [1, 2, 3]
+            * def res = karate.match("each foo == '#number'")
+            * match res.pass == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testKarateMatchQuotedOperator() {
+        // Edge case: operator inside quoted string
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def foo = 'hello == world'
+            * def res = karate.match(foo, 'hello == world')
+            * match res.pass == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testGlobalMatchFluent() {
+        // Global match() returns Value for fluent API
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def foo = { name: 'test' }
+            * def res = match(foo).contains({ name: '#string' })
+            * match res.pass == true
+            """);
+        assertPassed(sr);
+    }
 
 }

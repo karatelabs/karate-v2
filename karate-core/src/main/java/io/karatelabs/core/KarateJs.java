@@ -30,8 +30,10 @@ import io.karatelabs.common.Xml;
 import io.karatelabs.io.http.ApacheHttpClient;
 import io.karatelabs.io.http.HttpClient;
 import io.karatelabs.io.http.HttpRequestBuilder;
+import io.karatelabs.gherkin.MatchExpression;
 import io.karatelabs.js.Context;
 import io.karatelabs.js.Engine;
+import io.karatelabs.js.GherkinParser;
 import io.karatelabs.js.Invokable;
 import io.karatelabs.js.JsCallable;
 import io.karatelabs.js.SimpleObject;
@@ -39,6 +41,7 @@ import io.karatelabs.markup.Markup;
 import io.karatelabs.markup.ResourceResolver;
 import io.karatelabs.match.Match;
 import io.karatelabs.match.Result;
+import io.karatelabs.match.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Node;
@@ -98,7 +101,7 @@ public class KarateJs implements SimpleObject {
         };
         engine.put("karate", this);
         engine.put("read", read);
-        engine.put("match", match(true));
+        engine.put("match", matchFluent());
     }
 
     public Markup markup() {
@@ -225,16 +228,56 @@ public class KarateJs implements SimpleObject {
         };
     }
 
-    private Invokable match(boolean keyword) {
+    /**
+     * Fluent match API for global match() function.
+     * Usage: match(obj).contains({...}), match(obj)._equals({...})
+     * Returns a Match.Value for chaining.
+     */
+    private Invokable matchFluent() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("match() needs at least one argument");
             }
+            // Return a Value for fluent API: match(obj).contains(...)
             return Match.evaluate(args[0], null, (context, result) -> {
-                if (keyword && onMatch != null) {
+                if (onMatch != null) {
                     onMatch.accept(context, result);
                 }
             });
+        };
+    }
+
+    /**
+     * V1-compatible karate.match() function.
+     * Usage: karate.match(actual, expected) or karate.match("foo == expected")
+     * Returns { pass: boolean, message: String|null }
+     */
+    private Invokable karateMatch() {
+        return args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("karate.match() needs at least one argument");
+            }
+            if (args.length >= 2) {
+                // Two-argument form: karate.match(actual, expected)
+                // Do an equals comparison and return { pass, message }
+                Object actual = args[0];
+                Object expected = args[1];
+                Value value = Match.evaluate(actual, null, null);
+                Result result = value._equals(expected);
+                return result.toMap();
+            } else {
+                // One-argument string form: karate.match("foo == expected")
+                // Use GherkinParser for proper lexer-based parsing
+                String expression = args[0].toString();
+                MatchExpression parsed = GherkinParser.parseMatchExpression(expression);
+
+                Object actual = engine.get(parsed.getActualExpr());
+                Object expected = engine.eval(parsed.getExpectedExpr());
+                Value value = Match.evaluate(actual, null, null);
+                Match.Type matchType = Match.Type.valueOf(parsed.getMatchTypeName());
+                Result result = value.is(matchType, expected);
+                return result.toMap();
+            }
         };
     }
 
@@ -565,22 +608,20 @@ public class KarateJs implements SimpleObject {
         };
     }
 
-    private Invokable os() {
-        return args -> {
-            Map<String, Object> result = new LinkedHashMap<>();
-            String osName = System.getProperty("os.name", "unknown").toLowerCase();
-            result.put("name", System.getProperty("os.name", "unknown"));
-            if (osName.contains("win")) {
-                result.put("type", "windows");
-            } else if (osName.contains("mac")) {
-                result.put("type", "macosx");
-            } else if (osName.contains("nix") || osName.contains("nux")) {
-                result.put("type", "linux");
-            } else {
-                result.put("type", "unknown");
-            }
-            return result;
-        };
+    private Map<String, Object> getOsInfo() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        String osName = System.getProperty("os.name", "unknown").toLowerCase();
+        result.put("name", System.getProperty("os.name", "unknown"));
+        if (osName.contains("win")) {
+            result.put("type", "windows");
+        } else if (osName.contains("mac")) {
+            result.put("type", "macosx");
+        } else if (osName.contains("nix") || osName.contains("nux")) {
+            result.put("type", "linux");
+        } else {
+            result.put("type", "unknown");
+        }
+        return result;
     }
 
     private Invokable remove() {
@@ -618,9 +659,9 @@ public class KarateJs implements SimpleObject {
             case "keysOf" -> keysOf();
             case "map" -> map();
             case "mapWithKey" -> mapWithKey();
-            case "match" -> match(false);
+            case "match" -> karateMatch();
             case "merge" -> merge();
-            case "os" -> os();
+            case "os" -> getOsInfo();
             case "read" -> read;
             case "readAsString" -> readAsString();
             case "remove" -> remove();

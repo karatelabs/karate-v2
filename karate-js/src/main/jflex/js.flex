@@ -253,6 +253,8 @@ GM_TAG = "@" {NOT_WSLF}+
   "each" | "header"             { return G_KEYWORD; }
   {GM_MATCH_TYPE} / {WS_ONE_LF} { yybegin(GHERKIN); return G_KEYWORD; } // docstring
   {GM_MATCH_TYPE}               { yybegin(GS_RHS); return G_KEYWORD; }
+  {S_STRING}                    { return G_EXPR; } // quoted strings as JS expressions
+  {D_STRING}                    { return G_EXPR; } // quoted strings as JS expressions
   {GM_IDENT}                    { return IDENT; }
   ("$"|"@") {IDENT}?            { return IDENT; } // xpath
   "?" "(" [^)]+ ")"             { return IDENT; } // json path

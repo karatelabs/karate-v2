@@ -520,4 +520,91 @@ public class GherkinParser extends Parser {
         return rows.isEmpty() ? null : new Table(rows, lineNumbers);
     }
 
+    // ========== Static Match Expression Parser ==========
+
+    /**
+     * Parses a match expression string into a MatchExpression object.
+     * Uses token positions to preserve exact spacing in expressions like json['key'].
+     * The LHS is evaluated as JS by the step executor.
+     *
+     * @param expression e.g., "foo == bar" or "each item contains { a: 1 }"
+     * @return parsed MatchExpression
+     * @throws RuntimeException if the expression cannot be parsed
+     */
+    public static MatchExpression parseMatchExpression(String expression) {
+        // Create synthetic step to leverage existing lexer states
+        String stepText = "* match " + expression;
+        Resource resource = Resource.text(stepText);
+        String text = resource.getText();
+
+        // Tokenize with Gherkin mode
+        List<Token> tokens = getTokens(resource, true);
+
+        boolean each = false;
+        String operator = null;
+
+        // Track positions for extracting actual and expected expressions
+        int actualStart = -1;
+        int actualEnd = -1;
+        int expectedStart = -1;
+        int expectedEnd = -1;
+
+        for (Token token : tokens) {
+            // Skip whitespace, step prefix, and EOF
+            if (token.type == WS || token.type == WS_LF ||
+                token.type == G_PREFIX || token.type == EOF) {
+                continue;
+            }
+
+            // Handle "match" keyword (skip it)
+            if (token.type == G_KEYWORD && "match".equals(token.text)) {
+                continue;
+            }
+
+            // Handle "each" modifier
+            if (token.type == G_KEYWORD && "each".equals(token.text)) {
+                each = true;
+                continue;
+            }
+
+            // Handle match operators
+            if (token.type == G_KEYWORD && isMatchOperator(token.text)) {
+                operator = token.text;
+                continue;
+            }
+
+            // Track positions for actual/expected expressions
+            int tokenStart = (int) token.pos;
+            int tokenEnd = tokenStart + token.text.length();
+
+            if (operator == null) {
+                // Before operator - this is part of the actual expression
+                if (actualStart < 0) {
+                    actualStart = tokenStart;
+                }
+                actualEnd = tokenEnd;
+            } else {
+                // After operator - this is part of the expected expression
+                if (expectedStart < 0) {
+                    expectedStart = tokenStart;
+                }
+                expectedEnd = tokenEnd;
+            }
+        }
+
+        if (operator == null) {
+            throw new RuntimeException("Invalid match expression, no operator found: " + expression);
+        }
+
+        String actualExpr = actualStart >= 0 ? text.substring(actualStart, actualEnd).trim() : "";
+        String expectedExpr = expectedStart >= 0 ? text.substring(expectedStart, expectedEnd).trim() : "";
+
+        return new MatchExpression(each, actualExpr, operator, expectedExpr);
+    }
+
+    private static boolean isMatchOperator(String text) {
+        return text.equals("==") || text.equals("!=") ||
+               text.startsWith("contains") || text.equals("!contains");
+    }
+
 }

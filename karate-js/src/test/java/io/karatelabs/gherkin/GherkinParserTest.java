@@ -285,4 +285,75 @@ class GherkinParserTest {
         assertTrue(parser.getErrors().isEmpty());
     }
 
+    // ========== MatchExpression Parsing Tests ==========
+
+    @Test
+    void testParseMatchExpressionEquals() {
+        MatchExpression me = GherkinParser.parseMatchExpression("foo == bar");
+        assertFalse(me.isEach());
+        assertEquals("foo", me.getActualExpr());
+        assertEquals("==", me.getOperator());
+        assertEquals("bar", me.getExpectedExpr());
+        assertEquals("EQUALS", me.getMatchTypeName());
+    }
+
+    @Test
+    void testParseMatchExpressionContains() {
+        MatchExpression me = GherkinParser.parseMatchExpression("foo contains { a: '#number' }");
+        assertFalse(me.isEach());
+        assertEquals("foo", me.getActualExpr());
+        assertEquals("contains", me.getOperator());
+        assertEquals("{ a: '#number' }", me.getExpectedExpr());
+        assertEquals("CONTAINS", me.getMatchTypeName());
+    }
+
+    @Test
+    void testParseMatchExpressionEach() {
+        MatchExpression me = GherkinParser.parseMatchExpression("each foo == '#number'");
+        assertTrue(me.isEach());
+        assertEquals("foo", me.getActualExpr());
+        assertEquals("==", me.getOperator());
+        assertEquals("'#number'", me.getExpectedExpr());
+        assertEquals("EACH_EQUALS", me.getMatchTypeName());
+    }
+
+    @Test
+    void testParseMatchExpressionContainsDeep() {
+        MatchExpression me = GherkinParser.parseMatchExpression("foo contains deep { a: 1 }");
+        assertFalse(me.isEach());
+        assertEquals("foo", me.getActualExpr());
+        assertEquals("contains deep", me.getOperator());
+        assertEquals("{ a: 1 }", me.getExpectedExpr());
+        assertEquals("CONTAINS_DEEP", me.getMatchTypeName());
+    }
+
+    @Test
+    void testParseMatchExpressionNotContains() {
+        MatchExpression me = GherkinParser.parseMatchExpression("foo !contains bar");
+        assertFalse(me.isEach());
+        assertEquals("foo", me.getActualExpr());
+        assertEquals("!contains", me.getOperator());
+        assertEquals("bar", me.getExpectedExpr());
+        assertEquals("NOT_CONTAINS", me.getMatchTypeName());
+    }
+
+    @Test
+    void testParseMatchExpressionNotEquals() {
+        MatchExpression me = GherkinParser.parseMatchExpression("foo != bar");
+        assertFalse(me.isEach());
+        assertEquals("foo", me.getActualExpr());
+        assertEquals("!=", me.getOperator());
+        assertEquals("bar", me.getExpectedExpr());
+        assertEquals("NOT_EQUALS", me.getMatchTypeName());
+    }
+
+    @Test
+    void testParseMatchExpressionBracketAccess() {
+        MatchExpression me = GherkinParser.parseMatchExpression("json['hy-phen'] == 'bar'");
+        assertFalse(me.isEach());
+        assertEquals("json['hy-phen']", me.getActualExpr());
+        assertEquals("==", me.getOperator());
+        assertEquals("'bar'", me.getExpectedExpr());
+    }
+
 }

@@ -26,11 +26,13 @@ package io.karatelabs.core;
 import io.karatelabs.common.Json;
 import io.karatelabs.common.Resource;
 import io.karatelabs.gherkin.Feature;
+import io.karatelabs.gherkin.MatchExpression;
 import io.karatelabs.gherkin.Step;
 import io.karatelabs.gherkin.Table;
 import io.karatelabs.io.http.HttpRequestBuilder;
-import io.karatelabs.js.JsCallable;
 import io.karatelabs.io.http.HttpResponse;
+import io.karatelabs.js.GherkinParser;
+import io.karatelabs.js.JsCallable;
 import io.karatelabs.log.JvmLogger;
 import io.karatelabs.log.LogContext;
 import io.karatelabs.match.Match;
@@ -201,6 +203,38 @@ public class StepExecutor {
     }
 
     private void executeCallWithResult(String callExpr, String resultVar) {
+        // Try to evaluate the first token to see if it's a JS function
+        // Syntax: "fun" or "fun arg" where fun is a JS function variable
+        int spaceIdx = callExpr.indexOf(' ');
+        String firstToken = spaceIdx > 0 ? callExpr.substring(0, spaceIdx) : callExpr;
+
+        // Check if it's a read() call - that's definitely a feature call
+        if (!callExpr.startsWith("read(")) {
+            // Try to evaluate as a JS expression
+            try {
+                Object evaluated = runtime.eval(firstToken);
+                if (evaluated instanceof JsCallable) {
+                    // It's a JS function - invoke it and store result
+                    JsCallable fn = (JsCallable) evaluated;
+                    Object arg = null;
+                    if (spaceIdx > 0) {
+                        String argExpr = callExpr.substring(spaceIdx + 1).trim();
+                        if (!argExpr.isEmpty()) {
+                            arg = runtime.eval(argExpr);
+                        }
+                    }
+                    Object result = arg != null
+                            ? fn.call(null, new Object[]{arg})
+                            : fn.call(null, new Object[0]);
+                    runtime.setVariable(resultVar, result);
+                    return;
+                }
+            } catch (Exception e) {
+                // Not a valid JS expression, fall through to feature call
+            }
+        }
+
+        // Standard feature call
         CallExpression call = parseCallExpression(callExpr);
         call.resultVar = resultVar;
 
@@ -223,7 +257,7 @@ public class StepExecutor {
         );
 
         // Execute the called feature
-        FeatureResult result = nestedFr.call();
+        FeatureResult featureResult = nestedFr.call();
 
         // Capture result variables from the last executed scenario (isolated scope)
         if (nestedFr.getLastExecuted() != null) {
@@ -403,12 +437,13 @@ public class StepExecutor {
 
     private void executeMatch(Step step) {
         String text = step.getText();
-        MatchExpression expr = parseMatchExpression(text);
+        MatchExpression expr = GherkinParser.parseMatchExpression(text);
 
-        Object actual = runtime.eval(expr.actualExpr);
-        Object expected = runtime.eval(expr.expectedExpr);
+        Object actual = runtime.eval(expr.getActualExpr());
+        Object expected = runtime.eval(expr.getExpectedExpr());
+        Match.Type matchType = Match.Type.valueOf(expr.getMatchTypeName());
 
-        Result result = Match.that(actual).is(expr.matchType, expected);
+        Result result = Match.that(actual).is(matchType, expected);
         if (!result.pass) {
             throw new AssertionError(result.message);
         }
@@ -1022,58 +1057,6 @@ public class StepExecutor {
         } else {
             return value.toString();
         }
-    }
-
-    // ========== Match Expression Parsing ==========
-
-    private MatchExpression parseMatchExpression(String text) {
-        MatchExpression expr = new MatchExpression();
-
-        // Check for "each" prefix
-        if (text.startsWith("each ")) {
-            expr.each = true;
-            text = text.substring(5);
-        }
-
-        // Find the operator (order matters - check longer operators first)
-        String[][] operators = {
-                {"!contains", "NOT_CONTAINS"},
-                {"contains only deep", "CONTAINS_ONLY_DEEP"},
-                {"contains only", "CONTAINS_ONLY"},
-                {"contains any deep", "CONTAINS_ANY_DEEP"},
-                {"contains any", "CONTAINS_ANY"},
-                {"contains deep", "CONTAINS_DEEP"},
-                {"contains", "CONTAINS"},
-                {"!=", "NOT_EQUALS"},
-                {"==", "EQUALS"}
-        };
-
-        for (String[] op : operators) {
-            int idx = text.indexOf(op[0]);
-            if (idx > 0) {
-                expr.actualExpr = text.substring(0, idx).trim();
-                expr.expectedExpr = text.substring(idx + op[0].length()).trim();
-                expr.matchType = toMatchType(op[1], expr.each);
-                return expr;
-            }
-        }
-
-        throw new RuntimeException("invalid match expression: " + text);
-    }
-
-    private Match.Type toMatchType(String name, boolean each) {
-        if (each) {
-            return Match.Type.valueOf("EACH_" + name);
-        } else {
-            return Match.Type.valueOf(name);
-        }
-    }
-
-    private static class MatchExpression {
-        boolean each;
-        String actualExpr;
-        String expectedExpr;
-        Match.Type matchType;
     }
 
 }
