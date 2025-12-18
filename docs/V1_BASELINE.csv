@@ -301,8 +301,8 @@ feature-007,feature,call-arg-null.feature,,,call-arg-null.feature,tests karate.c
 feature-008,feature,call-arg.feature,,,call-arg.feature,call-arg.feature,root,passed,,,2025-12-17
 feature-009,feature,call-by-tag-called.feature,,,call-by-tag-called.feature,call-by-tag-called.feature,root,pending,,,
 feature-010,feature,call-by-tag.feature,,,call-by-tag.feature,call-by-tag.feature,root,pending,,,
-feature-011,feature,call-feature-called.feature,,,call-feature-called.feature,call-feature-called.feature,root,pending,,,
-feature-012,feature,call-feature.feature,,,call-feature.feature,call-feature.feature,root,pending,,,
+feature-011,feature,call-feature-called.feature,,,call-feature-called.feature,called feature for call-feature.feature,root,passed,helper for call-feature.feature,,2025-12-18
+feature-012,feature,call-feature.feature,,,call-feature.feature,call feature var with array loop,root,passed,implemented call with Feature var and array loop; uses karate.jsonPath instead of $var[*],io/karatelabs/core/CallFeatureTest,2025-12-18
 feature-013,feature,call-js-called.feature,,,call-js-called.feature,call-js-called.feature,root,pending,,,
 feature-014,feature,call-js.feature,,,call-js.feature,will a js call show up in the report,root,pending,,,
 feature-015,feature,call-jsonpath-called.feature,,,call-jsonpath-called.feature,call-jsonpath-called.feature,root,pending,,,

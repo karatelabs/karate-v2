@@ -30,6 +30,7 @@ import io.karatelabs.common.Xml;
 import io.karatelabs.io.http.ApacheHttpClient;
 import io.karatelabs.io.http.HttpClient;
 import io.karatelabs.io.http.HttpRequestBuilder;
+import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.MatchExpression;
 import io.karatelabs.js.Context;
 import io.karatelabs.js.Engine;
@@ -96,6 +97,7 @@ public class KarateJs implements SimpleObject {
             return switch (resource.getExtension()) {
                 case "json" -> Json.of(resource.getText()).value();
                 case "js" -> engine.eval(resource.getText());
+                case "feature" -> Feature.read(resource);
                 default -> resource.getText();
             };
         };
@@ -210,7 +212,42 @@ public class KarateJs implements SimpleObject {
             if (args.length == 0) {
                 throw new RuntimeException("get() needs at least one argument");
             }
-            Object result = engine.get(args[0] + "");
+            String expr = args[0] + "";
+
+            // Check if it's a jsonpath expression like $varname.path or $varname[*].path
+            if (expr.startsWith("$") && expr.length() > 1) {
+                String withoutDollar = expr.substring(1);
+                // Find where the path starts (at . or [)
+                int pathStart = -1;
+                for (int i = 0; i < withoutDollar.length(); i++) {
+                    char c = withoutDollar.charAt(i);
+                    if (c == '.' || c == '[') {
+                        pathStart = i;
+                        break;
+                    }
+                }
+                if (pathStart > 0) {
+                    String varName = withoutDollar.substring(0, pathStart);
+                    String jsonPath = "$" + withoutDollar.substring(pathStart);
+                    Object target = engine.get(varName);
+                    if (target != null) {
+                        return JsonPath.read(target, jsonPath);
+                    }
+                    return null;
+                } else if (pathStart == 0) {
+                    // $. or $[ means use 'response'
+                    Object target = engine.get("response");
+                    if (target != null) {
+                        return JsonPath.read(target, "$" + withoutDollar);
+                    }
+                    return null;
+                }
+                // Just $varname - return the variable
+                return engine.get(withoutDollar);
+            }
+
+            // Simple variable lookup
+            Object result = engine.get(expr);
             if (result == null && args.length > 1) {
                 return args[1];
             }
@@ -218,14 +255,84 @@ public class KarateJs implements SimpleObject {
         };
     }
 
+    @SuppressWarnings("unchecked")
     private Invokable set() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("set() needs at least two arguments: name and value");
             }
-            engine.put(args[0] + "", args[1]);
+            String name = args[0] + "";
+            if (args.length == 2) {
+                // Simple set: karate.set('name', value)
+                engine.put(name, args[1]);
+            } else {
+                // Jsonpath set: karate.set('name', '$.path', value)
+                String path = args[1] + "";
+                Object value = args[2];
+                Object target = engine.get(name);
+                if (target == null) {
+                    target = new java.util.LinkedHashMap<>();
+                    engine.put(name, target);
+                }
+                // Handle special jsonpath cases
+                if (path.endsWith("[]")) {
+                    // Append to array: $.foo[] means add to foo array
+                    String arrayPath = path.substring(0, path.length() - 2);
+                    if (arrayPath.equals("$")) {
+                        // Root is array
+                        if (target instanceof List) {
+                            ((List<Object>) target).add(value);
+                        }
+                    } else {
+                        // Navigate to array and append
+                        String navPath = arrayPath.substring(2); // remove "$."
+                        Object arr = navigateToPath(target, navPath);
+                        if (arr instanceof List) {
+                            ((List<Object>) arr).add(value);
+                        }
+                    }
+                } else {
+                    // Direct path set
+                    String navPath = path.startsWith("$.") ? path.substring(2) : path;
+                    setAtPath(target, navPath, value);
+                }
+            }
             return null;
         };
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object navigateToPath(Object target, String path) {
+        String[] parts = path.split("\\.");
+        Object current = target;
+        for (String part : parts) {
+            if (current instanceof Map) {
+                current = ((Map<String, Object>) current).get(part);
+            } else {
+                return null;
+            }
+        }
+        return current;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void setAtPath(Object target, String path, Object value) {
+        String[] parts = path.split("\\.");
+        Object current = target;
+        for (int i = 0; i < parts.length - 1; i++) {
+            if (current instanceof Map) {
+                Map<String, Object> map = (Map<String, Object>) current;
+                Object next = map.get(parts[i]);
+                if (next == null) {
+                    next = new java.util.LinkedHashMap<>();
+                    map.put(parts[i], next);
+                }
+                current = next;
+            }
+        }
+        if (current instanceof Map) {
+            ((Map<String, Object>) current).put(parts[parts.length - 1], value);
+        }
     }
 
     /**

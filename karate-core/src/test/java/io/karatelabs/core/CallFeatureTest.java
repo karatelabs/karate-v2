@@ -234,6 +234,35 @@ class CallFeatureTest {
         assertTrue(result.isPassed(), "karate.call() without args should work: " + getFailureMessage(result));
     }
 
+    @Test
+    void testCallFeatureVariableWithArrayLoop() throws Exception {
+        // Create called feature that uses 'foo' argument
+        Path calledFeature = tempDir.resolve("called.feature");
+        Files.writeString(calledFeature, """
+            Feature: Called
+            Scenario:
+            * def res = foo
+            """);
+
+        // Create caller that reads feature into variable and calls with array
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Caller
+            Scenario: Call with array loop
+            * def called = read('called.feature')
+            * def data = [{ foo: 'first' }, { foo: 'second' }]
+            * def result = call called data
+            * def extracted = karate.jsonPath(result, '$[*].res')
+            * match extracted == ['first', 'second']
+            """);
+
+        Suite suite = Suite.of(callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "Call with feature var and array loop should work: " + getFailureMessage(result));
+    }
+
     private String getFailureMessage(SuiteResult result) {
         if (result.isPassed()) return "none";
         for (FeatureResult fr : result.getFeatureResults()) {

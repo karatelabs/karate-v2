@@ -38,6 +38,8 @@ import io.karatelabs.log.LogContext;
 import io.karatelabs.match.Match;
 import io.karatelabs.match.Result;
 
+import com.jayway.jsonpath.JsonPath;
+
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -70,9 +72,10 @@ public class StepExecutor {
 
         try {
             String keyword = step.getKeyword();
-            // If keyword contains a dot, it's a property reference (e.g., "foo.key = 'value'")
-            // Treat the whole thing as a JS expression
-            if (keyword != null && keyword.contains(".")) {
+
+            // Check if keyword contains punctuation (except underscore) - means it's a JS expression
+            // Examples: foo.bar, foo(), foo['bar'].baz('blah')
+            if (keyword != null && hasPunctuation(keyword)) {
                 String fullExpr = keyword + step.getText();
                 if (step.getDocString() != null) {
                     fullExpr = fullExpr + step.getDocString();
@@ -90,6 +93,7 @@ public class StepExecutor {
                     case "text" -> executeText(step);
                     case "json" -> executeJson(step);
                     case "xml" -> executeXml(step);
+                    case "string" -> executeString(step);
                     case "copy" -> executeCopy(step);
                     case "table" -> executeTable(step);
                     case "replace" -> executeReplace(step);
@@ -189,13 +193,21 @@ public class StepExecutor {
             expr = step.getDocString();
         }
 
-        // Check if RHS is a call/callonce expression
+        // Check if RHS is a special karate expression (not standard JS)
         if (expr.startsWith("call ")) {
             String callExpr = expr.substring(5).trim();
             executeCallWithResult(callExpr, name);
         } else if (expr.startsWith("callonce ")) {
             String callExpr = expr.substring(9).trim();
             executeCallOnceWithResult(callExpr, name);
+        } else if (expr.startsWith("$")) {
+            // $varname[*].path - jsonpath shortcut on a variable
+            Object value = evalJsonPathShortcut(expr);
+            runtime.setVariable(name, value);
+        } else if (expr.startsWith("get[") || expr.startsWith("get ")) {
+            // get[N] varname path OR get varname path - jsonpath with optional index
+            Object value = evalGetExpression(expr);
+            runtime.setVariable(name, value);
         } else {
             Object value = runtime.eval(expr);
             runtime.setVariable(name, value);
@@ -203,8 +215,8 @@ public class StepExecutor {
     }
 
     private void executeCallWithResult(String callExpr, String resultVar) {
-        // Try to evaluate the first token to see if it's a JS function
-        // Syntax: "fun" or "fun arg" where fun is a JS function variable
+        // Try to evaluate the first token to see if it's a JS function or Feature
+        // Syntax: "fun" or "fun arg" where fun is a JS function variable or Feature
         int spaceIdx = callExpr.indexOf(' ');
         String firstToken = spaceIdx > 0 ? callExpr.substring(0, spaceIdx) : callExpr;
 
@@ -227,6 +239,18 @@ public class StepExecutor {
                             ? fn.call(null, new Object[]{arg})
                             : fn.call(null, new Object[0]);
                     runtime.setVariable(resultVar, result);
+                    return;
+                } else if (evaluated instanceof Feature) {
+                    // It's a Feature - call it with arguments
+                    Feature calledFeature = (Feature) evaluated;
+                    Object arg = null;
+                    if (spaceIdx > 0) {
+                        String argExpr = callExpr.substring(spaceIdx + 1).trim();
+                        if (!argExpr.isEmpty()) {
+                            arg = runtime.eval(argExpr);
+                        }
+                    }
+                    executeFeatureCall(calledFeature, arg, resultVar);
                     return;
                 }
             } catch (Exception e) {
@@ -298,11 +322,239 @@ public class StepExecutor {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private void executeFeatureCall(Feature calledFeature, Object arg, String resultVar) {
+        FeatureRuntime fr = runtime.getFeatureRuntime();
+
+        if (arg instanceof List) {
+            // Loop call - iterate over list and collect results
+            List<Object> argList = (List<Object>) arg;
+            List<Map<String, Object>> results = new ArrayList<>();
+            for (Object item : argList) {
+                Map<String, Object> argMap = item instanceof Map
+                        ? (Map<String, Object>) item : null;
+                Map<String, Object> result = callFeatureOnce(calledFeature, fr, argMap);
+                results.add(result);
+            }
+            runtime.setVariable(resultVar, results);
+        } else {
+            // Single call
+            Map<String, Object> argMap = arg instanceof Map
+                    ? (Map<String, Object>) arg : null;
+            Map<String, Object> result = callFeatureOnce(calledFeature, fr, argMap);
+            runtime.setVariable(resultVar, result);
+        }
+    }
+
+    private Map<String, Object> callFeatureOnce(Feature calledFeature, FeatureRuntime parentFr, Map<String, Object> arg) {
+        // Create nested FeatureRuntime with isolated scope (sharedScope=false)
+        FeatureRuntime nestedFr = new FeatureRuntime(
+                parentFr != null ? parentFr.getSuite() : null,
+                calledFeature,
+                parentFr,
+                runtime,
+                false,  // Isolated scope - copy variables, don't share
+                arg
+        );
+
+        // Execute the called feature
+        FeatureResult featureResult = nestedFr.call();
+
+        // Capture result variables from the last executed scenario (isolated scope)
+        if (nestedFr.getLastExecuted() != null) {
+            return nestedFr.getLastExecuted().getAllVariables();
+        }
+        return new HashMap<>();
+    }
+
+    @SuppressWarnings("unchecked")
     private void executeSet(Step step) {
+        String text = step.getText().trim();
+        Table table = step.getTable();
+
+        if (table != null) {
+            // Table-based set: * set varname | path | value |
+            executeSetWithTable(text, table);
+            return;
+        }
+
         // Deprecated: prefer using native JS syntax: * foo.bar = 'value'
         JvmLogger.warn("'set' keyword is deprecated, prefer JS syntax: * {} instead", step.getText());
         // Just evaluate the whole thing as a JS expression
         runtime.eval(step.getText());
+    }
+
+    @SuppressWarnings("unchecked")
+    private void executeSetWithTable(String varExpr, Table table) {
+        List<String> headers = new ArrayList<>(table.getKeys());
+        List<List<String>> rows = table.getRows();
+
+        // Determine the target variable and optional base path
+        // varExpr could be: "cat", "cat.kitten", "cat $.kitten"
+        String varName;
+        String basePath = null;
+        int spaceIdx = varExpr.indexOf(' ');
+        int dotIdx = varExpr.indexOf('.');
+        if (spaceIdx > 0) {
+            varName = varExpr.substring(0, spaceIdx);
+            basePath = varExpr.substring(spaceIdx + 1).trim();
+        } else if (dotIdx > 0) {
+            varName = varExpr.substring(0, dotIdx);
+            basePath = varExpr.substring(dotIdx + 1);
+        } else {
+            varName = varExpr;
+        }
+
+        // Check if headers indicate array construction (column headers are numbers or "path"/"value")
+        boolean isPathValueFormat = headers.contains("path") && headers.contains("value");
+        boolean isArrayFormat = !isPathValueFormat && headers.size() > 1;
+
+        Object target = runtime.getVariable(varName);
+        if (target == null) {
+            target = isArrayFormat ? new ArrayList<>() : new LinkedHashMap<>();
+            runtime.setVariable(varName, target);
+        }
+
+        // Navigate to base path if specified
+        if (basePath != null && target instanceof Map) {
+            String cleanPath = basePath.startsWith("$.") ? basePath.substring(2) : basePath;
+            Object nested = getOrCreatePath((Map<String, Object>) target, cleanPath);
+            target = nested;
+        }
+
+        if (isPathValueFormat) {
+            // path | value format
+            int pathIdx = headers.indexOf("path");
+            int valueIdx = headers.indexOf("value");
+            for (List<String> row : rows) {
+                String path = row.get(pathIdx);
+                String valueExpr = row.get(valueIdx);
+                if (valueExpr == null || valueExpr.isEmpty()) continue;
+                Object value = runtime.eval(valueExpr);
+                setValueAtPath(target, path, value);
+            }
+        } else if (isArrayFormat) {
+            // Column headers are array indices or just positional
+            // path | 0 | 1 | 2 format
+            int pathIdx = headers.indexOf("path");
+            if (pathIdx < 0) pathIdx = 0; // first column is path
+
+            List<Object> resultList;
+            if (target instanceof List) {
+                resultList = (List<Object>) target;
+            } else {
+                resultList = new ArrayList<>();
+                runtime.setVariable(varName, resultList);
+            }
+
+            // Ensure list has enough elements
+            int maxIdx = 0;
+            for (int i = 0; i < headers.size(); i++) {
+                if (i == pathIdx) continue;
+                try {
+                    int idx = Integer.parseInt(headers.get(i));
+                    maxIdx = Math.max(maxIdx, idx + 1);
+                } catch (NumberFormatException e) {
+                    maxIdx = Math.max(maxIdx, i);
+                }
+            }
+            while (resultList.size() < maxIdx) {
+                resultList.add(new LinkedHashMap<>());
+            }
+
+            // Fill in values
+            for (List<String> row : rows) {
+                String path = row.get(pathIdx);
+                for (int i = 0; i < headers.size(); i++) {
+                    if (i == pathIdx) continue;
+                    String valueExpr = row.get(i);
+                    if (valueExpr == null || valueExpr.isEmpty()) continue;
+
+                    int targetIdx;
+                    try {
+                        targetIdx = Integer.parseInt(headers.get(i));
+                    } catch (NumberFormatException e) {
+                        targetIdx = i - (pathIdx < i ? 1 : 0);
+                    }
+
+                    while (resultList.size() <= targetIdx) {
+                        resultList.add(new LinkedHashMap<>());
+                    }
+
+                    Object value = runtime.eval(valueExpr);
+                    Object element = resultList.get(targetIdx);
+                    if (element == null) {
+                        element = new LinkedHashMap<>();
+                        resultList.set(targetIdx, element);
+                    }
+                    setValueAtPath(element, path, value);
+                }
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object getOrCreatePath(Map<String, Object> target, String path) {
+        String[] parts = path.split("\\.");
+        Map<String, Object> current = target;
+        for (String part : parts) {
+            Object next = current.get(part);
+            if (next == null) {
+                next = new LinkedHashMap<>();
+                current.put(part, next);
+            }
+            if (next instanceof Map) {
+                current = (Map<String, Object>) next;
+            } else {
+                return next;
+            }
+        }
+        return current;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void setValueAtPath(Object target, String path, Object value) {
+        if (target instanceof Map) {
+            Map<String, Object> map = (Map<String, Object>) target;
+            // Handle array bracket notation in path: bar[0]
+            if (path.contains("[")) {
+                int bracketIdx = path.indexOf('[');
+                String key = path.substring(0, bracketIdx);
+                int closeIdx = path.indexOf(']');
+                int arrayIdx = Integer.parseInt(path.substring(bracketIdx + 1, closeIdx));
+                String remainder = closeIdx + 1 < path.length() ? path.substring(closeIdx + 1) : "";
+
+                Object arr = map.get(key);
+                if (arr == null) {
+                    arr = new ArrayList<>();
+                    map.put(key, arr);
+                }
+                if (arr instanceof List) {
+                    List<Object> list = (List<Object>) arr;
+                    while (list.size() <= arrayIdx) {
+                        list.add(remainder.isEmpty() ? null : new LinkedHashMap<>());
+                    }
+                    if (remainder.isEmpty()) {
+                        list.set(arrayIdx, value);
+                    } else {
+                        String nextPath = remainder.startsWith(".") ? remainder.substring(1) : remainder;
+                        setValueAtPath(list.get(arrayIdx), nextPath, value);
+                    }
+                }
+            } else if (path.contains(".")) {
+                int dotIdx = path.indexOf('.');
+                String key = path.substring(0, dotIdx);
+                String rest = path.substring(dotIdx + 1);
+                Object nested = map.get(key);
+                if (nested == null) {
+                    nested = new LinkedHashMap<>();
+                    map.put(key, nested);
+                }
+                setValueAtPath(nested, rest, value);
+            } else {
+                map.put(path, value);
+            }
+        }
     }
 
     private void executeRemove(Step step) {
@@ -352,6 +604,17 @@ public class StepExecutor {
         // For XML, we evaluate as XML string
         Object value = runtime.eval(expr);
         runtime.setVariable(name, value);
+    }
+
+    private void executeString(Step step) {
+        String text = step.getText();
+        int eqIndex = findAssignmentOperator(text);
+        String name = text.substring(0, eqIndex).trim();
+        String expr = text.substring(eqIndex + 1).trim();
+        Object value = runtime.eval(expr);
+        // Convert to JSON string representation
+        String stringValue = Json.stringifyStrict(value);
+        runtime.setVariable(name, stringValue);
     }
 
     private void executeCopy(Step step) {
@@ -1057,6 +1320,138 @@ public class StepExecutor {
         } else {
             return value.toString();
         }
+    }
+
+    /**
+     * Check if string contains JS expression punctuation like . ( [
+     * Used to detect if a "keyword" is actually a JS expression like foo.bar or foo()
+     * Space is allowed (for multi-word keywords like "form field")
+     */
+    private boolean hasPunctuation(String s) {
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            // Check for JS expression punctuation: . ( ) [ ] ' "
+            if (c == '.' || c == '(' || c == ')' || c == '[' || c == ']' || c == '\'' || c == '"') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ========== Karate Expression Helpers ==========
+
+    /**
+     * Evaluates $varname[*].path or $varname.path syntax.
+     * This is a shortcut for jsonpath on a variable.
+     * Examples: $foo[*].name, $response.data, $[*].id (on response)
+     */
+    private Object evalJsonPathShortcut(String expr) {
+        // $varname.path or $varname[...].path
+        // Parse: extract variable name and jsonpath
+        String withoutDollar = expr.substring(1); // remove leading $
+
+        // Special case: $[...] or $. means use 'response' variable
+        if (withoutDollar.startsWith("[") || withoutDollar.startsWith(".")) {
+            Object target = runtime.getVariable("response");
+            String path = "$" + withoutDollar;
+            return JsonPath.read(target, path);
+        }
+
+        // Find where the path starts (at . or [)
+        int pathStart = -1;
+        for (int i = 0; i < withoutDollar.length(); i++) {
+            char c = withoutDollar.charAt(i);
+            if (c == '.' || c == '[') {
+                pathStart = i;
+                break;
+            }
+        }
+
+        String varName;
+        String jsonPath;
+        if (pathStart < 0) {
+            // No path, just $varname - return the variable itself
+            varName = withoutDollar;
+            return runtime.getVariable(varName);
+        } else {
+            varName = withoutDollar.substring(0, pathStart);
+            jsonPath = "$" + withoutDollar.substring(pathStart);
+        }
+
+        Object target = runtime.getVariable(varName);
+        if (target == null) {
+            return null;
+        }
+        return JsonPath.read(target, jsonPath);
+    }
+
+    /**
+     * Evaluates get[N] varname path or get varname path syntax.
+     * Examples: get[0] foo[*].name, get foo $..bar
+     */
+    private Object evalGetExpression(String expr) {
+        int index = -1;
+        String remainder;
+
+        if (expr.startsWith("get[")) {
+            // get[N] syntax
+            int closeBracket = expr.indexOf(']');
+            if (closeBracket < 0) {
+                throw new RuntimeException("Invalid get expression, missing ]: " + expr);
+            }
+            index = Integer.parseInt(expr.substring(4, closeBracket));
+            remainder = expr.substring(closeBracket + 1).trim();
+        } else {
+            // get varname path
+            remainder = expr.substring(4).trim();
+        }
+
+        // Parse varname and path - could be "varname path" or "varname[...]"
+        String varName;
+        String jsonPath;
+
+        // Check if path starts with $ (explicit jsonpath)
+        if (remainder.startsWith("$")) {
+            // get $..path or get[0] $[*].foo - operates on 'response'
+            varName = "response";
+            jsonPath = remainder;
+        } else {
+            // Find space or bracket to split varname from path
+            int spaceIdx = remainder.indexOf(' ');
+            int bracketIdx = remainder.indexOf('[');
+
+            if (spaceIdx > 0 && (bracketIdx < 0 || spaceIdx < bracketIdx)) {
+                // "varname path" format
+                varName = remainder.substring(0, spaceIdx);
+                jsonPath = "$" + remainder.substring(spaceIdx).trim();
+            } else if (bracketIdx > 0) {
+                // "varname[*].path" format
+                varName = remainder.substring(0, bracketIdx);
+                jsonPath = "$" + remainder.substring(bracketIdx);
+            } else {
+                // Just varname, no path
+                varName = remainder;
+                jsonPath = "$";
+            }
+        }
+
+        Object target = runtime.getVariable(varName);
+        if (target == null) {
+            return null;
+        }
+
+        Object result = JsonPath.read(target, jsonPath);
+
+        // Apply index if specified
+        if (index >= 0 && result instanceof List) {
+            List<?> list = (List<?>) result;
+            if (index < list.size()) {
+                return list.get(index);
+            }
+            return null;
+        }
+
+        return result;
     }
 
 }
