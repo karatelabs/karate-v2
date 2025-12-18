@@ -24,6 +24,7 @@
 package io.karatelabs.match;
 
 import io.karatelabs.js.Context;
+import io.karatelabs.js.Engine;
 
 import java.util.function.BiConsumer;
 
@@ -60,6 +61,22 @@ public class Match {
                 throw new RuntimeException(result.message);
             }
         });
+    }
+
+    /**
+     * Execute a match with a specific JS Engine for variable resolution.
+     * This allows embedded expressions like #(^varname) to access variables.
+     */
+    public static Result execute(Engine engine, Type matchType, Object actual, Object expected) {
+        Value actualValue = new Value(Value.parseIfJsonOrXmlString(actual));
+        Value expectedValue = new Value(Value.parseIfJsonOrXmlString(expected));
+        Operation op = new Operation(engine, matchType, actualValue, expectedValue);
+        op.execute();
+        if (op.pass) {
+            return Result.PASS;
+        } else {
+            return Result.fail(op.getFailureReasons());
+        }
     }
 
 }

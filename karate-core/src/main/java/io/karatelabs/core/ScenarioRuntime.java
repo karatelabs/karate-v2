@@ -345,6 +345,10 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         return karate.engine.getBindings();
     }
 
+    public io.karatelabs.js.Engine getEngine() {
+        return karate.engine;
+    }
+
     public HttpRequestBuilder getHttp() {
         return karate.http;
     }

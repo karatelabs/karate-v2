@@ -75,8 +75,10 @@ public class StepExecutor {
 
             // Check if keyword contains punctuation (except underscore) - means it's a JS expression
             // Examples: foo.bar, foo(), foo['bar'].baz('blah')
-            if (keyword != null && hasPunctuation(keyword)) {
-                String fullExpr = keyword + step.getText();
+            // Also check if text starts with ( - means keyword is a function name like fun('a')
+            String text = step.getText();
+            if (keyword != null && (hasPunctuation(keyword) || (text != null && text.startsWith("(")))) {
+                String fullExpr = keyword + text;
                 if (step.getDocString() != null) {
                     fullExpr = fullExpr + step.getDocString();
                 }
@@ -210,6 +212,10 @@ public class StepExecutor {
             runtime.setVariable(name, value);
         } else {
             Object value = runtime.eval(expr);
+            // Process embedded expressions for JSON/Map/List values
+            if (value instanceof Map || value instanceof List) {
+                value = processEmbeddedExpressions(value);
+            }
             runtime.setVariable(name, value);
         }
     }
@@ -490,13 +496,17 @@ public class StepExecutor {
                         resultList.add(new LinkedHashMap<>());
                     }
 
+                    // V1 behavior: (expr) with parens means "keep this value even if null"
+                    boolean keepNull = valueExpr.startsWith("(") && valueExpr.endsWith(")");
                     Object value = runtime.eval(valueExpr);
-                    Object element = resultList.get(targetIdx);
-                    if (element == null) {
-                        element = new LinkedHashMap<>();
-                        resultList.set(targetIdx, element);
+                    if (value != null || keepNull) {
+                        Object element = resultList.get(targetIdx);
+                        if (element == null) {
+                            element = new LinkedHashMap<>();
+                            resultList.set(targetIdx, element);
+                        }
+                        setValueAtPath(element, path, value);
                     }
-                    setValueAtPath(element, path, value);
                 }
             }
         }
@@ -661,8 +671,9 @@ public class StepExecutor {
         int eqIndex = findAssignmentOperator(text);
         String name = text.substring(0, eqIndex).trim();
         String expr = text.substring(eqIndex + 1).trim();
-        // Evaluate expression and ensure it's JSON
+        // Evaluate expression and process embedded expressions
         Object value = runtime.eval(expr);
+        value = processEmbeddedExpressions(value);
         runtime.setVariable(name, value);
     }
 
@@ -780,10 +791,21 @@ public class StepExecutor {
         MatchExpression expr = GherkinParser.parseMatchExpression(text);
 
         Object actual = evalMatchExpression(expr.getActualExpr());
-        Object expected = evalMatchExpression(expr.getExpectedExpr());
+
+        // Check for docstring as expected value (e.g., match foo contains deep """ {...} """)
+        Object expected;
+        String docString = step.getDocString();
+        if (docString != null && (expr.getExpectedExpr() == null || expr.getExpectedExpr().isEmpty())) {
+            // DocString provides the expected value
+            expected = evalMatchExpression(docString);
+        } else {
+            expected = evalMatchExpression(expr.getExpectedExpr());
+        }
+
         Match.Type matchType = Match.Type.valueOf(expr.getMatchTypeName());
 
-        Result result = Match.that(actual).is(matchType, expected);
+        // Use Match.execute with runtime's engine so embedded expressions can access variables
+        Result result = Match.execute(runtime.getEngine(), matchType, actual, expected);
         if (!result.pass) {
             throw new AssertionError(result.message);
         }
@@ -799,12 +821,18 @@ public class StepExecutor {
             return null;
         }
 
+        // Handle get[N] or get syntax (same as in def)
+        if (expr.startsWith("get[") || expr.startsWith("get ")) {
+            return evalGetExpression(expr);
+        }
+
+        // Handle $varname.path jsonpath shortcut
+        if (expr.startsWith("$")) {
+            return evalJsonPathShortcut(expr);
+        }
+
         // Check if expression contains jsonpath wildcard [*] or filter [?(...)]
         if (expr.contains("[*]") || expr.contains("[?")) {
-            // Check if it starts with $ (explicit jsonpath on variable)
-            if (expr.startsWith("$")) {
-                return evalJsonPathShortcut(expr);
-            }
             // Check if it's var[*].path or var[?...].path pattern
             int bracketIdx = expr.indexOf('[');
             if (bracketIdx > 0) {
@@ -821,7 +849,29 @@ public class StepExecutor {
         }
 
         // Default: evaluate as JS
-        return runtime.eval(expr);
+        Object result = runtime.eval(expr);
+
+        // Check for "not present" case: if result is null and expression is property access
+        // We need to distinguish between "property exists and is null" vs "property doesn't exist"
+        if (result == null && expr.contains(".") && !expr.contains("(")) {
+            // Check if it's a simple property access like "foo.bar"
+            int lastDot = expr.lastIndexOf('.');
+            if (lastDot > 0) {
+                String basePath = expr.substring(0, lastDot);
+                String propName = expr.substring(lastDot + 1);
+                // Use JS to check if property exists
+                try {
+                    Object exists = runtime.eval("typeof " + basePath + " !== 'undefined' && " + basePath + " !== null && '" + propName + "' in " + basePath);
+                    if (Boolean.FALSE.equals(exists)) {
+                        return "#notpresent";
+                    }
+                } catch (Exception e) {
+                    // If check fails, treat as not present
+                    return "#notpresent";
+                }
+            }
+        }
+        return result;
     }
 
     private void executeAssert(Step step) {
@@ -1533,9 +1583,11 @@ public class StepExecutor {
             int bracketIdx = remainder.indexOf('[');
 
             if (spaceIdx > 0 && (bracketIdx < 0 || spaceIdx < bracketIdx)) {
-                // "varname path" format
+                // "varname path" format - e.g., "json $['sp ace']" or "json .foo"
                 varName = remainder.substring(0, spaceIdx);
-                jsonPath = "$" + remainder.substring(spaceIdx).trim();
+                String path = remainder.substring(spaceIdx).trim();
+                // Don't add $ if path already starts with $
+                jsonPath = path.startsWith("$") ? path : "$" + path;
             } else if (bracketIdx > 0) {
                 // "varname[*].path" format
                 varName = remainder.substring(0, bracketIdx);
@@ -1564,6 +1616,134 @@ public class StepExecutor {
         }
 
         return result;
+    }
+
+    // ========== Embedded Expression Processing ==========
+
+    /**
+     * Marker object to indicate a key should be removed (for ##() optional expressions).
+     */
+    private static final Object REMOVE_MARKER = new Object();
+
+    /**
+     * Process embedded expressions (#() and ##()) in a value.
+     * - #(expr) evaluates expr and substitutes the result
+     * - ##(expr) evaluates expr; if null, removes the key (returns REMOVE_MARKER)
+     */
+    private Object processEmbeddedExpressions(Object value) {
+        if (value instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> map = (Map<String, Object>) value;
+            Map<String, Object> result = new LinkedHashMap<>();
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
+                Object processed = processEmbeddedExpressions(entry.getValue());
+                if (processed != REMOVE_MARKER) {
+                    result.put(entry.getKey(), processed);
+                }
+            }
+            return result;
+        } else if (value instanceof List) {
+            @SuppressWarnings("unchecked")
+            List<Object> list = (List<Object>) value;
+            List<Object> result = new ArrayList<>();
+            for (Object item : list) {
+                Object processed = processEmbeddedExpressions(item);
+                if (processed != REMOVE_MARKER) {
+                    result.add(processed);
+                }
+            }
+            return result;
+        } else if (value instanceof String str) {
+            return processEmbeddedString(str);
+        }
+        return value;
+    }
+
+    /**
+     * Process a string that may contain embedded expressions.
+     */
+    private Object processEmbeddedString(String str) {
+        // Check for optional embedded: ##(...)
+        if (str.startsWith("##(") && str.endsWith(")")) {
+            String expr = str.substring(3, str.length() - 1);
+            Object result = runtime.eval(expr);
+            return result == null ? REMOVE_MARKER : result;
+        }
+        // Check for regular embedded: #(...)
+        if (str.startsWith("#(") && str.endsWith(")")) {
+            String expr = str.substring(2, str.length() - 1);
+            return runtime.eval(expr);
+        }
+        // Check for embedded expressions within a larger string
+        // e.g., "Hello #(name)!" or "Value: ##(optional)"
+        if (str.contains("#(")) {
+            return processInlineEmbedded(str);
+        }
+        return str;
+    }
+
+    /**
+     * Process inline embedded expressions like "Hello #(name)!"
+     */
+    private Object processInlineEmbedded(String str) {
+        StringBuilder result = new StringBuilder();
+        int i = 0;
+        while (i < str.length()) {
+            int hashPos = str.indexOf('#', i);
+            if (hashPos < 0) {
+                result.append(str.substring(i));
+                break;
+            }
+            result.append(str.substring(i, hashPos));
+
+            boolean optional = false;
+            int exprStart;
+            if (hashPos + 1 < str.length() && str.charAt(hashPos + 1) == '#') {
+                // ##( optional
+                if (hashPos + 2 < str.length() && str.charAt(hashPos + 2) == '(') {
+                    optional = true;
+                    exprStart = hashPos + 3;
+                } else {
+                    result.append("##");
+                    i = hashPos + 2;
+                    continue;
+                }
+            } else if (hashPos + 1 < str.length() && str.charAt(hashPos + 1) == '(') {
+                // #( regular
+                exprStart = hashPos + 2;
+            } else {
+                result.append('#');
+                i = hashPos + 1;
+                continue;
+            }
+
+            // Find matching closing paren
+            int depth = 1;
+            int j = exprStart;
+            while (j < str.length() && depth > 0) {
+                char c = str.charAt(j);
+                if (c == '(') depth++;
+                else if (c == ')') depth--;
+                j++;
+            }
+            if (depth != 0) {
+                // Unbalanced parens, treat as literal
+                result.append(optional ? "##(" : "#(");
+                i = exprStart;
+                continue;
+            }
+
+            String expr = str.substring(exprStart, j - 1);
+            Object value = runtime.eval(expr);
+            if (optional && value == null) {
+                // For inline optional, substitute empty string
+                // (key removal only applies to whole-value expressions)
+            } else if (value != null) {
+                result.append(stringify(value));
+            }
+            i = j;
+        }
+        return result.toString();
     }
 
 }
