@@ -296,8 +296,8 @@ feature-002,feature,align.feature,,,align.feature,align.feature,root,passed,,,20
 feature-003,feature,big-decimal.feature,,,big-decimal.feature,big-decimal.feature,root,passed,,,2025-12-17
 feature-004,feature,call-arg-called.feature,,,call-arg-called.feature,call-arg-called.feature,root,pending,,,
 feature-005,feature,call-arg-common.feature,,,call-arg-common.feature,call-arg-common.feature,root,pending,,,
-feature-006,feature,call-arg-null-called.feature,,,call-arg-null-called.feature,call-arg-null-called.feature,root,pending,,,
-feature-007,feature,call-arg-null.feature,,,call-arg-null.feature,call-arg-null.feature,root,pending,,,
+feature-006,feature,call-arg-null-called.feature,,,call-arg-null-called.feature,called feature for call-arg-null test,root,passed,helper for call-arg-null.feature,,2025-12-18
+feature-007,feature,call-arg-null.feature,,,call-arg-null.feature,tests karate.call() with args overriding null var,root,passed,implemented karate.call(); added CallFeatureTest,io/karatelabs/core/CallFeatureTest,2025-12-18
 feature-008,feature,call-arg.feature,,,call-arg.feature,call-arg.feature,root,passed,,,2025-12-17
 feature-009,feature,call-by-tag-called.feature,,,call-by-tag-called.feature,call-by-tag-called.feature,root,pending,,,
 feature-010,feature,call-by-tag.feature,,,call-by-tag.feature,call-by-tag.feature,root,pending,,,

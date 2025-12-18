@@ -182,6 +182,58 @@ class CallFeatureTest {
         assertTrue(result.isPassed(), "Nested calls should work: " + getFailureMessage(result));
     }
 
+    @Test
+    void testKarateCallWithArguments() throws Exception {
+        // Create called feature that uses arguments
+        Path calledFeature = tempDir.resolve("called.feature");
+        Files.writeString(calledFeature, """
+            Feature: Called
+            Scenario: Use arg
+            * match foo == 'bar'
+            """);
+
+        // Create caller that uses karate.call() from JavaScript
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Caller
+            Scenario: Call via JS
+            * def foo = null
+            * karate.call('called.feature', { foo: 'bar' })
+            """);
+
+        Suite suite = Suite.of(callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "karate.call() with args should work: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testKarateCallWithoutArguments() throws Exception {
+        // Create called feature
+        Path calledFeature = tempDir.resolve("called.feature");
+        Files.writeString(calledFeature, """
+            Feature: Called
+            Scenario: Simple
+            * def x = 1
+            """);
+
+        // Create caller that uses karate.call() without arguments
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Caller
+            Scenario: Call via JS
+            * def result = karate.call('called.feature')
+            * match result.x == 1
+            """);
+
+        Suite suite = Suite.of(callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "karate.call() without args should work: " + getFailureMessage(result));
+    }
+
     private String getFailureMessage(SuiteResult result) {
         if (result.isPassed()) return "none";
         for (FeatureResult fr : result.getFeatureResults()) {

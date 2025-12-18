@@ -29,6 +29,7 @@ import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.Step;
 import io.karatelabs.gherkin.Table;
 import io.karatelabs.io.http.HttpRequestBuilder;
+import io.karatelabs.js.JsCallable;
 import io.karatelabs.io.http.HttpResponse;
 import io.karatelabs.log.JvmLogger;
 import io.karatelabs.log.LogContext;
@@ -807,6 +808,39 @@ public class StepExecutor {
 
     private void executeCall(Step step) {
         String text = step.getText().trim();
+
+        // Try to evaluate the first token to see if it's a JS function
+        // Syntax: "call fun" or "call fun arg" where fun is a JS function variable
+        int spaceIdx = text.indexOf(' ');
+        String firstToken = spaceIdx > 0 ? text.substring(0, spaceIdx) : text;
+
+        // Check if it's a read() call - that's definitely a feature call
+        if (!text.startsWith("read(")) {
+            // Try to evaluate as a JS expression
+            try {
+                Object evaluated = runtime.eval(firstToken);
+                if (evaluated instanceof JsCallable) {
+                    // It's a JS function - invoke it
+                    JsCallable fn = (JsCallable) evaluated;
+                    Object arg = null;
+                    if (spaceIdx > 0) {
+                        String argExpr = text.substring(spaceIdx + 1).trim();
+                        if (!argExpr.isEmpty()) {
+                            arg = runtime.eval(argExpr);
+                        }
+                    }
+                    Object result = arg != null
+                            ? fn.call(null, new Object[]{arg})
+                            : fn.call(null, new Object[0]);
+                    // For shared scope call (no assignment), result is ignored
+                    return;
+                }
+            } catch (Exception e) {
+                // Not a valid JS expression, fall through to feature call
+            }
+        }
+
+        // Standard feature call
         CallExpression call = parseCallExpression(text);
 
         // Resolve the feature file relative to current feature

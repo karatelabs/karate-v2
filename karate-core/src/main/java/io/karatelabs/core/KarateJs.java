@@ -33,6 +33,7 @@ import io.karatelabs.io.http.HttpRequestBuilder;
 import io.karatelabs.js.Context;
 import io.karatelabs.js.Engine;
 import io.karatelabs.js.Invokable;
+import io.karatelabs.js.JsCallable;
 import io.karatelabs.js.SimpleObject;
 import io.karatelabs.markup.Markup;
 import io.karatelabs.markup.ResourceResolver;
@@ -42,9 +43,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Node;
 
+import com.jayway.jsonpath.JsonPath;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -64,6 +71,7 @@ public class KarateJs implements SimpleObject {
     private Function<String, Map<String, Object>> setupProvider;
     private Function<String, Map<String, Object>> setupOnceProvider;
     private Runnable abortHandler;
+    private BiFunction<String, Object, Map<String, Object>> callProvider;
 
     private final Invokable read;
 
@@ -126,6 +134,10 @@ public class KarateJs implements SimpleObject {
 
     public void setAbortHandler(Runnable handler) {
         this.abortHandler = handler;
+    }
+
+    public void setCallProvider(BiFunction<String, Object, Map<String, Object>> provider) {
+        this.callProvider = provider;
     }
 
     private Invokable abort() {
@@ -261,20 +273,365 @@ public class KarateJs implements SimpleObject {
         };
     }
 
+    private Invokable call() {
+        return args -> {
+            if (callProvider == null) {
+                throw new RuntimeException("karate.call() is not available in this context");
+            }
+            if (args.length == 0) {
+                throw new RuntimeException("karate.call() requires at least one argument (feature path)");
+            }
+            String path = args[0].toString();
+            Object arg = args.length > 1 ? args[1] : null;
+            return callProvider.apply(path, arg);
+        };
+    }
+
+    // ========== Collection Utilities ==========
+
+    private Invokable jsonPath() {
+        return args -> {
+            if (args.length < 2) {
+                throw new RuntimeException("jsonPath() needs two arguments: object and path");
+            }
+            Object json = args[0];
+            String path = args[1].toString();
+            return JsonPath.read(json, path);
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private Invokable forEach() {
+        return args -> {
+            if (args.length < 2) {
+                throw new RuntimeException("forEach() needs two arguments: collection and function");
+            }
+            Object collection = args[0];
+            JsCallable fn = (JsCallable) args[1];
+            if (collection instanceof List) {
+                List<?> list = (List<?>) collection;
+                for (int i = 0; i < list.size(); i++) {
+                    fn.call(null, new Object[]{list.get(i), i});
+                }
+            } else if (collection instanceof Map) {
+                Map<String, Object> map = (Map<String, Object>) collection;
+                int i = 0;
+                for (Map.Entry<String, Object> entry : map.entrySet()) {
+                    fn.call(null, new Object[]{entry.getKey(), entry.getValue(), i++});
+                }
+            }
+            return null;
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private Invokable map() {
+        return args -> {
+            if (args.length < 2) {
+                throw new RuntimeException("map() needs two arguments: list and function");
+            }
+            List<?> list = (List<?>) args[0];
+            JsCallable fn = (JsCallable) args[1];
+            List<Object> result = new ArrayList<>();
+            for (int i = 0; i < list.size(); i++) {
+                result.add(fn.call(null, new Object[]{list.get(i), i}));
+            }
+            return result;
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private Invokable filter() {
+        return args -> {
+            if (args.length < 2) {
+                throw new RuntimeException("filter() needs two arguments: list and function");
+            }
+            List<?> list = (List<?>) args[0];
+            JsCallable fn = (JsCallable) args[1];
+            List<Object> result = new ArrayList<>();
+            for (int i = 0; i < list.size(); i++) {
+                Object item = list.get(i);
+                Object keep = fn.call(null, new Object[]{item, i});
+                if (Boolean.TRUE.equals(keep)) {
+                    result.add(item);
+                }
+            }
+            return result;
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private Invokable merge() {
+        return args -> {
+            Map<String, Object> result = new LinkedHashMap<>();
+            for (Object arg : args) {
+                if (arg instanceof Map) {
+                    result.putAll((Map<String, Object>) arg);
+                }
+            }
+            return result;
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private Invokable append() {
+        return args -> {
+            if (args.length < 2) {
+                throw new RuntimeException("append() needs at least two arguments");
+            }
+            List<Object> result = new ArrayList<>();
+            Object first = args[0];
+            if (first instanceof List) {
+                result.addAll((List<?>) first);
+            } else {
+                result.add(first);
+            }
+            for (int i = 1; i < args.length; i++) {
+                Object item = args[i];
+                if (item instanceof List) {
+                    result.addAll((List<?>) item);
+                } else {
+                    result.add(item);
+                }
+            }
+            return result;
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private Invokable appendTo() {
+        return args -> {
+            if (args.length < 2) {
+                throw new RuntimeException("appendTo() needs at least two arguments: list and item(s)");
+            }
+            List<Object> list = (List<Object>) args[0];
+            for (int i = 1; i < args.length; i++) {
+                Object item = args[i];
+                if (item instanceof List) {
+                    list.addAll((List<?>) item);
+                } else {
+                    list.add(item);
+                }
+            }
+            return list;
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private Invokable sort() {
+        return args -> {
+            if (args.length < 2) {
+                throw new RuntimeException("sort() needs two arguments: list and key function");
+            }
+            List<?> list = (List<?>) args[0];
+            JsCallable fn = (JsCallable) args[1];
+            List<Object> result = new ArrayList<>(list);
+            result.sort((a, b) -> {
+                Object keyA = fn.call(null, new Object[]{a});
+                Object keyB = fn.call(null, new Object[]{b});
+                if (keyA instanceof Comparable && keyB instanceof Comparable) {
+                    return ((Comparable<Object>) keyA).compareTo(keyB);
+                }
+                return 0;
+            });
+            return result;
+        };
+    }
+
+    private Invokable mapWithKey() {
+        return args -> {
+            if (args.length < 2) {
+                throw new RuntimeException("mapWithKey() needs two arguments: list and key name");
+            }
+            Object listArg = args[0];
+            if (listArg == null) {
+                return new ArrayList<>();
+            }
+            List<?> list = (List<?>) listArg;
+            String key = args[1].toString();
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (Object item : list) {
+                Map<String, Object> map = new LinkedHashMap<>();
+                map.put(key, item);
+                result.add(map);
+            }
+            return result;
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private Invokable filterKeys() {
+        return args -> {
+            if (args.length < 2) {
+                throw new RuntimeException("filterKeys() needs at least two arguments");
+            }
+            Map<String, Object> source = (Map<String, Object>) args[0];
+            Map<String, Object> result = new LinkedHashMap<>();
+
+            if (args[1] instanceof Map) {
+                // filterKeys(source, keysFromMap) - filter by keys present in the map
+                Map<String, Object> keysMap = (Map<String, Object>) args[1];
+                for (String key : keysMap.keySet()) {
+                    if (source.containsKey(key)) {
+                        result.put(key, source.get(key));
+                    }
+                }
+            } else if (args[1] instanceof List) {
+                // filterKeys(source, [key1, key2, ...])
+                List<String> keys = (List<String>) args[1];
+                for (String key : keys) {
+                    if (source.containsKey(key)) {
+                        result.put(key, source.get(key));
+                    }
+                }
+            } else {
+                // filterKeys(source, key1, key2, ...)
+                for (int i = 1; i < args.length; i++) {
+                    String key = args[i].toString();
+                    if (source.containsKey(key)) {
+                        result.put(key, source.get(key));
+                    }
+                }
+            }
+            return result;
+        };
+    }
+
+    private Invokable sizeOf() {
+        return args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("sizeOf() needs one argument");
+            }
+            Object obj = args[0];
+            if (obj instanceof List) {
+                return ((List<?>) obj).size();
+            } else if (obj instanceof Map) {
+                return ((Map<?, ?>) obj).size();
+            } else if (obj instanceof String) {
+                return ((String) obj).length();
+            }
+            return 0;
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private Invokable keysOf() {
+        return args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("keysOf() needs one argument");
+            }
+            Map<String, Object> map = (Map<String, Object>) args[0];
+            return new ArrayList<>(map.keySet());
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private Invokable valuesOf() {
+        return args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("valuesOf() needs one argument");
+            }
+            Object obj = args[0];
+            if (obj instanceof Map) {
+                return new ArrayList<>(((Map<String, Object>) obj).values());
+            } else if (obj instanceof List) {
+                return new ArrayList<>((List<?>) obj);
+            }
+            return new ArrayList<>();
+        };
+    }
+
+    private Invokable repeat() {
+        return args -> {
+            if (args.length < 2) {
+                throw new RuntimeException("repeat() needs two arguments: count and function");
+            }
+            int count = ((Number) args[0]).intValue();
+            JsCallable fn = (JsCallable) args[1];
+            List<Object> result = new ArrayList<>();
+            for (int i = 0; i < count; i++) {
+                result.add(fn.call(null, new Object[]{i}));
+            }
+            return result;
+        };
+    }
+
+    private Invokable eval() {
+        return args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("eval() needs one argument");
+            }
+            return engine.eval(args[0].toString());
+        };
+    }
+
+    private Invokable os() {
+        return args -> {
+            Map<String, Object> result = new LinkedHashMap<>();
+            String osName = System.getProperty("os.name", "unknown").toLowerCase();
+            result.put("name", System.getProperty("os.name", "unknown"));
+            if (osName.contains("win")) {
+                result.put("type", "windows");
+            } else if (osName.contains("mac")) {
+                result.put("type", "macosx");
+            } else if (osName.contains("nix") || osName.contains("nux")) {
+                result.put("type", "linux");
+            } else {
+                result.put("type", "unknown");
+            }
+            return result;
+        };
+    }
+
+    private Invokable remove() {
+        return args -> {
+            if (args.length < 2) {
+                throw new RuntimeException("remove() needs two arguments: variable name and path");
+            }
+            String varName = args[0].toString();
+            String path = args[1].toString();
+            Object var = engine.get(varName);
+            if (var instanceof Map && path != null) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> map = (Map<String, Object>) var;
+                map.remove(path);
+            }
+            return null;
+        };
+    }
+
     @Override
     public Object jsGet(String key) {
         return switch (key) {
             case "abort" -> abort();
+            case "append" -> append();
+            case "appendTo" -> appendTo();
+            case "call" -> call();
             case "doc" -> doc();
+            case "eval" -> eval();
+            case "filter" -> filter();
+            case "filterKeys" -> filterKeys();
+            case "forEach" -> forEach();
             case "get" -> get();
             case "http" -> http();
+            case "jsonPath" -> jsonPath();
+            case "keysOf" -> keysOf();
+            case "map" -> map();
+            case "mapWithKey" -> mapWithKey();
             case "match" -> match(false);
+            case "merge" -> merge();
+            case "os" -> os();
             case "read" -> read;
             case "readAsString" -> readAsString();
+            case "remove" -> remove();
+            case "repeat" -> repeat();
             case "set" -> set();
             case "setup" -> setup();
             case "setupOnce" -> setupOnce();
+            case "sizeOf" -> sizeOf();
+            case "sort" -> sort();
             case "toStringPretty" -> toStringPretty();
+            case "valuesOf" -> valuesOf();
             default -> null;
         };
     }

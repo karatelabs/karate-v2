@@ -24,6 +24,7 @@
 package io.karatelabs.core;
 
 import io.karatelabs.common.Resource;
+import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.Scenario;
 import io.karatelabs.gherkin.Step;
 import io.karatelabs.io.http.HttpRequestBuilder;
@@ -123,6 +124,9 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
 
         // Wire up karate.abort()
         karate.setAbortHandler(this::abort);
+
+        // Wire up karate.call()
+        karate.setCallProvider(this::executeJsCall);
     }
 
     /**
@@ -171,6 +175,50 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
             featureRuntime.SETUPONCE_CACHE.put(cacheKey, result);
             return new HashMap<>(result);
         }
+    }
+
+    /**
+     * Execute a feature via karate.call() and return its result variables.
+     * This is used for JavaScript calls like: karate.call('other.feature', { arg: 'value' })
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> executeJsCall(String path, Object arg) {
+        if (featureRuntime == null) {
+            throw new RuntimeException("karate.call() requires a feature context");
+        }
+
+        // Resolve the feature file relative to current feature
+        Resource calledResource = featureRuntime.resolve(path);
+        Feature calledFeature = Feature.read(calledResource);
+
+        // Convert arg to Map if needed
+        Map<String, Object> callArg = null;
+        if (arg != null) {
+            if (arg instanceof Map) {
+                callArg = (Map<String, Object>) arg;
+            } else {
+                throw new RuntimeException("karate.call() arg must be a map/object, got: " + arg.getClass());
+            }
+        }
+
+        // Create nested FeatureRuntime with isolated scope (always isolated for karate.call())
+        FeatureRuntime nestedFr = new FeatureRuntime(
+                featureRuntime.getSuite(),
+                calledFeature,
+                featureRuntime,
+                this,
+                false,  // Isolated scope
+                callArg
+        );
+
+        // Execute the called feature
+        nestedFr.call();
+
+        // Return result variables from the last executed scenario
+        if (nestedFr.getLastExecuted() != null) {
+            return nestedFr.getLastExecuted().getAllVariables();
+        }
+        return new HashMap<>();
     }
 
     private void inheritVariables() {
