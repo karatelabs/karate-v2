@@ -842,12 +842,17 @@ public class StepExecutor {
         String expr = text.substring(eqIndex + 1).trim();
         // Use evalKarateExpression to handle XML literals like: json foo = <bar>baz</bar>
         Object value = evalKarateExpression(expr);
-        // Convert XML to JSON map/object
+        // Convert to JSON map/object
         if (value instanceof Node) {
             value = Xml.toObject((Node) value);
         } else if (value instanceof String s) {
             // Parse string as JSON: json foo = strVar where strVar = '{ "foo": "bar" }'
             value = Json.of(s).value();
+        } else if (value instanceof Map || value instanceof List) {
+            // Already JSON-like, keep as is
+        } else if (value != null) {
+            // POJO or other Java object - convert using Jackson
+            value = Json.of(value).value();
         }
         value = processEmbeddedExpressions(value);
         runtime.setVariable(name, value);
@@ -869,6 +874,13 @@ public class StepExecutor {
             value = Xml.toXmlDoc((String) value);
         } else if (value instanceof Node) {
             // Already XML, keep as is
+        } else if (value instanceof Map) {
+            // JSON/Map to XML
+            value = Xml.fromMap((Map<String, Object>) value);
+        } else if (value != null) {
+            // POJO or other Java object - convert to JSON first, then wrap in root element
+            Object jsonValue = Json.of(value).value();
+            value = Xml.fromObject("root", jsonValue);
         }
         runtime.setVariable(name, value);
     }
@@ -897,8 +909,13 @@ public class StepExecutor {
         Object value = runtime.eval(expr);
         // Process embedded expressions like #(foo)
         value = processEmbeddedExpressions(value);
-        // Convert to JSON string representation
-        String stringValue = Json.stringifyStrict(value);
+        // Convert to string representation - XML uses Xml.toString(), others use JSON
+        String stringValue;
+        if (value instanceof Node) {
+            stringValue = Xml.toString((Node) value, false);
+        } else {
+            stringValue = Json.stringifyStrict(value);
+        }
         runtime.setVariable(name, stringValue);
     }
 

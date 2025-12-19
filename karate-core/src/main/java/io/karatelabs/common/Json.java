@@ -433,5 +433,18 @@ public class Json {
         }
     }
 
+    /**
+     * Deserialize a JSON string into a Java object of the specified class.
+     * Uses json-smart's JSONValue.parse for bean mapping.
+     */
+    public static Object fromJson(String json, String className) {
+        try {
+            Class<?> clazz = Class.forName(className);
+            return JSONValue.parse(json, clazz);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to deserialize JSON to " + className + ": " + e.getMessage(), e);
+        }
+    }
+
 }
 

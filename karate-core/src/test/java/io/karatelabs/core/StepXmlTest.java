@@ -587,4 +587,43 @@ class StepXmlTest {
         assertPassed(sr);
     }
 
+    @Test
+    void testXmlToStringViaJs() {
+        // V1 behavior: string strVar = (xmlVar) should convert XML to its string representation
+        // The parentheses forces JS evaluation, and string keyword converts result
+        ScenarioRuntime sr = run("""
+            * def xmlVar = <root><foo>bar</foo></root>
+            * string strVar = (xmlVar)
+            * match strVar == '<root><foo>bar</foo></root>'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testXmlToJsonWithAttributes() {
+        // XML with attributes converts to JSON with special keys: @ for attributes, _ for text content
+        ScenarioRuntime sr = run("""
+            * def xmlVar = <root><foo fizz="buzz">bar</foo></root>
+            * json jsonVar = xmlVar
+            * match jsonVar == { root: { foo: { _: 'bar', @: { fizz: 'buzz' }}}}
+            * match jsonVar $.root.foo._ == 'bar'
+            * match jsonVar $.root.foo.@ == { fizz: 'buzz' }
+            * match jsonVar $.root.foo.@.fizz == 'buzz'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testXmlToJsonWithJsonPathDeep() {
+        // JSONPath with recursive descent on XML-to-JSON with @ keys
+        ScenarioRuntime sr = run("""
+            * def xmlVar = <root><foo fizz="buzz">bar</foo></root>
+            * json jsonVar = xmlVar
+            * match jsonVar $..foo.@.fizz == ['buzz']
+            * match jsonVar $..@.fizz contains 'buzz'
+            * match jsonVar $..foo.@ contains { fizz: 'buzz' }
+            """);
+        assertPassed(sr);
+    }
+
 }

@@ -164,6 +164,25 @@ class StepDefTest {
     }
 
     @Test
+    void testDocStringIndentation() {
+        // Docstring indentation should be normalized based on the first line's margin
+        ScenarioRuntime sr = run("""
+            * text myText =
+              \"\"\"
+              line one
+                indented line
+              line three
+              \"\"\"
+            """);
+        assertPassed(sr);
+        String text = (String) get(sr, "myText");
+        // First line sets the margin, indented line preserves relative indentation
+        assertTrue(text.startsWith("line one"));
+        assertTrue(text.contains("  indented line")); // 2 spaces relative to margin
+        assertTrue(text.contains("line three"));
+    }
+
+    @Test
     void testJson() {
         ScenarioRuntime sr = run("""
             * json myJson = { name: 'test', value: 123 }

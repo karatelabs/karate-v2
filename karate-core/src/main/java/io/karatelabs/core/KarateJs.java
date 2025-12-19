@@ -859,6 +859,19 @@ public class KarateJs implements SimpleObject {
         };
     }
 
+    private Invokable toBean() {
+        return args -> {
+            if (args.length < 2) {
+                throw new RuntimeException("toBean() needs two arguments: object and class name");
+            }
+            Object obj = args[0];
+            String className = args[1].toString();
+            // Convert to JSON string and deserialize to the target class
+            String jsonString = Json.of(obj).toString();
+            return Json.fromJson(jsonString, className);
+        };
+    }
+
     private Invokable remove() {
         return args -> {
             if (args.length < 2) {
@@ -1273,6 +1286,7 @@ public class KarateJs implements SimpleObject {
             case "setXml" -> setXml();
             case "sizeOf" -> sizeOf();
             case "sort" -> sort();
+            case "toBean" -> toBean();
             case "toStringPretty" -> toStringPretty();
             case "typeOf" -> typeOf();
             case "valuesOf" -> valuesOf();

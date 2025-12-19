@@ -37,9 +37,11 @@ else
     echo "Building classpath..."
     CP=$(cd karate-core && mvn -q dependency:build-classpath -DincludeScope=runtime -Dmdep.outputFile=/dev/stdout)
     JAR="karate-core/target/karate-core-2.0.0.RC1.jar"
+    TEST_CLASSES="karate-core/target/test-classes"
 
     echo "Running: java -cp ... io.karatelabs.Main $@"
     echo "---"
 
-    java -cp "$JAR:$CP" io.karatelabs.Main "$@"
+    # Include test-classes for Java.type() access to test POJOs
+    java -cp "$JAR:$TEST_CLASSES:$CP" io.karatelabs.Main "$@"
 fi
