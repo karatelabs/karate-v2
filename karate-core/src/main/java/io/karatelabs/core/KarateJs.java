@@ -805,6 +805,25 @@ public class KarateJs implements SimpleObject {
     }
 
     @SuppressWarnings("unchecked")
+    private Invokable log() {
+        return args -> {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < args.length; i++) {
+                if (i > 0) sb.append(" ");
+                Object arg = args[i];
+                if (arg instanceof Node) {
+                    sb.append(Xml.toString((Node) arg, true));
+                } else if (arg instanceof Map || arg instanceof List) {
+                    sb.append(StringUtils.formatJson(arg));
+                } else {
+                    sb.append(arg);
+                }
+            }
+            logger.info(sb.toString());
+            return null;
+        };
+    }
+
     private Invokable lowerCase() {
         return args -> {
             if (args.length == 0) {
@@ -955,21 +974,40 @@ public class KarateJs implements SimpleObject {
 
         // Process child nodes
         List<Node> elementsToRemove = new ArrayList<>();
+        List<Node[]> nodesToReplace = new ArrayList<>();
         org.w3c.dom.NodeList children = node.getChildNodes();
         for (int i = 0; i < children.getLength(); i++) {
             Node child = children.item(i);
             if (child.getNodeType() == Node.TEXT_NODE) {
                 String text = child.getTextContent();
                 if (text != null && text.contains("#(")) {
+                    String trimmed = text.trim();
                     // Check for ##(optional) pattern
-                    if (text.trim().startsWith("##(") && text.trim().endsWith(")")) {
-                        String expr = text.trim().substring(3, text.trim().length() - 1);
+                    if (trimmed.startsWith("##(") && trimmed.endsWith(")")) {
+                        String expr = trimmed.substring(3, trimmed.length() - 1);
                         Object result = engine.eval(expr);
                         if (result == null) {
                             // Mark parent element for removal
                             elementsToRemove.add(child.getParentNode());
+                        } else if (result instanceof Node) {
+                            // Schedule replacement with imported XML node
+                            nodesToReplace.add(new Node[]{child, (Node) result});
                         } else {
                             child.setTextContent(result.toString());
+                        }
+                    } else if (trimmed.startsWith("#(") && trimmed.endsWith(")") && !trimmed.substring(2).contains("#(")) {
+                        // Single #(expr) pattern - may need to import XML node
+                        String expr = trimmed.substring(2, trimmed.length() - 1);
+                        try {
+                            Object result = engine.eval(expr);
+                            if (result instanceof Node) {
+                                // Schedule replacement with imported XML node
+                                nodesToReplace.add(new Node[]{child, (Node) result});
+                            } else {
+                                child.setTextContent(valueToString(result));
+                            }
+                        } catch (Exception e) {
+                            // Keep original if evaluation fails
                         }
                     } else {
                         child.setTextContent(processEmbeddedString(text));
@@ -977,6 +1015,30 @@ public class KarateJs implements SimpleObject {
                 }
             } else if (child.getNodeType() == Node.ELEMENT_NODE) {
                 processXmlEmbeddedExpressions(child);
+            } else if (child.getNodeType() == Node.CDATA_SECTION_NODE) {
+                // Process embedded expressions in CDATA, keeping result as text
+                String text = child.getTextContent();
+                if (text != null && text.contains("#(")) {
+                    child.setTextContent(processEmbeddedString(text));
+                }
+            }
+        }
+
+        // Replace text nodes with imported XML nodes
+        for (Node[] pair : nodesToReplace) {
+            Node textNode = pair[0];
+            Node xmlNode = pair[1];
+            Node parent = textNode.getParentNode();
+            if (parent != null) {
+                Document ownerDoc = parent.getOwnerDocument();
+                // Get the root element of the XML node to import
+                Node toImport = xmlNode;
+                if (toImport.getNodeType() == Node.DOCUMENT_NODE) {
+                    toImport = ((Document) toImport).getDocumentElement();
+                }
+                // Import and insert the node
+                Node imported = ownerDoc.importNode(toImport, true);
+                parent.replaceChild(imported, textNode);
             }
         }
 
@@ -987,6 +1049,19 @@ public class KarateJs implements SimpleObject {
                 parent.removeChild(toRemove);
             }
         }
+    }
+
+    /**
+     * Convert a value to string, handling XML nodes properly.
+     */
+    private String valueToString(Object value) {
+        if (value == null) {
+            return "";
+        }
+        if (value instanceof Node) {
+            return Xml.toString((Node) value, false);
+        }
+        return value.toString();
     }
 
     /**
@@ -1010,7 +1085,7 @@ public class KarateJs implements SimpleObject {
                     String expr = str.substring(hashPos + 2, closePos);
                     try {
                         Object value = engine.eval(expr);
-                        result.append(value != null ? value.toString() : "");
+                        result.append(valueToString(value));
                     } catch (Exception e) {
                         // If expression fails (variable not defined), keep original
                         result.append(str, hashPos, closePos + 1);
@@ -1027,7 +1102,7 @@ public class KarateJs implements SimpleObject {
                     String expr = str.substring(hashPos + 3, closePos);
                     try {
                         Object value = engine.eval(expr);
-                        result.append(value != null ? value.toString() : "");
+                        result.append(valueToString(value));
                     } catch (Exception e) {
                         // If expression fails, keep original
                         result.append(str, hashPos, closePos + 1);
@@ -1102,6 +1177,7 @@ public class KarateJs implements SimpleObject {
             case "info" -> getInfo();
             case "jsonPath" -> jsonPath();
             case "keysOf" -> keysOf();
+            case "log" -> log();
             case "lowerCase" -> lowerCase();
             case "map" -> map();
             case "mapWithKey" -> mapWithKey();

@@ -393,4 +393,58 @@ class StepXmlTest {
         }
     }
 
+    @Test
+    void testSetXmlWithMultiColumnIndexedTable() {
+        ScenarioRuntime sr = run("""
+            * set search /queries/query
+                | path           | 1        | 2      | 3       |
+                | name/firstName | 'John'   | 'Jane' |         |
+                | name/lastName  | 'Smith'  | 'Doe'  | 'Waldo' |
+                | age            | 20       |        |         |
+            * match search/queries/query[1] == <query><name><firstName>John</firstName><lastName>Smith</lastName></name><age>20</age></query>
+            * match search/queries/query[2] == <query><name><firstName>Jane</firstName><lastName>Doe</lastName></name></query>
+            * match search/queries/query[3] == <query><name><lastName>Waldo</lastName></name></query>
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testCdataWithXmlEmbeddedExpression() {
+        ScenarioRuntime sr = run("""
+            * def foo = <bar>baz</bar>
+            * def xml =
+            \"\"\"
+            <ResponseSet vers="1.0">
+                <Response><![CDATA[#(foo)]]></Response>
+            </ResponseSet>
+            \"\"\"
+            * match xml ==
+            \"\"\"
+            <ResponseSet vers="1.0">
+                <Response><![CDATA[<bar>baz</bar>]]></Response>
+            </ResponseSet>
+            \"\"\"
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testJsonKeywordWithXmlLiteral() {
+        ScenarioRuntime sr = run("""
+            * json response = <response><foo><bar>baz</bar></foo></response>
+            * match response.response.foo.bar == 'baz'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testKarateLog() {
+        ScenarioRuntime sr = run("""
+            * def xml = <root><foo>bar</foo></root>
+            * karate.log(xml)
+            * karate.log('test message', { key: 'value' })
+            """);
+        assertPassed(sr);
+    }
+
 }

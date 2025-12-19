@@ -290,7 +290,7 @@ java-288,java_test,tags/TagsTest.java,TagsTest,testOneAndBoth,,testOneAndBoth,ta
 java-289,java_test,tags/TagsTest.java,TagsTest,testNoneOrBoth,,testNoneOrBoth,tags,pending,,,
 java-290,java_test,tags/TagsTest.java,TagsTest,testEnvNotFoo,,testEnvNotFoo,tags,pending,,,
 java-291,java_test,tags/TagsTest.java,TagsTest,testEnvFoo,,testEnvFoo,tags,pending,,,
-java-292,java_test,xml/XmlTest.java,XmlTest,testXml,,testXml,xml,pending,,,
+java-292,java_test,xml/XmlTest.java,XmlTest,testXml,,testXml,xml,passed,runs xml.feature which passes,io/karatelabs/core/StepXmlTest,2025-12-19
 feature-001,feature,abort.feature,,,abort.feature,abort.feature,root,passed,implemented karate.abort(),,2025-12-17
 feature-002,feature,align.feature,,,align.feature,align.feature,root,passed,,,2025-12-17
 feature-003,feature,big-decimal.feature,,,big-decimal.feature,big-decimal.feature,root,passed,,,2025-12-17
@@ -529,4 +529,4 @@ feature-235,feature,xml-pretty.feature,,,xml-pretty.feature,xml-pretty.feature,r
 feature-236,feature,xml/xml-and-xpath.feature,,,xml-and-xpath.feature,xml and xpath demos,xml,pending,,,
 feature-237,feature,xml/xml-call.feature,,,xml-call.feature,Example,xml,pending,,,
 feature-238,feature,xml/xml-called.feature,,,xml-called.feature,xml-called.feature,xml,pending,,,
-feature-239,feature,xml/xml.feature,,,xml.feature,xml samples and tests,xml,pending,22/36 scenarios pass - shorthand XPath syntax (foo/path) not supported,,2025-12-19
+feature-239,feature,xml/xml.feature,,,xml.feature,xml samples and tests,xml,passed,36/36 scenarios pass - multi-column table set and CDATA fixed,io/karatelabs/core/StepXmlTest,2025-12-19

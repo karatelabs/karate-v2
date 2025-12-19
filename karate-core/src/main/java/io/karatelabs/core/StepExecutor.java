@@ -598,27 +598,75 @@ public class StepExecutor {
         int pathIdx = headers.indexOf("path");
         int valueIdx = headers.indexOf("value");
         if (pathIdx < 0) pathIdx = 0;
-        if (valueIdx < 0) valueIdx = 1;
 
-        // Process each row (skip header row at index 0)
-        for (int i = 1; i < rows.size(); i++) {
-            List<String> row = rows.get(i);
-            if (row.size() <= pathIdx) continue;
-            String rowPath = row.get(pathIdx);
-            String valueExpr = valueIdx < row.size() ? row.get(valueIdx) : "";
-            if (valueExpr == null || valueExpr.isEmpty()) continue;
+        // Check if this is multi-column indexed format: | path | 1 | 2 | 3 |
+        // Headers after 'path' would be numeric index values
+        List<Integer> indexColumns = new ArrayList<>();
+        for (int col = 0; col < headers.size(); col++) {
+            if (col == pathIdx) continue;
+            String header = headers.get(col);
+            try {
+                Integer.parseInt(header);
+                indexColumns.add(col);
+            } catch (NumberFormatException e) {
+                // Not a numeric column
+            }
+        }
 
-            // Build the full XPath: basePath + "/" + rowPath
-            String fullPath = basePath + "/" + rowPath;
+        if (!indexColumns.isEmpty()) {
+            // Multi-column indexed format: | path | 1 | 2 | 3 |
+            // Process each row (skip header row at index 0)
+            for (int i = 1; i < rows.size(); i++) {
+                List<String> row = rows.get(i);
+                if (row.size() <= pathIdx) continue;
+                String rowPath = row.get(pathIdx);
 
-            // Evaluate the value expression
-            Object value = runtime.eval(valueExpr);
+                // Process each indexed column
+                for (int col : indexColumns) {
+                    if (col >= row.size()) continue;
+                    String valueExpr = row.get(col);
+                    if (valueExpr == null || valueExpr.isEmpty()) continue;
 
-            // Set the value at the XPath
-            if (value instanceof org.w3c.dom.Node) {
-                Xml.setByPath(doc, fullPath, (org.w3c.dom.Node) value);
-            } else {
-                Xml.setByPath(doc, fullPath, value == null ? "" : value.toString());
+                    // Get the index value from the header
+                    String indexStr = headers.get(col);
+                    // Build path: basePath[index]/rowPath
+                    String fullPath = basePath + "[" + indexStr + "]/" + rowPath;
+
+                    // Evaluate the value expression
+                    Object value = evalKarateExpression(valueExpr);
+
+                    // Set the value at the XPath
+                    if (value instanceof org.w3c.dom.Node) {
+                        Xml.setByPath(doc, fullPath, (org.w3c.dom.Node) value);
+                    } else {
+                        Xml.setByPath(doc, fullPath, value == null ? "" : value.toString());
+                    }
+                }
+            }
+        } else {
+            // Standard format: | path | value |
+            if (valueIdx < 0) valueIdx = 1;
+
+            // Process each row (skip header row at index 0)
+            for (int i = 1; i < rows.size(); i++) {
+                List<String> row = rows.get(i);
+                if (row.size() <= pathIdx) continue;
+                String rowPath = row.get(pathIdx);
+                String valueExpr = valueIdx < row.size() ? row.get(valueIdx) : "";
+                if (valueExpr == null || valueExpr.isEmpty()) continue;
+
+                // Build the full XPath: basePath + "/" + rowPath
+                String fullPath = basePath + "/" + rowPath;
+
+                // Evaluate the value expression (use evalKarateExpression for XML literal support)
+                Object value = evalKarateExpression(valueExpr);
+
+                // Set the value at the XPath
+                if (value instanceof org.w3c.dom.Node) {
+                    Xml.setByPath(doc, fullPath, (org.w3c.dom.Node) value);
+                } else {
+                    Xml.setByPath(doc, fullPath, value == null ? "" : value.toString());
+                }
             }
         }
     }
@@ -792,8 +840,12 @@ public class StepExecutor {
         int eqIndex = findAssignmentOperator(text);
         String name = text.substring(0, eqIndex).trim();
         String expr = text.substring(eqIndex + 1).trim();
-        // Evaluate expression and process embedded expressions
-        Object value = runtime.eval(expr);
+        // Use evalKarateExpression to handle XML literals like: json foo = <bar>baz</bar>
+        Object value = evalKarateExpression(expr);
+        // Convert XML to JSON map/object
+        if (value instanceof Node) {
+            value = Xml.toObject((Node) value);
+        }
         value = processEmbeddedExpressions(value);
         runtime.setVariable(name, value);
     }
@@ -935,7 +987,7 @@ public class StepExecutor {
             if (varValue == null) {
                 throw new RuntimeException("no variable found with name: " + varName);
             }
-            String varText = varValue.toString();
+            String varText = varValue instanceof Node ? Xml.toString((Node) varValue, false) : varValue.toString();
 
             // Process each row in the table
             List<Map<String, String>> rows = table.getRowsAsMaps();
@@ -980,7 +1032,7 @@ public class StepExecutor {
             if (varValue == null) {
                 throw new RuntimeException("no variable found with name: " + varName);
             }
-            String varText = varValue.toString();
+            String varText = varValue instanceof Node ? Xml.toString((Node) varValue, false) : varValue.toString();
 
             // Evaluate the replacement expression
             Object replaceValue = runtime.eval(replaceExpr);
@@ -1917,6 +1969,8 @@ public class StepExecutor {
             return (String) value;
         } else if (value instanceof Map || value instanceof List) {
             return Json.stringifyStrict(value);
+        } else if (value instanceof Node) {
+            return Xml.toString((Node) value, false);
         } else {
             return value.toString();
         }
@@ -2248,8 +2302,8 @@ public class StepExecutor {
                         Object result = runtime.eval(expr);
                         if (optional && result == null) {
                             elementsToRemove.add(child);
-                        } else if (result instanceof Node) {
-                            // Replace with XML node
+                        } else if (result instanceof Node && child.getNodeType() != Node.CDATA_SECTION_NODE) {
+                            // Replace text node with XML node (but not for CDATA)
                             Node evalNode = (Node) result;
                             if (evalNode.getNodeType() == Node.DOCUMENT_NODE) {
                                 evalNode = evalNode.getFirstChild();
@@ -2257,7 +2311,11 @@ public class StepExecutor {
                             evalNode = node.getOwnerDocument().importNode(evalNode, true);
                             child.getParentNode().replaceChild(evalNode, child);
                         } else {
-                            child.setNodeValue(result == null ? "" : stringify(result));
+                            // For CDATA or non-Node results, convert to string
+                            String strResult = (result instanceof Node)
+                                    ? Xml.toString((Node) result, false)
+                                    : (result == null ? "" : stringify(result));
+                            child.setNodeValue(strResult);
                         }
                     } catch (Exception e) {
                         // Leave as-is on error
