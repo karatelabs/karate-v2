@@ -17,8 +17,8 @@ java-015,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallOnce,,test
 java-016,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallOnceWithUtilsPresentInKarateConfig,,testCallOnceWithUtilsPresentInKarateConfig,root,pending,,,
 java-017,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallOnceGlobal,,testCallOnceGlobal,root,pending,,,
 java-018,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTags,,testTags,root,pending,,,
-java-019,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testAbort,,testAbort,root,pending,,,
-java-020,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testAlign,,testAlign,root,pending,,,
+java-019,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testAbort,,testAbort,root,passed,runs abort.feature which passes,,2025-12-19
+java-020,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testAlign,,testAlign,root,passed,runs align.feature which passes,,2025-12-19
 java-021,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testFailApi,,testFailApi,root,pending,,,
 java-022,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallFeatureFromJs,,testCallFeatureFromJs,root,pending,,,
 java-023,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallJsFromFeatureUtilsDefinedInKarateConfig,,testCallJsFromFeatureUtilsDefinedInKarateConfig,root,pending,,,
@@ -27,10 +27,10 @@ java-025,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateJsGetSce
 java-026,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateJsFromKarateBase,,testKarateJsFromKarateBase,root,pending,,,
 java-027,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallByTag,,testCallByTag,root,pending,,,
 java-028,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallByTagCalled,,testCallByTagCalled,root,pending,,,
-java-029,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCopyAndClone,,testCopyAndClone,root,pending,,,
+java-029,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCopyAndClone,,testCopyAndClone,root,passed,runs copy.feature which passes,,2025-12-19
 java-030,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testMatchEachMagicVariables,,testMatchEachMagicVariables,root,pending,,,
-java-031,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testEvalAndSet,,testEvalAndSet,root,pending,,,
-java-032,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testEvalAssign,,testEvalAssign,root,pending,,,
+java-031,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testEvalAndSet,,testEvalAndSet,root,passed,runs eval-and-set.feature which passes,,2025-12-19
+java-032,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testEvalAssign,,testEvalAssign,root,passed,runs eval-assign.feature which passes,,2025-12-19
 java-033,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testExtract,,testExtract,root,pending,,,
 java-034,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testConfigureInJs,,testConfigureInJs,root,pending,,,
 java-035,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTable,,testTable,root,pending,,,
@@ -41,7 +41,7 @@ java-039,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead2,,testJ
 java-040,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead3,,testJsRead3,root,pending,,,
 java-041,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead4,,testJsRead4,root,pending,,,
 java-042,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsMapRepeat,,testJsMapRepeat,root,pending,,,
-java-043,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallFeature,,testCallFeature,root,pending,,,
+java-043,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallFeature,,testCallFeature,root,passed,runs call-feature.feature which passes,,2025-12-19
 java-044,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineGenerator,,testOutlineGenerator,root,pending,,,
 java-045,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testToBean,,testToBean,root,pending,,,
 java-046,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutline,,testOutline,root,pending,,,
@@ -52,7 +52,7 @@ java-050,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineConfigJ
 java-051,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineConfigJsCallSingleParallel,,testOutlineConfigJsCallSingleParallel,root,pending,,,
 java-052,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallSingleOutlineExampleByTag,,testCallSingleOutlineExampleByTag,root,pending,,,
 java-053,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallArg,,testCallArg,root,pending,,,
-java-054,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallArgNull,,testCallArgNull,root,pending,,,
+java-054,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallArgNull,,testCallArgNull,root,passed,runs call-arg-null.feature which passes,,2025-12-19
 java-055,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testIgnoreStepFailure,,testIgnoreStepFailure,root,pending,,,
 java-056,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateFork,,testKarateFork,root,pending,,,
 java-057,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCsv,,testCsv,root,pending,,,
@@ -65,8 +65,8 @@ java-063,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateGet,,tes
 java-064,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineCsv,,testOutlineCsv,root,pending,,,
 java-065,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testReadProperties,,testReadProperties,root,pending,,,
 java-066,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallSelf,,testCallSelf,root,pending,,,
-java-067,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testBigDecimal,,testBigDecimal,root,pending,,,
-java-068,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsArrays,,testJsArrays,root,pending,,,
+java-067,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testBigDecimal,,testBigDecimal,root,passed,runs big-decimal.feature which passes,,2025-12-19
+java-068,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsArrays,,testJsArrays,root,passed,runs js-arrays.feature which passes,,2025-12-19
 java-069,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testLowerCase,,testLowerCase,root,pending,,,
 java-070,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testNotEquals,,testNotEquals,root,pending,,,
 java-071,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testReplace,,testReplace,root,pending,,,

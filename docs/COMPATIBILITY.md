@@ -1,140 +1,138 @@
 # V1-V2 Compatibility Testing
 
-This document describes the process for validating Karate V2 against V1's test suite.
+Validates Karate V2 against V1's test suite.
 
 > See also: [CLI.md](./CLI.md) | [CAPABILITIES.yaml](./CAPABILITIES.yaml)
 
 ---
 
-## Overview
+## Quick Reference
 
-Karate V2 aims to be backwards compatible with V1. This testing process:
+```bash
+# Run a feature test
+./etc/run-v1-compat.sh copy.feature
 
-1. Extracts all V1 tests into a baseline tracker (CSV)
-2. Runs V1 tests against the V2 engine
-3. Triages failures and fixes V2 or adapts tests
-4. Adopts valuable tests into the V2 codebase
+# Run with debug (copies files on failure)
+./etc/run-v1-compat.sh copy.feature --debug
+
+# Check status counts
+awk -F',' 'NR>1 {print $9}' docs/V1_BASELINE.csv | sort | uniq -c
+
+# List pending features by subdirectory
+grep ",pending," docs/V1_BASELINE.csv | awk -F',' '{print $8}' | sort | uniq -c | sort -rn
+```
 
 ---
 
-## Quick Start
+## Workflow
 
-### Extract Baseline (first time)
+**This is a monitored triage flow.** Work through tests one at a time with human oversight. Do NOT batch process. **When in doubt, ask for confirmation.**
 
-```bash
-./etc/extract-v1-baseline.sh
-```
+### Step 1: Pick Next Test
 
-This creates `docs/V1_BASELINE.csv` with all V1 test methods and feature files.
+Choose from priority order (see [Testing Priority](#testing-priority)):
+1. **root** - Core runtime features (highest priority)
+2. **parser/** - Gherkin parsing
+3. **jsread/, jscall/** - JS interop
+4. etc.
 
-### Run a Single Test
-
-```bash
-# Basic run
-./etc/run-v1-compat.sh copy.feature
-
-# With debug (copies to home/v1-compat/ on failure)
-./etc/run-v1-compat.sh parallel/parallel.feature --debug
-
-# Update CSV with result
-./etc/run-v1-compat.sh call-feature.feature --update-csv
-```
-
-### Run Tests by Subdirectory
+### Step 2: Run Test
 
 ```bash
-# List features in a subdirectory
-grep ",root," docs/V1_BASELINE.csv | head -10
+./etc/run-v1-compat.sh <feature>.feature
 ```
+
+### Step 3: Evaluate Result
+
+```
+Test passes?
+├── YES → Go to Step 4
+└── NO → Investigate:
+    ├── Feature not in V2 scope → Mark skipped, document reason
+    ├── Test needs adaptation → Adapt and re-run
+    └── V2 bug → Go to Step 3a (MUST fix before moving on)
+```
+
+### Step 3a: Fix V2 Bug (Required Before Moving On)
+
+**IMPORTANT:** Do NOT skip failures. Fix the bug, verify the fix, then continue.
+
+1. **Fix the bug** in V2 source code
+2. **Add unit test** with inline feature text-block:
+   ```java
+   @Test
+   void testFeatureName() {
+       ScenarioRuntime sr = run("""
+           Feature:
+           Scenario:
+           * def foo = 'bar'
+           """);
+       assertPassed(sr);
+   }
+   ```
+3. **Run the unit test**: `mvn test -Dtest=StepDefTest#testFeatureName -pl karate-core`
+4. **Re-run the V1 compat test** to confirm it passes
+5. Continue to Step 4
+
+### Step 4: Update CSV
+
+Mark the feature AND any related JUnit test(s) as passed:
+
+| Field | Value |
+|-------|-------|
+| `status` | `passed` |
+| `notes` | What was fixed or tested |
+| `v2_location` | Test class path (if bug was fixed) |
+| `date_tested` | Today's date |
+
+**Related items to mark together:**
+- Feature file → corresponding JUnit test method (e.g., `copy.feature` → `testCopyAndClone`)
+- Helper features → mark as `passed` with note `helper for X.feature`
+
+### Step 5: Consider Adding Test (Even if Passing)
+
+Even if a V1 test passes without code changes, consider adopting it if:
+- It demonstrates valuable syntax usage
+- It explains edge cases or behavior well
+- It provides coverage V2 doesn't have yet
+
+Before adding, check for duplicates:
+- Search existing `Step*Test` classes for similar functionality
+- If already covered → just mark as passed, no new test needed
+- If not covered → add test to appropriate class
 
 ---
 
 ## CSV Schema
 
-The baseline is tracked in `docs/V1_BASELINE.csv`:
+Tracked in `docs/V1_BASELINE.csv`:
 
 | Column | Description |
 |--------|-------------|
 | `id` | Unique identifier (java-001, feature-042) |
 | `type` | `java_test` or `feature` |
 | `source_path` | Path relative to V1 core dir |
-| `class_name` | Java class name (if applicable) |
-| `method_name` | Test method name (if applicable) |
-| `feature_name` | Feature filename (if applicable) |
-| `description` | What the test validates |
 | `subdirectory` | V1 subdirectory (root, parallel, etc.) |
-| `status` | Current status (see below) |
-| `notes` | Failure reason or notes |
-| `v2_location` | Path to V2 test class (if bug was fixed) |
+| `status` | `pending`, `passed`, `failed`, `skipped` |
+| `notes` | What was done or failure reason |
+| `v2_location` | V2 test class (if bug was fixed) |
 | `date_tested` | Last test date |
 
-### Status Values
+### JUnit and Feature Relationships
 
-| Status | Meaning |
-|--------|---------|
-| `pending` | Not yet tested against V2 |
-| `passed` | Works on V2 |
-| `failed` | Fails on V2 (needs investigation) |
-| `skipped` | Out of scope (mock, browser, perf) |
-
-**Note:** The `v2_location` column tracks where V2 unit tests exist (for review purposes).
+Some JUnit test methods directly run feature files. When marking results:
+- If a feature passes, mark BOTH the feature AND its JUnit test as passed
+- JUnit tests with complex lifecycle (env setup, karate-config.js) remain separate entries
+- Simple JUnit tests that just run a feature can note: `runs X.feature which passes`
 
 ---
 
-## Workflow
+## V2 Unit Test Guidelines
 
-**This is a monitored triage flow, not full automation.** Each test may need different setup (config, env, file structure). We work step-by-step with human oversight.
+When fixing bugs or adopting tests, use inline feature text-blocks:
 
-**IMPORTANT: Stop and ask for confirmation when:**
-- A test fails and needs investigation
-- A v2 bug is found that needs fixing
-- Deciding whether to adopt a test or skip it
-- Any decision point in the triage flow
+### Test Class Locations
 
-Do NOT batch process tests automatically. Work through one test at a time, report findings, and wait for direction.
-
-### Phase 1: Initial Triage
-
-1. Run extraction to create baseline
-2. Mark out-of-scope tests as `skipped` (mock, browser, perf)
-3. Work through tests by priority (see below)
-
-### Phase 2: Per-Test Process
-
-For each v1 test:
-
-1. **Copy files to sandbox** (`home/v1-compat/`)
-2. **Review and edit** - may need:
-   - Different karate-config.js
-   - Environment setup
-   - Additional dependency files
-3. **Run test** against v2 engine
-4. **Evaluate result:**
-
-```
-Test result?
-├── Passes → Is it valuable? Adopt or mark passed
-├── Fails:
-│   ├── Feature not in V2 scope → Mark skipped, document
-│   ├── Feature planned for V2 → Mark pending, link to CAPABILITIES.yaml
-│   └── Should work → Investigate
-│       ├── V2 bug → Fix V2 (see below)
-│       └── Test needs adaptation → Adapt and re-test
-```
-
-### When Fixing V2 Bugs
-
-**IMPORTANT:** Every V2 fix MUST include a unit test. This is non-negotiable.
-
-1. **Fix the bug** in V2 source code
-2. **Add unit test** to the appropriate `Step<Keyword>Test` class:
-   - Use inline feature strings (Java text blocks)
-   - Follow existing test patterns in the class
-   - Test both the fix and edge cases
-3. **Run the test** to verify: `mvn test -Dtest=StepDefTest -pl karate-core`
-4. **Then re-run** the V1 compat test to confirm it passes
-
-Example test locations:
 | Fix Area | Test Class |
 |----------|------------|
 | def, set, copy, table, replace | `StepDefTest` |
@@ -143,119 +141,65 @@ Example test locations:
 | multipart | `StepMultipartTest` |
 | karate.abort() | `StepAbortTest` |
 | call/callonce | `CallFeatureTest` |
+| JS functions, arrays | `StepJsTest` |
 
-### Phase 3: Recording Results
+### Patterns
 
-When a test passes:
-
-1. Update CSV: status=`passed`, add notes if fix was needed
-2. If a bug was fixed, the `v2_location` column can reference the test class
-3. Mark helper files (called features) as `passed` with note `helper for X.feature`
-
-**Lifecycle tests** (bootstrap, karateenv, config) typically need real feature files on disk - don't try to inline these.
-
----
-
-## V2 Testing Guidelines
-
-**IMPORTANT:** V2 optimizes for fast test execution. Follow these patterns when adopting tests:
-
-### 1. Use In-Memory HTTP (No Network)
-
-**Don't** run actual HTTP servers. Use `InMemoryHttpClient`:
-
+**Inline feature strings (preferred):**
 ```java
+ScenarioRuntime sr = run("""
+    Feature:
+    Scenario:
+    * def foo = { name: 'bar' }
+    """);
+assertPassed(sr);
+matchVar(sr, "foo", Map.of("name", "bar"));
+```
+
+**With mock HTTP:**
+```java
+InMemoryHttpClient client = new InMemoryHttpClient(req -> json("{ \"ok\": true }"));
+ScenarioRuntime sr = run(client, """
+    Feature:
+    Scenario:
+    * url 'http://test'
+    * method get
+    * match response.ok == true
+    """);
+assertPassed(sr);
+```
+
+**Multi-file tests** (call/read/lifecycle scenarios):
+
+Option A - Create on-the-fly with `@TempDir` (see `CallFeatureTest`):
+```java
+@TempDir
+Path tempDir;
+
 @Test
-void testGetWithParams() {
-    InMemoryHttpClient client = new InMemoryHttpClient(req -> {
-        String page = req.getParam("page");
-        if ("1".equals(page)) {
-            return json("{ \"page\": 1 }");
-        }
-        return status(400);
-    });
-
-    ScenarioRuntime sr = run(client, """
-        Feature:
+void testCallFeature() throws Exception {
+    Path called = tempDir.resolve("called.feature");
+    Files.writeString(called, """
+        Feature: Called
         Scenario:
-        * url 'http://test/items'
-        * param page = 1
-        * method get
-        * match response.page == 1
+        * def x = 1
         """);
-    assertPassed(sr);
+    // ... create caller and run
 }
 ```
 
-See: `karate-core/src/test/java/io/karatelabs/core/HttpStepTest.java`
-
-### 2. Use Inline Feature Strings
-
-**Don't** create separate `.feature` files for unit tests. Use Java text blocks:
-
-```java
-@Test
-void testDefJson() {
-    ScenarioRuntime sr = run("""
-        Feature:
-        Scenario:
-        * def foo = { name: 'bar' }
-        """);
-    assertPassed(sr);
-    matchVar(sr, "foo", Map.of("name", "bar"));
-}
+Option B - Static files in subfolder (see `copy/CopyTest`):
 ```
-
-See: `karate-core/src/test/java/io/karatelabs/core/DefStepTest.java`
-
-### 3. Use Feature Files for Call/Dependencies
-
-When testing `call`, `read`, or multi-file scenarios, use real `.feature` files in test resources:
-
+karate-core/src/test/resources/io/karatelabs/core/copy/
+├── copy.feature           # Main test
+├── copy-called.feature    # Helper
+└── copy-called-nested.feature
 ```
-karate-core/src/test/resources/
-├── feature/
-│   ├── caller.feature        # Main test feature
-│   └── called.feature        # Called dependency
-```
-
-This is appropriate for:
-- `call` and `callonce` tests
-- `read()` file operations
-- Multi-feature scenarios
-- Shared utilities
-
-### 4. Reuse Server Instances (When HTTP Required)
-
-If actual HTTP is needed, use `ServerTestHarness` with `@BeforeAll/@AfterAll`:
-
-```java
-static ServerTestHarness harness;
-
-@BeforeAll
-static void beforeAll() {
-    harness = new ServerTestHarness("classpath:test-resources");
-    harness.start();
-}
-
-@AfterAll
-static void afterAll() {
-    harness.stop();
-}
-```
-
-See: `karate-core/src/test/java/io/karatelabs/io/http/ServerTestHarness.java`
-
-### 5. Watch for Duplicates
-
-Before adopting a v1 test, check if v2 already tests the same thing:
-- Search existing test classes for similar functionality
-- Avoid redundant test coverage
-- Consolidate into existing tests when appropriate
+Use Option B when feature files are complex, explain syntax well, or are instructive to read together.
 
 ### Test Utilities
 
-Key utilities in `io.karatelabs.core.TestUtils`:
+From `io.karatelabs.core.TestUtils`:
 
 | Method | Usage |
 |--------|-------|
@@ -263,49 +207,61 @@ Key utilities in `io.karatelabs.core.TestUtils`:
 | `run(client, feature)` | Run with mock HTTP client |
 | `assertPassed(sr)` | Assert scenario passed |
 | `assertFailed(sr)` | Assert scenario failed |
-| `get(sr, name)` | Get variable value |
 | `matchVar(sr, name, expected)` | Assert variable matches |
 
-### Test Organization
+---
 
-The **JUnit class name** is the category. The **method name** describes what's being tested. Keep related tests together to avoid duplicates.
+## Testing Priority
 
-#### Naming Convention: `Step<Keyword>Test`
+| Priority | Subdirectory | Why |
+|----------|--------------|-----|
+| 1 | root | Core runtime features |
+| 2 | parser/ | Gherkin parsing |
+| 3 | jsread/, jscall/ | JS interop |
+| 4 | runner/ | Runner API |
+| 5 | parallel/ | Parallel execution |
+| 6 | xml/ | XML handling |
+| 7 | runner/hooks/ | Hook system |
+| 8 | tags/, retry/ | Tag filtering, retry |
 
-For tests that use **inline Gherkin text-blocks** (no feature files on disk), use the `Step<Keyword>Test` naming pattern:
+**Skip:** mock/, parajava/, parasimple/ (out of scope)
 
-| Class | What it tests |
-|-------|---------------|
-| `StepDefTest` | def, set, copy, remove, text, json |
-| `StepMatchTest` | match assertions |
-| `StepHttpTest` | HTTP with InMemoryHttpClient |
-| `StepMultipartTest` | multipart/form-data |
-| `StepAbortTest` | karate.abort() |
+---
 
-These tests use `TestUtils.run()` with Java text blocks:
-```java
-ScenarioRuntime sr = run("""
-    Feature:
-    Scenario:
-    * def foo = 'bar'
-    """);
-assertPassed(sr);
+## Out of Scope
+
+| Area | Reason |
+|------|--------|
+| Mock Server | Not yet implemented in V2 |
+| Browser/Driver | Not yet implemented in V2 |
+| Performance | Not yet implemented in V2 |
+| WebSocket | Not yet implemented in V2 |
+| Java Runner API | `Runner`, `Suite`, `Results` classes differ |
+
+---
+
+## V1 Source Reference
+
+**V1 tests location:**
+```
+/Users/peter/dev/zcode/karate/karate-core/src/test/java/com/intuit/karate/core/
 ```
 
-#### Other Test Classes
+**Key V1 implementation files** (for understanding expected behavior):
 
-Tests that require **feature files on disk** or test non-keyword functionality:
+| File | What it handles |
+|------|-----------------|
+| `ScenarioCall.java` | call/callonce scope handling |
+| `ScenarioEngine.java` | Step execution, variable management |
+| `ScenarioBridge.java` | `karate` object methods |
 
-| Class | What it tests |
-|-------|---------------|
-| `CallFeatureTest` | call, callonce (uses resource files) |
-| `copy/CopyTest` | shared vs isolated scope, variable inheritance |
-| `ConfigTest` | configure keyword |
-| `KarateConfigTest` | karate-config.js lifecycle |
-| `ScenarioOutlineTest` | outlines, examples |
-| `RuntimeHookTest` | hooks |
+**Key V2 implementation files:**
 
-Before adding a test, check if the class already covers it.
+| File | What it handles |
+|------|-----------------|
+| `StepExecutor.java` | Keyword execution |
+| `KarateJs.java` | `karate.*` methods |
+| `ScenarioRuntime.java` | Scenario execution |
 
 ---
 
@@ -314,229 +270,16 @@ Before adding a test, check if the class already covers it.
 ```
 karate-v2/
 ├── docs/
-│   ├── V1_BASELINE.csv         # Master tracking
+│   ├── V1_BASELINE.csv         # Test tracking
 │   ├── COMPATIBILITY.md        # This file
 │   └── CAPABILITIES.yaml       # Feature spec
 ├── etc/
-│   ├── test-cli.sh             # V2 CLI runner
-│   ├── extract-v1-baseline.sh  # CSV extraction
-│   └── run-v1-compat.sh        # Single test runner
-├── home/
-│   └── v1-compat/              # Debug workspace (gitignored)
-├── target/
-│   └── v1-compat-results/      # Test logs (gitignored)
+│   ├── run-v1-compat.sh        # Test runner
+│   └── test-cli.sh             # V2 CLI
+├── home/v1-compat/             # Debug workspace (gitignored)
 └── karate-core/src/test/java/io/karatelabs/core/
-    ├── StepDefTest.java        # def, set, copy, remove, text, json
-    ├── StepMatchTest.java      # match assertions
-    ├── StepHttpTest.java       # HTTP with InMemoryHttpClient
-    ├── StepAbortTest.java      # karate.abort()
-    ├── CallFeatureTest.java    # call, callonce (needs files on disk)
-    ├── ConfigTest.java         # configure, karate-config
-    └── ...                     # Add to existing or create new as needed
-```
-
-**Note:** Adopted tests go into existing test classes (inline feature strings), not separate resource files.
-
----
-
-## Testing Priority
-
-| Priority | Subdirectory | Count | Why |
-|----------|--------------|-------|-----|
-| 1 | root | ~100 | Core runtime features |
-| 2 | parser/ | ~24 | Gherkin parsing |
-| 3 | jsread/, jscall/ | ~25 | JS interop |
-| 4 | runner/ | ~35 | Runner API |
-| 5 | parallel/ | ~15 | Parallel execution |
-| 6 | xml/ | ~10 | XML handling |
-| 7 | hooks/ | ~20 | Hook system |
-| 8 | tags/, retry/ | ~5 | Tag filtering, retry |
-
-**Skip:** mock/, parajava/, parasimple/
-
----
-
-## Out of Scope
-
-These V1 features have known differences in V2 or are out of scope:
-
-| Area | Reason |
-|------|--------|
-| **Java API** | `Runner`, `Suite`, `Results` classes differ |
-| **HTML Reports** | V2 has new report format |
-| **Mock Server** | Not yet implemented in V2 |
-| **Browser/Driver** | Not yet implemented in V2 |
-| **Performance** | Not yet implemented in V2 |
-| **WebSocket** | Not yet implemented in V2 |
-
----
-
-## Relationship to CAPABILITIES.yaml
-
-| File | Purpose |
-|------|---------|
-| **CAPABILITIES.yaml** | Feature specification (what V2 should do) |
-| **V1_BASELINE.csv** | Test execution tracking (proof V1 tests pass) |
-
-They complement each other:
-- CAPABILITIES defines the goal
-- BASELINE proves it works
-
----
-
-## V1 Source Location
-
-All V1 tests are sourced from:
-
-```
-/Users/peter/dev/zcode/karate/karate-core/src/test/java/com/intuit/karate/core/
-```
-
-This directory contains:
-- **63 Java test files** (46 with @Test annotations)
-- **~239 feature files**
-- **14 subdirectories** organized by feature area
-
----
-
-## Investigating V1 Behavior
-
-When a V2 test fails, consult V1 source code to understand expected behavior:
-
-```
-/Users/peter/dev/zcode/karate/karate-core/src/main/java/com/intuit/karate/core/
-```
-
-Key V1 implementation files:
-| File | What it handles |
-|------|-----------------|
-| `ScenarioCall.java` | call/callonce scope handling, shared vs isolated |
-| `ScenarioEngine.java` | Step execution, variable management |
-| `StepRuntime.java` | Keyword parsing, special syntax handling |
-| `ScenarioBridge.java` | `karate` object methods |
-
-Key V2 implementation files:
-| File | What it handles |
-|------|-----------------|
-| `StepExecutor.java` | Keyword execution (`def`, `set`, `match`, `call`, etc.) |
-| `KarateJs.java` | JS `karate.*` methods (`karate.set()`, `karate.get()`, `karate.abort()`, etc.) |
-| `ScenarioRuntime.java` | Scenario execution, variable management |
-
-**Workflow when debugging:**
-1. Run V1 test against V2, note the failure
-2. Find the relevant V1 implementation code
-3. Compare behavior - understand what V1 does
-4. Fix V2 to match, or document the intentional difference
-
----
-
-## CSV Update Guidelines
-
-When updating the CSV after testing:
-
-| Field | When to update | Example |
-|-------|----------------|---------|
-| `status` | Always | `passed`, `failed`, `skipped` |
-| `notes` | Action taken or failure reason | `fixed table eval; added StepDefTest` |
-| `v2_location` | Path to V2 test (if bug was fixed) | `io/karatelabs/core/StepDefTest` |
-| `date_tested` | Today's date | `2025-12-17` |
-
-**Helper features:** Features that are called by other features (not standalone tests) should be marked as `passed` with note `helper for X.feature`.
-
-**Example CSV update:**
-```
-# Main test feature with bug fix
-feature-040,feature,copy.feature,...,passed,fixed shared/isolated scope; added CopyTest,io/karatelabs/core/copy/,2025-12-17
-
-# Helper features
-feature-037,feature,copy-called-nested.feature,...,passed,helper for copy.feature,,2025-12-17
-```
-
----
-
-## Lightweight Test Harness
-
-When adopting tests, prefer `FeatureRuntime` over `Suite` for simpler/faster execution:
-
-```java
-// Lightweight - no reports, just pass/fail
-Resource resource = Resource.path("src/test/resources/path/to/test.feature");
-Feature feature = Feature.read(resource);
-FeatureResult result = FeatureRuntime.of(feature).call();
-
-assertTrue(result.isPassed());
-assertEquals(6, result.getScenarioCount());
-```
-
-Use `Suite` only when you need:
-- Report generation
-- Tag filtering
-- Multiple features
-- Config path specification
-
----
-
-## Running Tests
-
-### Prerequisites
-
-```bash
-# Build V2 (first time)
-mvn install -DskipTests
-
-# Or build fatjar for faster testing
-mvn package -DskipTests -Pfatjar
-```
-
-### Single Feature Test
-
-```bash
-./etc/run-v1-compat.sh copy.feature
-```
-
-### List Tests by Subdirectory
-
-```bash
-# Show features in parallel/ subdirectory
-grep ",parallel," docs/V1_BASELINE.csv
-
-# Show features in root
-grep ",root," docs/V1_BASELINE.csv | head -20
-```
-
-**Note:** Don't batch process. Work through tests one at a time with human review.
-
-### Debug Failed Test
-
-```bash
-# Run with --debug to copy files on failure
-./etc/run-v1-compat.sh some-test.feature --debug
-
-# Files are copied to home/v1-compat/
-# Edit and rerun:
-./etc/test-cli.sh home/v1-compat/some-test.feature
-```
-
----
-
-## Viewing Results
-
-### Check Status Summary
-
-```bash
-# Status counts (column 9 = status)
-awk -F',' '{print $9}' docs/V1_BASELINE.csv | sort | uniq -c
-
-# Pending tests by subdirectory
-grep ",pending," docs/V1_BASELINE.csv | awk -F',' '{print $8}' | sort | uniq -c | sort -rn
-
-# Failed tests
-grep ",failed," docs/V1_BASELINE.csv
-```
-
-### View Test Logs
-
-```bash
-ls -la target/v1-compat-results/
-cat target/v1-compat-results/copy.log
+    ├── StepDefTest.java
+    ├── StepMatchTest.java
+    ├── StepJsTest.java
+    └── ...
 ```
