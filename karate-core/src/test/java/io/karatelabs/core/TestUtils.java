@@ -93,6 +93,19 @@ public class TestUtils {
     }
 
     /**
+     * Run scenario steps from a specific directory (for file read tests).
+     */
+    public static ScenarioRuntime runFromDir(java.nio.file.Path dir, String steps) {
+        Feature feature = Feature.read(Resource.text("Feature:\nScenario:\n" + steps));
+        Scenario scenario = feature.getSections().getFirst().getScenario();
+        Resource root = Resource.path(dir.toString());
+        KarateJs karate = new KarateJs(root, new InMemoryHttpClient());
+        ScenarioRuntime sr = new ScenarioRuntime(karate, scenario);
+        sr.call();
+        return sr;
+    }
+
+    /**
      * Get a variable from the runtime.
      */
     public static Object get(ScenarioRuntime sr, String name) {

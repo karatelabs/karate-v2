@@ -181,6 +181,14 @@ public class Operation {
             }
         }
         if (actual.type != expected.type) {
+            // Special case: STRING contains XML-looking string - do substring matching
+            // Must check BEFORE the list-wrapping logic below
+            if (actual.isString() && expected.isXml() && isContainsType(type)) {
+                String expStr = Xml.toString((org.w3c.dom.Node) expected.getValue(), false);
+                Operation mo = new Operation(context, type, actual, new Value(expStr), matchEachEmptyAllowed);
+                mo.execute();
+                return mo.pass ? pass() : fail(mo.failReason);
+            }
             switch (type) {
                 case CONTAINS:
                 case NOT_CONTAINS:
@@ -680,6 +688,13 @@ public class Operation {
             }
         }
         return sb.toString();
+    }
+
+    private static boolean isContainsType(Match.Type t) {
+        return t == Match.Type.CONTAINS || t == Match.Type.NOT_CONTAINS
+                || t == Match.Type.CONTAINS_ANY || t == Match.Type.CONTAINS_ONLY
+                || t == Match.Type.CONTAINS_DEEP || t == Match.Type.CONTAINS_ONLY_DEEP
+                || t == Match.Type.CONTAINS_ANY_DEEP;
     }
 
 }

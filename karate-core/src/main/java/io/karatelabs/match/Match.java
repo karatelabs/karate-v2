@@ -79,4 +79,35 @@ public class Match {
         }
     }
 
+    /**
+     * Execute a match preserving the actual value type.
+     * Use this when the actual value should remain as-is (e.g., String from xmlstring).
+     * The expected value is still parsed to allow XML/JSON literals in RHS.
+     */
+    public static Result executePreserveActual(Engine engine, Type matchType, Object actual, Object expected) {
+        // For CONTAINS on strings, don't convert actual - preserve user's intent
+        // If they used xmlstring, they want a String, not an XML document
+        Value actualValue;
+        if (actual instanceof String && isContainsType(matchType)) {
+            actualValue = new Value(actual); // Keep as String
+        } else {
+            actualValue = new Value(Value.parseIfJsonOrXmlString(actual));
+        }
+        Value expectedValue = new Value(Value.parseIfJsonOrXmlString(expected));
+        Operation op = new Operation(engine, matchType, actualValue, expectedValue);
+        op.execute();
+        if (op.pass) {
+            return Result.PASS;
+        } else {
+            return Result.fail(op.getFailureReasons());
+        }
+    }
+
+    private static boolean isContainsType(Type t) {
+        return t == Type.CONTAINS || t == Type.NOT_CONTAINS
+                || t == Type.CONTAINS_ANY || t == Type.CONTAINS_ONLY
+                || t == Type.CONTAINS_DEEP || t == Type.CONTAINS_ONLY_DEEP
+                || t == Type.CONTAINS_ANY_DEEP;
+    }
+
 }

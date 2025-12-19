@@ -346,4 +346,51 @@ class StepXmlTest {
         assertPassed(sr);
     }
 
+    @Test
+    void testXmlEmbeddedExpressions() {
+        // Test embedded expressions in XML literals
+        ScenarioRuntime sr = run("""
+            * def phoneNumber = '123456'
+            * def search = { wireless: true, voip: false }
+            * def xml =
+              \"\"\"
+              <root>
+                  <phone>#(phoneNumber)</phone>
+                  <flag>#(search.wireless)</flag>
+              </root>
+              \"\"\"
+            * match xml /root/phone == '123456'
+            * match xml /root/flag == 'true'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testReadXmlWithEmbeddedExpressions() throws Exception {
+        // Create temp XML file with embedded expressions
+        java.nio.file.Path tempDir = java.nio.file.Files.createTempDirectory("karate-test");
+        java.nio.file.Path xmlFile = tempDir.resolve("test.xml");
+        java.nio.file.Files.writeString(xmlFile, """
+            <root>
+                <phone>#(phoneNumber)</phone>
+                <flag>#(search.wireless)</flag>
+            </root>
+            """);
+        try {
+            ScenarioRuntime sr = runFromDir(tempDir, """
+                * def phoneNumber = '123456'
+                * def search = { wireless: true, voip: false }
+                * def xml = read('test.xml')
+                * match xml /root/phone == '123456'
+                * match xml /root/flag == 'true'
+                * xmlstring xmlStr = xml
+                * match xmlStr contains '<phone>123456</phone>'
+                """);
+            assertPassed(sr);
+        } finally {
+            java.nio.file.Files.deleteIfExists(xmlFile);
+            java.nio.file.Files.deleteIfExists(tempDir);
+        }
+    }
+
 }

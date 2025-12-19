@@ -216,25 +216,14 @@ public class StepExecutor {
         } else if (expr.startsWith("callonce ")) {
             String callExpr = expr.substring(9).trim();
             executeCallOnceWithResult(callExpr, name);
-        } else if (expr.startsWith("$")) {
-            // $varname[*].path - jsonpath shortcut on a variable
-            Object value = evalJsonPathShortcut(expr);
-            runtime.setVariable(name, value);
-        } else if (expr.startsWith("get[") || expr.startsWith("get ")) {
-            // get[N] varname path OR get varname path - jsonpath with optional index
-            Object value = evalGetExpression(expr);
-            runtime.setVariable(name, value);
-        } else if (expr.startsWith("<")) {
-            // XML literal - parse directly as XML document
-            Object value = Xml.toXmlDoc(expr);
-            value = processEmbeddedExpressions(value);
-            runtime.setVariable(name, value);
         } else {
-            Object value = runtime.eval(expr);
-            // Process embedded expressions for JSON/Map/List values
-            if (value instanceof Map || value instanceof List) {
-                value = processEmbeddedExpressions(value);
-            }
+            // Use common Karate expression evaluation which handles:
+            // - $varname/xpath, $varname[*].path (jsonpath)
+            // - get[N] varname path
+            // - <xml> literals
+            // - varname/xpath (XML XPath shorthand)
+            // - Regular JS expressions
+            Object value = evalKarateExpression(expr);
             runtime.setVariable(name, value);
         }
     }
@@ -702,19 +691,29 @@ public class StepExecutor {
     private void executeRemove(Step step) {
         String text = step.getText().trim();
 
-        // Check for jsonpath syntax: "varName $.path" or "varName $path"
+        // Check for path syntax: "varName xpath" or "varName $jsonpath"
         int spaceIndex = text.indexOf(' ');
         if (spaceIndex > 0) {
             String varName = text.substring(0, spaceIndex);
-            String jsonPath = text.substring(spaceIndex + 1).trim();
+            String path = text.substring(spaceIndex + 1).trim();
 
             Object target = runtime.getVariable(varName);
             if (target == null) return;
 
+            // Handle XPath removal - path starts with /
+            if (path.startsWith("/") && target instanceof Node) {
+                Node node = (Node) target;
+                org.w3c.dom.Document doc = node instanceof org.w3c.dom.Document
+                        ? (org.w3c.dom.Document) node
+                        : node.getOwnerDocument();
+                Xml.removeByPath(doc, path);
+                return;
+            }
+
             // Handle jsonpath removal
-            if (jsonPath.startsWith("$")) {
+            if (path.startsWith("$")) {
                 // Extract the path after $ - e.g., "$.foo" -> "foo", "$['foo']" -> handle bracket notation
-                String pathWithoutDollar = jsonPath.substring(1);
+                String pathWithoutDollar = path.substring(1);
                 if (pathWithoutDollar.startsWith(".")) {
                     pathWithoutDollar = pathWithoutDollar.substring(1);
                 }
@@ -809,8 +808,8 @@ public class StepExecutor {
         } else {
             expr = text.substring(eqIndex + 1).trim();
         }
-        // Evaluate expression and convert to XML Document
-        Object value = runtime.eval(expr);
+        // Evaluate expression using Karate expression evaluation (handles $var /xpath, etc.)
+        Object value = evalKarateExpression(expr);
         if (value instanceof String) {
             value = Xml.toXmlDoc((String) value);
         } else if (value instanceof Node) {
@@ -1018,8 +1017,9 @@ public class StepExecutor {
 
         Match.Type matchType = Match.Type.valueOf(expr.getMatchTypeName());
 
-        // Use Match.execute with runtime's engine so embedded expressions can access variables
-        Result result = Match.execute(runtime.getEngine(), matchType, actual, expected);
+        // Use Match.executePreserveActual to preserve String actual values for CONTAINS
+        // This ensures xmlstring values are matched as strings, not converted to XML
+        Result result = Match.executePreserveActual(runtime.getEngine(), matchType, actual, expected);
         if (!result.pass) {
             throw new AssertionError(result.message);
         }
@@ -1045,9 +1045,19 @@ public class StepExecutor {
             return evalGetExpression(expr);
         }
 
-        // Handle $varname.path jsonpath shortcut
+        // Handle $varname patterns - could be jsonpath OR xpath on XML variable
+        // $varname/xpath, $varname /xpath, $[...], $., $varname[*].path
         if (expr.startsWith("$")) {
-            return evalJsonPathShortcut(expr);
+            return evalDollarPrefixedExpression(expr);
+        }
+
+        // Handle bare xpath on response: "//xpath" or "/xpath"
+        // e.g., "match //myelement == 'foo'" operates on response variable
+        if (expr.startsWith("/")) {
+            Object response = runtime.getVariable("response");
+            if (response instanceof Node) {
+                return KarateJs.evalXmlPath((Node) response, expr);
+            }
         }
 
         // Handle "varname /" syntax - XPath root shortcut for XML variable
@@ -1062,17 +1072,17 @@ public class StepExecutor {
             }
         }
 
-        // Handle "varname /xpath/path" syntax - XPath on XML variable
-        if (expr.contains(" /") && !expr.contains("//")) {
-            int spaceSlashIdx = expr.indexOf(" /");
-            String varName = expr.substring(0, spaceSlashIdx).trim();
-            String xpath = expr.substring(spaceSlashIdx + 1).trim();
-            if (!varName.contains(" ") && varName.matches("[a-zA-Z_][a-zA-Z0-9_]*")) {
-                Object target = runtime.getVariable(varName);
-                if (target instanceof Node) {
-                    return KarateJs.evalXmlPath((Node) target, xpath);
-                }
+        // Handle XPath patterns with or without space:
+        // - "varname /xpath/path" (with space)
+        // - "varname/xpath/path" (no space) - V1 compatibility
+        // - "varname //xpath" (double-slash xpath)
+        Object xpathResult = tryEvalXPathExpression(expr);
+        if (xpathResult != null) {
+            // If XPath was evaluated but path not found, return #notpresent
+            if (xpathResult == XPATH_NOT_PRESENT) {
+                return "#notpresent";
             }
+            return xpathResult;
         }
 
         // Check if expression contains jsonpath wildcard [*] or filter [?(...)]
@@ -1116,6 +1126,190 @@ public class StepExecutor {
             }
         }
         return result;
+    }
+
+    /** Sentinel value indicating XPath was evaluated but returned no result. */
+    private static final Object XPATH_NOT_PRESENT = new Object();
+
+    /**
+     * Tries to evaluate an expression as XPath on an XML variable.
+     * Handles patterns like:
+     * - "varname /xpath" (with space)
+     * - "varname/xpath" (no space, V1 compatibility)
+     * - "varname //xpath" (double-slash xpath)
+     *
+     * @return the XPath result, XPATH_NOT_PRESENT if path not found, or null if expression is not an XPath pattern
+     */
+    private Object tryEvalXPathExpression(String expr) {
+        // Pattern 1: "varname /xpath" or "varname //xpath" (with space)
+        int spaceSlashIdx = expr.indexOf(" /");
+        if (spaceSlashIdx > 0) {
+            String varName = expr.substring(0, spaceSlashIdx).trim();
+            String xpath = expr.substring(spaceSlashIdx + 1).trim();
+            if (isValidVariableName(varName)) {
+                Object target = runtime.getVariable(varName);
+                if (target instanceof Node) {
+                    Object result = KarateJs.evalXmlPath((Node) target, xpath);
+                    return result == null ? XPATH_NOT_PRESENT : result;
+                }
+            }
+        }
+
+        // Pattern 2: "varname/xpath" (no space, V1 compatibility)
+        // Find first / that's not preceded by space
+        int slashIdx = expr.indexOf('/');
+        if (slashIdx > 0 && (spaceSlashIdx < 0 || slashIdx < spaceSlashIdx)) {
+            // Make sure the character before / is not a space
+            if (expr.charAt(slashIdx - 1) != ' ') {
+                String varName = expr.substring(0, slashIdx);
+                if (isValidVariableName(varName)) {
+                    Object target = runtime.getVariable(varName);
+                    if (target instanceof Node) {
+                        String xpath = expr.substring(slashIdx);
+                        Object result = KarateJs.evalXmlPath((Node) target, xpath);
+                        return result == null ? XPATH_NOT_PRESENT : result;
+                    }
+                }
+            }
+        }
+
+        return null; // Not an XPath expression
+    }
+
+    /**
+     * Handles $varname prefixed expressions.
+     * Could be:
+     * - $varname/xpath or $varname /xpath - XPath on XML variable
+     * - $varname//xpath - double-slash XPath
+     * - $[...] or $. - jsonpath on response
+     * - $varname[*].path - jsonpath on variable
+     */
+    private Object evalDollarPrefixedExpression(String expr) {
+        String withoutDollar = expr.substring(1);
+
+        // Special case: $[...] or $. means use 'response' variable for jsonpath
+        if (withoutDollar.startsWith("[") || withoutDollar.startsWith(".")) {
+            Object target = runtime.getVariable("response");
+            if (target instanceof Node) {
+                // Response is XML - shouldn't use jsonpath
+                return target;
+            }
+            String path = "$" + withoutDollar;
+            return JsonPath.read(target, path);
+        }
+
+        // Find where the path starts (at space+/, /, ., or [)
+        int spaceSlashIdx = withoutDollar.indexOf(" /");
+        int slashIdx = withoutDollar.indexOf('/');
+        int dotIdx = withoutDollar.indexOf('.');
+        int bracketIdx = withoutDollar.indexOf('[');
+
+        // Determine variable name and path type
+        String varName;
+        String path;
+        boolean isXPath = false;
+
+        // Check for XPath patterns first: $varname /xpath or $varname/xpath
+        if (spaceSlashIdx > 0) {
+            // $varname /xpath (with space)
+            varName = withoutDollar.substring(0, spaceSlashIdx);
+            path = withoutDollar.substring(spaceSlashIdx + 1).trim();
+            isXPath = true;
+        } else if (slashIdx > 0 && (dotIdx < 0 || slashIdx < dotIdx) && (bracketIdx < 0 || slashIdx < bracketIdx)) {
+            // $varname/xpath (no space)
+            varName = withoutDollar.substring(0, slashIdx);
+            path = withoutDollar.substring(slashIdx);
+            isXPath = true;
+        } else if (dotIdx > 0 && (bracketIdx < 0 || dotIdx < bracketIdx)) {
+            // $varname.path - jsonpath
+            varName = withoutDollar.substring(0, dotIdx);
+            path = "$" + withoutDollar.substring(dotIdx);
+        } else if (bracketIdx > 0) {
+            // $varname[...] - jsonpath
+            varName = withoutDollar.substring(0, bracketIdx);
+            path = "$" + withoutDollar.substring(bracketIdx);
+        } else {
+            // Just $varname - return the variable itself
+            return runtime.getVariable(withoutDollar);
+        }
+
+        Object target = runtime.getVariable(varName);
+        if (target == null) {
+            return null;
+        }
+
+        if (isXPath) {
+            if (target instanceof Node) {
+                return KarateJs.evalXmlPath((Node) target, path);
+            }
+            // Fall back to jsonpath if not XML
+            return JsonPath.read(target, "$" + path);
+        } else {
+            // JsonPath
+            return JsonPath.read(target, path);
+        }
+    }
+
+    /**
+     * Checks if a string is a valid variable name.
+     */
+    private boolean isValidVariableName(String name) {
+        return name != null && !name.isEmpty() && !name.contains(" ")
+                && name.matches("[a-zA-Z_][a-zA-Z0-9_]*");
+    }
+
+    /**
+     * Evaluates a Karate expression, handling:
+     * - $varname/xpath, $varname[*].path (jsonpath)
+     * - get[N] varname path
+     * - <xml> literals
+     * - varname/xpath (XML XPath shorthand)
+     * - Regular JS expressions with embedded expression processing
+     */
+    private Object evalKarateExpression(String expr) {
+        if (expr == null || expr.isEmpty()) {
+            return null;
+        }
+
+        expr = expr.trim();
+
+        // Handle $varname patterns - could be jsonpath OR xpath on XML variable
+        if (expr.startsWith("$")) {
+            return evalDollarPrefixedExpression(expr);
+        }
+
+        // Handle get[N] or get syntax
+        if (expr.startsWith("get[") || expr.startsWith("get ")) {
+            return evalGetExpression(expr);
+        }
+
+        // Handle XML literal - expression starting with <
+        if (expr.startsWith("<")) {
+            Object value = Xml.toXmlDoc(expr);
+            return processEmbeddedExpressions(value);
+        }
+
+        // Handle bare xpath on response: "//xpath" or "/xpath"
+        if (expr.startsWith("/")) {
+            Object response = runtime.getVariable("response");
+            if (response instanceof Node) {
+                return KarateJs.evalXmlPath((Node) response, expr);
+            }
+        }
+
+        // Handle XPath patterns: "varname/xpath" or "varname /xpath"
+        Object xpathResult = tryEvalXPathExpression(expr);
+        if (xpathResult != null) {
+            // For def/assignment: if XPath returned not present, use null
+            return xpathResult == XPATH_NOT_PRESENT ? null : xpathResult;
+        }
+
+        // Default: evaluate as JS with embedded expression processing
+        Object value = runtime.eval(expr);
+        if (value instanceof Map || value instanceof List) {
+            value = processEmbeddedExpressions(value);
+        }
+        return value;
     }
 
     private void executeAssert(Step step) {
