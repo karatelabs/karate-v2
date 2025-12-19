@@ -335,4 +335,47 @@ class ExternalBridgeTest extends EvalBase {
         assertEquals(255, engine.eval("bytes[3]"));  // unsigned
     }
 
+    @Test
+    void testXmlDocumentPassthrough() {
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+
+        // Create an XML document and verify it passes through JS correctly
+        org.w3c.dom.Document doc = io.karatelabs.common.Xml.toXmlDoc("<root><foo>bar</foo></root>");
+        engine.put("doc", doc);
+
+        // Verify typeof
+        assertEquals("object", engine.eval("typeof doc"));
+
+        // Verify it can be passed to a function and received as a Node
+        Invokable testFn = args -> args[0] instanceof org.w3c.dom.Node ? "success" : "not a node";
+        engine.put("testFn", testFn);
+        assertEquals("success", engine.eval("testFn(doc)"));
+    }
+
+    @Test
+    void testXmlPathViaSimpleObject() {
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+
+        // Create a SimpleObject with xmlPath method (similar to karate object)
+        SimpleObject myKarate = name -> {
+            if ("xmlPath".equals(name)) {
+                return (Invokable) args -> {
+                    org.w3c.dom.Node node = (org.w3c.dom.Node) args[0];
+                    String path = args[1].toString();
+                    org.w3c.dom.NodeList nodeList = io.karatelabs.common.Xml.getNodeListByPath(node, path);
+                    return nodeList.getLength() > 0 ? nodeList.item(0).getTextContent() : null;
+                };
+            }
+            return null;
+        };
+
+        org.w3c.dom.Document doc = io.karatelabs.common.Xml.toXmlDoc("<root><foo>bar</foo></root>");
+        engine.put("doc", doc);
+        engine.put("myKarate", myKarate);
+
+        assertEquals("bar", engine.eval("myKarate.xmlPath(doc, '/root/foo')"));
+    }
+
 }

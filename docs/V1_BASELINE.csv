@@ -35,7 +35,7 @@ java-033,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testExtract,,testE
 java-034,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testConfigureInJs,,testConfigureInJs,root,pending,,,
 java-035,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTable,,testTable,root,passed,runs table.feature which passes,,2025-12-19
 java-036,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSet,,testSet,root,passed,runs set.feature which passes,,2025-12-19
-java-037,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSetXml,,testSetXml,root,pending,,,
+java-037,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSetXml,,testSetXml,root,passed,karate.setXml() implemented,io/karatelabs/core/StepXmlTest,2025-12-19
 java-038,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead,,testJsRead,root,pending,,,
 java-039,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead2,,testJsRead2,root,pending,,,
 java-040,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead3,,testJsRead3,root,pending,,,
@@ -56,7 +56,7 @@ java-054,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallArgNull,,t
 java-055,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testIgnoreStepFailure,,testIgnoreStepFailure,root,pending,,,
 java-056,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateFork,,testKarateFork,root,pending,,,
 java-057,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCsv,,testCsv,root,passed,runs csv.feature which passes,,2025-12-19
-java-058,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testXmlPretty,,testXmlPretty,root,pending,,,
+java-058,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testXmlPretty,,testXmlPretty,root,passed,karate.prettyXml() implemented,io/karatelabs/core/StepXmlTest,2025-12-19
 java-059,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testMatchStep,,testMatchStep,root,passed,runs match-step.feature which passes,,2025-12-19
 java-060,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallJsonPath,,testCallJsonPath,root,pending,,,
 java-061,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSchemaRead,,testSchemaRead,root,pending,,,
@@ -97,7 +97,7 @@ java-095,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testEmbeddedString
 java-096,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testEmbeddedList,,testEmbeddedList,root,pending,,,
 java-097,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testEmbeddedMap,,testEmbeddedMap,root,pending,,,
 java-098,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testEmbeddedXml,,testEmbeddedXml,root,pending,,,
-java-099,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testEvalXmlAndXpath,,testEvalXmlAndXpath,root,pending,,,
+java-099,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testEvalXmlAndXpath,,testEvalXmlAndXpath,root,passed,karate.xmlPath() implemented,io/karatelabs/core/StepXmlTest,2025-12-19
 java-100,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testEvalJsonAndJsonPath,,testEvalJsonAndJsonPath,root,pending,,,
 java-101,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testMatchObjectsReturnedFromJs,,testMatchObjectsReturnedFromJs,root,pending,,,
 java-102,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testTypeConversion,,testTypeConversion,root,pending,,,
@@ -141,7 +141,7 @@ java-139,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMapWithKey,,
 java-140,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMergeAndAppend,,testMergeAndAppend,root,pending,,,
 java-141,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testJsonPath,,testJsonPath,root,pending,,,
 java-142,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testLowerCase,,testLowerCase,root,pending,,,
-java-143,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testXmlPath,,testXmlPath,root,pending,,,
+java-143,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testXmlPath,,testXmlPath,root,passed,karate.xmlPath() implemented,io/karatelabs/core/StepXmlTest,2025-12-19
 java-144,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testJsonToString,,testJsonToString,root,pending,,,
 java-145,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testToBean,,testToBean,root,pending,,,
 java-146,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testToJson,,testToJson,root,pending,,,
@@ -508,7 +508,7 @@ feature-214,feature,scenario-outline-result.feature,,,scenario-outline-result.fe
 feature-215,feature,scenario-variable-scope.feature,,,scenario-variable-scope.feature,scenario-variable-scope.feature,root,passed,variable scoping between scenarios,,2025-12-19
 feature-216,feature,schema-like.feature,,,schema-like.feature,json-schema like validation,root,pending,,,
 feature-217,feature,schema-read.feature,,,schema-read.feature,schema-read.feature,root,pending,,,
-feature-218,feature,set-xml.feature,,,set-xml.feature,set-xml.feature,root,pending,,,
+feature-218,feature,set-xml.feature,,,set-xml.feature,set-xml.feature,root,pending,XML table-based set needs auto-build support,,
 feature-219,feature,set.feature,,,set.feature,set.feature,root,passed,set keyword for setting json paths,,2025-12-19
 feature-220,feature,single-scenario.feature,,,single-scenario.feature,sample feature with distinct signature for each scenario,root,passed,multiple scenarios in feature,,2025-12-19
 feature-221,feature,sort-array.feature,,,sort-array.feature,example of js java hybrid sort,root,pending,,,
@@ -525,7 +525,7 @@ feature-231,feature,users-doc.feature,,,users-doc.feature,users-doc.feature,root
 feature-232,feature,utils-reuse-common.feature,,,utils-reuse-common.feature,utils-reuse-common.feature,root,pending,,,
 feature-233,feature,utils-reuse.feature,,,utils-reuse.feature,json and js functions loaded in the karate-config.js,root,pending,,,
 feature-234,feature,websocket.feature,,,websocket.feature,websocket.feature,root,pending,,,
-feature-235,feature,xml-pretty.feature,,,xml-pretty.feature,xml-pretty.feature,root,pending,,,
+feature-235,feature,xml-pretty.feature,,,xml-pretty.feature,xml-pretty.feature,root,passed,XML literal + set + match support added,io/karatelabs/core/StepXmlTest,2025-12-19
 feature-236,feature,xml/xml-and-xpath.feature,,,xml-and-xpath.feature,xml and xpath demos,xml,pending,,,
 feature-237,feature,xml/xml-call.feature,,,xml-call.feature,Example,xml,pending,,,
 feature-238,feature,xml/xml-called.feature,,,xml-called.feature,xml-called.feature,xml,pending,,,

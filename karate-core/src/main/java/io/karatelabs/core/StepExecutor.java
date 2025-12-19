@@ -26,6 +26,8 @@ package io.karatelabs.core;
 import io.karatelabs.common.DataUtils;
 import io.karatelabs.common.Json;
 import io.karatelabs.common.Resource;
+import io.karatelabs.common.Xml;
+import org.w3c.dom.Node;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.MatchExpression;
 import io.karatelabs.gherkin.Step;
@@ -95,6 +97,7 @@ public class StepExecutor {
                     case "text" -> executeText(step);
                     case "json" -> executeJson(step);
                     case "xml" -> executeXml(step);
+                    case "xmlstring" -> executeXmlString(step);
                     case "string" -> executeString(step);
                     case "csv" -> executeCsv(step);
                     case "yaml" -> executeYaml(step);
@@ -220,6 +223,11 @@ public class StepExecutor {
         } else if (expr.startsWith("get[") || expr.startsWith("get ")) {
             // get[N] varname path OR get varname path - jsonpath with optional index
             Object value = evalGetExpression(expr);
+            runtime.setVariable(name, value);
+        } else if (expr.startsWith("<")) {
+            // XML literal - parse directly as XML document
+            Object value = Xml.toXmlDoc(expr);
+            value = processEmbeddedExpressions(value);
             runtime.setVariable(name, value);
         } else {
             Object value = runtime.eval(expr);
@@ -395,10 +403,63 @@ public class StepExecutor {
             return;
         }
 
-        // Deprecated: prefer using native JS syntax: * foo.bar = 'value'
-        JvmLogger.warn("'set' keyword is deprecated, prefer JS syntax: * {} instead", step.getText());
-        // Just evaluate the whole thing as a JS expression
-        runtime.eval(step.getText());
+        // Parse: varname /xpath/path = value OR varname $.json.path = value
+        int eqIndex = findAssignmentOperator(text);
+        if (eqIndex < 0) {
+            throw new RuntimeException("set requires '=' assignment: " + text);
+        }
+        String leftPart = text.substring(0, eqIndex).trim();
+        String valueExpr = text.substring(eqIndex + 1).trim();
+
+        // Split leftPart into varname and path
+        // e.g. "cat /cat/name" or "data $.foo.bar"
+        int spaceIdx = leftPart.indexOf(' ');
+        if (spaceIdx < 0) {
+            // No path - just varname = value, treat as def
+            Object value = evalValue(valueExpr);
+            runtime.setVariable(leftPart, value);
+            return;
+        }
+
+        String varName = leftPart.substring(0, spaceIdx).trim();
+        String path = leftPart.substring(spaceIdx + 1).trim();
+
+        Object target = runtime.getVariable(varName);
+        if (target == null) {
+            throw new RuntimeException("variable is null or not set: " + varName);
+        }
+
+        Object value = evalValue(valueExpr);
+
+        if (path.startsWith("/")) {
+            // XPath - set on XML document
+            if (!(target instanceof Node)) {
+                throw new RuntimeException("cannot set xpath on non-XML variable: " + varName);
+            }
+            org.w3c.dom.Document doc = target instanceof org.w3c.dom.Document
+                    ? (org.w3c.dom.Document) target
+                    : ((Node) target).getOwnerDocument();
+            if (value instanceof Node) {
+                Xml.setByPath(doc, path, (Node) value);
+            } else {
+                Xml.setByPath(doc, path, value == null ? "" : value.toString());
+            }
+        } else {
+            // JSONPath - set on JSON object/array
+            if (!(target instanceof Map) && !(target instanceof List)) {
+                throw new RuntimeException("cannot set json path on non-JSON variable: " + varName);
+            }
+            String jsonPath = path.startsWith("$") ? path : "$." + path;
+            Json.of(target).set(jsonPath, value);
+        }
+    }
+
+    private Object evalValue(String valueExpr) {
+        if (valueExpr.startsWith("<")) {
+            // XML literal
+            return Xml.toXmlDoc(valueExpr);
+        }
+        return runtime.eval(valueExpr);
     }
 
     @SuppressWarnings("unchecked")
@@ -698,9 +759,30 @@ public class StepExecutor {
         } else {
             expr = text.substring(eqIndex + 1).trim();
         }
-        // For XML, we evaluate as XML string
+        // Evaluate expression and convert to XML Document
         Object value = runtime.eval(expr);
+        if (value instanceof String) {
+            value = Xml.toXmlDoc((String) value);
+        } else if (value instanceof Node) {
+            // Already XML, keep as is
+        }
         runtime.setVariable(name, value);
+    }
+
+    private void executeXmlString(Step step) {
+        String text = step.getText();
+        int eqIndex = findAssignmentOperator(text);
+        String name = text.substring(0, eqIndex).trim();
+        String expr = text.substring(eqIndex + 1).trim();
+        Object value = runtime.eval(expr);
+        // Convert to XML string representation
+        String xmlString;
+        if (value instanceof Node) {
+            xmlString = Xml.toString((Node) value, false);
+        } else {
+            xmlString = value.toString();
+        }
+        runtime.setVariable(name, xmlString);
     }
 
     private void executeString(Step step) {
@@ -903,6 +985,11 @@ public class StepExecutor {
             return null;
         }
 
+        // Handle XML literal - expression starting with <
+        if (expr.startsWith("<")) {
+            return Xml.toXmlDoc(expr);
+        }
+
         // Handle get[N] or get syntax (same as in def)
         if (expr.startsWith("get[") || expr.startsWith("get ")) {
             return evalGetExpression(expr);
@@ -911,6 +998,31 @@ public class StepExecutor {
         // Handle $varname.path jsonpath shortcut
         if (expr.startsWith("$")) {
             return evalJsonPathShortcut(expr);
+        }
+
+        // Handle "varname /" syntax - XPath root shortcut for XML variable
+        // e.g., "temp /" means the root of the XML document stored in 'temp'
+        if (expr.endsWith(" /") || expr.equals("/")) {
+            String varName = expr.endsWith(" /") ? expr.substring(0, expr.length() - 2).trim() : null;
+            if (varName != null) {
+                Object target = runtime.getVariable(varName);
+                if (target instanceof Node) {
+                    return target; // Return the XML node directly
+                }
+            }
+        }
+
+        // Handle "varname /xpath/path" syntax - XPath on XML variable
+        if (expr.contains(" /") && !expr.contains("//")) {
+            int spaceSlashIdx = expr.indexOf(" /");
+            String varName = expr.substring(0, spaceSlashIdx).trim();
+            String xpath = expr.substring(spaceSlashIdx + 1).trim();
+            if (!varName.contains(" ") && varName.matches("[a-zA-Z_][a-zA-Z0-9_]*")) {
+                Object target = runtime.getVariable(varName);
+                if (target instanceof Node) {
+                    return KarateJs.evalXmlPath((Node) target, xpath);
+                }
+            }
         }
 
         // Check if expression contains jsonpath wildcard [*] or filter [?(...)]
@@ -1713,7 +1825,10 @@ public class StepExecutor {
      * - ##(expr) evaluates expr; if null, removes the key (returns REMOVE_MARKER)
      */
     private Object processEmbeddedExpressions(Object value) {
-        if (value instanceof Map) {
+        if (value instanceof Node) {
+            processXmlEmbeddedExpressions((Node) value);
+            return value;
+        } else if (value instanceof Map) {
             @SuppressWarnings("unchecked")
             Map<String, Object> map = (Map<String, Object>) value;
             Map<String, Object> result = new LinkedHashMap<>();
@@ -1826,6 +1941,102 @@ public class StepExecutor {
             i = j;
         }
         return result.toString();
+    }
+
+    /**
+     * Process embedded expressions in XML nodes.
+     * Handles both attribute values and text content with #() and ##() expressions.
+     */
+    private void processXmlEmbeddedExpressions(Node node) {
+        if (node.getNodeType() == Node.DOCUMENT_NODE) {
+            node = node.getFirstChild();
+        }
+        if (node == null) return;
+
+        // Process attributes
+        org.w3c.dom.NamedNodeMap attribs = node.getAttributes();
+        if (attribs != null) {
+            List<org.w3c.dom.Attr> toRemove = new ArrayList<>();
+            for (int i = 0; i < attribs.getLength(); i++) {
+                org.w3c.dom.Attr attrib = (org.w3c.dom.Attr) attribs.item(i);
+                String value = attrib.getValue();
+                if (value != null && value.contains("#(")) {
+                    boolean optional = value.startsWith("##(");
+                    if (value.startsWith("#(") || optional) {
+                        String expr = value.substring(optional ? 3 : 2, value.length() - 1);
+                        try {
+                            Object result = runtime.eval(expr);
+                            if (optional && result == null) {
+                                toRemove.add(attrib);
+                            } else {
+                                attrib.setValue(result == null ? "" : stringify(result));
+                            }
+                        } catch (Exception e) {
+                            // Leave as-is on error
+                        }
+                    } else {
+                        // Inline embedded in attribute
+                        attrib.setValue(processInlineEmbedded(value).toString());
+                    }
+                }
+            }
+            for (org.w3c.dom.Attr attr : toRemove) {
+                attribs.removeNamedItem(attr.getName());
+            }
+        }
+
+        // Process child nodes
+        org.w3c.dom.NodeList children = node.getChildNodes();
+        List<Node> childList = new ArrayList<>();
+        for (int i = 0; i < children.getLength(); i++) {
+            childList.add(children.item(i));
+        }
+
+        List<Node> elementsToRemove = new ArrayList<>();
+        for (Node child : childList) {
+            String value = child.getNodeValue();
+            if (value != null) {
+                value = value.trim();
+                if (value.startsWith("#(") || value.startsWith("##(")) {
+                    boolean optional = value.startsWith("##(");
+                    String expr = value.substring(optional ? 3 : 2, value.length() - 1);
+                    try {
+                        Object result = runtime.eval(expr);
+                        if (optional && result == null) {
+                            elementsToRemove.add(child);
+                        } else if (result instanceof Node) {
+                            // Replace with XML node
+                            Node evalNode = (Node) result;
+                            if (evalNode.getNodeType() == Node.DOCUMENT_NODE) {
+                                evalNode = evalNode.getFirstChild();
+                            }
+                            evalNode = node.getOwnerDocument().importNode(evalNode, true);
+                            child.getParentNode().replaceChild(evalNode, child);
+                        } else {
+                            child.setNodeValue(result == null ? "" : stringify(result));
+                        }
+                    } catch (Exception e) {
+                        // Leave as-is on error
+                    }
+                } else if (value.contains("#(")) {
+                    // Inline embedded in text
+                    child.setNodeValue(processInlineEmbedded(value).toString());
+                }
+            } else if (child.hasChildNodes() || child.hasAttributes()) {
+                processXmlEmbeddedExpressions(child);
+            }
+        }
+
+        // Remove elements marked for removal (for ##() that evaluated to null)
+        for (Node toRemove : elementsToRemove) {
+            Node parent = toRemove.getParentNode();
+            if (parent != null) {
+                Node grandParent = parent.getParentNode();
+                if (grandParent != null) {
+                    grandParent.removeChild(parent);
+                }
+            }
+        }
     }
 
 }

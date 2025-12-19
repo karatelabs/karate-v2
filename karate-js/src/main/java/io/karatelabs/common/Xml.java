@@ -34,6 +34,11 @@ import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpression;
+import javax.xml.xpath.XPathExpressionException;
+import javax.xml.xpath.XPathFactory;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -281,6 +286,164 @@ public class Xml {
             map.put(attrib.getNodeName(), attrib.getNodeValue());
         }
         return map;
+    }
+
+    // ========== XPath utilities ==========
+
+    private static XPathExpression compile(String path) {
+        XPathFactory xPathfactory = XPathFactory.newInstance();
+        XPath xpath = xPathfactory.newXPath();
+        try {
+            return xpath.compile(path);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static NodeList getNodeListByPath(Node node, String path) {
+        XPathExpression expr = compile(path);
+        try {
+            return (NodeList) expr.evaluate(node, XPathConstants.NODESET);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static String getTextValueByPath(Node node, String path) {
+        XPathExpression expr = compile(path);
+        try {
+            return expr.evaluate(node);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static Node getNodeByPath(Node node, String path, boolean create) {
+        String searchPath = create ? stripNameSpacePrefixes(path) : path;
+        XPathExpression expr = compile(searchPath);
+        Node result;
+        try {
+            result = (Node) expr.evaluate(node, XPathConstants.NODE);
+        } catch (XPathExpressionException e) {
+            throw new RuntimeException(e);
+        }
+        if (result == null && create) {
+            Document doc = node.getNodeType() == Node.DOCUMENT_NODE ? (Document) node : node.getOwnerDocument();
+            return createNodeByPath(doc, path);
+        } else {
+            return result;
+        }
+    }
+
+    public static String stripNameSpacePrefixes(String path) {
+        if (path.indexOf(':') == -1) {
+            return path;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (String s : path.split("/")) {
+            if (!sb.isEmpty() || path.startsWith("/")) {
+                sb.append('/');
+            }
+            int pos = s.lastIndexOf(':');
+            if (pos == -1) {
+                sb.append(s);
+            } else {
+                sb.append(s.substring(pos + 1));
+            }
+        }
+        return sb.toString();
+    }
+
+    public static Node createNodeByPath(Document doc, String path) {
+        int pos = path.lastIndexOf('/');
+        if (pos == 0) { // root
+            Node root = doc.getDocumentElement();
+            if (root == null) {
+                root = createElement(doc, path.substring(1), null, null);
+                doc.appendChild(root);
+            }
+            return root;
+        }
+        String left = path.substring(0, pos);
+        Node parent = getNodeByPath(doc, left, true);
+        String right = path.substring(pos + 1);
+        if (right.startsWith("@")) { // attribute
+            Element parentElement = (Element) parent;
+            right = right.substring(1);
+            parentElement.setAttribute(right, "");
+            return parentElement.getAttributeNode(right);
+        } else {
+            int bracketPos = right.indexOf('[');
+            if (bracketPos != -1) { // index, we assume it is 1 and still append
+                right = right.substring(0, bracketPos);
+            }
+            Element element = createElement(parent, right, null, null);
+            parent.appendChild(element);
+            return element;
+        }
+    }
+
+    public static void setByPath(Node doc, String path, String value) {
+        Node node = getNodeByPath(doc, path, true);
+        if (node.getNodeType() == Node.ATTRIBUTE_NODE) {
+            node.setNodeValue(value);
+        } else if (node.hasChildNodes() && node.getFirstChild().getNodeType() == Node.TEXT_NODE) {
+            node.getFirstChild().setTextContent(value);
+        } else if (node.getNodeType() == Node.ELEMENT_NODE) {
+            node.setTextContent(value);
+        }
+    }
+
+    public static void setByPath(Document doc, String path, Node in) {
+        if (in.getNodeType() == Node.DOCUMENT_NODE) {
+            in = in.getFirstChild();
+        }
+        Node node = getNodeByPath(doc, path, true);
+        if (node == null) {
+            throw new RuntimeException("no results for xpath: " + path);
+        }
+        Node newNode = doc.importNode(in, true);
+        if (node.hasChildNodes() && node.getFirstChild().getNodeType() == Node.TEXT_NODE) {
+            node.replaceChild(newNode, node.getFirstChild());
+        } else {
+            node.appendChild(newNode);
+        }
+    }
+
+    public static void removeByPath(Document doc, String path) {
+        Node node = getNodeByPath(doc, path, false);
+        if (node == null) {
+            return;
+        }
+        if (node.getNodeType() == Node.ATTRIBUTE_NODE) {
+            Element parent = ((Attr) node).getOwnerElement();
+            parent.removeAttribute(node.getNodeName());
+        } else {
+            Node parent = node.getParentNode();
+            if (parent != null) {
+                parent.removeChild(node);
+            }
+        }
+    }
+
+    public static Document toNewDocument(Node in) {
+        Document doc = newDocument();
+        Node node = doc.importNode(in, true);
+        doc.appendChild(node);
+        return doc;
+    }
+
+    public static boolean isXml(String s) {
+        if (s == null || s.isEmpty()) {
+            return false;
+        }
+        if (s.charAt(0) == ' ') {
+            s = s.trim();
+            if (s.isEmpty()) {
+                return false;
+            }
+        }
+        return s.charAt(0) == '<';
     }
 
 }

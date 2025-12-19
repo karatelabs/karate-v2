@@ -46,6 +46,7 @@ import io.karatelabs.match.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 import com.jayway.jsonpath.JsonPath;
 
@@ -91,6 +92,8 @@ public class KarateJs implements SimpleObject {
         http = new HttpRequestBuilder(client);
         this.engine = new Engine();
         engine.setOnConsoleLog(logger::info);
+        // TODO: implement whitelisting for safety - currently allows access to all Java classes
+        engine.setExternalBridge(new io.karatelabs.js.ExternalBridge() {});
         read = args -> {
             if (args.length == 0) {
                 throw new RuntimeException("read() needs at least one argument");
@@ -801,6 +804,119 @@ public class KarateJs implements SimpleObject {
         };
     }
 
+    private Invokable prettyXml() {
+        return args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("prettyXml() needs one argument");
+            }
+            Object obj = args[0];
+            if (obj instanceof Node) {
+                return Xml.toString((Node) obj, true);
+            } else if (obj instanceof String) {
+                return Xml.toString(Xml.toXmlDoc((String) obj), true);
+            } else {
+                throw new RuntimeException("prettyXml() argument must be XML node or string");
+            }
+        };
+    }
+
+    private Invokable xmlPath() {
+        return args -> {
+            if (args.length < 2) {
+                throw new RuntimeException("xmlPath() needs two arguments: xml and path");
+            }
+            Object xmlObj = args[0];
+            String path = args[1].toString();
+            Node doc;
+            if (xmlObj instanceof Node) {
+                doc = (Node) xmlObj;
+            } else if (xmlObj instanceof String) {
+                doc = Xml.toXmlDoc((String) xmlObj);
+            } else {
+                throw new RuntimeException("xmlPath() first argument must be XML node or string, but was: " + (xmlObj == null ? "null" : xmlObj.getClass()));
+            }
+            try {
+                return evalXmlPath(doc, path);
+            } catch (Exception e) {
+                throw new RuntimeException("xmlPath failed for path: " + path + " - " + e.getMessage(), e);
+            }
+        };
+    }
+
+    /**
+     * Evaluate an XPath expression on an XML node.
+     * Returns the appropriate type: String, Number, Node, or List of nodes.
+     */
+    public static Object evalXmlPath(Node doc, String path) {
+        NodeList nodeList;
+        try {
+            nodeList = Xml.getNodeListByPath(doc, path);
+        } catch (Exception e) {
+            // XPath functions like count() don't return nodes
+            String strValue = Xml.getTextValueByPath(doc, path);
+            if (path.startsWith("count")) {
+                try {
+                    return Integer.parseInt(strValue);
+                } catch (NumberFormatException nfe) {
+                    return strValue;
+                }
+            }
+            return strValue;
+        }
+        int count = nodeList.getLength();
+        if (count == 0) {
+            return null; // Not present
+        }
+        if (count == 1) {
+            return nodeToValue(nodeList.item(0));
+        }
+        // Multiple nodes - return a list
+        List<Object> list = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            list.add(nodeToValue(nodeList.item(i)));
+        }
+        return list;
+    }
+
+    private static Object nodeToValue(Node node) {
+        if (node.getNodeType() == Node.ATTRIBUTE_NODE) {
+            return node.getNodeValue();
+        }
+        if (Xml.getChildElementCount(node) == 0) {
+            // Leaf node - return text content
+            return node.getTextContent();
+        }
+        // Return as a new XML document
+        return Xml.toNewDocument(node);
+    }
+
+    private Invokable setXml() {
+        return args -> {
+            if (args.length < 2) {
+                throw new RuntimeException("setXml() needs at least two arguments: name and xml");
+            }
+            String name = args[0].toString();
+            if (args.length == 2) {
+                // Simple form: setXml('name', '<xml/>')
+                String xml = args[1].toString();
+                engine.put(name, Xml.toXmlDoc(xml));
+            } else {
+                // Path form: setXml('name', '/path', '<xml/>')
+                String path = args[1].toString();
+                String xml = args[2].toString();
+                Object target = engine.get(name);
+                if (target instanceof Node) {
+                    Node doc = (Node) target;
+                    if (doc.getNodeType() != Node.DOCUMENT_NODE) {
+                        doc = doc.getOwnerDocument();
+                    }
+                    Xml.setByPath((org.w3c.dom.Document) doc, path, Xml.toXmlDoc(xml));
+                }
+            }
+            return null;
+        };
+    }
+
     @Override
     public Object jsGet(String key) {
         return switch (key) {
@@ -825,6 +941,7 @@ public class KarateJs implements SimpleObject {
             case "merge" -> merge();
             case "os" -> getOsInfo();
             case "pretty" -> pretty();
+            case "prettyXml" -> prettyXml();
             case "read" -> read;
             case "readAsString" -> readAsString();
             case "remove" -> remove();
@@ -832,10 +949,12 @@ public class KarateJs implements SimpleObject {
             case "set" -> set();
             case "setup" -> setup();
             case "setupOnce" -> setupOnce();
+            case "setXml" -> setXml();
             case "sizeOf" -> sizeOf();
             case "sort" -> sort();
             case "toStringPretty" -> toStringPretty();
             case "valuesOf" -> valuesOf();
+            case "xmlPath" -> xmlPath();
             default -> null;
         };
     }
