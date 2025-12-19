@@ -23,7 +23,9 @@
  */
 package io.karatelabs.js;
 
+import io.karatelabs.common.Xml;
 import net.minidev.json.JSONValue;
+import org.w3c.dom.Node;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -322,6 +324,13 @@ public class Terms {
         }
         if (o instanceof List list) {
             return new JsArray((List<Object>) list);
+        }
+        // XML Node: convert to Map structure for JS-style property access
+        if (o instanceof Node node) {
+            Object converted = Xml.toObject(node);
+            if (converted instanceof Map map) {
+                return new JsObject((Map<String, Object>) map);
+            }
         }
         JavaMirror mirror = toJavaMirror(o);
         return mirror instanceof ObjectLike ol ? ol : null;

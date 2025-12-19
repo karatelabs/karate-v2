@@ -1137,6 +1137,21 @@ public class StepExecutor {
             return xpathResult;
         }
 
+        // Handle XPath function syntax: "varname function(/xpath)"
+        // e.g., "foo count(/records//record)" or "xml //record[@index=2]"
+        int spaceIdx = expr.indexOf(' ');
+        if (spaceIdx > 0) {
+            String varName = expr.substring(0, spaceIdx);
+            String remainder = expr.substring(spaceIdx + 1).trim();
+            // Check if remainder is XPath (starts with /) or XPath function (like count(...))
+            if (remainder.startsWith("/") || isXPathFunction(remainder)) {
+                Object target = runtime.getVariable(varName);
+                if (target instanceof Node) {
+                    return evalXmlPathWithFunction((Node) target, remainder);
+                }
+            }
+        }
+
         // Check if expression contains jsonpath wildcard [*] or filter [?(...)]
         if (expr.contains("[*]") || expr.contains("[?")) {
             // Check if it's var[*].path or var[?...].path pattern
@@ -1226,6 +1241,54 @@ public class StepExecutor {
         }
 
         return null; // Not an XPath expression
+    }
+
+    /**
+     * Checks if text is an XPath function like count(), sum(), etc.
+     * Pattern: starts with lowercase letters followed by opening paren.
+     */
+    private boolean isXPathFunction(String text) {
+        return text.matches("^[a-z-]+\\(.+");
+    }
+
+    /**
+     * Evaluates XPath or XPath function on an XML node.
+     * Handles functions like count() that return values instead of nodes.
+     */
+    private Object evalXmlPathWithFunction(Node node, String path) {
+        // Try to evaluate as normal XPath returning nodes
+        try {
+            Object result = KarateJs.evalXmlPath(node, path);
+            if (result != null) {
+                return result;
+            }
+        } catch (Exception e) {
+            // XPath functions like count() throw exceptions when trying to get NodeList
+        }
+
+        // For XPath functions that don't return nodes (e.g., count, sum, string-length),
+        // evaluate as text value
+        String textValue = Xml.getTextValueByPath(node, path);
+        if (textValue != null && !textValue.isEmpty()) {
+            // Special case: count() returns an integer
+            if (path.startsWith("count(") || path.startsWith("count ")) {
+                try {
+                    return Integer.parseInt(textValue.split("\\.")[0]); // Handle "3.0" -> 3
+                } catch (NumberFormatException e) {
+                    return textValue;
+                }
+            }
+            // Try to return as number if applicable
+            try {
+                if (textValue.contains(".")) {
+                    return Double.parseDouble(textValue);
+                }
+                return Integer.parseInt(textValue);
+            } catch (NumberFormatException e) {
+                return textValue;
+            }
+        }
+        return null;
     }
 
     /**
@@ -1896,7 +1959,13 @@ public class StepExecutor {
                     if (argObj instanceof Map) {
                         @SuppressWarnings("unchecked")
                         Map<String, Object> argMap = (Map<String, Object>) argObj;
-                        expr.arg = argMap;
+                        // Process embedded expressions in call arguments (e.g., { nodes: '#(nodes)' })
+                        Object processed = processEmbeddedExpressions(argMap);
+                        if (processed instanceof Map) {
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> processedMap = (Map<String, Object>) processed;
+                            expr.arg = processedMap;
+                        }
                     }
                 }
             }
@@ -2041,7 +2110,7 @@ public class StepExecutor {
 
     /**
      * Evaluates get[N] varname path or get varname path syntax.
-     * Examples: get[0] foo[*].name, get foo $..bar
+     * Examples: get[0] foo[*].name, get foo $..bar, get xml //xpath
      */
     private Object evalGetExpression(String expr) {
         int index = -1;
@@ -2062,38 +2131,60 @@ public class StepExecutor {
 
         // Parse varname and path - could be "varname path" or "varname[...]"
         String varName;
-        String jsonPath;
+        String path;
 
         // Check if path starts with $ (explicit jsonpath)
         if (remainder.startsWith("$")) {
             // get $..path or get[0] $[*].foo - operates on 'response'
             varName = "response";
-            jsonPath = remainder;
+            path = remainder;
         } else {
             // Find space or bracket to split varname from path
             int spaceIdx = remainder.indexOf(' ');
             int bracketIdx = remainder.indexOf('[');
 
             if (spaceIdx > 0 && (bracketIdx < 0 || spaceIdx < bracketIdx)) {
-                // "varname path" format - e.g., "json $['sp ace']" or "json .foo"
+                // "varname path" format - e.g., "json $['sp ace']" or "json .foo" or "xml //xpath"
                 varName = remainder.substring(0, spaceIdx);
-                String path = remainder.substring(spaceIdx).trim();
-                // Don't add $ if path already starts with $
-                jsonPath = path.startsWith("$") ? path : "$" + path;
+                path = remainder.substring(spaceIdx).trim();
             } else if (bracketIdx > 0) {
                 // "varname[*].path" format
                 varName = remainder.substring(0, bracketIdx);
-                jsonPath = "$" + remainder.substring(bracketIdx);
+                path = remainder.substring(bracketIdx);
             } else {
                 // Just varname, no path
                 varName = remainder;
-                jsonPath = "$";
+                path = null;
             }
         }
 
         Object target = runtime.getVariable(varName);
         if (target == null) {
             return null;
+        }
+
+        // Handle XPath for XML nodes
+        if (target instanceof Node && path != null && path.startsWith("/")) {
+            Object result = KarateJs.evalXmlPath((Node) target, path);
+            // Apply index if specified
+            if (index >= 0 && result instanceof List) {
+                List<?> list = (List<?>) result;
+                if (index < list.size()) {
+                    return list.get(index);
+                }
+                return null;
+            }
+            return result;
+        }
+
+        // Default to JsonPath
+        String jsonPath;
+        if (path == null) {
+            jsonPath = "$";
+        } else if (path.startsWith("$")) {
+            jsonPath = path;
+        } else {
+            jsonPath = "$" + path;
         }
 
         Object result = JsonPath.read(target, jsonPath);

@@ -447,4 +447,144 @@ class StepXmlTest {
         assertPassed(sr);
     }
 
+    @Test
+    void testBareXpathOnResponse() {
+        // Bare XPath starting with // should use 'response' variable implicitly
+        ScenarioRuntime sr = run("""
+            * def response = <teachers><teacher department="science"><subject>math</subject></teacher></teachers>
+            * def teacher = //teacher[@department='science']
+            * match teacher == <teacher department="science"><subject>math</subject></teacher>
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testBareXpathOnResponseWithDocstring() {
+        // Bare XPath with response set via docstring
+        ScenarioRuntime sr = run("""
+            * def response =
+              \"\"\"
+              <teachers>
+                <teacher department="science">
+                  <subject>math</subject>
+                </teacher>
+              </teachers>
+              \"\"\"
+            * def teacher = //teacher[@department='science']
+            * match teacher == <teacher department="science"><subject>math</subject></teacher>
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testGetXmlXpath() {
+        // get keyword with XML and XPath
+        ScenarioRuntime sr = run("""
+            * def xml =
+              \"\"\"
+              <root>
+                <hello><there>everyone</there></hello>
+                <hello><there>anyone</there></hello>
+              </root>
+              \"\"\"
+            * def nodes = get xml //hello
+            * match nodes[0] == <hello><there>everyone</there></hello>
+            * match nodes[1] == <hello><there>anyone</there></hello>
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testGetIndexedXmlXpath() {
+        // get[N] keyword with XML and XPath - returns text content for simple elements
+        ScenarioRuntime sr = run("""
+            * def xml =
+              \"\"\"
+              <root>
+                <item>first</item>
+                <item>second</item>
+                <item>third</item>
+              </root>
+              \"\"\"
+            * def second = get[1] xml //item
+            * match second == 'second'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testGetIndexedXmlXpathWithChildren() {
+        // get[N] with nested elements returns XML node
+        ScenarioRuntime sr = run("""
+            * def xml =
+              \"\"\"
+              <root>
+                <item><name>first</name></item>
+                <item><name>second</name></item>
+              </root>
+              \"\"\"
+            * def second = get[1] xml //item
+            * match second == <item><name>second</name></item>
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testXmlJsonStyleAccess() {
+        // XML nodes can be accessed via JS dot notation like JSON
+        ScenarioRuntime sr = run("""
+            * def foo =
+              \"\"\"
+              <records>
+                <record index="1">a</record>
+                <record index="2">b</record>
+                <record index="3" foo="bar">c</record>
+              </records>
+              \"\"\"
+            * assert foo.records.record.length == 3
+            * match foo.records.record[0] == { _: 'a', '@': { index: '1' } }
+            * match foo.records.record[1] == { _: 'b', '@': { index: '2' } }
+            * match foo.records.record[2] == { _: 'c', '@': { index: '3', foo: 'bar' } }
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testXmlJsonStyleAccessNested() {
+        // Nested XML elements as JSON
+        ScenarioRuntime sr = run("""
+            * def xml =
+              \"\"\"
+              <root>
+                <user>
+                  <name>John</name>
+                  <age>30</age>
+                </user>
+              </root>
+              \"\"\"
+            * assert xml.root.user.name == 'John'
+            * assert xml.root.user.age == '30'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMatchXpathFunction() {
+        // XPath functions like count() in match expressions
+        ScenarioRuntime sr = run("""
+            * def foo =
+              \"\"\"
+              <records>
+                <record index="1">a</record>
+                <record index="2">b</record>
+                <record index="3" foo="bar">c</record>
+              </records>
+              \"\"\"
+            * match foo count(/records//record) == 3
+            * match foo //record[@index=2] == 'b'
+            * match foo //record[@foo='bar'] == 'c'
+            """);
+        assertPassed(sr);
+    }
+
 }

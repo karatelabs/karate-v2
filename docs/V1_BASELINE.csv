@@ -526,7 +526,7 @@ feature-232,feature,utils-reuse-common.feature,,,utils-reuse-common.feature,util
 feature-233,feature,utils-reuse.feature,,,utils-reuse.feature,json and js functions loaded in the karate-config.js,root,pending,,,
 feature-234,feature,websocket.feature,,,websocket.feature,websocket.feature,root,pending,,,
 feature-235,feature,xml-pretty.feature,,,xml-pretty.feature,xml-pretty.feature,root,passed,XML literal + set + match support added,io/karatelabs/core/StepXmlTest,2025-12-19
-feature-236,feature,xml/xml-and-xpath.feature,,,xml-and-xpath.feature,xml and xpath demos,xml,pending,,,
-feature-237,feature,xml/xml-call.feature,,,xml-call.feature,Example,xml,pending,,,
-feature-238,feature,xml/xml-called.feature,,,xml-called.feature,xml-called.feature,xml,pending,,,
+feature-236,feature,xml/xml-and-xpath.feature,,,xml-and-xpath.feature,xml and xpath demos,xml,passed,2/2 scenarios pass - XML-as-JSON and XPath functions (count) fully supported,io/karatelabs/core/StepXmlTest,2025-12-19
+feature-237,feature,xml/xml-call.feature,,,xml-call.feature,Example,xml,passed,4/4 scenarios pass - get xml //xpath and call with embedded XML args fixed,io/karatelabs/core/xml/XmlCallTest,2025-12-19
+feature-238,feature,xml/xml-called.feature,,,xml-called.feature,xml-called.feature,xml,passed,helper for xml-call.feature,,2025-12-19
 feature-239,feature,xml/xml.feature,,,xml.feature,xml samples and tests,xml,passed,36/36 scenarios pass - multi-column table set and CDATA fixed,io/karatelabs/core/StepXmlTest,2025-12-19
