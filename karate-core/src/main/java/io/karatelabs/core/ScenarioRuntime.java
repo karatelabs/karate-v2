@@ -127,6 +127,27 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
 
         // Wire up karate.call()
         karate.setCallProvider(this::executeJsCall);
+
+        // Wire up karate.info
+        karate.setInfoProvider(this::getScenarioInfo);
+    }
+
+    /**
+     * Returns scenario info map for karate.info.
+     * Contains: scenarioName, scenarioDescription, featureDir, featureFileName, errorMessage
+     */
+    private Map<String, Object> getScenarioInfo() {
+        Map<String, Object> info = new LinkedHashMap<>();
+        Resource featureResource = scenario.getFeature().getResource();
+        if (featureResource.isFile() && featureResource.getPath() != null) {
+            info.put("featureDir", featureResource.getPath().getParent().toString());
+            info.put("featureFileName", featureResource.getPath().getFileName().toString());
+        }
+        info.put("scenarioName", scenario.getName());
+        info.put("scenarioDescription", scenario.getDescription());
+        String errorMessage = error == null ? null : error.getMessage();
+        info.put("errorMessage", errorMessage);
+        return info;
     }
 
     /**

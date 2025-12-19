@@ -58,6 +58,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class KarateJs implements SimpleObject {
 
@@ -76,6 +77,7 @@ public class KarateJs implements SimpleObject {
     private Function<String, Map<String, Object>> setupOnceProvider;
     private Runnable abortHandler;
     private BiFunction<String, Object, Map<String, Object>> callProvider;
+    private Supplier<Map<String, Object>> infoProvider;
 
     private final Invokable read;
 
@@ -143,6 +145,17 @@ public class KarateJs implements SimpleObject {
 
     public void setCallProvider(BiFunction<String, Object, Map<String, Object>> provider) {
         this.callProvider = provider;
+    }
+
+    public void setInfoProvider(Supplier<Map<String, Object>> provider) {
+        this.infoProvider = provider;
+    }
+
+    private Map<String, Object> getInfo() {
+        if (infoProvider != null) {
+            return infoProvider.get();
+        }
+        return Map.of();
     }
 
     private Invokable abort() {
@@ -748,6 +761,46 @@ public class KarateJs implements SimpleObject {
         };
     }
 
+    @SuppressWarnings("unchecked")
+    private Invokable lowerCase() {
+        return args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("lowerCase() needs one argument");
+            }
+            Object obj = args[0];
+            if (obj instanceof String) {
+                return ((String) obj).toLowerCase();
+            } else if (obj instanceof Map) {
+                // Convert to JSON string, lowercase, parse back
+                String json = Json.stringifyStrict(obj).toLowerCase();
+                return Json.of(json).value();
+            } else if (obj instanceof List) {
+                String json = Json.stringifyStrict(obj).toLowerCase();
+                return Json.of(json).value();
+            } else if (obj instanceof Node) {
+                String xml = Xml.toString((Node) obj, false).toLowerCase();
+                return Xml.toXmlDoc(xml);
+            }
+            return obj;
+        };
+    }
+
+    private Invokable pretty() {
+        return args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("pretty() needs one argument");
+            }
+            Object obj = args[0];
+            if (obj instanceof Map || obj instanceof List) {
+                return StringUtils.formatJson(obj);
+            } else if (obj instanceof Node) {
+                return Xml.toString((Node) obj, true);
+            } else {
+                return obj != null ? obj.toString() : "null";
+            }
+        };
+    }
+
     @Override
     public Object jsGet(String key) {
         return switch (key) {
@@ -762,13 +815,16 @@ public class KarateJs implements SimpleObject {
             case "forEach" -> forEach();
             case "get" -> get();
             case "http" -> http();
+            case "info" -> getInfo();
             case "jsonPath" -> jsonPath();
             case "keysOf" -> keysOf();
+            case "lowerCase" -> lowerCase();
             case "map" -> map();
             case "mapWithKey" -> mapWithKey();
             case "match" -> karateMatch();
             case "merge" -> merge();
             case "os" -> getOsInfo();
+            case "pretty" -> pretty();
             case "read" -> read;
             case "readAsString" -> readAsString();
             case "remove" -> remove();

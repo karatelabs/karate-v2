@@ -23,6 +23,7 @@
  */
 package io.karatelabs.core;
 
+import io.karatelabs.common.DataUtils;
 import io.karatelabs.common.Json;
 import io.karatelabs.common.Resource;
 import io.karatelabs.gherkin.Feature;
@@ -95,6 +96,8 @@ public class StepExecutor {
                     case "json" -> executeJson(step);
                     case "xml" -> executeXml(step);
                     case "string" -> executeString(step);
+                    case "csv" -> executeCsv(step);
+                    case "yaml" -> executeYaml(step);
                     case "copy" -> executeCopy(step);
                     case "table" -> executeTable(step);
                     case "replace" -> executeReplace(step);
@@ -711,6 +714,42 @@ public class StepExecutor {
         runtime.setVariable(name, stringValue);
     }
 
+    private void executeCsv(Step step) {
+        String text = step.getText();
+        int eqIndex = findAssignmentOperator(text);
+        String name = text.substring(0, eqIndex).trim();
+        String csvText;
+        if (step.getDocString() != null) {
+            // Doc string: csv data = """..."""
+            csvText = step.getDocString();
+        } else {
+            // Expression: csv data = someVar
+            String expr = text.substring(eqIndex + 1).trim();
+            Object value = runtime.eval(expr);
+            csvText = value.toString();
+        }
+        List<Map<String, Object>> result = DataUtils.fromCsv(csvText);
+        runtime.setVariable(name, result);
+    }
+
+    private void executeYaml(Step step) {
+        String text = step.getText();
+        int eqIndex = findAssignmentOperator(text);
+        String name = text.substring(0, eqIndex).trim();
+        String yamlText;
+        if (step.getDocString() != null) {
+            // Doc string: yaml data = """..."""
+            yamlText = step.getDocString();
+        } else {
+            // Expression: yaml data = someVar
+            String expr = text.substring(eqIndex + 1).trim();
+            Object value = runtime.eval(expr);
+            yamlText = value.toString();
+        }
+        Object result = DataUtils.fromYaml(yamlText);
+        runtime.setVariable(name, result);
+    }
+
     private void executeCopy(Step step) {
         String text = step.getText();
         int eqIndex = findAssignmentOperator(text);
@@ -753,43 +792,78 @@ public class StepExecutor {
     }
 
     private void executeReplace(Step step) {
-        // Syntax: replace varName.token = 'replacement'
-        // This replaces <token> with 'replacement' in the variable varName
         String text = step.getText();
-        int eqIndex = findAssignmentOperator(text);
-        if (eqIndex < 0) {
-            throw new RuntimeException("replace requires '=' assignment: " + text);
+        Table table = step.getTable();
+
+        if (table != null) {
+            // Table syntax: replace varName
+            //   | token | value   |
+            //   | one   | 'cruel' |
+            String varName = text.trim();
+            Object varValue = runtime.getVariable(varName);
+            if (varValue == null) {
+                throw new RuntimeException("no variable found with name: " + varName);
+            }
+            String varText = varValue.toString();
+
+            // Process each row in the table
+            List<Map<String, String>> rows = table.getRowsAsMaps();
+            for (Map<String, String> row : rows) {
+                String token = row.get("token");
+                String valueExpr = row.get("value");
+
+                // Evaluate the replacement expression
+                Object replaceValue = runtime.eval(valueExpr);
+                String replacement = replaceValue != null ? replaceValue.toString() : "";
+
+                // If token is alphanumeric, wrap with < >
+                if (token != null && !token.isEmpty() && Character.isLetterOrDigit(token.charAt(0))) {
+                    token = '<' + token + '>';
+                }
+
+                // Perform replacement
+                if (token != null) {
+                    varText = varText.replace(token, replacement);
+                }
+            }
+            runtime.setVariable(varName, varText);
+        } else {
+            // Single-line syntax: replace varName.token = 'replacement'
+            int eqIndex = findAssignmentOperator(text);
+            if (eqIndex < 0) {
+                throw new RuntimeException("replace requires '=' assignment: " + text);
+            }
+            String nameAndToken = text.substring(0, eqIndex).trim();
+            String replaceExpr = text.substring(eqIndex + 1).trim();
+
+            // Parse varName.token
+            int dotIndex = nameAndToken.indexOf('.');
+            if (dotIndex < 0) {
+                throw new RuntimeException("replace requires varName.token syntax: " + nameAndToken);
+            }
+            String varName = nameAndToken.substring(0, dotIndex).trim();
+            String token = nameAndToken.substring(dotIndex + 1).trim();
+
+            // Get the variable value as string
+            Object varValue = runtime.getVariable(varName);
+            if (varValue == null) {
+                throw new RuntimeException("no variable found with name: " + varName);
+            }
+            String varText = varValue.toString();
+
+            // Evaluate the replacement expression
+            Object replaceValue = runtime.eval(replaceExpr);
+            String replacement = replaceValue != null ? replaceValue.toString() : "";
+
+            // If token is alphanumeric, wrap with < >
+            if (!token.isEmpty() && Character.isLetterOrDigit(token.charAt(0))) {
+                token = '<' + token + '>';
+            }
+
+            // Perform replacement and update variable
+            String replaced = varText.replace(token, replacement);
+            runtime.setVariable(varName, replaced);
         }
-        String nameAndToken = text.substring(0, eqIndex).trim();
-        String replaceExpr = text.substring(eqIndex + 1).trim();
-
-        // Parse varName.token
-        int dotIndex = nameAndToken.indexOf('.');
-        if (dotIndex < 0) {
-            throw new RuntimeException("replace requires varName.token syntax: " + nameAndToken);
-        }
-        String varName = nameAndToken.substring(0, dotIndex).trim();
-        String token = nameAndToken.substring(dotIndex + 1).trim();
-
-        // Get the variable value as string
-        Object varValue = runtime.getVariable(varName);
-        if (varValue == null) {
-            throw new RuntimeException("no variable found with name: " + varName);
-        }
-        String varText = varValue.toString();
-
-        // Evaluate the replacement expression
-        Object replaceValue = runtime.eval(replaceExpr);
-        String replacement = replaceValue != null ? replaceValue.toString() : "";
-
-        // If token is alphanumeric, wrap with < >
-        if (!token.isEmpty() && Character.isLetterOrDigit(token.charAt(0))) {
-            token = '<' + token + '>';
-        }
-
-        // Perform replacement and update variable
-        String replaced = varText.replace(token, replacement);
-        runtime.setVariable(varName, replaced);
     }
 
     // ========== Assertions ==========

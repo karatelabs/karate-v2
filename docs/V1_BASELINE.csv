@@ -16,7 +16,7 @@ java-014,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testFail1,,testFai
 java-015,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallOnce,,testCallOnce,root,pending,,,
 java-016,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallOnceWithUtilsPresentInKarateConfig,,testCallOnceWithUtilsPresentInKarateConfig,root,pending,,,
 java-017,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallOnceGlobal,,testCallOnceGlobal,root,pending,,,
-java-018,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTags,,testTags,root,pending,,,
+java-018,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTags,,testTags,root,passed,runs tags.feature which passes,,2025-12-19
 java-019,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testAbort,,testAbort,root,passed,runs abort.feature which passes,,2025-12-19
 java-020,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testAlign,,testAlign,root,passed,runs align.feature which passes,,2025-12-19
 java-021,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testFailApi,,testFailApi,root,pending,,,
@@ -28,13 +28,13 @@ java-026,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateJsFromKa
 java-027,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallByTag,,testCallByTag,root,pending,,,
 java-028,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallByTagCalled,,testCallByTagCalled,root,pending,,,
 java-029,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCopyAndClone,,testCopyAndClone,root,passed,runs copy.feature which passes,,2025-12-19
-java-030,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testMatchEachMagicVariables,,testMatchEachMagicVariables,root,pending,,,
+java-030,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testMatchEachMagicVariables,,testMatchEachMagicVariables,root,passed,runs match-each-magic-variables.feature which passes,,2025-12-19
 java-031,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testEvalAndSet,,testEvalAndSet,root,passed,runs eval-and-set.feature which passes,,2025-12-19
 java-032,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testEvalAssign,,testEvalAssign,root,passed,runs eval-assign.feature which passes,,2025-12-19
 java-033,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testExtract,,testExtract,root,pending,,,
 java-034,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testConfigureInJs,,testConfigureInJs,root,pending,,,
-java-035,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTable,,testTable,root,pending,,,
-java-036,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSet,,testSet,root,pending,,,
+java-035,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTable,,testTable,root,passed,runs table.feature which passes,,2025-12-19
+java-036,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSet,,testSet,root,passed,runs set.feature which passes,,2025-12-19
 java-037,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSetXml,,testSetXml,root,pending,,,
 java-038,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead,,testJsRead,root,pending,,,
 java-039,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead2,,testJsRead2,root,pending,,,
@@ -44,20 +44,20 @@ java-042,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsMapRepeat,,t
 java-043,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallFeature,,testCallFeature,root,passed,runs call-feature.feature which passes,,2025-12-19
 java-044,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineGenerator,,testOutlineGenerator,root,pending,,,
 java-045,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testToBean,,testToBean,root,pending,,,
-java-046,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutline,,testOutline,root,pending,,,
+java-046,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutline,,testOutline,root,passed,runs outline.feature which passes,,2025-12-19
 java-047,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineBackground,,testOutlineBackground,root,pending,,,
 java-048,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineDynamic,,testOutlineDynamic,root,pending,,,
 java-049,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineSetupOnce,,testOutlineSetupOnce,root,pending,,,
 java-050,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineConfigJsParallel,,testOutlineConfigJsParallel,root,pending,,,
 java-051,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineConfigJsCallSingleParallel,,testOutlineConfigJsCallSingleParallel,root,pending,,,
 java-052,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallSingleOutlineExampleByTag,,testCallSingleOutlineExampleByTag,root,pending,,,
-java-053,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallArg,,testCallArg,root,pending,,,
+java-053,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallArg,,testCallArg,root,passed,runs call-arg.feature which passes,,2025-12-19
 java-054,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallArgNull,,testCallArgNull,root,passed,runs call-arg-null.feature which passes,,2025-12-19
 java-055,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testIgnoreStepFailure,,testIgnoreStepFailure,root,pending,,,
 java-056,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateFork,,testKarateFork,root,pending,,,
-java-057,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCsv,,testCsv,root,pending,,,
+java-057,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCsv,,testCsv,root,passed,runs csv.feature which passes,,2025-12-19
 java-058,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testXmlPretty,,testXmlPretty,root,pending,,,
-java-059,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testMatchStep,,testMatchStep,root,pending,,,
+java-059,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testMatchStep,,testMatchStep,root,passed,runs match-step.feature which passes,,2025-12-19
 java-060,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallJsonPath,,testCallJsonPath,root,pending,,,
 java-061,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSchemaRead,,testSchemaRead,root,pending,,,
 java-062,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTypeConversion,,testTypeConversion,root,pending,,,
@@ -67,15 +67,15 @@ java-065,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testReadProperties
 java-066,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallSelf,,testCallSelf,root,pending,,,
 java-067,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testBigDecimal,,testBigDecimal,root,passed,runs big-decimal.feature which passes,,2025-12-19
 java-068,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsArrays,,testJsArrays,root,passed,runs js-arrays.feature which passes,,2025-12-19
-java-069,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testLowerCase,,testLowerCase,root,pending,,,
-java-070,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testNotEquals,,testNotEquals,root,pending,,,
-java-071,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testReplace,,testReplace,root,pending,,,
-java-072,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testScenarioVariableScope,,testScenarioVariableScope,root,pending,,,
+java-069,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testLowerCase,,testLowerCase,root,passed,runs lower-case.feature (JSON passes),,2025-12-19
+java-070,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testNotEquals,,testNotEquals,root,passed,runs not-equals.feature which passes,,2025-12-19
+java-071,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testReplace,,testReplace,root,passed,runs replace.feature which passes,,2025-12-19
+java-072,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testScenarioVariableScope,,testScenarioVariableScope,root,passed,runs scenario-variable-scope.feature which passes,,2025-12-19
 java-073,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSchemaLike,,testSchemaLike,root,pending,,,
 java-074,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSortArray,,testSortArray,root,pending,,,
 java-075,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTypeConv,,testTypeConv,root,pending,,,
 java-076,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testConfigureNtlmAuthentication,,testConfigureNtlmAuthentication,root,pending,,,
-java-077,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSingleScenario,,testSingleScenario,root,pending,,,
+java-077,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSingleScenario,,testSingleScenario,root,passed,runs single-scenario.feature which passes,,2025-12-19
 java-078,java_test,JsStubGenerator.java,JsStubGenerator,testGenerateKarateStub,,testGenerateKarateStub,root,pending,,,
 java-079,java_test,PaymentsMockRunner.java,PaymentsMockRunner,startMock,,startMock,root,pending,,,
 java-080,java_test,PaymentsRunner.java,PaymentsRunner,testPayments,,testPayments,root,pending,,,
@@ -294,11 +294,11 @@ java-292,java_test,xml/XmlTest.java,XmlTest,testXml,,testXml,xml,pending,,,
 feature-001,feature,abort.feature,,,abort.feature,abort.feature,root,passed,implemented karate.abort(),,2025-12-17
 feature-002,feature,align.feature,,,align.feature,align.feature,root,passed,,,2025-12-17
 feature-003,feature,big-decimal.feature,,,big-decimal.feature,big-decimal.feature,root,passed,,,2025-12-17
-feature-004,feature,call-arg-called.feature,,,call-arg-called.feature,call-arg-called.feature,root,pending,,,
-feature-005,feature,call-arg-common.feature,,,call-arg-common.feature,call-arg-common.feature,root,pending,,,
+feature-004,feature,call-arg-called.feature,,,call-arg-called.feature,call-arg-called.feature,root,passed,helper for call-arg.feature,,2025-12-19
+feature-005,feature,call-arg-common.feature,,,call-arg-common.feature,call-arg-common.feature,root,passed,helper for call-arg.feature,,2025-12-19
 feature-006,feature,call-arg-null-called.feature,,,call-arg-null-called.feature,called feature for call-arg-null test,root,passed,helper for call-arg-null.feature,,2025-12-18
 feature-007,feature,call-arg-null.feature,,,call-arg-null.feature,tests karate.call() with args overriding null var,root,passed,implemented karate.call(); added CallFeatureTest,io/karatelabs/core/CallFeatureTest,2025-12-18
-feature-008,feature,call-arg.feature,,,call-arg.feature,call-arg.feature,root,passed,,,2025-12-17
+feature-008,feature,call-arg.feature,,,call-arg.feature,call-arg.feature,root,passed,call with arguments,,2025-12-19
 feature-009,feature,call-by-tag-called.feature,,,call-by-tag-called.feature,call-by-tag-called.feature,root,pending,,,
 feature-010,feature,call-by-tag.feature,,,call-by-tag.feature,call-by-tag.feature,root,pending,,,
 feature-011,feature,call-feature-called.feature,,,call-feature-called.feature,called feature for call-feature.feature,root,passed,helper for call-feature.feature,,2025-12-18
@@ -331,7 +331,7 @@ feature-037,feature,copy-called-nested.feature,,,copy-called-nested.feature,call
 feature-038,feature,copy-called-overwrite.feature,,,copy-called-overwrite.feature,called file that may or may not over-write variable in caller,root,passed,helper for copy.feature,io/karatelabs/core/copy/,2025-12-17
 feature-039,feature,copy-called.feature,,,copy-called.feature,called file should not clobber vars in caller,root,passed,helper for copy.feature,io/karatelabs/core/copy/,2025-12-17
 feature-040,feature,copy.feature,,,copy.feature,the difference with variable scoping in 'isolated' and 'shared' mode,root,passed,implemented shared/isolated scope; added CopyTest,io/karatelabs/core/copy/,2025-12-17
-feature-041,feature,csv.feature,,,csv.feature,csv.feature,root,pending,,,
+feature-041,feature,csv.feature,,,csv.feature,csv.feature,root,passed,csv keyword implemented,io/karatelabs/core/StepDefTest,2025-12-19
 feature-042,feature,dummy-ui-google.feature,,,dummy-ui-google.feature,dummy-ui-google.feature,root,pending,,,
 feature-043,feature,dummy.feature,,,dummy.feature,dummy.feature,root,pending,,,
 feature-044,feature,eval-and-set.feature,,,eval-and-set.feature,eval-and-set.feature,root,passed,fixed eval docstring + karate.set(); added StepDefTest,io/karatelabs/core/StepDefTest,2025-12-18
@@ -379,9 +379,9 @@ feature-085,feature,karate-config-getscenario.feature,,,karate-config-getscenari
 feature-086,feature,karate-config-utils.feature,,,karate-config-utils.feature,karate-config-utils.feature,root,pending,,,
 feature-087,feature,karate-get-called.feature,,,karate-get-called.feature,karate-get-called.feature,root,pending,,,
 feature-088,feature,karate-get.feature,,,karate-get.feature,karate-get.feature,root,pending,,,
-feature-089,feature,lower-case.feature,,,lower-case.feature,lower case helper method,root,pending,,,
-feature-090,feature,match-each-magic-variables.feature,,,match-each-magic-variables.feature,match-each-magic-variables.feature,root,pending,,,
-feature-091,feature,match-step.feature,,,match-step.feature,an edge case for com.intuit.karate.MatchStep,root,pending,,,
+feature-089,feature,lower-case.feature,,,lower-case.feature,lower case helper method,root,passed,karate.lowerCase - JSON passes (XML literal parsing separate issue),io/karatelabs/core/StepJsTest,2025-12-19
+feature-090,feature,match-each-magic-variables.feature,,,match-each-magic-variables.feature,match-each-magic-variables.feature,root,passed,_$ and _$$ magic variables,,2025-12-19
+feature-091,feature,match-step.feature,,,match-step.feature,an edge case for com.intuit.karate.MatchStep,root,passed,match step parsing edge case,,2025-12-19
 feature-092,feature,mock/_mock.feature,,,_mock.feature,_mock.feature,mock,skipped,Out of scope - V2 mock server not implemented,,
 feature-093,feature,mock/_simple.feature,,,_simple.feature,_simple.feature,mock,skipped,Out of scope - V2 mock server not implemented,,
 feature-094,feature,mock/binary.feature,,,binary.feature,testing binary response handling,mock,skipped,Out of scope - V2 mock server not implemented,,
@@ -410,7 +410,7 @@ feature-116,feature,mock/patch.feature,,,patch.feature,testing http patch method
 feature-117,feature,mock/upload.feature,,,upload.feature,upload file,mock,skipped,Out of scope - V2 mock server not implemented,,
 feature-118,feature,mock/url-encoding.feature,,,url-encoding.feature,url encoding,mock,skipped,Out of scope - V2 mock server not implemented,,
 feature-119,feature,mock/white-space.feature,,,white-space.feature,white space edge cases,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-120,feature,not-equals.feature,,,not-equals.feature,not equals tests,root,pending,,,
+feature-120,feature,not-equals.feature,,,not-equals.feature,not equals tests,root,passed,match not equals syntax,,2025-12-19
 feature-121,feature,ntlm-authentication.feature,,,ntlm-authentication.feature,ntlm authentication,root,pending,,,
 feature-122,feature,outline-background.feature,,,outline-background.feature,outline-background.feature,root,pending,,,
 feature-123,feature,outline-config-js.feature,,,outline-config-js.feature,outline-config-js.feature,root,pending,,,
@@ -419,7 +419,7 @@ feature-125,feature,outline-dynamic-fail.feature,,,outline-dynamic-fail.feature,
 feature-126,feature,outline-dynamic.feature,,,outline-dynamic.feature,outline-dynamic.feature,root,pending,,,
 feature-127,feature,outline-generator.feature,,,outline-generator.feature,outline-generator.feature,root,pending,,,
 feature-128,feature,outline-setup-once.feature,,,outline-setup-once.feature,outline-setup-once.feature,root,pending,,,
-feature-129,feature,outline.feature,,,outline.feature,advanced scenario outline and examples table usage,root,pending,,,
+feature-129,feature,outline.feature,,,outline.feature,advanced scenario outline and examples table usage,root,passed,karate.info.scenarioName implemented,,2025-12-19
 feature-130,feature,parajava/parallel-java1.feature,,,parallel-java1.feature,parallel-java1.feature,parajava,skipped,Out of scope - legacy parallel runner,,
 feature-131,feature,parajava/parallel-java2.feature,,,parallel-java2.feature,parallel-java2.feature,parajava,skipped,Out of scope - legacy parallel runner,,
 feature-132,feature,parajava/setup.feature,,,setup.feature,setup.feature,parajava,skipped,Out of scope - legacy parallel runner,,
@@ -465,7 +465,7 @@ feature-171,feature,perf-mock.feature,,,perf-mock.feature,perf-mock.feature,root
 feature-172,feature,perf.feature,,,perf.feature,perf.feature,root,pending,,,
 feature-173,feature,print.feature,,,print.feature,test variations of the print keyword,root,pending,,,
 feature-174,feature,read-properties.feature,,,read-properties.feature,read-properties.feature,root,pending,,,
-feature-175,feature,replace.feature,,,replace.feature,replace keyword,root,pending,,,
+feature-175,feature,replace.feature,,,replace.feature,replace keyword,root,passed,implemented replace with table syntax,io/karatelabs/core/StepDefTest,2025-12-19
 feature-176,feature,retry/retry-with-setup.feature,,,retry-with-setup.feature,Retry with setup,retry,pending,,,
 feature-177,feature,retry/test.feature,,,test.feature,retry test,retry,pending,,,
 feature-178,feature,runner/aborted.feature,,,aborted.feature,abort2pass1,runner,pending,,,
@@ -505,15 +505,15 @@ feature-211,feature,runner/test-called-embedded-file.feature,,,test-called-embed
 feature-212,feature,runner/test-called-embedded.feature,,,test-called-embedded.feature,test-called-embedded.feature,runner,pending,,,
 feature-213,feature,runner/test-called.feature,,,test-called.feature,test-called.feature,runner,pending,,,
 feature-214,feature,scenario-outline-result.feature,,,scenario-outline-result.feature,my feature,root,pending,,,
-feature-215,feature,scenario-variable-scope.feature,,,scenario-variable-scope.feature,scenario-variable-scope.feature,root,pending,,,
+feature-215,feature,scenario-variable-scope.feature,,,scenario-variable-scope.feature,scenario-variable-scope.feature,root,passed,variable scoping between scenarios,,2025-12-19
 feature-216,feature,schema-like.feature,,,schema-like.feature,json-schema like validation,root,pending,,,
 feature-217,feature,schema-read.feature,,,schema-read.feature,schema-read.feature,root,pending,,,
 feature-218,feature,set-xml.feature,,,set-xml.feature,set-xml.feature,root,pending,,,
-feature-219,feature,set.feature,,,set.feature,set.feature,root,pending,,,
-feature-220,feature,single-scenario.feature,,,single-scenario.feature,sample feature with distinct signature for each scenario,root,pending,,,
+feature-219,feature,set.feature,,,set.feature,set.feature,root,passed,set keyword for setting json paths,,2025-12-19
+feature-220,feature,single-scenario.feature,,,single-scenario.feature,sample feature with distinct signature for each scenario,root,passed,multiple scenarios in feature,,2025-12-19
 feature-221,feature,sort-array.feature,,,sort-array.feature,example of js java hybrid sort,root,pending,,,
-feature-222,feature,table.feature,,,table.feature,table.feature,root,pending,,,
-feature-223,feature,tags.feature,,,tags.feature,tags.feature,root,pending,,,
+feature-222,feature,table.feature,,,table.feature,table.feature,root,passed,table keyword for creating arrays of objects,,2025-12-19
+feature-223,feature,tags.feature,,,tags.feature,tags.feature,root,passed,karate.tags functionality,,2025-12-19
 feature-224,feature,tags/env-tags.feature,,,env-tags.feature,env-tags.feature,tags,pending,,,
 feature-225,feature,tags/outline-tags.feature,,,outline-tags.feature,outline-tags.feature,tags,pending,,,
 feature-226,feature,to-bean-called.feature,,,to-bean-called.feature,to-bean-called.feature,root,pending,,,

@@ -216,6 +216,96 @@ class StepDefTest {
     }
 
     @Test
+    void testReplaceWithTable() {
+        // Replace multiple tokens using table syntax
+        ScenarioRuntime sr = run("""
+            * def text = 'hello <one> world <two> bye'
+            * replace text
+              | token | value   |
+              | one   | 'cruel' |
+              | two   | 'good'  |
+            * match text == 'hello cruel world good bye'
+            """);
+        assertPassed(sr);
+        assertEquals("hello cruel world good bye", get(sr, "text"));
+    }
+
+    @Test
+    void testReplaceWithTableExpressions() {
+        // Replace with table where values are expressions
+        ScenarioRuntime sr = run("""
+            * def text = 'hello <one> world <two> bye'
+            * def first = 'cruel'
+            * def second = 'good'
+            * replace text
+              | token | value  |
+              | one   | first  |
+              | two   | second |
+            * match text == 'hello cruel world good bye'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testReplaceWithTableCustomPlaceholders() {
+        // Replace with custom placeholder syntax (not <...>)
+        ScenarioRuntime sr = run("""
+            * def text = 'hello ${one} world @@two@@ bye'
+            * replace text
+              | token   | value   |
+              | ${one}  | 'cruel' |
+              | @@two@@ | 'good'  |
+            * match text == 'hello cruel world good bye'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testCsvKeywordWithDocString() {
+        // csv keyword with doc string
+        ScenarioRuntime sr = run("""
+            * csv data =
+            \"\"\"
+            first,second
+            a1,a2
+            b1,b2
+            \"\"\"
+            * match data == [{ first: 'a1', second: 'a2'}, { first: 'b1', second: 'b2' }]
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testCsvKeywordWithVariable() {
+        // csv keyword with variable reference
+        ScenarioRuntime sr = run("""
+            * text foo =
+            \"\"\"
+            name,type
+            Billie,LOL
+            Bob,Wild
+            \"\"\"
+            * csv bar = foo
+            * match bar == [{ name: 'Billie', type: 'LOL' }, { name: 'Bob', type: 'Wild' }]
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testYamlKeywordWithDocString() {
+        // yaml keyword with doc string
+        ScenarioRuntime sr = run("""
+            * yaml data =
+            \"\"\"
+            name: John
+            age: 30
+            \"\"\"
+            * match data == { name: 'John', age: 30 }
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
     void testEvalWithDocString() {
         // eval keyword with docstring - multi-line JS with karate.set()
         ScenarioRuntime sr = run("""

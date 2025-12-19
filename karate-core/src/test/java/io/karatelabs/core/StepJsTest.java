@@ -736,4 +736,49 @@ class StepJsTest {
         assertPassed(sr);
     }
 
+    // ========== karate.lowerCase() ==========
+
+    @Test
+    void testLowerCaseJson() {
+        ScenarioRuntime sr = run("""
+            * def json = { FOO: 'BAR', Hello: 'World' }
+            * def json = karate.lowerCase(json)
+            * match json == { foo: 'bar', hello: 'world' }
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testLowerCaseString() {
+        ScenarioRuntime sr = run("""
+            * def str = 'HELLO World'
+            * def result = karate.lowerCase(str)
+            * match result == 'hello world'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testLowerCaseList() {
+        ScenarioRuntime sr = run("""
+            * def list = ['FOO', 'BAR']
+            * def result = karate.lowerCase(list)
+            * match result == ['foo', 'bar']
+            """);
+        assertPassed(sr);
+    }
+
+    // ========== karate.pretty() ==========
+
+    @Test
+    void testPrettyJson() {
+        ScenarioRuntime sr = run("""
+            * def json = { foo: 'bar' }
+            * def result = karate.pretty(json)
+            * assert result.indexOf('foo') >= 0
+            * assert result.indexOf('bar') >= 0
+            """);
+        assertPassed(sr);
+    }
+
 }
