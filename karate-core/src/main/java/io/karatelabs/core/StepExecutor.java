@@ -403,55 +403,41 @@ public class StepExecutor {
             return;
         }
 
-        // Parse: varname /xpath/path = value OR varname $.json.path = value
+        // Check for Karate-style XML xpath: "varname /xpath = value"
+        // The key indicator is "space + /" pattern before the equals sign
         int eqIndex = findAssignmentOperator(text);
-        if (eqIndex < 0) {
-            throw new RuntimeException("set requires '=' assignment: " + text);
-        }
-        String leftPart = text.substring(0, eqIndex).trim();
-        String valueExpr = text.substring(eqIndex + 1).trim();
+        if (eqIndex > 0) {
+            String leftPart = text.substring(0, eqIndex).trim();
+            // Look for "varname /xpath" pattern (space followed by /)
+            int spaceSlashIdx = leftPart.indexOf(" /");
+            if (spaceSlashIdx > 0) {
+                String varName = leftPart.substring(0, spaceSlashIdx).trim();
+                String xpath = leftPart.substring(spaceSlashIdx + 1).trim();
+                String valueExpr = text.substring(eqIndex + 1).trim();
 
-        // Split leftPart into varname and path
-        // e.g. "cat /cat/name" or "data $.foo.bar"
-        int spaceIdx = leftPart.indexOf(' ');
-        if (spaceIdx < 0) {
-            // No path - just varname = value, treat as def
-            Object value = evalValue(valueExpr);
-            runtime.setVariable(leftPart, value);
-            return;
-        }
+                Object target = runtime.getVariable(varName);
+                if (target == null) {
+                    throw new RuntimeException("variable is null or not set: " + varName);
+                }
+                if (!(target instanceof Node)) {
+                    throw new RuntimeException("cannot set xpath on non-XML variable: " + varName);
+                }
 
-        String varName = leftPart.substring(0, spaceIdx).trim();
-        String path = leftPart.substring(spaceIdx + 1).trim();
-
-        Object target = runtime.getVariable(varName);
-        if (target == null) {
-            throw new RuntimeException("variable is null or not set: " + varName);
-        }
-
-        Object value = evalValue(valueExpr);
-
-        if (path.startsWith("/")) {
-            // XPath - set on XML document
-            if (!(target instanceof Node)) {
-                throw new RuntimeException("cannot set xpath on non-XML variable: " + varName);
+                Object value = evalValue(valueExpr);
+                org.w3c.dom.Document doc = target instanceof org.w3c.dom.Document
+                        ? (org.w3c.dom.Document) target
+                        : ((Node) target).getOwnerDocument();
+                if (value instanceof Node) {
+                    Xml.setByPath(doc, xpath, (Node) value);
+                } else {
+                    Xml.setByPath(doc, xpath, value == null ? "" : value.toString());
+                }
+                return;
             }
-            org.w3c.dom.Document doc = target instanceof org.w3c.dom.Document
-                    ? (org.w3c.dom.Document) target
-                    : ((Node) target).getOwnerDocument();
-            if (value instanceof Node) {
-                Xml.setByPath(doc, path, (Node) value);
-            } else {
-                Xml.setByPath(doc, path, value == null ? "" : value.toString());
-            }
-        } else {
-            // JSONPath - set on JSON object/array
-            if (!(target instanceof Map) && !(target instanceof List)) {
-                throw new RuntimeException("cannot set json path on non-JSON variable: " + varName);
-            }
-            String jsonPath = path.startsWith("$") ? path : "$." + path;
-            Json.of(target).set(jsonPath, value);
         }
+
+        // Default: evaluate as JS expression (e.g., "foo.b = 2", "arr[0] = 99")
+        runtime.eval(text);
     }
 
     private Object evalValue(String valueExpr) {
