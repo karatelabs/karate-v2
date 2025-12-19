@@ -356,4 +356,13 @@ class GherkinParserTest {
         assertEquals("'bar'", me.getExpectedExpr());
     }
 
+    @Test
+    void testParseMatchExpressionWithMethodCall() {
+        MatchExpression me = GherkinParser.parseMatchExpression("query == read('file.txt').replaceAll(\"\\r\", \"\")");
+        assertFalse(me.isEach());
+        assertEquals("query", me.getActualExpr());
+        assertEquals("==", me.getOperator());
+        assertEquals("read('file.txt').replaceAll(\"\\r\", \"\")", me.getExpectedExpr());
+    }
+
 }

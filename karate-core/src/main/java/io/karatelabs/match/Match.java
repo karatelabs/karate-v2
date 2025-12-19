@@ -66,10 +66,14 @@ public class Match {
     /**
      * Execute a match with a specific JS Engine for variable resolution.
      * This allows embedded expressions like #(^varname) to access variables.
+     *
+     * NOTE: This method expects already-evaluated values from StepExecutor.
+     * It does NOT parse strings as JSON/XML - that should be done during evaluation.
+     * This aligns with V1 behavior where Match.execute receives pre-evaluated values.
      */
     public static Result execute(Engine engine, Type matchType, Object actual, Object expected) {
-        Value actualValue = new Value(Value.parseIfJsonOrXmlString(actual));
-        Value expectedValue = new Value(Value.parseIfJsonOrXmlString(expected));
+        Value actualValue = new Value(actual);
+        Value expectedValue = new Value(expected);
         Operation op = new Operation(engine, matchType, actualValue, expectedValue);
         op.execute();
         if (op.pass) {
@@ -82,18 +86,13 @@ public class Match {
     /**
      * Execute a match preserving the actual value type.
      * Use this when the actual value should remain as-is (e.g., String from xmlstring).
-     * The expected value is still parsed to allow XML/JSON literals in RHS.
+     *
+     * NOTE: This method expects already-evaluated values from StepExecutor.
+     * It does NOT parse strings as JSON/XML - that should be done during evaluation.
      */
     public static Result executePreserveActual(Engine engine, Type matchType, Object actual, Object expected) {
-        // For CONTAINS on strings, don't convert actual - preserve user's intent
-        // If they used xmlstring, they want a String, not an XML document
-        Value actualValue;
-        if (actual instanceof String && isContainsType(matchType)) {
-            actualValue = new Value(actual); // Keep as String
-        } else {
-            actualValue = new Value(Value.parseIfJsonOrXmlString(actual));
-        }
-        Value expectedValue = new Value(Value.parseIfJsonOrXmlString(expected));
+        Value actualValue = new Value(actual);
+        Value expectedValue = new Value(expected);
         Operation op = new Operation(engine, matchType, actualValue, expectedValue);
         op.execute();
         if (op.pass) {

@@ -47,12 +47,34 @@ class EngineTest {
     }
 
     @Test
+    void testStringEscapeSequences() {
+        Engine engine = new Engine();
+        // Standard JS: \n in a string becomes an actual newline
+        assertEquals("hello\nworld", engine.eval("'hello\\nworld'"));
+        assertEquals("hello\nworld", engine.eval("\"hello\\nworld\""));
+        // Standard JS: \t becomes a tab
+        assertEquals("hello\tworld", engine.eval("'hello\\tworld'"));
+        // Standard JS: \r becomes carriage return
+        assertEquals("hello\rworld", engine.eval("'hello\\rworld'"));
+        // Standard JS: \\ becomes a single backslash
+        assertEquals("hello\\world", engine.eval("'hello\\\\world'"));
+        // Standard JS: \" in double-quoted string becomes a quote
+        assertEquals("say \"hello\"", engine.eval("\"say \\\"hello\\\"\""));
+        // Standard JS: \' in single-quoted string becomes a quote
+        assertEquals("it's", engine.eval("'it\\'s'"));
+    }
+
+    @Test
     void testQuotesWithinStringLiterals() {
         Engine engine = new Engine();
+        // This tests JSON embedded in a JS string
+        // JS source: {"data": "{\"myKey\":\"myValue\"}"}
+        // The inner string has escaped quotes which become literal quotes
         Object result = engine.eval("""
                 var data = {"data": "{\\"myKey\\":\\"myValue\\"}"}
                 """);
-        assertEquals(Map.of("data", "{\\\"myKey\\\":\\\"myValue\\\"}"), result);
+        // Expected: the inner string value is {"myKey":"myValue"} (quotes, no backslashes)
+        assertEquals(Map.of("data", "{\"myKey\":\"myValue\"}"), result);
     }
 
     @Test

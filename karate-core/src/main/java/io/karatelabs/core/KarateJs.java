@@ -783,6 +783,82 @@ public class KarateJs implements SimpleObject {
         return result;
     }
 
+    // ========== Type Utilities ==========
+
+    /**
+     * Parses a string as JSON, XML, or returns the string as-is.
+     * - If the string looks like JSON (starts with { or [), parse as JSON
+     * - If the string looks like XML (starts with <), parse as XML
+     * - Otherwise, return the string unchanged
+     */
+    private Invokable fromString() {
+        return args -> {
+            if (args.length == 0 || args[0] == null) {
+                return null;
+            }
+            String text = args[0].toString();
+            if (text.isEmpty()) {
+                return text;
+            }
+            if (StringUtils.isJson(text)) {
+                try {
+                    return Json.of(text).value();
+                } catch (Exception e) {
+                    logger.warn("fromString JSON parse failed: {}", e.getMessage());
+                    return text;
+                }
+            } else if (StringUtils.isXml(text)) {
+                try {
+                    return Xml.toXmlDoc(text);
+                } catch (Exception e) {
+                    logger.warn("fromString XML parse failed: {}", e.getMessage());
+                    return text;
+                }
+            }
+            return text;
+        };
+    }
+
+    /**
+     * Returns the Karate type of a value:
+     * - 'null' for null
+     * - 'boolean' for Boolean
+     * - 'number' for Number
+     * - 'string' for String
+     * - 'bytes' for byte[]
+     * - 'list' for List
+     * - 'map' for Map
+     * - 'xml' for Node
+     * - 'function' for JsCallable/Invokable
+     * - 'object' for other types
+     */
+    private Invokable typeOf() {
+        return args -> {
+            if (args.length == 0 || args[0] == null) {
+                return "null";
+            }
+            Object value = args[0];
+            if (value instanceof Boolean) {
+                return "boolean";
+            } else if (value instanceof Number) {
+                return "number";
+            } else if (value instanceof String) {
+                return "string";
+            } else if (value instanceof byte[]) {
+                return "bytes";
+            } else if (value instanceof List) {
+                return "list";
+            } else if (value instanceof Map) {
+                return "map";
+            } else if (value instanceof Node) {
+                return "xml";
+            } else if (value instanceof JsCallable || value instanceof Invokable) {
+                return "function";
+            }
+            return "object";
+        };
+    }
+
     private Invokable remove() {
         return args -> {
             if (args.length < 2) {
@@ -1172,6 +1248,7 @@ public class KarateJs implements SimpleObject {
             case "filter" -> filter();
             case "filterKeys" -> filterKeys();
             case "forEach" -> forEach();
+            case "fromString" -> fromString();
             case "get" -> get();
             case "http" -> http();
             case "info" -> getInfo();
@@ -1197,6 +1274,7 @@ public class KarateJs implements SimpleObject {
             case "sizeOf" -> sizeOf();
             case "sort" -> sort();
             case "toStringPretty" -> toStringPretty();
+            case "typeOf" -> typeOf();
             case "valuesOf" -> valuesOf();
             case "xmlPath" -> xmlPath();
             default -> null;

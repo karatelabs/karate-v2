@@ -845,6 +845,9 @@ public class StepExecutor {
         // Convert XML to JSON map/object
         if (value instanceof Node) {
             value = Xml.toObject((Node) value);
+        } else if (value instanceof String s) {
+            // Parse string as JSON: json foo = strVar where strVar = '{ "foo": "bar" }'
+            value = Json.of(s).value();
         }
         value = processEmbeddedExpressions(value);
         runtime.setVariable(name, value);
@@ -892,6 +895,8 @@ public class StepExecutor {
         String name = text.substring(0, eqIndex).trim();
         String expr = text.substring(eqIndex + 1).trim();
         Object value = runtime.eval(expr);
+        // Process embedded expressions like #(foo)
+        value = processEmbeddedExpressions(value);
         // Convert to JSON string representation
         String stringValue = Json.stringifyStrict(value);
         runtime.setVariable(name, stringValue);
@@ -1092,6 +1097,18 @@ public class StepExecutor {
             return Xml.toXmlDoc(expr);
         }
 
+        // Handle JSON literal - expression starting with { or [
+        // V1 behavior: parse as JSON first, then evaluate embedded expressions
+        if (expr.startsWith("{") || expr.startsWith("[")) {
+            try {
+                Object value = Json.of(expr).value();
+                // Process embedded expressions like #(varName) in the parsed JSON
+                return processEmbeddedExpressions(value);
+            } catch (Exception e) {
+                // Fall through to JS eval if JSON parsing fails
+            }
+        }
+
         // Handle get[N] or get syntax (same as in def)
         if (expr.startsWith("get[") || expr.startsWith("get ")) {
             return evalGetExpression(expr);
@@ -1165,6 +1182,20 @@ public class StepExecutor {
                         String jsonPath = "$" + expr.substring(bracketIdx);
                         return JsonPath.read(target, jsonPath);
                     }
+                }
+            }
+        }
+
+        // Handle "varname $jsonpath" pattern for JSONPath on a variable
+        // e.g., "jsonVar $.root.foo._" means apply JSONPath "$.root.foo._" to jsonVar
+        int dollarIdx = expr.indexOf(" $");
+        if (dollarIdx > 0) {
+            String varName = expr.substring(0, dollarIdx).trim();
+            String jsonPath = expr.substring(dollarIdx + 1).trim();
+            if (isValidVariableName(varName) && jsonPath.startsWith("$")) {
+                Object target = runtime.getVariable(varName);
+                if (target != null) {
+                    return JsonPath.read(target, jsonPath);
                 }
             }
         }

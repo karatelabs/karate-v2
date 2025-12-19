@@ -517,10 +517,61 @@ class Interpreter {
         return sb.toString();
     }
 
+    /**
+     * Converts escape sequences in a string to their actual characters (standard JS behavior).
+     * Handles: backslash-n, backslash-r, backslash-t, backslash-backslash, backslash-quote, etc.
+     */
+    private static String unescapeString(String s) {
+        if (s.indexOf('\\') == -1) {
+            return s; // no escapes, fast path
+        }
+        StringBuilder sb = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '\\' && i + 1 < s.length()) {
+                char next = s.charAt(i + 1);
+                switch (next) {
+                    case 'n' -> { sb.append('\n'); i++; }
+                    case 'r' -> { sb.append('\r'); i++; }
+                    case 't' -> { sb.append('\t'); i++; }
+                    case 'b' -> { sb.append('\b'); i++; }
+                    case 'f' -> { sb.append('\f'); i++; }
+                    case '0' -> { sb.append('\0'); i++; }
+                    case '\\' -> { sb.append('\\'); i++; }
+                    case '\'' -> { sb.append('\''); i++; }
+                    case '"' -> { sb.append('"'); i++; }
+                    case 'u' -> {
+                        // Unicode escape sequence (4 hex digits)
+                        if (i + 5 < s.length()) {
+                            try {
+                                int code = Integer.parseInt(s.substring(i + 2, i + 6), 16);
+                                sb.append((char) code);
+                                i += 5;
+                            } catch (NumberFormatException e) {
+                                sb.append(c); // invalid escape, keep as-is
+                            }
+                        } else {
+                            sb.append(c);
+                        }
+                    }
+                    default -> sb.append(c); // unknown escape, keep backslash
+                }
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
     private static Object evalLitExpr(Node node, CoreContext context) {
         node = node.getFirst();
         if (node.isToken()) {
-            return node.token.literalValue();
+            Object value = node.token.literalValue();
+            // Unescape string literals at runtime
+            if (value instanceof String s && (node.token.type == TokenType.S_STRING || node.token.type == TokenType.D_STRING)) {
+                return unescapeString(s);
+            }
+            return value;
         }
         return switch (node.type) {
             case NodeType.LIT_ARRAY -> evalLitArray(node, context, null, null);

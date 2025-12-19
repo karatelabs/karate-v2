@@ -476,21 +476,67 @@ public class GherkinParser extends Parser {
     }
 
     private String extractDocString(Node docStringNode) {
-        StringBuilder sb = new StringBuilder();
-        boolean started = false;
+        // Find opening and closing triple quotes to get raw text positions
+        Token openQuote = null;
+        Token closeQuote = null;
         for (Node child : docStringNode) {
-            if (child.isToken()) {
-                if (child.token.type == G_TRIPLE_QUOTE) {
-                    continue; // Skip the triple quotes
+            if (child.isToken() && child.token.type == G_TRIPLE_QUOTE) {
+                if (openQuote == null) {
+                    openQuote = child.token;
+                } else {
+                    closeQuote = child.token;
                 }
-                if (started) {
-                    sb.append('\n');
-                }
-                sb.append(child.token.text);
-                started = true;
             }
         }
-        return sb.isEmpty() ? null : sb.toString();
+        if (openQuote == null || closeQuote == null) {
+            return null;
+        }
+        // Extract raw text between the quotes (positions in source)
+        int start = (int) openQuote.pos + openQuote.text.length();
+        int end = (int) closeQuote.pos;
+        String rawContent = resource.getText().substring(start, end).replace("\r", "");
+        // Split into lines
+        String[] linesArray = rawContent.split("\n", -1);
+        List<String> lines = new ArrayList<>();
+        for (String line : linesArray) {
+            // Skip empty lines (V1 behavior)
+            if (!line.isEmpty()) {
+                lines.add(line);
+            }
+        }
+        if (lines.isEmpty()) {
+            return null;
+        }
+        // V1 algorithm: margin is set from first non-empty line's indentation
+        int marginPos = indexOfFirstText(lines.get(0));
+        // Build result, stripping margin from lines that have enough indentation
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i);
+            int firstTextPos = indexOfFirstText(line);
+            // Only strip if this line has at least marginPos characters AND
+            // the first text is at or after marginPos
+            if (marginPos < line.length() && marginPos <= firstTextPos) {
+                line = line.substring(marginPos);
+            }
+            if (i < lines.size() - 1) {
+                sb.append(line).append('\n');
+            } else {
+                sb.append(line);
+            }
+        }
+        return sb.toString().trim();
+    }
+
+    private static int indexOfFirstText(String s) {
+        int pos = 0;
+        for (char c : s.toCharArray()) {
+            if (!Character.isWhitespace(c)) {
+                return pos;
+            }
+            pos++;
+        }
+        return 0; // defensive coding for all-whitespace strings
     }
 
     private Table transformTable(Node tableNode) {
