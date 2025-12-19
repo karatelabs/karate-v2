@@ -74,6 +74,11 @@ Test passes?
 4. **Re-run the V1 compat test** to confirm it passes
 5. Continue to Step 4
 
+> **Build Note:** The `run-v1-compat.sh` script automatically detects source changes in
+> `karate-core/src` and `karate-js/src` and rebuilds if needed. If you make changes to
+> `karate-js` module (e.g., `Xml.java`), the rebuild will include both modules.
+> For manual rebuilds: `mvn install -DskipTests -q -pl karate-js,karate-core`
+
 ### Step 4: Update CSV
 
 Mark the feature AND any related JUnit test(s) as passed:

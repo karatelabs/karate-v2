@@ -45,6 +45,7 @@ import io.karatelabs.match.Result;
 import io.karatelabs.match.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
@@ -103,6 +104,12 @@ public class KarateJs implements SimpleObject {
                 case "json" -> Json.of(resource.getText()).value();
                 case "js" -> engine.eval(resource.getText());
                 case "feature" -> Feature.read(resource);
+                case "xml" -> {
+                    // Parse XML and process embedded expressions
+                    Document doc = Xml.toXmlDoc(resource.getText());
+                    processXmlEmbeddedExpressions(doc);
+                    yield doc;
+                }
                 default -> resource.getText();
             };
         };
@@ -282,35 +289,64 @@ public class KarateJs implements SimpleObject {
                 // Simple set: karate.set('name', value)
                 engine.put(name, args[1]);
             } else {
-                // Jsonpath set: karate.set('name', '$.path', value)
+                // Path set: karate.set('name', 'path', value)
                 String path = args[1] + "";
                 Object value = args[2];
                 Object target = engine.get(name);
-                if (target == null) {
+
+                // Check if this is XPath (path starts with /) or target is XML
+                if (path.startsWith("/") || target instanceof Node) {
+                    // XPath set on XML
+                    Document doc;
+                    if (target instanceof Document) {
+                        doc = (Document) target;
+                    } else if (target instanceof Node) {
+                        doc = ((Node) target).getOwnerDocument();
+                    } else if (target == null) {
+                        // Create new XML document
+                        doc = Xml.newDocument();
+                        engine.put(name, doc);
+                    } else if (target instanceof String && Xml.isXml((String) target)) {
+                        // Convert XML string to Document
+                        doc = Xml.toXmlDoc((String) target);
+                        engine.put(name, doc);
+                    } else {
+                        throw new RuntimeException("cannot set xpath on non-XML variable: " + name);
+                    }
+                    if (value instanceof Node) {
+                        Xml.setByPath(doc, path, (Node) value);
+                    } else {
+                        Xml.setByPath(doc, path, value == null ? "" : value.toString());
+                    }
+                } else if (target == null) {
                     target = new java.util.LinkedHashMap<>();
                     engine.put(name, target);
-                }
-                // Handle special jsonpath cases
-                if (path.endsWith("[]")) {
-                    // Append to array: $.foo[] means add to foo array
-                    String arrayPath = path.substring(0, path.length() - 2);
-                    if (arrayPath.equals("$")) {
-                        // Root is array
-                        if (target instanceof List) {
-                            ((List<Object>) target).add(value);
-                        }
-                    } else {
-                        // Navigate to array and append
-                        String navPath = arrayPath.substring(2); // remove "$."
-                        Object arr = navigateToPath(target, navPath);
-                        if (arr instanceof List) {
-                            ((List<Object>) arr).add(value);
-                        }
-                    }
-                } else {
-                    // Direct path set
+                    // Direct path set for JSON
                     String navPath = path.startsWith("$.") ? path.substring(2) : path;
                     setAtPath(target, navPath, value);
+                } else {
+                    // Handle special jsonpath cases
+                    if (path.endsWith("[]")) {
+                        // Append to array: $.foo[] means add to foo array
+                        String arrayPath = path.substring(0, path.length() - 2);
+                        if (arrayPath.equals("$")) {
+                            // Root is array
+                            if (target instanceof List) {
+                                ((List<Object>) target).add(value);
+                            }
+                        } else {
+                            // Navigate to array and append
+                            String navPath = arrayPath.substring(2); // remove "$."
+                            Object arr = navigateToPath(target, navPath);
+                            if (arr instanceof List) {
+                                ((List<Object>) arr).add(value);
+                            }
+                        }
+                    } else {
+                        // Direct path set
+                        String navPath = path.startsWith("$.") ? path.substring(2) : path;
+                        setAtPath(target, navPath, value);
+                    }
                 }
             }
             return null;
@@ -755,7 +791,11 @@ public class KarateJs implements SimpleObject {
             String varName = args[0].toString();
             String path = args[1].toString();
             Object var = engine.get(varName);
-            if (var instanceof Map && path != null) {
+            if (var instanceof Node && path != null && path.startsWith("/")) {
+                // XPath remove on XML
+                Document doc = var instanceof Document ? (Document) var : ((Node) var).getOwnerDocument();
+                Xml.removeByPath(doc, path);
+            } else if (var instanceof Map && path != null) {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> map = (Map<String, Object>) var;
                 map.remove(path);
@@ -888,6 +928,134 @@ public class KarateJs implements SimpleObject {
         }
         // Return as a new XML document
         return Xml.toNewDocument(node);
+    }
+
+    /**
+     * Process embedded expressions in XML nodes.
+     * Handles #(expr) and ##(optional) patterns in text content and attributes.
+     */
+    private void processXmlEmbeddedExpressions(Node node) {
+        if (node == null) return;
+        if (node.getNodeType() == Node.DOCUMENT_NODE) {
+            node = node.getFirstChild();
+        }
+        if (node == null) return;
+
+        // Process attributes
+        org.w3c.dom.NamedNodeMap attribs = node.getAttributes();
+        if (attribs != null) {
+            for (int i = 0; i < attribs.getLength(); i++) {
+                org.w3c.dom.Attr attr = (org.w3c.dom.Attr) attribs.item(i);
+                String value = attr.getValue();
+                if (value != null && value.contains("#(")) {
+                    attr.setValue(processEmbeddedString(value));
+                }
+            }
+        }
+
+        // Process child nodes
+        List<Node> elementsToRemove = new ArrayList<>();
+        org.w3c.dom.NodeList children = node.getChildNodes();
+        for (int i = 0; i < children.getLength(); i++) {
+            Node child = children.item(i);
+            if (child.getNodeType() == Node.TEXT_NODE) {
+                String text = child.getTextContent();
+                if (text != null && text.contains("#(")) {
+                    // Check for ##(optional) pattern
+                    if (text.trim().startsWith("##(") && text.trim().endsWith(")")) {
+                        String expr = text.trim().substring(3, text.trim().length() - 1);
+                        Object result = engine.eval(expr);
+                        if (result == null) {
+                            // Mark parent element for removal
+                            elementsToRemove.add(child.getParentNode());
+                        } else {
+                            child.setTextContent(result.toString());
+                        }
+                    } else {
+                        child.setTextContent(processEmbeddedString(text));
+                    }
+                }
+            } else if (child.getNodeType() == Node.ELEMENT_NODE) {
+                processXmlEmbeddedExpressions(child);
+            }
+        }
+
+        // Remove elements marked for removal
+        for (Node toRemove : elementsToRemove) {
+            Node parent = toRemove.getParentNode();
+            if (parent != null) {
+                parent.removeChild(toRemove);
+            }
+        }
+    }
+
+    /**
+     * Process a string with embedded expressions like "Hello #(name)!"
+     */
+    private String processEmbeddedString(String str) {
+        StringBuilder result = new StringBuilder();
+        int i = 0;
+        while (i < str.length()) {
+            int hashPos = str.indexOf('#', i);
+            if (hashPos == -1 || hashPos >= str.length() - 1) {
+                result.append(str.substring(i));
+                break;
+            }
+            result.append(str, i, hashPos);
+            char next = str.charAt(hashPos + 1);
+            if (next == '(') {
+                // #(expr) pattern
+                int closePos = findMatchingParen(str, hashPos + 1);
+                if (closePos > 0) {
+                    String expr = str.substring(hashPos + 2, closePos);
+                    try {
+                        Object value = engine.eval(expr);
+                        result.append(value != null ? value.toString() : "");
+                    } catch (Exception e) {
+                        // If expression fails (variable not defined), keep original
+                        result.append(str, hashPos, closePos + 1);
+                    }
+                    i = closePos + 1;
+                } else {
+                    result.append('#');
+                    i = hashPos + 1;
+                }
+            } else if (next == '#' && hashPos + 2 < str.length() && str.charAt(hashPos + 2) == '(') {
+                // ##(optional) pattern - handle inline
+                int closePos = findMatchingParen(str, hashPos + 2);
+                if (closePos > 0) {
+                    String expr = str.substring(hashPos + 3, closePos);
+                    try {
+                        Object value = engine.eval(expr);
+                        result.append(value != null ? value.toString() : "");
+                    } catch (Exception e) {
+                        // If expression fails, keep original
+                        result.append(str, hashPos, closePos + 1);
+                    }
+                    i = closePos + 1;
+                } else {
+                    result.append("##");
+                    i = hashPos + 2;
+                }
+            } else {
+                result.append('#');
+                i = hashPos + 1;
+            }
+        }
+        return result.toString();
+    }
+
+    private static int findMatchingParen(String str, int openPos) {
+        int depth = 1;
+        for (int i = openPos + 1; i < str.length(); i++) {
+            char c = str.charAt(i);
+            if (c == '(') depth++;
+            else if (c == ')') {
+                depth--;
+                if (depth == 0) return i;
+            }
+        }
+        return -1;
     }
 
     private Invokable setXml() {

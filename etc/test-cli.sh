@@ -11,10 +11,20 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_ROOT"
 
-# Build if needed
-if [ ! -f "karate-core/target/karate-core-2.0.0.RC1.jar" ]; then
+# Check if rebuild is needed
+# Rebuild if: jar doesn't exist, or any source file is newer than the jar
+JAR_FILE="karate-core/target/karate-core-2.0.0.RC1.jar"
+NEEDS_BUILD=false
+
+if [ ! -f "$JAR_FILE" ]; then
+    NEEDS_BUILD=true
+elif [ -n "$(find karate-core/src karate-js/src -name '*.java' -newer "$JAR_FILE" 2>/dev/null | head -1)" ]; then
+    NEEDS_BUILD=true
+fi
+
+if [ "$NEEDS_BUILD" = true ]; then
     echo "Building project..."
-    mvn install -DskipTests -q
+    mvn install -DskipTests -q -pl karate-js,karate-core
 fi
 
 # Check for fatjar

@@ -454,7 +454,7 @@ public class StepExecutor {
         List<List<String>> rows = table.getRows();
 
         // Determine the target variable and optional base path
-        // varExpr could be: "cat", "cat.kitten", "cat $.kitten"
+        // varExpr could be: "cat", "cat.kitten", "cat $.kitten", "search /xpath"
         String varName;
         String basePath = null;
         int spaceIdx = varExpr.indexOf(' ');
@@ -467,6 +467,15 @@ public class StepExecutor {
             basePath = varExpr.substring(dotIdx + 1);
         } else {
             varName = varExpr;
+        }
+
+        // Check if this is XML XPath-based table set (basePath starts with /)
+        // e.g., * set search /acc:getAccountByPhoneNumber
+        //       | path | value |
+        //       | acc:phoneNumber | 1234 |
+        if (basePath != null && basePath.startsWith("/")) {
+            executeSetXmlWithTable(varName, basePath, table);
+            return;
         }
 
         // Check if headers indicate array construction (column headers are numbers or "path"/"value")
@@ -566,6 +575,61 @@ public class StepExecutor {
                         setValueAtPath(element, path, value);
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * Handle set with table for XML auto-build.
+     * e.g., * set search /acc:getAccountByPhoneNumber
+     *       | path | value |
+     *       | acc:phoneNumber | 1234 |
+     * This creates XML structure from XPath paths.
+     */
+    private void executeSetXmlWithTable(String varName, String basePath, Table table) {
+        List<String> headers = new ArrayList<>(table.getKeys());
+        List<List<String>> rows = table.getRows();
+
+        // Create or get existing XML document
+        Object existing = runtime.getVariable(varName);
+        org.w3c.dom.Document doc;
+        if (existing instanceof org.w3c.dom.Document) {
+            doc = (org.w3c.dom.Document) existing;
+        } else if (existing instanceof org.w3c.dom.Node) {
+            doc = ((org.w3c.dom.Node) existing).getOwnerDocument();
+        } else {
+            doc = Xml.newDocument();
+            runtime.setVariable(varName, doc);
+        }
+
+        // Ensure the base path root element exists
+        Xml.getNodeByPath(doc, basePath, true);
+
+        // Determine column indices for path and value
+        int pathIdx = headers.indexOf("path");
+        int valueIdx = headers.indexOf("value");
+        if (pathIdx < 0) pathIdx = 0;
+        if (valueIdx < 0) valueIdx = 1;
+
+        // Process each row (skip header row at index 0)
+        for (int i = 1; i < rows.size(); i++) {
+            List<String> row = rows.get(i);
+            if (row.size() <= pathIdx) continue;
+            String rowPath = row.get(pathIdx);
+            String valueExpr = valueIdx < row.size() ? row.get(valueIdx) : "";
+            if (valueExpr == null || valueExpr.isEmpty()) continue;
+
+            // Build the full XPath: basePath + "/" + rowPath
+            String fullPath = basePath + "/" + rowPath;
+
+            // Evaluate the value expression
+            Object value = runtime.eval(valueExpr);
+
+            // Set the value at the XPath
+            if (value instanceof org.w3c.dom.Node) {
+                Xml.setByPath(doc, fullPath, (org.w3c.dom.Node) value);
+            } else {
+                Xml.setByPath(doc, fullPath, value == null ? "" : value.toString());
             }
         }
     }

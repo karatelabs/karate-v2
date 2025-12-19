@@ -508,7 +508,7 @@ feature-214,feature,scenario-outline-result.feature,,,scenario-outline-result.fe
 feature-215,feature,scenario-variable-scope.feature,,,scenario-variable-scope.feature,scenario-variable-scope.feature,root,passed,variable scoping between scenarios,,2025-12-19
 feature-216,feature,schema-like.feature,,,schema-like.feature,json-schema like validation,root,pending,,,
 feature-217,feature,schema-read.feature,,,schema-read.feature,schema-read.feature,root,pending,,,
-feature-218,feature,set-xml.feature,,,set-xml.feature,set-xml.feature,root,pending,XML table-based set needs auto-build support,,
+feature-218,feature,set-xml.feature,,,set-xml.feature,set-xml.feature,root,passed,XML table-based set with auto-build implemented,io/karatelabs/core/StepXmlTest,2025-12-19
 feature-219,feature,set.feature,,,set.feature,set.feature,root,passed,set keyword for setting json paths,,2025-12-19
 feature-220,feature,single-scenario.feature,,,single-scenario.feature,sample feature with distinct signature for each scenario,root,passed,multiple scenarios in feature,,2025-12-19
 feature-221,feature,sort-array.feature,,,sort-array.feature,example of js java hybrid sort,root,pending,,,
@@ -529,4 +529,4 @@ feature-235,feature,xml-pretty.feature,,,xml-pretty.feature,xml-pretty.feature,r
 feature-236,feature,xml/xml-and-xpath.feature,,,xml-and-xpath.feature,xml and xpath demos,xml,pending,,,
 feature-237,feature,xml/xml-call.feature,,,xml-call.feature,Example,xml,pending,,,
 feature-238,feature,xml/xml-called.feature,,,xml-called.feature,xml-called.feature,xml,pending,,,
-feature-239,feature,xml/xml.feature,,,xml.feature,xml samples and tests,xml,pending,,,
+feature-239,feature,xml/xml.feature,,,xml.feature,xml samples and tests,xml,pending,22/36 scenarios pass - shorthand XPath syntax (foo/path) not supported,,2025-12-19

@@ -303,4 +303,47 @@ class StepXmlTest {
         assertNull(get(sr, "age"));
     }
 
+    @Test
+    void testSetXmlWithTable() {
+        // set with table - auto-build XML from XPath paths
+        ScenarioRuntime sr = run("""
+            * set search /acc:getAccountByPhoneNumber
+              | path                        | value |
+              | acc:phoneNumber             | 1234  |
+              | acc:phoneNumberSearchOption | 'all' |
+            * match search ==
+              \"\"\"
+              <acc:getAccountByPhoneNumber>
+                  <acc:phoneNumber>1234</acc:phoneNumber>
+                  <acc:phoneNumberSearchOption>all</acc:phoneNumberSearchOption>
+              </acc:getAccountByPhoneNumber>
+              \"\"\"
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testKarateSetXmlPath() {
+        // karate.set() with XPath
+        ScenarioRuntime sr = run("""
+            * karate.setXml('temp', '<query/>')
+            * karate.set('temp', '/query/name/firstName', 'John')
+            * karate.set('temp', '/query/name/lastName', 'Smith')
+            * karate.set('temp', '/query/age', 20)
+            * match temp == <query><name><firstName>John</firstName><lastName>Smith</lastName></name><age>20</age></query>
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testKarateRemoveXmlPath() {
+        // karate.remove() with XPath
+        ScenarioRuntime sr = run("""
+            * def base = <query><name>foo</name></query>
+            * karate.remove('base', '/query/name')
+            * match base == <query/>
+            """);
+        assertPassed(sr);
+    }
+
 }
