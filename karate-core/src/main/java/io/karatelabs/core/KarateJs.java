@@ -44,6 +44,10 @@ import io.karatelabs.markup.ResourceResolver;
 import io.karatelabs.match.Match;
 import io.karatelabs.match.Result;
 import io.karatelabs.match.Value;
+import io.karatelabs.process.ProcessBuilder;
+import io.karatelabs.process.ProcessConfig;
+import io.karatelabs.process.ProcessEvent;
+import io.karatelabs.process.ProcessHandle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -82,6 +86,7 @@ public class KarateJs implements SimpleObject {
     private BiFunction<String, Object, Map<String, Object>> callProvider;
     private BiFunction<String, Object, Object> callSingleProvider;
     private Supplier<Map<String, Object>> infoProvider;
+    private Consumer<Object> signalConsumer;
     private String env;
 
     private final Invokable read;
@@ -192,6 +197,10 @@ public class KarateJs implements SimpleObject {
 
     public void setEnv(String env) {
         this.env = env;
+    }
+
+    public void setSignalConsumer(Consumer<Object> consumer) {
+        this.signalConsumer = consumer;
     }
 
     private Map<String, Object> getInfo() {
@@ -1303,6 +1312,123 @@ public class KarateJs implements SimpleObject {
         };
     }
 
+    // ========== Process Execution ==========
+
+    /**
+     * karate.exec() - Synchronous process execution.
+     * Returns stdout as string.
+     * Usage:
+     *   karate.exec('ls -la')
+     *   karate.exec(['ls', '-la'])
+     *   karate.exec({ line: 'ls -la', workingDir: '/tmp' })
+     */
+    @SuppressWarnings("unchecked")
+    private Invokable exec() {
+        return args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("exec() needs at least one argument");
+            }
+            ProcessBuilder builder = ProcessBuilder.create();
+            Object arg = args[0];
+            if (arg instanceof String) {
+                builder.line((String) arg);
+            } else if (arg instanceof List) {
+                builder.args((List<String>) arg);
+            } else if (arg instanceof Map) {
+                builder = ProcessBuilder.fromMap((Map<String, Object>) arg);
+            } else {
+                throw new RuntimeException("exec() argument must be string, array, or object");
+            }
+            ProcessHandle handle = ProcessHandle.start(builder.build());
+            handle.waitSync();
+            return handle.getSysOut();
+        };
+    }
+
+    /**
+     * karate.fork() - Asynchronous process execution.
+     * Returns ProcessHandle for async control.
+     * Usage:
+     *   var proc = karate.fork('ping google.com')
+     *   var proc = karate.fork({ args: ['node', 'server.js'], listener: fn })
+     *   var proc = karate.fork({ args: [...], start: false })  // deferred start
+     *   proc.onEvent(fn).start()
+     *   proc.waitSync()
+     *   proc.sysOut
+     *   proc.exitCode
+     *   proc.close()
+     */
+    @SuppressWarnings("unchecked")
+    private Invokable fork() {
+        return args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("fork() needs at least one argument");
+            }
+            ProcessBuilder builder = ProcessBuilder.create();
+            Consumer<ProcessEvent> listener = null;
+            boolean autoStart = true;
+
+            Object arg = args[0];
+            if (arg instanceof String) {
+                builder.line((String) arg);
+            } else if (arg instanceof List) {
+                builder.args((List<String>) arg);
+            } else if (arg instanceof Map) {
+                Map<String, Object> options = (Map<String, Object>) arg;
+                builder = ProcessBuilder.fromMap(options);
+
+                // Extract listener function
+                Object listenerObj = options.get("listener");
+                if (listenerObj instanceof JsCallable jsListener) {
+                    listener = event -> {
+                        try {
+                            jsListener.call(null, event.toMap());
+                        } catch (Exception e) {
+                            logger.warn("process listener error: {}", e.getMessage());
+                        }
+                    };
+                }
+
+                // Check start option (default true)
+                Object startObj = options.get("start");
+                if (startObj instanceof Boolean) {
+                    autoStart = (Boolean) startObj;
+                }
+            } else {
+                throw new RuntimeException("fork() argument must be string, array, or object");
+            }
+
+            if (listener != null) {
+                builder.listener(listener);
+            }
+
+            ProcessHandle handle = ProcessHandle.create(builder.build());
+
+            // Wire signal consumer for listen/listenResult integration
+            if (signalConsumer != null) {
+                handle.setSignalConsumer(signalConsumer);
+            }
+
+            if (autoStart) {
+                handle.start();
+            }
+            return handle;
+        };
+    }
+
+    /**
+     * karate.signal() - Signal a result for listen/listenResult.
+     * Triggers listenResult in the waiting scenario.
+     */
+    private Invokable signal() {
+        return args -> {
+            if (signalConsumer != null && args.length > 0) {
+                signalConsumer.accept(args[0]);
+            }
+            return null;
+        };
+    }
+
     @Override
     public Object jsGet(String key) {
         return switch (key) {
@@ -1314,6 +1440,8 @@ public class KarateJs implements SimpleObject {
             case "doc" -> doc();
             case "env" -> env;
             case "eval" -> eval();
+            case "exec" -> exec();
+            case "fork" -> fork();
             case "filter" -> filter();
             case "filterKeys" -> filterKeys();
             case "forEach" -> forEach();
@@ -1338,6 +1466,7 @@ public class KarateJs implements SimpleObject {
             case "repeat" -> repeat();
             case "set" -> set();
             case "setup" -> setup();
+            case "signal" -> signal();
             case "setupOnce" -> setupOnce();
             case "setXml" -> setXml();
             case "sizeOf" -> sizeOf();

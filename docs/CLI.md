@@ -82,6 +82,30 @@ karate run [options] [paths...]
 3. **With `--pom`:** Use specified project file
 4. **With `--no-pom`:** Ignore `karate-pom.json` even if present
 
+### Supported File Types
+
+| Pattern | Description |
+|---------|-------------|
+| `*.feature` | Gherkin feature files (standard Karate tests) |
+| `*.karate.js` | JavaScript scripts with full `karate.*` API |
+
+**JavaScript scripts (`*.karate.js`)** are ideal for:
+- Complex async operations with callbacks
+- Process management (`karate.fork()`, `karate.exec()`)
+- Custom test harnesses and orchestration
+- Scenarios that benefit from native JS control flow
+
+```bash
+# Run feature files
+karate run tests/users.feature
+
+# Run JS scripts
+karate run tests/setup.karate.js
+
+# Run mixed (discovers both .feature and .karate.js)
+karate run tests/
+```
+
 ### Options
 
 | Option | Description |
@@ -98,6 +122,35 @@ karate run [options] [paths...]
 | `-C, --clean` | Clean output directory before running |
 | `-D, --dryrun` | Parse but don't execute |
 | `--no-color` | Disable colored output |
+| `--log-mask <presets>` | Log masking presets (comma-separated) |
+
+### Log Masking
+
+Mask sensitive data in logs using built-in presets:
+
+```bash
+# Single preset
+karate run --log-mask PASSWORDS features/
+
+# Multiple presets
+karate run --log-mask PASSWORDS,CREDIT_CARDS features/
+
+# All sensitive data
+karate run --log-mask ALL_SENSITIVE features/
+```
+
+**Available presets:** `PASSWORDS`, `CREDIT_CARDS`, `SSN`, `EMAILS`, `API_KEYS`, `BEARER_TOKENS`, `BASIC_AUTH`, `ALL_SENSITIVE`
+
+For custom patterns, use `karate-pom.json`:
+```json
+{
+  "logMask": {
+    "patterns": [
+      {"regex": "secret[=:]([^\\s]+)", "replacement": "***"}
+    ]
+  }
+}
+```
 
 ### Examples
 
@@ -129,6 +182,8 @@ karate run -w /home/user/project src/test/features
 
 The project file name is `karate-pom.json` (inspired by Maven's POM concept). When `karate run` is invoked, it automatically loads `karate-pom.json` from the current directory (or workdir if specified).
 
+> **Note:** `karate-pom.json` is designed for **non-Java teams** using the standalone CLI without Maven/Gradle. Java teams should use `Runner.Builder` directly with system properties for CI/CD overrides.
+
 > **Note:** This is distinct from `karate-config.js` which handles runtime configuration (baseUrl, auth, etc.). The pom file defines *how* to run tests (paths, tags, threads, output).
 
 ### Schema
@@ -150,6 +205,13 @@ The project file name is `karate-pom.json` (inspired by Maven's POM concept). Wh
     "junitXml": false,
     "cucumberJson": false,
     "ndjson": false
+  },
+  "logMask": {
+    "presets": ["PASSWORDS", "CREDIT_CARDS"],
+    "patterns": [
+      {"regex": "secret[=:]\\s*([^\\s]+)", "replacement": "***"}
+    ],
+    "headers": ["Authorization", "X-Api-Key"]
   }
 }
 ```

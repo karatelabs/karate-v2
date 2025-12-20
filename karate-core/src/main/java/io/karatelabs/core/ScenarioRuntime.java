@@ -37,6 +37,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class ScenarioRuntime implements Callable<ScenarioResult> {
@@ -53,6 +55,10 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
     private boolean aborted;
     private boolean skipBackground;
     private Throwable error;
+
+    // Signal/listen mechanism for async process integration
+    private volatile Object listenResult;
+    private CountDownLatch listenLatch = new CountDownLatch(1);
 
     public ScenarioRuntime(FeatureRuntime featureRuntime, Scenario scenario) {
         this.featureRuntime = featureRuntime;
@@ -92,6 +98,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         karate.setCallProvider(this::executeJsCall);
         karate.setCallSingleProvider(this::executeCallSingle);
         karate.setInfoProvider(this::getScenarioInfo);
+        karate.setSignalConsumer(this::setListenResult);
 
         // Set karate.env before config evaluation
         if (featureRuntime != null && featureRuntime.getSuite() != null) {
@@ -701,6 +708,44 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
 
     public boolean isSkipBackground() {
         return skipBackground;
+    }
+
+    // ========== Signal/Listen Mechanism ==========
+
+    /**
+     * Set the listen result (called by karate.signal()).
+     * Triggers any waiting listen() call to complete.
+     */
+    public void setListenResult(Object result) {
+        this.listenResult = result;
+        this.listenLatch.countDown();
+    }
+
+    /**
+     * Wait for a signal with timeout.
+     * Returns the signaled result or throws on timeout.
+     */
+    public Object waitForListenResult(long timeoutMs) {
+        try {
+            if (listenLatch.await(timeoutMs, TimeUnit.MILLISECONDS)) {
+                Object result = listenResult;
+                // Reset for potential reuse
+                listenResult = null;
+                listenLatch = new CountDownLatch(1);
+                return result;
+            }
+            throw new RuntimeException("listen timed out after " + timeoutMs + "ms");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("listen interrupted", e);
+        }
+    }
+
+    /**
+     * Get the current listen result without waiting.
+     */
+    public Object getListenResult() {
+        return listenResult;
     }
 
 }

@@ -562,3 +562,42 @@ karate-reports/                    # new reports
 ```
 
 Disable with `-B=false` or `--backup-reportdir=false`.
+
+---
+
+## TODO: Configure Report
+
+> **Status:** Not yet implemented
+
+Support for `configure report` to control report verbosity and content, similar to Karate v1.
+
+**Planned options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `showStepDetails` | `true` | Show step-level details in report |
+| `showJsLineNumbers` | `false` | Capture JS line-of-code execution (like Gherkin steps) |
+| `showCallDetails` | `true` | Show called feature details inline |
+| `showHttpDetails` | `true` | Show HTTP request/response details |
+| `maxPayloadSize` | `4096` | Max size for embedded payloads |
+
+**Usage (planned):**
+```cucumber
+* configure report = { showJsLineNumbers: true }
+```
+
+**JS Line Capture:**
+
+When `showJsLineNumbers: true`, JS execution would capture line-by-line execution similar to Gherkin steps:
+```
+1: var proc = karate.fork({ args: ['node', 'server.js'] })
+2: proc.waitForPort('localhost', 8080, 30, 250)
+3: var response = http.get()
+```
+
+This is particularly useful for `.karate.js` script execution where there are no Gherkin steps to display.
+
+**Implementation notes:**
+- Requires JS engine instrumentation to capture line execution
+- Should be opt-in due to performance overhead
+- See also: [RUNTIME.md](./RUNTIME.md) Priority 7 (JS Script Execution), [LOGGING.md](./LOGGING.md)

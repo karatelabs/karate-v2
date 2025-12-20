@@ -111,6 +111,24 @@ SuiteResult result = Runner.path("src/test/resources")
 
 See `io.karatelabs.core.Runner` for full API.
 
+### System Properties
+
+Runner.Builder checks these system properties as fallback when values aren't set via API (V1 parity):
+
+| System Property | Description |
+|-----------------|-------------|
+| `karate.env` | Environment name (e.g., `dev`, `staging`) |
+| `karate.config.dir` | Directory containing karate-config.js |
+| `karate.output.dir` | Output directory for reports |
+| `karate.working.dir` | Working directory for relative paths (V2 new) |
+
+**Priority:** API > System Property > Default
+
+```bash
+# Maven example
+mvn test -Dkarate.env=dev -Dkarate.working.dir=${project.basedir}
+```
+
 ### CLI
 
 ```bash
@@ -427,14 +445,15 @@ Runner.path("src/test/local/", "classpath:features/")
 
 ### ~~Priority 4: CLI JSON Configuration~~ ✅ IMPLEMENTED
 
-Run Karate tests using a JSON configuration file:
+Run Karate tests using a JSON configuration file (`karate-pom.json`):
 
 ```bash
-karate --config karate.json
-
-# Override config file options with CLI args
-karate --config karate.json -e prod -T 10
+karate run                           # auto-loads karate-pom.json
+karate run -p custom-pom.json        # explicit pom file
+karate run -e prod -T 10 features/   # CLI args override pom values
 ```
+
+> **Note:** `karate-pom.json` is designed for **non-Java teams** using the standalone CLI without Maven/Gradle. Java teams should use `Runner.Builder` directly with system properties for CI/CD overrides.
 
 **JSON Schema:**
 ```json
@@ -532,7 +551,87 @@ See `io.karatelabs.core.DynamicOutlineTest` for comprehensive test coverage.
 
 ---
 
-### Priority 7: karate-base.js
+### Priority 7: JavaScript Script Execution (`*.karate.js`)
+
+> **Status:** TODO
+
+Pure JavaScript files with the `*.karate.js` naming convention can be executed directly, with full access to the `karate.*` API. This is ideal for complex async operations, process management, and custom test orchestration.
+
+**File naming:** `*.karate.js` (e.g., `setup.karate.js`, `server-test.karate.js`)
+
+**Example script:**
+```javascript
+// server-test.karate.js
+var proc = karate.fork({
+  args: ['node', 'server.js'],
+  listener: function(e) {
+    if (e.type == 'stdout' && e.data.contains('listening')) {
+      karate.signal({ ready: true })
+    }
+  }
+})
+
+// Wait for server to start
+var result = karate.listen(5000)
+if (!result.ready) {
+  throw 'Server did not start in time'
+}
+
+// Run tests against server
+var http = karate.http('http://localhost:8080')
+var response = http.path('health').get()
+match(response.body).equals({ status: 'ok' })
+
+// Cleanup
+proc.close()
+karate.log('Server test completed successfully')
+```
+
+**Execution model:**
+- Each `.karate.js` file is treated as a single test (like a one-scenario Feature)
+- The script has access to all `karate.*` functions, `match()`, `read()`, etc.
+- Pass/fail is determined by whether an exception is thrown
+- Results appear in reports alongside Feature results
+
+**Discovery:**
+- `Runner.path("tests/")` discovers both `.feature` and `.karate.js` files
+- CLI: `karate run tests/` scans for both file types
+
+**Use cases:**
+- Process management with `karate.fork()` and `karate.exec()`
+- Complex async workflows with callbacks
+- Custom test orchestration (e.g., start server, run tests, cleanup)
+- Scenarios requiring native JS control flow (loops, conditionals)
+
+**Implementation:**
+- `JsScriptRuntime` - Executes a `.karate.js` file with KarateJs context
+- Results mapped to `ScenarioResult` (script name as scenario name)
+- Integrated into `Suite` and `Runner` discovery
+
+See `io.karatelabs.core.JsScriptRuntime` and `io.karatelabs.core.ProcessTest` for implementation and tests.
+
+---
+
+### Priority 8: Configure Report
+
+> **Status:** TODO
+
+Support for `configure report` to control report verbosity and content:
+
+```cucumber
+* configure report = { showJsLineNumbers: true }
+```
+
+Key features:
+- JS line-level execution capture (like Gherkin steps)
+- Control HTTP detail verbosity
+- Payload size limits
+
+See [HTML_REPORTS.md](./HTML_REPORTS.md) for detailed specification and [LOGGING.md](./LOGGING.md) for JS line logging.
+
+---
+
+### Priority 9: karate-base.js
 
 Shared config from classpath (e.g., company JAR):
 
