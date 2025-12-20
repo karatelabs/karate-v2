@@ -57,7 +57,7 @@ class ScenarioOutlineTest {
             | carol |
             """);
 
-        Suite suite = Suite.of(feature.toString())
+        Suite suite = Suite.of(tempDir, feature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -83,7 +83,7 @@ class ScenarioOutlineTest {
             | 0  | 0  | 0    |
             """);
 
-        Suite suite = Suite.of(feature.toString())
+        Suite suite = Suite.of(tempDir, feature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -107,7 +107,7 @@ class ScenarioOutlineTest {
             | Karate | Hello Karate! |
             """);
 
-        Suite suite = Suite.of(feature.toString())
+        Suite suite = Suite.of(tempDir, feature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -131,7 +131,7 @@ class ScenarioOutlineTest {
             | jane  | 25   |
             """);
 
-        Suite suite = Suite.of(feature.toString())
+        Suite suite = Suite.of(tempDir, feature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -159,7 +159,7 @@ class ScenarioOutlineTest {
             | negative | -5   |
             """);
 
-        Suite suite = Suite.of(feature.toString())
+        Suite suite = Suite.of(tempDir, feature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -187,7 +187,7 @@ class ScenarioOutlineTest {
             | 50   | 150       |
             """);
 
-        Suite suite = Suite.of(feature.toString())
+        Suite suite = Suite.of(tempDir, feature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -211,7 +211,7 @@ class ScenarioOutlineTest {
             | 2    | 999       |
             """);
 
-        Suite suite = Suite.of(feature.toString())
+        Suite suite = Suite.of(tempDir, feature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -238,7 +238,7 @@ class ScenarioOutlineTest {
             | 002 | bob   |
             """);
 
-        Suite suite = Suite.of(feature.toString())
+        Suite suite = Suite.of(tempDir, feature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -264,7 +264,7 @@ class ScenarioOutlineTest {
             | b  | 2    |
             """);
 
-        Suite suite = Suite.of(feature.toString())
+        Suite suite = Suite.of(tempDir, feature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -287,7 +287,7 @@ class ScenarioOutlineTest {
             | foo  | bar   |
             """);
 
-        Suite suite = Suite.of(feature.toString())
+        Suite suite = Suite.of(tempDir, feature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -318,7 +318,7 @@ class ScenarioOutlineTest {
             * match z == 4
             """);
 
-        Suite suite = Suite.of(feature.toString())
+        Suite suite = Suite.of(tempDir, feature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -347,7 +347,7 @@ class ScenarioOutlineTest {
             | object            | { a: 1 }         | { a: 1 }               |
             """);
 
-        Suite suite = Suite.of(feature.toString())
+        Suite suite = Suite.of(tempDir, feature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -372,7 +372,7 @@ class ScenarioOutlineTest {
             | abc |
             """);
 
-        Suite suite = Suite.of(feature.toString())
+        Suite suite = Suite.of(tempDir, feature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 

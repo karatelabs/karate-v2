@@ -59,6 +59,7 @@ class HtmlReportListenerTest {
 
         // Run with default settings - HTML enabled, NDJSON not enabled
         SuiteResult result = Runner.path(feature.toString())
+                .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputHtmlReport(true)  // default is true anyway
                 .parallel(1);
@@ -97,6 +98,7 @@ class HtmlReportListenerTest {
         Path reportDir = tempDir.resolve("reports");
 
         Runner.path(tempDir.toString())
+                .workingDir(tempDir)
                 .outputDir(reportDir)
                 .parallel(1);
 
@@ -119,6 +121,7 @@ class HtmlReportListenerTest {
         Path reportDir = tempDir.resolve("reports");
 
         Runner.path(feature.toString())
+                .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputHtmlReport(false)  // disable HTML reports
                 .parallel(1);
@@ -144,6 +147,7 @@ class HtmlReportListenerTest {
         Path reportDir = tempDir.resolve("reports");
 
         Runner.path(feature.toString())
+                .workingDir(tempDir)
                 .outputDir(reportDir)
                 .parallel(1);
 
@@ -171,6 +175,7 @@ class HtmlReportListenerTest {
         Path reportDir = tempDir.resolve("reports");
 
         Runner.path(feature.toString())
+                .workingDir(tempDir)
                 .outputDir(reportDir)
                 .parallel(1);
 
@@ -206,6 +211,7 @@ class HtmlReportListenerTest {
         Path reportDir = tempDir.resolve("reports");
 
         SuiteResult result = Runner.path(feature.toString())
+                .workingDir(tempDir)
                 .outputDir(reportDir)
                 .parallel(1);
 

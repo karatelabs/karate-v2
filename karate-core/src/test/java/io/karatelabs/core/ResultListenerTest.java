@@ -88,7 +88,7 @@ class ResultListenerTest {
             * def b = 2
             """);
 
-        Suite suite = Suite.of(featureFile.toString())
+        Suite suite = Suite.of(tempDir, featureFile.toString())
                 .resultListener(listener)
                 .writeReport(false);
         suite.run();
@@ -133,6 +133,7 @@ class ResultListenerTest {
             """);
 
         Runner.path(featureFile.toString())
+                .workingDir(tempDir)
                 .resultListener(listener)
                 .outputDir(tempDir.resolve("reports"))
                 .parallel(1);
@@ -167,7 +168,7 @@ class ResultListenerTest {
             * def a = 1
             """);
 
-        Suite suite = Suite.of(featureFile.toString())
+        Suite suite = Suite.of(tempDir, featureFile.toString())
                 .resultListener(listener1)
                 .resultListener(listener2)
                 .writeReport(false);
@@ -202,7 +203,7 @@ class ResultListenerTest {
             * match b == 999
             """);
 
-        Suite suite = Suite.of(featureFile.toString())
+        Suite suite = Suite.of(tempDir, featureFile.toString())
                 .resultListener(listener)
                 .writeReport(false);
         suite.run();

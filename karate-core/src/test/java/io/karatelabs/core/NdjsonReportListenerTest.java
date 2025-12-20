@@ -59,6 +59,7 @@ class NdjsonReportListenerTest {
         Path reportDir = tempDir.resolve("reports");
 
         SuiteResult result = Runner.path(feature.toString())
+                .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputNdjson(true)  // opt-in to NDJSON
                 .parallel(1);
@@ -88,6 +89,7 @@ class NdjsonReportListenerTest {
         Path reportDir = tempDir.resolve("reports");
 
         Runner.path(feature.toString())
+                .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputNdjson(true)
                 .karateEnv("dev")
@@ -121,6 +123,7 @@ class NdjsonReportListenerTest {
         Path reportDir = tempDir.resolve("reports");
 
         Runner.path(feature.toString())
+                .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputNdjson(true)
                 .parallel(1);
@@ -170,6 +173,7 @@ class NdjsonReportListenerTest {
         Path reportDir = tempDir.resolve("reports");
 
         Runner.path(feature.toString())
+                .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputNdjson(true)
                 .parallel(1);
@@ -206,6 +210,7 @@ class NdjsonReportListenerTest {
         Path reportDir = tempDir.resolve("reports");
 
         SuiteResult result = Runner.path(feature.toString())
+                .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputNdjson(true)
                 .parallel(1);
@@ -252,6 +257,7 @@ class NdjsonReportListenerTest {
         Path reportDir = tempDir.resolve("reports");
 
         Runner.path(feature.toString())
+                .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputNdjson(true)
                 .parallel(1);
@@ -293,6 +299,7 @@ class NdjsonReportListenerTest {
         Path reportDir = tempDir.resolve("reports");
 
         Runner.path(tempDir.toString())
+                .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputNdjson(true)
                 .parallel(1);
@@ -333,6 +340,7 @@ class NdjsonReportListenerTest {
         Path reportDir = tempDir.resolve("reports");
 
         Runner.path(feature.toString())
+                .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputHtmlReport(true)
                 .outputNdjson(true)  // opt-in to NDJSON alongside HTML

@@ -57,6 +57,7 @@ class RunnerTest {
             """);
 
         SuiteResult result = Runner.path(feature.toString())
+                .workingDir(tempDir)
                 .outputDir(tempDir.resolve("reports"))
                 .parallel(1);
 
@@ -82,6 +83,7 @@ class RunnerTest {
             """);
 
         SuiteResult result = Runner.path(tempDir.toString())
+                .workingDir(tempDir)
                 .outputDir(tempDir.resolve("reports"))
                 .parallel(1);
 
@@ -102,6 +104,7 @@ class RunnerTest {
             """);
 
         SuiteResult result = Runner.path(feature.toString())
+                .workingDir(tempDir)
                 .outputDir(tempDir.resolve("reports"))
                 .parallel(1);
 
@@ -121,9 +124,10 @@ class RunnerTest {
             * match value == 42
             """);
 
-        Feature feature = Feature.read(Resource.from(featurePath));
+        Feature feature = Feature.read(Resource.from(featurePath, tempDir));
 
         SuiteResult result = Runner.features(feature)
+                .workingDir(tempDir)
                 .outputDir(tempDir.resolve("reports"))
                 .parallel(1);
 
@@ -143,6 +147,7 @@ class RunnerTest {
 
         Runner.Builder builder = Runner.builder()
                 .path(feature.toString())
+                .workingDir(tempDir)
                 .karateEnv("test")
                 .tags("@smoke")
                 .dryRun(false)
@@ -217,6 +222,7 @@ class RunnerTest {
             """);
 
         SuiteResult result = Runner.path(feature.toString(), "classpath:io/karatelabs/report/second-feature.feature")
+                .workingDir(tempDir)
                 .outputDir(tempDir.resolve("reports"))
                 .outputHtmlReport(false)
                 .parallel(1);

@@ -63,6 +63,7 @@ class CucumberJsonWriterTest {
         Path reportDir = tempDir.resolve("reports");
 
         SuiteResult result = Runner.path(feature.toString())
+                .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputCucumberJson(true)
                 .parallel(1);
@@ -131,6 +132,7 @@ class CucumberJsonWriterTest {
         Path reportDir = tempDir.resolve("reports");
 
         SuiteResult result = Runner.path(feature.toString())
+                .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputCucumberJson(true)
                 .parallel(1);
@@ -183,6 +185,7 @@ class CucumberJsonWriterTest {
         Path reportDir = tempDir.resolve("reports");
 
         Runner.path(feature.toString())
+                .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputCucumberJson(true)
                 .parallel(1);
@@ -221,6 +224,7 @@ class CucumberJsonWriterTest {
         Path reportDir = tempDir.resolve("reports");
 
         Runner.path(feature.toString())
+                .workingDir(tempDir)
                 .outputDir(reportDir)
                 .parallel(1);
 
@@ -264,6 +268,7 @@ class CucumberJsonWriterTest {
         Path reportDir = tempDir.resolve("reports");
 
         Runner.path(feature.toString())
+                .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputCucumberJson(true)
                 .parallel(1);
@@ -309,6 +314,7 @@ class CucumberJsonWriterTest {
         Path reportDir = tempDir.resolve("reports");
 
         Runner.path(feature.toString())
+                .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputCucumberJson(true)
                 .parallel(1);

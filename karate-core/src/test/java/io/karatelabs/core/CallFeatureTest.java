@@ -58,7 +58,7 @@ class CallFeatureTest {
             * match response.result == { value: 42 }
             """);
 
-        Suite suite = Suite.of(callerFeature.toString())
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -84,7 +84,7 @@ class CallFeatureTest {
             * match response.doubled == 42
             """);
 
-        Suite suite = Suite.of(callerFeature.toString())
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -112,7 +112,7 @@ class CallFeatureTest {
             * def response2 = callonce read('counter.feature')
             """);
 
-        Suite suite = Suite.of(callerFeature.toString())
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -140,7 +140,7 @@ class CallFeatureTest {
             * def a = 1
             """);
 
-        Suite suite = Suite.of(callerFeature.toString())
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -175,7 +175,7 @@ class CallFeatureTest {
             * match outerResponse.middleValue == 'from-middle'
             """);
 
-        Suite suite = Suite.of(outer.toString())
+        Suite suite = Suite.of(tempDir, outer.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -201,7 +201,7 @@ class CallFeatureTest {
             * karate.call('called.feature', { foo: 'bar' })
             """);
 
-        Suite suite = Suite.of(callerFeature.toString())
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -227,7 +227,7 @@ class CallFeatureTest {
             * match result.x == 1
             """);
 
-        Suite suite = Suite.of(callerFeature.toString())
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -256,7 +256,7 @@ class CallFeatureTest {
             * match extracted == ['first', 'second']
             """);
 
-        Suite suite = Suite.of(callerFeature.toString())
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 

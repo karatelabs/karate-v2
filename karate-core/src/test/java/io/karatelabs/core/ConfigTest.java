@@ -66,7 +66,7 @@ class ConfigTest {
             """);
 
         // Run with config
-        Suite suite = Suite.of(featureFile.toString())
+        Suite suite = Suite.of(tempDir, featureFile.toString())
                 .configPath(configFile.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
@@ -111,7 +111,7 @@ class ConfigTest {
             """);
 
         // Run with env=dev
-        Suite suite = Suite.of(featureFile.toString())
+        Suite suite = Suite.of(tempDir, featureFile.toString())
                 .configPath(configFile.toString())
                 .env("dev")
                 .writeReport(false);
@@ -133,7 +133,7 @@ class ConfigTest {
             """);
 
         // Run without config file (missing config should be ignored)
-        Suite suite = Suite.of(featureFile.toString())
+        Suite suite = Suite.of(tempDir, featureFile.toString())
                 .configPath(tempDir.resolve("nonexistent-config.js").toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
@@ -161,7 +161,7 @@ class ConfigTest {
             * match version == '1.0'
             """);
 
-        Suite suite = Suite.of(featureFile.toString())
+        Suite suite = Suite.of(tempDir, featureFile.toString())
                 .configPath(configFile.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();

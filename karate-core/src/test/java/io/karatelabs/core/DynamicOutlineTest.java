@@ -69,7 +69,7 @@ class DynamicOutlineTest {
             | karate.setup().data |
             """);
 
-        Feature f = Feature.read(Resource.from(feature));
+        Feature f = Feature.read(Resource.from(feature, tempDir));
         FeatureRuntime fr = new FeatureRuntime(null, f);
         FeatureResult result = fr.call();
 
@@ -102,7 +102,7 @@ class DynamicOutlineTest {
             | karate.setupOnce().data |
             """);
 
-        Feature f = Feature.read(Resource.from(feature));
+        Feature f = Feature.read(Resource.from(feature, tempDir));
         FeatureRuntime fr = new FeatureRuntime(null, f);
         FeatureResult result = fr.call();
 
@@ -125,7 +125,7 @@ class DynamicOutlineTest {
             | [{name: 'Alice'}, {name: 'Bob'}, {name: 'Charlie'}] |
             """);
 
-        Feature f = Feature.read(Resource.from(feature));
+        Feature f = Feature.read(Resource.from(feature, tempDir));
         FeatureRuntime fr = new FeatureRuntime(null, f);
         FeatureResult result = fr.call();
 
@@ -150,7 +150,7 @@ class DynamicOutlineTest {
             | karate.setup().data |
             """);
 
-        Feature f = Feature.read(Resource.from(feature));
+        Feature f = Feature.read(Resource.from(feature, tempDir));
         FeatureRuntime fr = new FeatureRuntime(null, f);
         FeatureResult result = fr.call();
 
@@ -185,7 +185,7 @@ class DynamicOutlineTest {
             * match regular == true
             """);
 
-        Feature f = Feature.read(Resource.from(feature));
+        Feature f = Feature.read(Resource.from(feature, tempDir));
         FeatureRuntime fr = new FeatureRuntime(null, f);
         FeatureResult result = fr.call();
 
@@ -221,7 +221,7 @@ class DynamicOutlineTest {
             | karate.setup('products').data |
             """);
 
-        Feature f = Feature.read(Resource.from(feature));
+        Feature f = Feature.read(Resource.from(feature, tempDir));
         FeatureRuntime fr = new FeatureRuntime(null, f);
         FeatureResult result = fr.call();
 
@@ -251,7 +251,7 @@ class DynamicOutlineTest {
             | karate.setup().data |
             """);
 
-        Feature f = Feature.read(Resource.from(feature));
+        Feature f = Feature.read(Resource.from(feature, tempDir));
         FeatureRuntime fr = new FeatureRuntime(null, f);
         FeatureResult result = fr.call();
 
@@ -280,7 +280,7 @@ class DynamicOutlineTest {
             * match ran == true
             """);
 
-        Feature f = Feature.read(Resource.from(feature));
+        Feature f = Feature.read(Resource.from(feature, tempDir));
         FeatureRuntime fr = new FeatureRuntime(null, f);
         FeatureResult result = fr.call();
 
@@ -313,7 +313,7 @@ class DynamicOutlineTest {
             | karate.setup().data |
             """);
 
-        Feature f = Feature.read(Resource.from(feature));
+        Feature f = Feature.read(Resource.from(feature, tempDir));
         FeatureRuntime fr = new FeatureRuntime(null, f);
         FeatureResult result = fr.call();
 
@@ -334,7 +334,7 @@ class DynamicOutlineTest {
             | karate.setup().data |
             """);
 
-        Feature f = Feature.read(Resource.from(feature));
+        Feature f = Feature.read(Resource.from(feature, tempDir));
         FeatureRuntime fr = new FeatureRuntime(null, f);
 
         // Should throw an error because @setup scenario is missing
@@ -361,7 +361,7 @@ class DynamicOutlineTest {
             | karate.setup().generator |
             """);
 
-        Feature f = Feature.read(Resource.from(feature));
+        Feature f = Feature.read(Resource.from(feature, tempDir));
         FeatureRuntime fr = new FeatureRuntime(null, f);
         FeatureResult result = fr.call();
 
@@ -387,7 +387,7 @@ class DynamicOutlineTest {
             | karate.setup().generator |
             """);
 
-        Feature f = Feature.read(Resource.from(feature));
+        Feature f = Feature.read(Resource.from(feature, tempDir));
         FeatureRuntime fr = new FeatureRuntime(null, f);
         FeatureResult result = fr.call();
 
@@ -415,7 +415,7 @@ class DynamicOutlineTest {
             | karate.setup().generator |
             """);
 
-        Feature f = Feature.read(Resource.from(feature));
+        Feature f = Feature.read(Resource.from(feature, tempDir));
         FeatureRuntime fr = new FeatureRuntime(null, f);
         FeatureResult result = fr.call();
 
@@ -447,7 +447,7 @@ class DynamicOutlineTest {
             | karate.setupOnce().generator |
             """);
 
-        Feature f = Feature.read(Resource.from(feature));
+        Feature f = Feature.read(Resource.from(feature, tempDir));
         FeatureRuntime fr = new FeatureRuntime(null, f);
         FeatureResult result = fr.call();
 
@@ -476,7 +476,7 @@ class DynamicOutlineTest {
             * def ran = true
             """);
 
-        Feature f = Feature.read(Resource.from(feature));
+        Feature f = Feature.read(Resource.from(feature, tempDir));
         FeatureRuntime fr = new FeatureRuntime(null, f);
         FeatureResult result = fr.call();
 

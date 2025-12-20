@@ -87,7 +87,14 @@ public class Suite {
     }
 
     public static Suite of(String... paths) {
+        return of((Path) null, paths);
+    }
+
+    public static Suite of(Path workingDir, String... paths) {
         Suite suite = new Suite();
+        if (workingDir != null) {
+            suite.workingDir = workingDir.toAbsolutePath().normalize();
+        }
         for (String path : paths) {
             File file = new File(path);
             if (file.isDirectory()) {

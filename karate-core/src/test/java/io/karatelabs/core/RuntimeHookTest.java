@@ -100,7 +100,7 @@ class RuntimeHookTest {
             * match a == 1
             """);
 
-        Suite suite = Suite.of(featureFile.toString())
+        Suite suite = Suite.of(tempDir, featureFile.toString())
                 .hook(hook)
                 .writeReport(false);
         suite.run();
@@ -141,7 +141,7 @@ class RuntimeHookTest {
             * assert false
             """);
 
-        Suite suite = Suite.of(featureFile.toString())
+        Suite suite = Suite.of(tempDir, featureFile.toString())
                 .hook(skipHook)
                 .writeReport(false);
         SuiteResult result = suite.run();
@@ -169,7 +169,7 @@ class RuntimeHookTest {
             * def b = 2
             """);
 
-        Suite suite = Suite.of(featureFile.toString())
+        Suite suite = Suite.of(tempDir, featureFile.toString())
                 .hook(skipStepHook)
                 .writeReport(false);
         SuiteResult result = suite.run();
@@ -215,7 +215,7 @@ class RuntimeHookTest {
             * def a = 1
             """);
 
-        Suite suite = Suite.of(featureFile.toString())
+        Suite suite = Suite.of(tempDir, featureFile.toString())
                 .hook(hook1)
                 .hook(hook2)
                 .writeReport(false);

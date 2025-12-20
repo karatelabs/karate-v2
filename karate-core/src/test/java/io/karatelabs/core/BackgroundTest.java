@@ -56,7 +56,7 @@ class BackgroundTest {
             * match shared == 'from-background'
             """);
 
-        Suite suite = Suite.of(feature.toString())
+        Suite suite = Suite.of(tempDir, feature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -81,7 +81,7 @@ class BackgroundTest {
             * match headers['Content-Type'] == 'application/json'
             """);
 
-        Suite suite = Suite.of(feature.toString())
+        Suite suite = Suite.of(tempDir, feature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -103,7 +103,7 @@ class BackgroundTest {
             * match c == 3
             """);
 
-        Suite suite = Suite.of(feature.toString())
+        Suite suite = Suite.of(tempDir, feature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -127,7 +127,7 @@ class BackgroundTest {
             * match value == 'original'
             """);
 
-        Suite suite = Suite.of(feature.toString())
+        Suite suite = Suite.of(tempDir, feature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -148,7 +148,7 @@ class BackgroundTest {
             * def x = 1
             """);
 
-        Suite suite = Suite.of(feature.toString())
+        Suite suite = Suite.of(tempDir, feature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -167,7 +167,7 @@ class BackgroundTest {
             * match x == 42
             """);
 
-        Suite suite = Suite.of(feature.toString())
+        Suite suite = Suite.of(tempDir, feature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -187,7 +187,7 @@ class BackgroundTest {
             * def sc = 'scenario-step'
             """);
 
-        Suite suite = Suite.of(feature.toString())
+        Suite suite = Suite.of(tempDir, feature.toString())
                 .writeReport(false);
         SuiteResult result = suite.run();
 
