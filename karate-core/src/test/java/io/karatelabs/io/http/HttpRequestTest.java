@@ -81,17 +81,15 @@ class HttpRequestTest {
     @Test
     void testParamJsonLenient() {
         HttpRequest request = new HttpRequest();
-        // Lenient parsing: plain strings are returned as-is
+        // Non-JSON values are returned as raw strings
         request.setUrl("http://localhost/test?str=hello&num=42&bool=true");
 
         Invokable paramJson = (Invokable) request.jsGet("paramJson");
 
-        // Plain string returns as string
+        // All non-JSON values return as raw strings
         assertEquals("hello", paramJson.invoke("str"));
-        // Number string returns as number
-        assertEquals(42, paramJson.invoke("num"));
-        // Boolean string returns as boolean
-        assertEquals(true, paramJson.invoke("bool"));
+        assertEquals("42", paramJson.invoke("num"));
+        assertEquals("true", paramJson.invoke("bool"));
     }
 
     @Test

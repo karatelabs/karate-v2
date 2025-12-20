@@ -150,6 +150,18 @@ class JsonTest {
     }
 
     @Test
+    void testJsonParseLenient() {
+        // Lenient accepts unquoted keys and single quotes
+        Object o = Json.parseLenient("{ hello: 'world' }");
+        assertEquals(Map.of("hello", "world"), o);
+        // Still throws on truly invalid JSON
+        Exception e = assertThrows(RuntimeException.class, () -> {
+            Json.parseLenient("not json at all");
+        });
+        assertTrue(e.getMessage().startsWith("invalid json"));
+    }
+
+    @Test
     void testJsonStringifyStrict() {
         Object o = Json.of("{redirect:{url:'/index'}}").value();
         String s = Json.stringifyStrict(o);

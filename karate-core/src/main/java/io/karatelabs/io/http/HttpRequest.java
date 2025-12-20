@@ -466,7 +466,14 @@ public class HttpRequest implements SimpleObject {
         return args -> {
             if (args.length > 0) {
                 String val = getParam(args[0] + "");
-                return val == null ? null : Json.of(val).value();
+                if (val == null) {
+                    return null;
+                }
+                try {
+                    return Json.of(val).value();
+                } catch (Exception e) {
+                    return val; // return raw string if not valid JSON
+                }
             } else {
                 throw new RuntimeException("missing argument for paramJson()");
             }

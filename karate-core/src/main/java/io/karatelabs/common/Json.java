@@ -67,12 +67,45 @@ public class Json {
             if (s.isBlank()) {
                 throw new IllegalArgumentException("input string must not be empty or blank");
             }
-            return new Json(JsonPath.parse(s));
+            return new Json(JsonPath.parse(parseLenient(s)));
         } else if (any instanceof List || any instanceof Map) {
             return new Json(JsonPath.parse(any));
         } else {
             String json = JSONValue.toJSONString(any);
             return new Json(JsonPath.parse(json));
+        }
+    }
+
+    public static Object parseLenient(String json) {
+        if (json == null || json.isBlank()) {
+            throw new RuntimeException("invalid json: input is null or blank");
+        }
+        try {
+            Object result = JSONValue.parseKeepingOrder(json);
+            if (!isMapOrList(result)) {
+                throw new RuntimeException("invalid json: not a JSON object or array");
+            }
+            return result;
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("invalid json: " + e.getMessage(), e);
+        }
+    }
+
+    public static boolean isMapOrList(Object o) {
+        return o instanceof Map || o instanceof List;
+    }
+
+    public static Object parseStrict(String json) {
+        if (json == null || json.isBlank()) {
+            throw new RuntimeException("invalid json: input is null or blank");
+        }
+        try {
+            JSONParser parser = new JSONParser(JSONParser.MODE_RFC4627);
+            return parser.parse(json);
+        } catch (Exception e) {
+            throw new RuntimeException("invalid json: " + e.getMessage(), e);
         }
     }
 
@@ -412,14 +445,6 @@ public class Json {
             return (byte[]) o;
         } else {
             return FileUtils.toBytes(o.toString());
-        }
-    }
-
-    public static Object parseStrict(String json) {
-        try {
-            return new JSONParser(JSONParser.MODE_RFC4627).parse(json, defaultReader.DEFAULT_ORDERED);
-        } catch (Exception e) {
-            throw new RuntimeException("invalid json: " + e.getMessage(), e);
         }
     }
 
