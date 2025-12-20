@@ -23,7 +23,6 @@
  */
 package io.karatelabs.process;
 
-import io.karatelabs.common.OsUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
@@ -46,7 +45,7 @@ class ProcessHandleTest {
         int exitCode = handle.waitSync();
 
         assertEquals(0, exitCode);
-        assertTrue(handle.getSysOut().contains("hello"));
+        assertTrue(handle.getStdOut().contains("hello"));
     }
 
     @Test
@@ -58,7 +57,7 @@ class ProcessHandleTest {
         ProcessHandle handle = ProcessHandle.start(config);
         handle.waitSync();
 
-        String output = handle.getSysOut();
+        String output = handle.getStdOut();
         assertTrue(output.contains("line1"));
     }
 
@@ -86,7 +85,7 @@ class ProcessHandleTest {
         handle.waitSync();
 
         // On macOS /tmp is a symlink to /private/tmp
-        String output = handle.getSysOut().trim();
+        String output = handle.getStdOut().trim();
         assertTrue(output.equals("/tmp") || output.equals("/private/tmp"),
                 "Expected /tmp or /private/tmp but got: " + output);
     }
@@ -101,52 +100,40 @@ class ProcessHandleTest {
         ProcessHandle handle = ProcessHandle.start(config);
         handle.waitSync();
 
-        assertTrue(handle.getSysOut().contains("hello_world"));
+        assertTrue(handle.getStdOut().contains("hello_world"));
     }
 
     @Test
     @DisabledOnOs(OS.WINDOWS)
-    void testEventListener() {
-        List<String> events = new ArrayList<>();
-        AtomicInteger exitCodeReceived = new AtomicInteger(-1);
+    void testListener() {
+        List<String> lines = new ArrayList<>();
 
         ProcessConfig config = ProcessBuilder.create()
                 .args("echo", "hello")
-                .listener(event -> {
-                    if (event.isStdout()) {
-                        events.add("stdout:" + event.data());
-                    } else if (event.isExit()) {
-                        exitCodeReceived.set(event.exitCode());
-                    }
-                })
+                .listener(lines::add)
                 .build();
 
         ProcessHandle handle = ProcessHandle.start(config);
         handle.waitSync();
 
-        assertTrue(events.stream().anyMatch(e -> e.contains("hello")));
-        assertEquals(0, exitCodeReceived.get());
+        assertTrue(lines.stream().anyMatch(e -> e.contains("hello")));
     }
 
     @Test
     @DisabledOnOs(OS.WINDOWS)
-    void testOnEventChaining() {
-        List<String> events = new ArrayList<>();
+    void testOnStdOutChaining() {
+        List<String> lines = new ArrayList<>();
 
         ProcessConfig config = ProcessBuilder.create()
                 .args("echo", "test")
                 .build();
 
         ProcessHandle handle = ProcessHandle.create(config);
-        handle.onEvent(event -> {
-            if (event.isStdout()) {
-                events.add(event.data());
-            }
-        });
+        handle.onStdOut(lines::add);
         handle.start();
         handle.waitSync();
 
-        assertTrue(events.stream().anyMatch(e -> e.contains("test")));
+        assertTrue(lines.stream().anyMatch(e -> e.contains("test")));
     }
 
     @Test
@@ -166,7 +153,7 @@ class ProcessHandleTest {
         handle.start();
         handle.waitSync();
 
-        assertTrue(handle.getSysOut().contains("deferred"));
+        assertTrue(handle.getStdOut().contains("deferred"));
     }
 
     @Test
@@ -201,34 +188,30 @@ class ProcessHandleTest {
 
     @Test
     @DisabledOnOs(OS.WINDOWS)
-    void testWaitUntil() {
+    void testWaitForOutput() {
         List<String> outputLines = new ArrayList<>();
 
         ProcessConfig config = ProcessBuilder.create()
                 .args("sh", "-c", "echo 'starting'; sleep 0.1; echo 'ready'; sleep 0.1; echo 'done'")
-                .listener(event -> {
-                    if (event.isStdout()) {
-                        outputLines.add(event.data());
-                    }
-                })
+                .listener(outputLines::add)
                 .build();
 
         ProcessHandle handle = ProcessHandle.start(config);
 
         // Wait until we see "ready"
-        ProcessEvent readyEvent = handle.waitUntil(event ->
-                event.isStdout() && event.data() != null && event.data().contains("ready"),
+        String readyLine = handle.waitForOutput(
+                line -> line != null && line.contains("ready"),
                 5000);
 
-        assertNotNull(readyEvent);
-        assertTrue(readyEvent.data().contains("ready"));
+        assertNotNull(readyLine);
+        assertTrue(readyLine.contains("ready"));
 
         handle.close();
     }
 
     @Test
     @DisabledOnOs(OS.WINDOWS)
-    void testWaitUntilTimeout() {
+    void testWaitForOutputTimeout() {
         ProcessConfig config = ProcessBuilder.create()
                 .args("sleep", "10")
                 .build();
@@ -237,7 +220,7 @@ class ProcessHandleTest {
 
         // This should timeout since sleep doesn't produce output
         assertThrows(RuntimeException.class, () ->
-                handle.waitUntil(event -> event.isStdout(), 100));
+                handle.waitForOutput(line -> true, 100));
 
         handle.close(true);
     }
@@ -261,39 +244,23 @@ class ProcessHandleTest {
     }
 
     @Test
-    void testProcessEvent() {
-        ProcessEvent stdout = ProcessEvent.stdout("hello");
-        assertTrue(stdout.isStdout());
-        assertFalse(stdout.isStderr());
-        assertFalse(stdout.isExit());
-        assertEquals("hello", stdout.data());
-        assertNull(stdout.exitCode());
+    @DisabledOnOs(OS.WINDOWS)
+    void testSeparateStderr() {
+        List<String> stdoutLines = new ArrayList<>();
+        List<String> stderrLines = new ArrayList<>();
 
-        ProcessEvent stderr = ProcessEvent.stderr("error");
-        assertFalse(stderr.isStdout());
-        assertTrue(stderr.isStderr());
-        assertEquals("error", stderr.data());
+        ProcessConfig config = ProcessBuilder.create()
+                .args("sh", "-c", "echo 'out'; echo 'err' >&2")
+                .redirectErrorStream(false)
+                .listener(stdoutLines::add)
+                .errorListener(stderrLines::add)
+                .build();
 
-        ProcessEvent exit = ProcessEvent.exit(0);
-        assertTrue(exit.isExit());
-        assertEquals(0, exit.exitCode());
-        assertNull(exit.data());
-    }
+        ProcessHandle handle = ProcessHandle.start(config);
+        handle.waitSync();
 
-    @Test
-    void testProcessEventToMap() {
-        ProcessEvent event = ProcessEvent.stdout("hello");
-        var map = event.toMap();
-
-        assertEquals("stdout", map.get("type"));
-        assertEquals("hello", map.get("data"));
-        assertFalse(map.containsKey("exitCode"));
-
-        ProcessEvent exit = ProcessEvent.exit(42);
-        var exitMap = exit.toMap();
-
-        assertEquals("exit", exitMap.get("type"));
-        assertEquals(42, exitMap.get("exitCode"));
+        assertTrue(stdoutLines.stream().anyMatch(l -> l.contains("out")));
+        assertTrue(stderrLines.stream().anyMatch(l -> l.contains("err")));
     }
 
 }

@@ -39,7 +39,7 @@ import java.util.function.Predicate;
 
 /**
  * Main process wrapper exposed to JavaScript.
- * Manages process lifecycle, stream readers, and event dispatch.
+ * Manages process lifecycle, stream readers, and line dispatch.
  * <p>
  * Supports two creation modes:
  * 1. Immediate start: ProcessHandle.start(config) - starts process immediately
@@ -48,9 +48,9 @@ import java.util.function.Predicate;
 public class ProcessHandle implements SimpleObject {
 
     private static final List<String> KEYS = List.of(
-            "sysOut", "sysErr", "exitCode", "alive", "pid",
-            "waitSync", "waitUntil", "close", "signal", "start",
-            "waitForPort", "waitForHttp", "onEvent"
+            "stdOut", "stdErr", "exitCode", "alive", "pid",
+            "waitSync", "waitForOutput", "close", "signal", "start",
+            "waitForPort", "waitForHttp", "onStdOut", "onStdErr"
     );
 
     private final ProcessConfig config;
@@ -61,12 +61,13 @@ public class ProcessHandle implements SimpleObject {
     private final AtomicBoolean closed = new AtomicBoolean(false);
     private final AtomicBoolean started = new AtomicBoolean(false);
 
-    // For waitUntil() functionality
-    private final CopyOnWriteArrayList<Predicate<ProcessEvent>> waitPredicates = new CopyOnWriteArrayList<>();
-    private final ConcurrentHashMap<Predicate<ProcessEvent>, CompletableFuture<ProcessEvent>> waitFutures = new ConcurrentHashMap<>();
+    // For waitForOutput() functionality
+    private final CopyOnWriteArrayList<Predicate<String>> waitPredicates = new CopyOnWriteArrayList<>();
+    private final ConcurrentHashMap<Predicate<String>, CompletableFuture<String>> waitFutures = new ConcurrentHashMap<>();
 
-    // Additional event listeners (beyond config.listener)
-    private final CopyOnWriteArrayList<Consumer<ProcessEvent>> eventListeners = new CopyOnWriteArrayList<>();
+    // Additional listeners (beyond config.listener)
+    private final CopyOnWriteArrayList<Consumer<String>> stdOutListeners = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<Consumer<String>> stdErrListeners = new CopyOnWriteArrayList<>();
 
     // Signal/listen integration
     private Consumer<Object> signalConsumer;
@@ -125,10 +126,20 @@ public class ProcessHandle implements SimpleObject {
     }
 
     /**
-     * Add an event listener. Can be called before or after start().
+     * Add a stdout listener. Can be called before or after start().
+     * When redirectErrorStream is true (default), receives both stdout and stderr.
      */
-    public ProcessHandle onEvent(Consumer<ProcessEvent> listener) {
-        eventListeners.add(listener);
+    public ProcessHandle onStdOut(Consumer<String> listener) {
+        stdOutListeners.add(listener);
+        return this;
+    }
+
+    /**
+     * Add a stderr listener. Can be called before or after start().
+     * Only receives lines when redirectErrorStream is false.
+     */
+    public ProcessHandle onStdErr(Consumer<String> listener) {
+        stdErrListeners.add(listener);
         return this;
     }
 
@@ -140,7 +151,7 @@ public class ProcessHandle implements SimpleObject {
                     new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    handleLine(ProcessEvent.Type.STDOUT, line);
+                    handleStdout(line);
                 }
             } catch (Exception e) {
                 if (!closed.get()) {
@@ -157,7 +168,7 @@ public class ProcessHandle implements SimpleObject {
                         new InputStreamReader(process.getErrorStream()))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
-                        handleLine(ProcessEvent.Type.STDERR, line);
+                        handleStderr(line);
                     }
                 } catch (Exception e) {
                     if (!closed.get()) {
@@ -174,9 +185,6 @@ public class ProcessHandle implements SimpleObject {
             try {
                 int code = process.waitFor();
                 exitCode = code;
-                // Dispatch exit event
-                ProcessEvent exitEvent = ProcessEvent.exit(code);
-                dispatchEvent(exitEvent);
                 exitFuture.complete(code);
                 JvmLogger.debug("process exited with code: {}", code);
             } catch (Exception e) {
@@ -187,52 +195,76 @@ public class ProcessHandle implements SimpleObject {
         });
     }
 
-    private void handleLine(ProcessEvent.Type type, String line) {
+    private void handleStdout(String line) {
         // Buffer the output
-        StringBuilder buffer = (type == ProcessEvent.Type.STDOUT) ? stdoutBuffer : stderrBuffer;
-        synchronized (buffer) {
-            buffer.append(line).append('\n');
+        synchronized (stdoutBuffer) {
+            stdoutBuffer.append(line).append('\n');
         }
         // Log to LogContext if enabled
         if (config.logToContext()) {
             LogContext.get().log(line);
         }
-        // Create and dispatch event
-        ProcessEvent event = (type == ProcessEvent.Type.STDOUT)
-                ? ProcessEvent.stdout(line)
-                : ProcessEvent.stderr(line);
-        dispatchEvent(event);
-    }
-
-    private void dispatchEvent(ProcessEvent event) {
         // Dispatch to config listener
         if (config.listener() != null) {
             try {
-                config.listener().accept(event);
+                config.listener().accept(line);
             } catch (Exception e) {
                 JvmLogger.warn("listener error: {}", e.getMessage());
             }
         }
         // Dispatch to additional listeners
-        for (Consumer<ProcessEvent> listener : eventListeners) {
+        for (Consumer<String> listener : stdOutListeners) {
             try {
-                listener.accept(event);
+                listener.accept(line);
             } catch (Exception e) {
-                JvmLogger.warn("event listener error: {}", e.getMessage());
+                JvmLogger.warn("stdOut listener error: {}", e.getMessage());
             }
         }
-        // Check waitUntil predicates
-        for (Predicate<ProcessEvent> predicate : waitPredicates) {
+        // Check waitForOutput predicates
+        checkWaitPredicates(line);
+    }
+
+    private void handleStderr(String line) {
+        // Buffer the output
+        synchronized (stderrBuffer) {
+            stderrBuffer.append(line).append('\n');
+        }
+        // Log to LogContext if enabled
+        if (config.logToContext()) {
+            LogContext.get().log(line);
+        }
+        // Dispatch to config errorListener
+        if (config.errorListener() != null) {
             try {
-                if (predicate.test(event)) {
-                    CompletableFuture<ProcessEvent> future = waitFutures.remove(predicate);
+                config.errorListener().accept(line);
+            } catch (Exception e) {
+                JvmLogger.warn("error listener error: {}", e.getMessage());
+            }
+        }
+        // Dispatch to additional error listeners
+        for (Consumer<String> listener : stdErrListeners) {
+            try {
+                listener.accept(line);
+            } catch (Exception e) {
+                JvmLogger.warn("stdErr listener error: {}", e.getMessage());
+            }
+        }
+        // Check waitForOutput predicates (stderr lines also checked)
+        checkWaitPredicates(line);
+    }
+
+    private void checkWaitPredicates(String line) {
+        for (Predicate<String> predicate : waitPredicates) {
+            try {
+                if (predicate.test(line)) {
+                    CompletableFuture<String> future = waitFutures.remove(predicate);
                     if (future != null) {
                         waitPredicates.remove(predicate);
-                        future.complete(event);
+                        future.complete(line);
                     }
                 }
             } catch (Exception e) {
-                JvmLogger.warn("waitUntil predicate error: {}", e.getMessage());
+                JvmLogger.warn("waitForOutput predicate error: {}", e.getMessage());
             }
         }
     }
@@ -258,24 +290,24 @@ public class ProcessHandle implements SimpleObject {
     }
 
     /**
-     * Wait until predicate returns true for an event.
+     * Wait until predicate returns true for an output line.
      *
-     * @param predicate Test function that receives ProcessEvent
-     * @return The event that matched
+     * @param predicate Test function that receives the line
+     * @return The line that matched
      */
-    public ProcessEvent waitUntil(Predicate<ProcessEvent> predicate) {
-        return waitUntil(predicate, 0);
+    public String waitForOutput(Predicate<String> predicate) {
+        return waitForOutput(predicate, 0);
     }
 
     /**
-     * Wait until predicate returns true for an event, with timeout.
+     * Wait until predicate returns true for an output line, with timeout.
      *
-     * @param predicate     Test function that receives ProcessEvent
+     * @param predicate     Test function that receives the line
      * @param timeoutMillis Timeout in milliseconds (0 = no timeout)
-     * @return The event that matched
+     * @return The line that matched
      */
-    public ProcessEvent waitUntil(Predicate<ProcessEvent> predicate, long timeoutMillis) {
-        CompletableFuture<ProcessEvent> future = new CompletableFuture<>();
+    public String waitForOutput(Predicate<String> predicate, long timeoutMillis) {
+        CompletableFuture<String> future = new CompletableFuture<>();
         waitPredicates.add(predicate);
         waitFutures.put(predicate, future);
         try {
@@ -287,21 +319,21 @@ public class ProcessHandle implements SimpleObject {
         } catch (TimeoutException e) {
             waitPredicates.remove(predicate);
             waitFutures.remove(predicate);
-            throw new RuntimeException("waitUntil timed out after " + timeoutMillis + "ms");
+            throw new RuntimeException("waitForOutput timed out after " + timeoutMillis + "ms");
         } catch (Exception e) {
             waitPredicates.remove(predicate);
             waitFutures.remove(predicate);
-            throw new RuntimeException("error in waitUntil", e);
+            throw new RuntimeException("error in waitForOutput", e);
         }
     }
 
-    public String getSysOut() {
+    public String getStdOut() {
         synchronized (stdoutBuffer) {
             return stdoutBuffer.toString();
         }
     }
 
-    public String getSysErr() {
+    public String getStdErr() {
         synchronized (stderrBuffer) {
             return stderrBuffer.toString();
         }
@@ -371,8 +403,8 @@ public class ProcessHandle implements SimpleObject {
     @Override
     public Object jsGet(String key) {
         return switch (key) {
-            case "sysOut" -> getSysOut();
-            case "sysErr" -> getSysErr();
+            case "stdOut" -> getStdOut();
+            case "stdErr" -> getStdErr();
             case "exitCode" -> getExitCode();
             case "alive" -> isAlive();
             case "pid" -> getPid();
@@ -380,16 +412,30 @@ public class ProcessHandle implements SimpleObject {
                 start();
                 return this;
             };
-            case "onEvent" -> (JsCallable) (ctx, args) -> {
+            case "onStdOut" -> (JsCallable) (ctx, args) -> {
                 if (args.length == 0 || !(args[0] instanceof JsCallable)) {
-                    throw new RuntimeException("onEvent requires a function argument");
+                    throw new RuntimeException("onStdOut requires a function argument");
                 }
                 JsCallable listener = (JsCallable) args[0];
-                onEvent(event -> {
+                onStdOut(line -> {
                     try {
-                        listener.call(ctx, event.toMap());
+                        listener.call(ctx, line);
                     } catch (Exception e) {
-                        JvmLogger.warn("onEvent listener error: {}", e.getMessage());
+                        JvmLogger.warn("onStdOut listener error: {}", e.getMessage());
+                    }
+                });
+                return this;
+            };
+            case "onStdErr" -> (JsCallable) (ctx, args) -> {
+                if (args.length == 0 || !(args[0] instanceof JsCallable)) {
+                    throw new RuntimeException("onStdErr requires a function argument");
+                }
+                JsCallable listener = (JsCallable) args[0];
+                onStdErr(line -> {
+                    try {
+                        listener.call(ctx, line);
+                    } catch (Exception e) {
+                        JvmLogger.warn("onStdErr listener error: {}", e.getMessage());
                     }
                 });
                 return this;
@@ -400,18 +446,17 @@ public class ProcessHandle implements SimpleObject {
                 }
                 return waitSync();
             };
-            case "waitUntil" -> (JsCallable) (ctx, args) -> {
+            case "waitForOutput" -> (JsCallable) (ctx, args) -> {
                 if (args.length == 0 || !(args[0] instanceof JsCallable)) {
-                    throw new RuntimeException("waitUntil requires a function argument");
+                    throw new RuntimeException("waitForOutput requires a function argument");
                 }
                 JsCallable predicate = (JsCallable) args[0];
                 long timeout = args.length > 1 && args[1] instanceof Number
                         ? ((Number) args[1]).longValue() : 0;
-                ProcessEvent result = waitUntil(event -> {
-                    Object res = predicate.call(ctx, event.toMap());
+                return waitForOutput(line -> {
+                    Object res = predicate.call(ctx, line);
                     return Boolean.TRUE.equals(res);
                 }, timeout);
-                return result.toMap();
             };
             case "close" -> (JsCallable) (ctx, args) -> {
                 boolean force = args.length > 0 && Boolean.TRUE.equals(args[0]);

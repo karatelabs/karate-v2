@@ -129,7 +129,7 @@ class ProcessTest {
             Scenario: fork and wait
               * def proc = karate.fork({ args: ['echo', 'forked'] })
               * proc.waitSync()
-              * match proc.sysOut contains 'forked'
+              * match proc.stdOut contains 'forked'
               * match proc.exitCode == 0
             """);
 
@@ -149,7 +149,7 @@ class ProcessTest {
             Scenario: fork with event listener
               * def proc = karate.fork({ args: ['echo', 'hello'] })
               * proc.waitSync()
-              * match proc.sysOut contains 'hello'
+              * match proc.stdOut contains 'hello'
               * match proc.exitCode == 0
             """);
 
@@ -170,7 +170,7 @@ class ProcessTest {
               * def proc = karate.fork({ args: ['echo', 'deferred'], start: false })
               * proc.start()
               * proc.waitSync()
-              * match proc.sysOut contains 'deferred'
+              * match proc.stdOut contains 'deferred'
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
@@ -182,14 +182,14 @@ class ProcessTest {
 
     @Test
     @DisabledOnOs(OS.WINDOWS)
-    void testForkWaitUntil() throws Exception {
-        Path featureFile = tempDir.resolve("fork-wait-until.feature");
+    void testForkWaitForOutput() throws Exception {
+        Path featureFile = tempDir.resolve("fork-wait-output.feature");
         Files.writeString(featureFile, """
-            Feature: fork waitUntil
+            Feature: fork waitForOutput
             Scenario: wait for specific output
               * def proc = karate.fork({ args: ['sh', '-c', 'sleep 0.2 && echo ready'] })
-              * def event = proc.waitUntil(function(e) { return e.type == 'stdout' && e.data && e.data.indexOf('ready') >= 0 }, 5000)
-              * match event.data contains 'ready'
+              * def line = proc.waitForOutput(function(line) { return line && line.indexOf('ready') >= 0 }, 5000)
+              * match line contains 'ready'
               * proc.close()
             """);
 
@@ -197,7 +197,7 @@ class ProcessTest {
                 .writeReport(false);
         SuiteResult result = suite.run();
 
-        assertTrue(result.isPassed(), "fork waitUntil should pass");
+        assertTrue(result.isPassed(), "fork waitForOutput should pass");
     }
 
     @Test
@@ -260,12 +260,12 @@ class ProcessTest {
         String js = """
             var proc = karate.fork({ args: ['echo', 'forked-from-js'] });
             proc.waitSync();
-            var result = { sysOut: proc.sysOut, exitCode: proc.exitCode };
+            var result = { stdOut: proc.stdOut, exitCode: proc.exitCode };
             result;
             """;
         @SuppressWarnings("unchecked")
         Map<String, Object> result = (Map<String, Object>) karate.engine.eval(js);
-        assertTrue(result.get("sysOut").toString().contains("forked-from-js"));
+        assertTrue(result.get("stdOut").toString().contains("forked-from-js"));
         assertEquals(0, result.get("exitCode"));
     }
 
@@ -276,7 +276,7 @@ class ProcessTest {
         String js = """
             var proc = karate.fork({ args: ['echo', 'event-test'] });
             proc.waitSync();
-            proc.sysOut;
+            proc.stdOut;
             """;
         Object result = karate.engine.eval(js);
         assertTrue(result.toString().contains("event-test"));
@@ -290,7 +290,7 @@ class ProcessTest {
             var proc = karate.fork({ args: ['echo', 'deferred-js'], start: false });
             proc.start();
             proc.waitSync();
-            proc.sysOut;
+            proc.stdOut;
             """;
         Object result = karate.engine.eval(js);
         assertTrue(result.toString().contains("deferred-js"));
@@ -298,17 +298,17 @@ class ProcessTest {
 
     @Test
     @DisabledOnOs(OS.WINDOWS)
-    void testForkWaitUntilViaJs() {
+    void testForkWaitForOutputViaJs() {
         KarateJs karate = new KarateJs(Resource.path(""));
         String js = """
             var proc = karate.fork({
                 args: ['sh', '-c', 'echo starting; sleep 0.1; echo ready; sleep 0.1; echo done']
             });
-            var event = proc.waitUntil(function(e) {
-                return e.type == 'stdout' && e.data && e.data.indexOf('ready') >= 0;
+            var line = proc.waitForOutput(function(line) {
+                return line && line.indexOf('ready') >= 0;
             }, 5000);
             proc.close();
-            event.data;
+            line;
             """;
         Object result = karate.engine.eval(js);
         assertTrue(result.toString().contains("ready"));

@@ -3,9 +3,9 @@ java-001,java_test,CallResponseTest.java,CallResponseTest,testPayments,,testPaym
 java-002,java_test,DummyUiTest.java,DummyUiTest,testUiGoogle,,testUiGoogle,root,skipped,Out of scope - requires Browser/Driver,,2025-12-20
 java-003,java_test,FeatureFailRunner.java,FeatureFailRunner,testFailJs,,testFailJs,root,passed,V2 correctly fails on missing JS file (expected behavior),,2025-12-20
 java-004,java_test,FeatureFailRunner.java,FeatureFailRunner,testCallSingleFail,,testCallSingleFail,root,passed,callSingle implemented - test needs env/config propagation in compat runner,CallSingleTest,2025-12-20
-java-005,java_test,FeatureFailRunner.java,FeatureFailRunner,testExec,,testExec,root,pending,,,
-java-006,java_test,FeatureFailRunner.java,FeatureFailRunner,testFork,,testFork,root,pending,,,
-java-007,java_test,FeatureFailRunner.java,FeatureFailRunner,testForkListener,,testForkListener,root,pending,,,
+java-005,java_test,FeatureFailRunner.java,FeatureFailRunner,testExec,,testExec,root,passed,karate.exec() implemented,io/karatelabs/core/StepExecTest,2025-12-20
+java-006,java_test,FeatureFailRunner.java,FeatureFailRunner,testFork,,testFork,root,passed,karate.fork() implemented,io/karatelabs/core/StepExecTest,2025-12-20
+java-007,java_test,FeatureFailRunner.java,FeatureFailRunner,testForkListener,,testForkListener,root,passed,fork listener tested in ProcessHandleTest,io/karatelabs/process/ProcessHandleTest,2025-12-20
 java-008,java_test,FeatureFailRunner.java,FeatureFailRunner,testUsersDoc,,testUsersDoc,root,pending,,,
 java-009,java_test,FeatureFailRunner.java,FeatureFailRunner,testUiGoogle,,testUiGoogle,root,pending,,,
 java-010,java_test,FeatureFailRunner.java,FeatureFailRunner,testOutlineDynamicFail,,testOutlineDynamicFail,root,pending,,,
@@ -54,7 +54,7 @@ java-052,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallSingleOutl
 java-053,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallArg,,testCallArg,root,passed,runs call-arg.feature which passes,,2025-12-19
 java-054,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallArgNull,,testCallArgNull,root,passed,runs call-arg-null.feature which passes,,2025-12-19
 java-055,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testIgnoreStepFailure,,testIgnoreStepFailure,root,pending,,,
-java-056,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateFork,,testKarateFork,root,pending,,,
+java-056,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateFork,,testKarateFork,root,passed,karate.fork() implemented,io/karatelabs/core/StepExecTest,2025-12-20
 java-057,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCsv,,testCsv,root,passed,runs csv.feature which passes,,2025-12-19
 java-058,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testXmlPretty,,testXmlPretty,root,passed,karate.prettyXml() implemented,io/karatelabs/core/StepXmlTest,2025-12-19
 java-059,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testMatchStep,,testMatchStep,root,passed,runs match-step.feature which passes,,2025-12-19
@@ -336,7 +336,7 @@ feature-042,feature,dummy-ui-google.feature,,,dummy-ui-google.feature,dummy-ui-g
 feature-043,feature,dummy.feature,,,dummy.feature,dummy.feature,root,passed,simple test feature,,2025-12-20
 feature-044,feature,eval-and-set.feature,,,eval-and-set.feature,eval-and-set.feature,root,passed,fixed eval docstring + karate.set(); added StepDefTest,io/karatelabs/core/StepDefTest,2025-12-18
 feature-045,feature,eval-assign.feature,,,eval-assign.feature,eval-assign.feature,root,passed,fixed property assignment with docstring; added StepDefTest,io/karatelabs/core/StepDefTest,2025-12-18
-feature-046,feature,exec.feature,,,exec.feature,exec.feature,root,pending,,,
+feature-046,feature,exec.feature,,,exec.feature,exec.feature,root,passed,karate.exec() implemented,io/karatelabs/core/StepExecTest,2025-12-20
 feature-047,feature,extract.feature,,,extract.feature,karate.extract(),root,pending,,,
 feature-048,feature,fail-api.feature,,,fail-api.feature,fail-api.feature,root,pending,,,
 feature-049,feature,fail-js.feature,,,fail-js.feature,fail-js.feature,root,pending,,,
@@ -347,8 +347,8 @@ feature-053,feature,feature-result-called.feature,,,feature-result-called.featur
 feature-054,feature,feature-result.feature,,,feature-result.feature,my feature,root,pending,,,
 feature-055,feature,features/feature1.feature,,,feature1.feature,feature1.feature,features,pending,,,
 feature-056,feature,features/feature2.feature,,,feature2.feature,feature2.feature,features,pending,,,
-feature-057,feature,fork-listener.feature,,,fork-listener.feature,log listener example,root,pending,,,
-feature-058,feature,fork.feature,,,fork.feature,fork.feature,root,pending,,,
+feature-057,feature,fork-listener.feature,,,fork-listener.feature,log listener example,root,passed,fork listener tested in ProcessHandleTest,io/karatelabs/process/ProcessHandleTest,2025-12-20
+feature-058,feature,fork.feature,,,fork.feature,fork.feature,root,passed,karate.fork() implemented,io/karatelabs/core/StepExecTest,2025-12-20
 feature-059,feature,ignore-step-failure.feature,,,ignore-step-failure.feature,continue on step failure keyword,root,pending,,,
 feature-060,feature,js-arrays.feature,,,js-arrays.feature,various javascript tests,root,passed,73/73 scenarios; tests in StepJsTest StepTableTest,io/karatelabs/core/StepJsTest io/karatelabs/core/StepTableTest,2025-12-18
 feature-061,feature,js-map-repeat.feature,,,js-map-repeat.feature,js-map-repeat.feature,root,passed,karate.map and karate.repeat with arrays,,2025-12-20

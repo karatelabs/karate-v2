@@ -564,8 +564,8 @@ Pure JavaScript files with the `*.karate.js` naming convention can be executed d
 // server-test.karate.js
 var proc = karate.fork({
   args: ['node', 'server.js'],
-  listener: function(e) {
-    if (e.type == 'stdout' && e.data.contains('listening')) {
+  listener: function(line) {
+    if (line.contains('listening')) {
       karate.signal({ ready: true })
     }
   }

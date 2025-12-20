@@ -21,47 +21,38 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.process;
+package io.karatelabs.core;
 
-import java.nio.file.Path;
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
+import org.junit.jupiter.api.Test;
+
+import static io.karatelabs.core.TestUtils.*;
 
 /**
- * Immutable configuration for process execution.
- * Created via ProcessBuilder, consumed by ProcessHandle.
+ * Tests for karate.exec() and karate.fork() process execution.
+ * Listener functionality is tested in ProcessHandleTest.
  */
-public record ProcessConfig(
-        List<String> args,
-        Path workingDir,
-        Map<String, String> env,
-        boolean useShell,
-        boolean redirectErrorStream,
-        Duration timeout,
-        Consumer<String> listener,
-        Consumer<String> errorListener,
-        boolean logToContext
-) {
+class StepExecTest {
 
-    public ProcessConfig {
-        args = args != null ? List.copyOf(args) : List.of();
-        env = env != null ? Map.copyOf(env) : Map.of();
+    @Test
+    void testExec() {
+        ScenarioRuntime sr = run("""
+            * def result = karate.exec('echo hello')
+            * match result contains 'hello'
+            * def result2 = karate.exec({ line: 'echo world' })
+            * match result2 contains 'world'
+            """);
+        assertPassed(sr);
     }
 
-    public static ProcessConfig defaults() {
-        return new ProcessConfig(
-                List.of(),
-                null,
-                Map.of(),
-                false,
-                true,
-                null,
-                null,
-                null,
-                true
-        );
+    @Test
+    void testFork() {
+        ScenarioRuntime sr = run("""
+            * def proc = karate.fork('echo forked')
+            * proc.waitSync()
+            * match proc.exitCode == 0
+            * match proc.stdOut contains 'forked'
+            """);
+        assertPassed(sr);
     }
 
 }

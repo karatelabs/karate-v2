@@ -44,7 +44,8 @@ public class ProcessBuilder {
     private boolean useShell = false;
     private boolean redirectErrorStream = true;
     private Duration timeout;
-    private Consumer<ProcessEvent> listener;
+    private Consumer<String> listener;
+    private Consumer<String> errorListener;
     private boolean logToContext = true;
 
     private ProcessBuilder() {
@@ -195,8 +196,13 @@ public class ProcessBuilder {
         return this;
     }
 
-    public ProcessBuilder listener(Consumer<ProcessEvent> listener) {
+    public ProcessBuilder listener(Consumer<String> listener) {
         this.listener = listener;
+        return this;
+    }
+
+    public ProcessBuilder errorListener(Consumer<String> errorListener) {
+        this.errorListener = errorListener;
         return this;
     }
 
@@ -211,7 +217,7 @@ public class ProcessBuilder {
         List<String> finalArgs = useShell ? wrapWithShell(args) : args;
         return new ProcessConfig(
                 finalArgs, workingDir, env, useShell,
-                redirectErrorStream, timeout, listener, logToContext
+                redirectErrorStream, timeout, listener, errorListener, logToContext
         );
     }
 

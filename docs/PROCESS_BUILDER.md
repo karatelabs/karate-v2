@@ -6,7 +6,7 @@ Karate v2 provides a modern process execution system for running external comman
 
 The process API provides:
 - **Synchronous execution** via `karate.exec()` - run commands and get output
-- **Asynchronous execution** via `karate.fork()` - spawn background processes with event listeners
+- **Asynchronous execution** via `karate.fork()` - spawn background processes with line listeners
 - **Signal integration** via `karate.signal()` - communicate results from forked processes
 
 ## Quick Start
@@ -18,11 +18,11 @@ var output = karate.exec('ls -la')
 // Run with options
 var output = karate.exec({ line: 'cat file.txt', workingDir: '/tmp' })
 
-// Background process with event listener
+// Background process with line listener
 var proc = karate.fork({
   args: ['node', 'server.js'],
-  listener: function(e) {
-    if (e.type == 'stdout' && e.data.contains('listening')) {
+  listener: function(line) {
+    if (line.contains('listening')) {
       karate.log('Server ready!')
     }
   }
@@ -71,7 +71,8 @@ Spawns an asynchronous process and returns a ProcessHandle.
 | `useShell` | Boolean | false | Wrap in shell (sh -c or cmd /c) |
 | `redirectErrorStream` | Boolean | true | Merge stderr into stdout |
 | `timeout` | Number | - | Timeout in milliseconds |
-| `listener` | Function | - | Event listener callback |
+| `listener` | Function | - | Stdout line listener (receives line string) |
+| `errorListener` | Function | - | Stderr line listener (when redirectErrorStream=false) |
 | `logToContext` | Boolean | false | Log output to test context |
 | `start` | Boolean | true | Start immediately (false for deferred) |
 
@@ -81,20 +82,26 @@ Spawns an asynchronous process and returns a ProcessHandle.
 // Basic fork
 var proc = karate.fork({ args: ['sleep', '5'] })
 
-// With event listener
+// With line listener (receives line string directly)
 var proc = karate.fork({
   line: 'npm start',
   workingDir: '/app',
-  listener: function(event) {
-    karate.log(event.type + ': ' + event.data)
+  listener: function(line) {
+    karate.log('OUTPUT: ' + line)
   }
+})
+
+// Separate stdout and stderr listeners
+var proc = karate.fork({
+  args: ['node', 'app.js'],
+  redirectErrorStream: false,
+  listener: function(line) { karate.log('stdout: ' + line) },
+  errorListener: function(line) { karate.log('stderr: ' + line) }
 })
 
 // Deferred start (set up listeners first)
 var proc = karate.fork({ args: ['node', 'app.js'], start: false })
-proc.onEvent(function(e) {
-  if (e.type == 'stdout') karate.log(e.data)
-})
+proc.onStdOut(function(line) { karate.log(line) })
 proc.start()
 ```
 
@@ -105,8 +112,8 @@ The object returned by `karate.fork()`.
 **Properties:**
 | Property | Type | Description |
 |----------|------|-------------|
-| `sysOut` | String | Collected stdout |
-| `sysErr` | String | Collected stderr |
+| `stdOut` | String | Collected stdout |
+| `stdErr` | String | Collected stderr |
 | `exitCode` | Number | Exit code (-1 if still running) |
 | `alive` | Boolean | Whether process is running |
 | `pid` | Number | Process ID |
@@ -120,13 +127,14 @@ proc.waitSync()        // Wait indefinitely
 proc.waitSync(5000)    // Wait up to 5 seconds
 ```
 
-#### waitUntil(predicate, [timeout])
-Waits until predicate returns true for an event.
+#### waitForOutput(predicate, [timeout])
+Waits until predicate returns true for an output line.
 ```javascript
 // Wait for specific log output
-var event = proc.waitUntil(function(e) {
-  return e.type == 'stdout' && e.data.contains('ready')
+var line = proc.waitForOutput(function(line) {
+  return line.contains('ready')
 }, 10000)
+karate.log('Found: ' + line)
 ```
 
 #### waitForPort(host, port, [attempts], [interval])
@@ -141,11 +149,20 @@ Waits for an HTTP endpoint to respond with 2xx.
 proc.waitForHttp('http://localhost:8080/health', 30, 1000)
 ```
 
-#### onEvent(listener)
-Adds an event listener. Can be called before or after start().
+#### onStdOut(listener)
+Adds a stdout listener. Can be called before or after start().
+When `redirectErrorStream: true` (default), receives both stdout and stderr.
 ```javascript
-proc.onEvent(function(e) {
-  if (e.type == 'exit') karate.log('Process exited: ' + e.exitCode)
+proc.onStdOut(function(line) {
+  karate.log('stdout: ' + line)
+})
+```
+
+#### onStdErr(listener)
+Adds a stderr listener. Only receives lines when `redirectErrorStream: false`.
+```javascript
+proc.onStdErr(function(line) {
+  karate.log('stderr: ' + line)
 })
 ```
 
@@ -153,7 +170,7 @@ proc.onEvent(function(e) {
 Starts a deferred process (when `start: false` was used).
 ```javascript
 var proc = karate.fork({ args: ['node', 'app.js'], start: false })
-proc.onEvent(myListener)
+proc.onOutput(myListener)
 proc.start()
 ```
 
@@ -170,23 +187,6 @@ Sends a result to the signal consumer (for listen integration).
 proc.signal({ status: 'ready', port: 8080 })
 ```
 
-### Event Object
-
-Events passed to listeners have this structure:
-
-```javascript
-{
-  type: 'stdout' | 'stderr' | 'exit',
-  data: '...',      // Line content (stdout/stderr only)
-  exitCode: 0       // Exit code (exit only)
-}
-```
-
-Helper methods:
-- `event.type` - Event type string
-- `event.data` - Output line (null for exit events)
-- `event.exitCode` - Exit code (null for output events)
-
 ### karate.signal(result)
 
 Triggers the listen result from JavaScript. Used to communicate from a forked process listener back to the test flow.
@@ -194,9 +194,9 @@ Triggers the listen result from JavaScript. Used to communicate from a forked pr
 ```cucumber
 * def proc = karate.fork({
     args: ['node', 'server.js'],
-    listener: function(e) {
-      if (e.type == 'stdout' && e.data.contains('listening on port')) {
-        var port = parseInt(e.data.match(/port (\d+)/)[1])
+    listener: function(line) {
+      if (line.contains('listening on port')) {
+        var port = parseInt(line.match(/port (\d+)/)[1])
         karate.signal({ port: port })
       }
     }
@@ -235,8 +235,8 @@ Background:
       var proc = karate.fork({
         args: ['java', '-jar', 'server.jar'],
         workingDir: serverDir,
-        listener: function(e) {
-          if (e.data && e.data.contains('Started on port')) {
+        listener: function(line) {
+          if (line.contains('Started on port')) {
             karate.signal({ ready: true })
           }
         }
@@ -265,12 +265,12 @@ Scenario: test with background server
 Scenario: wait for application ready
   * def proc = karate.fork({ args: ['./start-app.sh'] })
 
-  # Wait for ready message
-  * def event = proc.waitUntil(function(e) {
-      return e.type == 'stdout' && e.data.contains('Application started')
+  # Wait for ready message (returns the matching line)
+  * def line = proc.waitForOutput(function(line) {
+      return line.contains('Application started')
     }, 30000)
 
-  * karate.log('App started, message: ' + event.data)
+  * karate.log('App started, message: ' + line)
   * proc.close()
 ```
 
@@ -320,13 +320,32 @@ Scenario: use shell pipes
   * match output.trim() == '1'
 ```
 
+### Separate Stdout and Stderr
+
+By default, stderr is merged into stdout (`redirectErrorStream: true`). To handle them separately:
+
+```cucumber
+Scenario: capture stderr separately
+  * def stdoutLines = []
+  * def stderrLines = []
+  * def proc = karate.fork({
+      args: ['sh', '-c', 'echo out; echo err >&2'],
+      redirectErrorStream: false,
+      listener: function(line) { stdoutLines.push(line) },
+      errorListener: function(line) { stderrLines.push(line) }
+    })
+  * proc.waitSync()
+  * match stdoutLines[0] == 'out'
+  * match stderrLines[0] == 'err'
+```
+
 ## Design Notes
 
 ### Threading Model
 
 - Process I/O uses virtual threads for efficient resource usage
-- Output is buffered thread-safely for access via `sysOut`/`sysErr`
-- Event listeners are called synchronously from reader threads
+- Output is buffered thread-safely for access via `stdOut`/`stdErr`
+- Line listeners are called synchronously from reader threads
 - `CompletableFuture` used for async exit handling
 
 ### Shell Wrapping

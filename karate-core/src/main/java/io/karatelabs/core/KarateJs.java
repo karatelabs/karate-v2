@@ -46,7 +46,6 @@ import io.karatelabs.match.Result;
 import io.karatelabs.match.Value;
 import io.karatelabs.process.ProcessBuilder;
 import io.karatelabs.process.ProcessConfig;
-import io.karatelabs.process.ProcessEvent;
 import io.karatelabs.process.ProcessHandle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1341,7 +1340,7 @@ public class KarateJs implements SimpleObject {
             }
             ProcessHandle handle = ProcessHandle.start(builder.build());
             handle.waitSync();
-            return handle.getSysOut();
+            return handle.getStdOut();
         };
     }
 
@@ -1352,9 +1351,9 @@ public class KarateJs implements SimpleObject {
      *   var proc = karate.fork('ping google.com')
      *   var proc = karate.fork({ args: ['node', 'server.js'], listener: fn })
      *   var proc = karate.fork({ args: [...], start: false })  // deferred start
-     *   proc.onEvent(fn).start()
+     *   proc.onStdOut(fn).start()
      *   proc.waitSync()
-     *   proc.sysOut
+     *   proc.stdOut
      *   proc.exitCode
      *   proc.close()
      */
@@ -1365,7 +1364,8 @@ public class KarateJs implements SimpleObject {
                 throw new RuntimeException("fork() needs at least one argument");
             }
             ProcessBuilder builder = ProcessBuilder.create();
-            Consumer<ProcessEvent> listener = null;
+            Consumer<String> listener = null;
+            Consumer<String> errorListener = null;
             boolean autoStart = true;
 
             Object arg = args[0];
@@ -1377,14 +1377,26 @@ public class KarateJs implements SimpleObject {
                 Map<String, Object> options = (Map<String, Object>) arg;
                 builder = ProcessBuilder.fromMap(options);
 
-                // Extract listener function
+                // Extract listener function (receives line string directly)
                 Object listenerObj = options.get("listener");
                 if (listenerObj instanceof JsCallable jsListener) {
-                    listener = event -> {
+                    listener = line -> {
                         try {
-                            jsListener.call(null, event.toMap());
+                            jsListener.call(null, line);
                         } catch (Exception e) {
                             logger.warn("process listener error: {}", e.getMessage());
+                        }
+                    };
+                }
+
+                // Extract errorListener function (receives line string directly)
+                Object errorListenerObj = options.get("errorListener");
+                if (errorListenerObj instanceof JsCallable jsErrorListener) {
+                    errorListener = line -> {
+                        try {
+                            jsErrorListener.call(null, line);
+                        } catch (Exception e) {
+                            logger.warn("process errorListener error: {}", e.getMessage());
                         }
                     };
                 }
@@ -1400,6 +1412,9 @@ public class KarateJs implements SimpleObject {
 
             if (listener != null) {
                 builder.listener(listener);
+            }
+            if (errorListener != null) {
+                builder.errorListener(errorListener);
             }
 
             ProcessHandle handle = ProcessHandle.create(builder.build());
