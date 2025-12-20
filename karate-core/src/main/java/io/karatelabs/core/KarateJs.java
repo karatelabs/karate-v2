@@ -801,7 +801,7 @@ public class KarateJs implements SimpleObject {
             if (text.isEmpty()) {
                 return text;
             }
-            if (StringUtils.isJson(text)) {
+            if (StringUtils.looksLikeJson(text)) {
                 try {
                     return Json.of(text).value();
                 } catch (Exception e) {

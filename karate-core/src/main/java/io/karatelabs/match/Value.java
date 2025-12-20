@@ -229,7 +229,7 @@ public class Value implements SimpleObject {
         if (o instanceof String s) {
             if (s.isEmpty()) {
                 return o;
-            } else if (StringUtils.isJson(s)) {
+            } else if (StringUtils.looksLikeJson(s)) {
                 return Json.of(s).value();
             } else if (StringUtils.isXml(s)) {
                 return Xml.toXmlDoc(s);

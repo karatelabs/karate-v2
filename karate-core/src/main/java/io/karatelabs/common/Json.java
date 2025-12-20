@@ -209,7 +209,7 @@ public class Json {
     public Json set(String path, String value) {
         if (value == null || value.isEmpty()) {
             setInternal(path, value);
-        } else if (value.charAt(0) == '{' || value.charAt(0) == '[') {
+        } else if (StringUtils.looksLikeJson(value)) {
             setInternal(path, Json.of(value).value());
         } else if (value.charAt(0) == '\\') {
             setInternal(path, value.substring(1));

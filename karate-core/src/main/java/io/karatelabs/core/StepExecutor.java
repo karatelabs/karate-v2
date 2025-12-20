@@ -26,6 +26,7 @@ package io.karatelabs.core;
 import io.karatelabs.common.DataUtils;
 import io.karatelabs.common.Json;
 import io.karatelabs.common.Resource;
+import io.karatelabs.common.StringUtils;
 import io.karatelabs.common.Xml;
 import org.w3c.dom.Node;
 import io.karatelabs.gherkin.Feature;
@@ -1009,7 +1010,14 @@ public class StepExecutor {
             if (varValue == null) {
                 throw new RuntimeException("no variable found with name: " + varName);
             }
-            String varText = varValue instanceof Node ? Xml.toString((Node) varValue, false) : varValue.toString();
+            String varText;
+            if (varValue instanceof Node) {
+                varText = Xml.toString((Node) varValue, false);
+            } else if (varValue instanceof Map || varValue instanceof List) {
+                varText = Json.stringifyStrict(varValue);
+            } else {
+                varText = varValue.toString();
+            }
 
             // Process each row in the table
             List<Map<String, String>> rows = table.getRowsAsMaps();
@@ -1054,7 +1062,14 @@ public class StepExecutor {
             if (varValue == null) {
                 throw new RuntimeException("no variable found with name: " + varName);
             }
-            String varText = varValue instanceof Node ? Xml.toString((Node) varValue, false) : varValue.toString();
+            String varText;
+            if (varValue instanceof Node) {
+                varText = Xml.toString((Node) varValue, false);
+            } else if (varValue instanceof Map || varValue instanceof List) {
+                varText = Json.stringifyStrict(varValue);
+            } else {
+                varText = varValue.toString();
+            }
 
             // Evaluate the replacement expression
             Object replaceValue = runtime.eval(replaceExpr);
@@ -1116,7 +1131,7 @@ public class StepExecutor {
 
         // Handle JSON literal - expression starting with { or [
         // V1 behavior: parse as JSON first, then evaluate embedded expressions
-        if (expr.startsWith("{") || expr.startsWith("[")) {
+        if (StringUtils.looksLikeJson(expr)) {
             try {
                 Object value = Json.of(expr).value();
                 // Process embedded expressions like #(varName) in the parsed JSON
@@ -1358,7 +1373,7 @@ public class StepExecutor {
                 return target;
             }
             String path = "$" + withoutDollar;
-            return JsonPath.read(target, path);
+            return JsonPath.read(toJsonForJsonPath(target), path);
         }
 
         // Find where the path starts (at space+/, /, ., or [)
@@ -1406,11 +1421,30 @@ public class StepExecutor {
                 return KarateJs.evalXmlPath((Node) target, path);
             }
             // Fall back to jsonpath if not XML
-            return JsonPath.read(target, "$" + path);
+            return JsonPath.read(toJsonForJsonPath(target), "$" + path);
         } else {
             // JsonPath
-            return JsonPath.read(target, path);
+            return JsonPath.read(toJsonForJsonPath(target), path);
         }
+    }
+
+    /**
+     * Converts a String to JSON (Map/List) if it looks like JSON, for JSONPath evaluation.
+     * V1 compatibility: allows JSONPath on strings that contain JSON-like content.
+     */
+    private Object toJsonForJsonPath(Object value) {
+        if (value instanceof String s) {
+            if (StringUtils.looksLikeJson(s)) {
+                try {
+                    // Use JS engine to parse - handles both JSON and JS object literals
+                    return runtime.eval("(" + s + ")");
+                } catch (Exception e) {
+                    // If parsing fails, return the original string
+                    return value;
+                }
+            }
+        }
+        return value;
     }
 
     /**

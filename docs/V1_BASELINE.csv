@@ -518,7 +518,7 @@ feature-224,feature,tags/env-tags.feature,,,env-tags.feature,env-tags.feature,ta
 feature-225,feature,tags/outline-tags.feature,,,outline-tags.feature,outline-tags.feature,tags,pending,,,
 feature-226,feature,to-bean-called.feature,,,to-bean-called.feature,to-bean-called.feature,root,pending,,,
 feature-227,feature,to-bean.feature,,,to-bean.feature,demo calling java methods with complex types,root,pending,,,
-feature-228,feature,type-conv.feature,,,type-conv.feature,"convert between json, xml and string",root,pending,,,
+feature-228,feature,type-conv.feature,,,type-conv.feature,"convert between json, xml and string",root,passed,19/23 pass; POJO tests skipped (V2 has equivalent); number formatting differences expected between JS engines,StepDefTest#testReplaceWithJsonObject StepJsTest#testJsonPathOnStringAutoConvert,2025-12-20
 feature-229,feature,type-conversion.feature,,,type-conversion.feature,type-conversion.feature,root,pending,,,
 feature-230,feature,ui-google.feature,,,ui-google.feature,ui-google.feature,root,pending,,,
 feature-231,feature,users-doc.feature,,,users-doc.feature,users-doc.feature,root,pending,,,

@@ -280,6 +280,21 @@ class StepDefTest {
     }
 
     @Test
+    void testReplaceWithJsonObject() {
+        // Replace tokens in a JSON object, then convert back to JSON
+        ScenarioRuntime sr = run("""
+            * def data = { foo: '<foo>', bar: { hello: '<bar>'} }
+            * replace data
+              | token | value |
+              | foo   | 'one' |
+              | bar   | 'two' |
+            * json data = data
+            * match data == { foo: 'one', bar: { hello: 'two' } }
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
     void testCsvKeywordWithDocString() {
         // csv keyword with doc string
         ScenarioRuntime sr = run("""

@@ -569,6 +569,17 @@ class StepJsTest {
         assertPassed(sr);
     }
 
+    @Test
+    void testJsonPathOnStringAutoConvert() {
+        // V1 compatibility: JSONPath on a string should auto-convert if it looks like JSON
+        ScenarioRuntime sr = run("""
+            * def response = "{ foo: { hello: 'world' } }"
+            * def foo = $.foo
+            * match foo == { hello: 'world' }
+            """);
+        assertPassed(sr);
+    }
+
     // ========== Remove Keyword ==========
 
     @Test

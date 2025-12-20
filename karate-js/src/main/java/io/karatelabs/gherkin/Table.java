@@ -189,7 +189,7 @@ public class Table {
         try {
             switch (col.type) {
                 case EVALUATED:
-                    if (StringUtils.isJson(raw)) {
+                    if (StringUtils.looksLikeJson(raw)) {
                         raw = '(' + raw + ')';
                     }
                     return new Engine().eval(raw);

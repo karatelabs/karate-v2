@@ -44,7 +44,7 @@ public class StringUtils {
 
     public static final String EMPTY = "";
 
-    public static boolean isJson(String s) {
+    public static boolean looksLikeJson(String s) {
         if (s == null || s.isEmpty()) {
             return false;
         }
@@ -484,7 +484,7 @@ public class StringUtils {
 
     public static String formatJson(Object o, boolean pretty, boolean lenient, boolean sort, String indent) {
         if (o instanceof String ostring) {
-            if (StringUtils.isJson(ostring)) {
+            if (StringUtils.looksLikeJson(ostring)) {
                 if (sort) { // dont care about order in first phase
                     o = JSONValue.parse(ostring);
                 } else {
