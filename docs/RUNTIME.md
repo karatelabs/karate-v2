@@ -52,7 +52,7 @@ Suite → FeatureRuntime → ScenarioRuntime → StepExecutor
 
 ### Step Keywords (All Implemented)
 
-**Variable Assignment:** `def`, `set`, `remove`, `text`, `json`, `xml`, `copy`, `table`
+**Variable Assignment:** `def`, `set`, `remove`, `text`, `json`, `xml`, `csv`, `yaml`, `string`, `xmlstring`, `copy`, `table`, `replace`
 
 **Assertions:** `match` (all operators including `each`), `assert`, `print`
 
@@ -61,6 +61,16 @@ Suite → FeatureRuntime → ScenarioRuntime → StepExecutor
 **Control Flow:** `call`, `callonce`, `eval`
 
 **Config:** `configure` (ssl, proxy, readTimeout, connectTimeout, followRedirects, headers, charset)
+
+#### Data Conversion Keywords
+
+| Keyword | Description | Example |
+|---------|-------------|---------|
+| `csv` | Parse CSV to List<Map> | `* csv data = """name,age\nJohn,30"""` |
+| `yaml` | Parse YAML to object | `* yaml config = """server: localhost"""` |
+| `string` | Convert to JSON string | `* string s = response` |
+| `xmlstring` | Convert to XML string | `* xmlstring s = xmlVar` |
+| `replace` | Token replacement | `* replace text.name = 'World'` |
 
 ### Result Classes
 
@@ -81,6 +91,23 @@ SuiteResult result = Runner.path("src/test/resources")
     .outputCucumberJson(true)   // generate Cucumber JSON for Allure, etc.
     .parallel(5);
 ```
+
+**Runner.Builder Options:**
+
+| Method | Default | Description |
+|--------|---------|-------------|
+| `path(String...)` | - | Feature file paths or directories |
+| `tags(String...)` | - | Tag expressions (e.g., `@smoke`, `~@slow`) |
+| `karateEnv(String)` | - | Environment name for config-{env}.js |
+| `outputDir(String)` | `target/karate-reports` | Output directory for reports |
+| `outputHtmlReport(boolean)` | `true` | Generate HTML reports |
+| `outputNdjson(boolean)` | `false` | Generate NDJSON for aggregation |
+| `outputJunitXml(boolean)` | `false` | Generate JUnit XML for CI |
+| `outputCucumberJson(boolean)` | `false` | Generate Cucumber JSON |
+| `outputConsoleSummary(boolean)` | `true` | Print summary to console |
+| `backupReportDir(boolean)` | `false` | Backup existing report dir with timestamp |
+| `workingDir(String)` | current dir | Working directory for relative paths |
+| `configPath(String)` | `classpath:karate-config.js` | Config file path |
 
 See `io.karatelabs.core.Runner` for full API.
 
@@ -178,11 +205,109 @@ See [HTML_REPORTS.md](./HTML_REPORTS.md) for detailed HTML report architecture, 
 - NDJSON streaming opt-in via `.outputNdjson(true)`
 - Report aggregation via `HtmlReport.aggregate()`
 
-### Logging
+### Logging Architecture
 
-Package `io.karatelabs.log`:
-- `LogContext` - Thread-local collector for report output
-- `JvmLogger` - Infrastructure logging (System.err or SLF4J)
+Karate v2 separates logging into two distinct systems:
+
+#### Test Logs (LogContext)
+
+`io.karatelabs.log.LogContext` is a thread-local log collector that captures all test output:
+- `* print` statements
+- `karate.log()` / `console.log()` calls
+- HTTP request/response summaries
+
+Logs are captured per-step and stored in `StepResult`, appearing in HTML reports.
+
+**Key methods:**
+
+| Method | Description |
+|--------|-------------|
+| `LogContext.get()` | Get current thread's log context |
+| `log(Object message)` | Log a message |
+| `log(String format, Object... args)` | Log with `{}` placeholders |
+| `collect()` | Get accumulated log and clear buffer |
+| `peek()` | Get accumulated log without clearing |
+| `setCascade(Consumer<String>)` | Forward logs to external logger |
+
+**Cascade to SLF4J:**
+
+Test logs are captured for HTML reports by default. To additionally forward them to SLF4J:
+
+```java
+import io.karatelabs.log.LogContext;
+import io.karatelabs.log.Slf4jCascade;
+
+// In test setup or @BeforeClass
+LogContext.setCascade(Slf4jCascade.create());
+```
+
+This forwards all test output to the `karate.run` SLF4J category at INFO level. Configure in your `logback.xml`:
+
+```xml
+<logger name="karate.run" level="INFO">
+    <appender-ref ref="FILE" />
+</logger>
+```
+
+For custom category or level:
+```java
+LogContext.setCascade(Slf4jCascade.create("my.category", LogLevel.DEBUG));
+```
+
+#### Framework Logs (JvmLogger)
+
+`io.karatelabs.log.JvmLogger` is a static logger for Karate framework/infrastructure code:
+- Config loading
+- Hook execution
+- Report generation
+- callSingle/callOnce execution
+
+**Configuration:**
+```java
+import io.karatelabs.log.JvmLogger;
+import io.karatelabs.log.LogLevel;
+
+// Set log level (default: INFO)
+JvmLogger.setLevel(LogLevel.DEBUG);
+
+// Custom appender (default: System.err)
+JvmLogger.setAppender((level, format, args) -> {
+    // custom implementation
+});
+```
+
+**Log Levels:** `TRACE` < `DEBUG` < `INFO` < `WARN` < `ERROR`
+
+### Console Output
+
+The `io.karatelabs.core.Console` class provides ANSI color support for terminal output.
+
+**Auto-Detection:**
+
+Colors are automatically enabled based on environment:
+- Respects `NO_COLOR` environment variable (https://no-color.org/)
+- Respects `FORCE_COLOR` environment variable
+- Detects terminal capability via `TERM`, `COLORTERM`
+- Windows: detects Windows Terminal via `WT_SESSION`
+
+**Programmatic Control:**
+```java
+import io.karatelabs.core.Console;
+
+Console.setColorsEnabled(false);  // Disable colors
+```
+
+**Console Summary:**
+
+Control whether suite/feature summaries are printed to console:
+
+```java
+Runner.path("features/")
+    .outputConsoleSummary(false)  // suppress console output
+    .parallel(5);
+```
+
+Default: `true`. When disabled, results are still available in `SuiteResult`.
 
 ### Result Streaming (ResultListener)
 
@@ -716,6 +841,7 @@ Tests are in `karate-core/src/test/java/io/karatelabs/core/`:
 | `CallFeatureTest` | Feature calling |
 | `ConfigTest` | Config loading, working directory fallback |
 | `callsingle/CallSingleTest` | `karate.callSingle()`, thread-safe caching, parallel execution |
+| `log/Slf4jCascadeTest` | SLF4J cascade for test logs |
 | `RuntimeHookTest` | Hooks |
 | `ResultListenerTest` | Result streaming |
 | `RunnerTest` | Runner API, classpath directory scanning |
