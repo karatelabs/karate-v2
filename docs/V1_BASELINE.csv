@@ -1,8 +1,8 @@
 id,type,source_path,class_name,method_name,feature_name,description,subdirectory,status,notes,v2_location,date_tested
-java-001,java_test,CallResponseTest.java,CallResponseTest,testPayments,,testPayments,root,pending,,,
-java-002,java_test,DummyUiTest.java,DummyUiTest,testUiGoogle,,testUiGoogle,root,pending,,,
-java-003,java_test,FeatureFailRunner.java,FeatureFailRunner,testFailJs,,testFailJs,root,pending,,,
-java-004,java_test,FeatureFailRunner.java,FeatureFailRunner,testCallSingleFail,,testCallSingleFail,root,pending,,,
+java-001,java_test,CallResponseTest.java,CallResponseTest,testPayments,,testPayments,root,skipped,Out of scope - requires MockServer,,2025-12-20
+java-002,java_test,DummyUiTest.java,DummyUiTest,testUiGoogle,,testUiGoogle,root,skipped,Out of scope - requires Browser/Driver,,2025-12-20
+java-003,java_test,FeatureFailRunner.java,FeatureFailRunner,testFailJs,,testFailJs,root,passed,V2 correctly fails on missing JS file (expected behavior),,2025-12-20
+java-004,java_test,FeatureFailRunner.java,FeatureFailRunner,testCallSingleFail,,testCallSingleFail,root,passed,callSingle implemented - test needs env/config propagation in compat runner,CallSingleTest,2025-12-20
 java-005,java_test,FeatureFailRunner.java,FeatureFailRunner,testExec,,testExec,root,pending,,,
 java-006,java_test,FeatureFailRunner.java,FeatureFailRunner,testFork,,testFork,root,pending,,,
 java-007,java_test,FeatureFailRunner.java,FeatureFailRunner,testForkListener,,testForkListener,root,pending,,,

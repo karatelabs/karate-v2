@@ -45,6 +45,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Suite {
 
@@ -68,7 +69,10 @@ public class Suite {
     private boolean backupReportDir = false;
     private boolean outputConsoleSummary = true;
 
-    // Config variables from karate-config.js
+    // Config content (loaded at Suite level, evaluated per-scenario)
+    private String configContent;
+    private String configEnvContent;
+    // Legacy: evaluated config variables (for backward compatibility with tests)
     private Map<String, Object> configVariables = Collections.emptyMap();
 
     // Hooks
@@ -79,6 +83,8 @@ public class Suite {
 
     // Caches (shared across features)
     private final Map<String, Object> CALLONCE_CACHE = new ConcurrentHashMap<>();
+    private final Map<String, Object> CALLSINGLE_CACHE = new ConcurrentHashMap<>();
+    private final ReentrantLock callSingleLock = new ReentrantLock();
 
     // Results
     private SuiteResult result;
@@ -230,87 +236,63 @@ public class Suite {
     // ========== Execution ==========
 
     /**
-     * Loads karate-config.js (and env-specific config) and executes it.
-     * The returned object from the config function becomes the base variables for all scenarios.
+     * Loads karate-config.js content (and env-specific config) without evaluating.
+     * The content is evaluated per-scenario in ScenarioRuntime where callSingle is available.
      */
-    @SuppressWarnings("unchecked")
     private void loadConfig() {
-        Engine engine = new Engine();
-
-        // Set karate.env in the engine
-        if (env != null) {
-            engine.put("karate", new ConfigKarateBridge(env));
-        } else {
-            engine.put("karate", new ConfigKarateBridge(null));
+        // Load main config content
+        configContent = tryLoadConfig(configPath);
+        if (configContent != null) {
+            JvmLogger.debug("Loaded config content from {}", configPath);
         }
 
-        // Try to load main config
-        String mainConfigContent = tryLoadConfig(configPath);
-        if (mainConfigContent != null) {
-            try {
-                Object result = engine.eval(mainConfigContent);
-                if (result instanceof Map) {
-                    configVariables = new HashMap<>((Map<String, Object>) result);
-                    JvmLogger.debug("Loaded config from {}: {} variables", configPath, configVariables.size());
-                }
-            } catch (Exception e) {
-                JvmLogger.warn("Failed to evaluate {}: {}", configPath, e.getMessage());
-            }
-        }
-
-        // Try to load env-specific config (e.g., karate-config-dev.js)
+        // Load env-specific config content (e.g., karate-config-dev.js)
         if (env != null && !env.isEmpty()) {
             String envConfigPath = configPath.replace(".js", "-" + env + ".js");
-            String envConfigContent = tryLoadConfig(envConfigPath);
-            if (envConfigContent != null) {
-                try {
-                    // Put existing config vars into engine so env config can access them
-                    for (Map.Entry<String, Object> entry : configVariables.entrySet()) {
-                        engine.put(entry.getKey(), entry.getValue());
-                    }
-                    Object result = engine.eval(envConfigContent);
-                    if (result instanceof Map) {
-                        configVariables.putAll((Map<String, Object>) result);
-                        JvmLogger.debug("Loaded env config from {}", envConfigPath);
-                    }
-                } catch (Exception e) {
-                    JvmLogger.warn("Failed to evaluate {}: {}", envConfigPath, e.getMessage());
-                }
+            configEnvContent = tryLoadConfig(envConfigPath);
+            if (configEnvContent != null) {
+                JvmLogger.debug("Loaded env config content from {}", envConfigPath);
             }
         }
     }
 
     private String tryLoadConfig(String path) {
+        // Try the explicit path first
         try {
             Resource resource = Resource.path(path);
             return resource.getText();
         } catch (ResourceNotFoundException e) {
-            JvmLogger.debug("Config not found: {}", path);
-            return null;
+            // Not found at explicit path - continue to fallbacks
         } catch (Exception e) {
             JvmLogger.warn("Error loading config {}: {}", path, e.getMessage());
             return null;
         }
-    }
 
-    /**
-     * Minimal karate bridge for config evaluation - just provides karate.env
-     */
-    private static class ConfigKarateBridge implements io.karatelabs.js.SimpleObject {
-        private final String env;
-
-        ConfigKarateBridge(String env) {
-            this.env = env;
+        // V2 enhancement: Try working directory as fallback
+        // This allows users to run Karate from any directory without Java classpath setup
+        String fileName = path;
+        // Strip classpath: prefix to get the filename
+        if (path.startsWith("classpath:")) {
+            fileName = path.substring("classpath:".length());
         }
-
-        @Override
-        public Object jsGet(String key) {
-            if ("env".equals(key)) {
-                return env;
+        // Only try working dir for relative paths (not absolute)
+        if (!fileName.startsWith("/")) {
+            try {
+                Path workingDirConfig = workingDir.resolve(fileName);
+                if (java.nio.file.Files.exists(workingDirConfig)) {
+                    String content = java.nio.file.Files.readString(workingDirConfig);
+                    JvmLogger.debug("Loaded config from working directory: {}", workingDirConfig);
+                    return content;
+                }
+            } catch (Exception e) {
+                JvmLogger.debug("Could not load config from working dir: {}", e.getMessage());
             }
-            return null;
         }
+
+        JvmLogger.debug("Config not found: {}", path);
+        return null;
     }
+
 
     public SuiteResult run() {
         result = new SuiteResult();
@@ -520,12 +502,28 @@ public class Suite {
         return CALLONCE_CACHE;
     }
 
+    public Map<String, Object> getCallSingleCache() {
+        return CALLSINGLE_CACHE;
+    }
+
+    public ReentrantLock getCallSingleLock() {
+        return callSingleLock;
+    }
+
     public SuiteResult getResult() {
         return result;
     }
 
     public Map<String, Object> getConfigVariables() {
         return configVariables;
+    }
+
+    public String getConfigContent() {
+        return configContent;
+    }
+
+    public String getConfigEnvContent() {
+        return configEnvContent;
     }
 
     public List<RuntimeHook> getHooks() {

@@ -169,4 +169,79 @@ class ConfigTest {
         assertTrue(result.isPassed());
     }
 
+    // ========== Working Directory Fallback Tests (V2 Enhancement) ==========
+
+    @Test
+    void testConfigFromWorkingDirectory() throws Exception {
+        // Create karate-config.js in the working directory (tempDir)
+        // This simulates a user running Karate from a directory without classpath setup
+        Path configFile = tempDir.resolve("karate-config.js");
+        Files.writeString(configFile, """
+            function fn() {
+              return {
+                fromWorkingDir: true,
+                baseUrl: 'http://workingdir.example.com'
+              };
+            }
+            """);
+
+        // Create a feature file
+        Path featureFile = tempDir.resolve("test.feature");
+        Files.writeString(featureFile, """
+            Feature: Working Dir Config Test
+            Scenario: Config loaded from working directory
+            * match fromWorkingDir == true
+            * match baseUrl == 'http://workingdir.example.com'
+            """);
+
+        // Run WITHOUT specifying configPath - should use default 'classpath:karate-config.js'
+        // which won't be found on classpath, but will be found in working directory
+        Suite suite = Suite.of(tempDir, featureFile.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "Config should be loaded from working directory");
+    }
+
+    @Test
+    void testEnvConfigFromWorkingDirectory() throws Exception {
+        // Create base karate-config.js in working directory
+        Path configFile = tempDir.resolve("karate-config.js");
+        Files.writeString(configFile, """
+            function fn() {
+              return {
+                env: karate.env,
+                baseUrl: 'http://default.example.com'
+              };
+            }
+            """);
+
+        // Create env-specific config in working directory
+        Path devConfig = tempDir.resolve("karate-config-staging.js");
+        Files.writeString(devConfig, """
+            function fn() {
+              return {
+                baseUrl: 'http://staging.example.com'
+              };
+            }
+            """);
+
+        // Create a feature file
+        Path featureFile = tempDir.resolve("test.feature");
+        Files.writeString(featureFile, """
+            Feature: Env Config from Working Dir
+            Scenario: Both configs loaded from working directory
+            * match env == 'staging'
+            * match baseUrl == 'http://staging.example.com'
+            """);
+
+        // Run with env=staging, no explicit configPath
+        Suite suite = Suite.of(tempDir, featureFile.toString())
+                .env("staging")
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "Base and env configs should load from working directory");
+    }
+
 }

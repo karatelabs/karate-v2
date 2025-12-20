@@ -80,7 +80,9 @@ public class KarateJs implements SimpleObject {
     private Function<String, Map<String, Object>> setupOnceProvider;
     private Runnable abortHandler;
     private BiFunction<String, Object, Map<String, Object>> callProvider;
+    private BiFunction<String, Object, Object> callSingleProvider;
     private Supplier<Map<String, Object>> infoProvider;
+    private String env;
 
     private final Invokable read;
 
@@ -180,8 +182,16 @@ public class KarateJs implements SimpleObject {
         this.callProvider = provider;
     }
 
+    public void setCallSingleProvider(BiFunction<String, Object, Object> provider) {
+        this.callSingleProvider = provider;
+    }
+
     public void setInfoProvider(Supplier<Map<String, Object>> provider) {
         this.infoProvider = provider;
+    }
+
+    public void setEnv(String env) {
+        this.env = env;
     }
 
     private Map<String, Object> getInfo() {
@@ -509,6 +519,27 @@ public class KarateJs implements SimpleObject {
             String path = args[0].toString();
             Object arg = args.length > 1 ? args[1] : null;
             return callProvider.apply(path, arg);
+        };
+    }
+
+    /**
+     * karate.callSingle() - Execute a feature/JS file once per Suite and cache the result.
+     * All parallel threads share the same cached result.
+     *
+     * Uses Suite-level locking to ensure only one thread executes the call,
+     * while others wait and receive the cached result.
+     */
+    private Invokable callSingle() {
+        return args -> {
+            if (callSingleProvider == null) {
+                throw new RuntimeException("karate.callSingle() is not available in this context");
+            }
+            if (args.length == 0) {
+                throw new RuntimeException("karate.callSingle() requires at least one argument (path)");
+            }
+            String path = args[0].toString();
+            Object arg = args.length > 1 ? args[1] : null;
+            return callSingleProvider.apply(path, arg);
         };
     }
 
@@ -1279,7 +1310,9 @@ public class KarateJs implements SimpleObject {
             case "append" -> append();
             case "appendTo" -> appendTo();
             case "call" -> call();
+            case "callSingle" -> callSingle();
             case "doc" -> doc();
+            case "env" -> env;
             case "eval" -> eval();
             case "filter" -> filter();
             case "filterKeys" -> filterKeys();

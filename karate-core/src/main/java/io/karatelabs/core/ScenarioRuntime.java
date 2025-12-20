@@ -28,6 +28,7 @@ import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.Scenario;
 import io.karatelabs.gherkin.Step;
 import io.karatelabs.io.http.HttpRequestBuilder;
+import io.karatelabs.log.JvmLogger;
 import io.karatelabs.log.LogContext;
 
 import java.util.ArrayList;
@@ -36,6 +37,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class ScenarioRuntime implements Callable<ScenarioResult> {
 
@@ -83,15 +85,22 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
     }
 
     private void initEngine() {
-        // KarateJs already sets up "karate" object
-        // Add scenario-specific variables
+        // Wire up karate.* functions FIRST so they're available during config evaluation
+        karate.setSetupProvider(this::executeSetup);
+        karate.setSetupOnceProvider(this::executeSetupOnce);
+        karate.setAbortHandler(this::abort);
+        karate.setCallProvider(this::executeJsCall);
+        karate.setCallSingleProvider(this::executeCallSingle);
+        karate.setInfoProvider(this::getScenarioInfo);
 
-        // Apply config variables from Suite (base layer)
+        // Set karate.env before config evaluation
         if (featureRuntime != null && featureRuntime.getSuite() != null) {
-            Map<String, Object> configVars = featureRuntime.getSuite().getConfigVariables();
-            for (var entry : configVars.entrySet()) {
-                karate.engine.put(entry.getKey(), entry.getValue());
-            }
+            karate.setEnv(featureRuntime.getSuite().getEnv());
+        }
+
+        // Evaluate config (only for top-level scenarios, not called features)
+        if (featureRuntime != null && featureRuntime.getSuite() != null && featureRuntime.getCaller() == null) {
+            evalConfig();
         }
 
         // Inherit parent variables if called from another feature
@@ -117,19 +126,71 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
             // Set __num to the example index (0-based)
             karate.engine.put("__num", scenario.getExampleIndex());
         }
+    }
 
-        // Wire up karate.setup() and karate.setupOnce() functions
-        karate.setSetupProvider(this::executeSetup);
-        karate.setSetupOnceProvider(this::executeSetupOnce);
+    /**
+     * Evaluate karate-config.js (and env-specific config) in this scenario's context.
+     * This allows callSingle and other karate.* functions to work during config.
+     */
+    @SuppressWarnings("unchecked")
+    private void evalConfig() {
+        Suite suite = featureRuntime.getSuite();
 
-        // Wire up karate.abort()
-        karate.setAbortHandler(this::abort);
+        // Evaluate main config
+        String configContent = suite.getConfigContent();
+        if (configContent != null) {
+            evalConfigJs(configContent, "karate-config.js");
+        }
 
-        // Wire up karate.call()
-        karate.setCallProvider(this::executeJsCall);
+        // Evaluate env-specific config
+        String configEnvContent = suite.getConfigEnvContent();
+        if (configEnvContent != null) {
+            String envName = suite.getEnv();
+            evalConfigJs(configEnvContent, "karate-config-" + envName + ".js");
+        }
+    }
 
-        // Wire up karate.info
-        karate.setInfoProvider(this::getScenarioInfo);
+    /**
+     * Evaluate a config JS and apply its result to the engine.
+     * Supports multiple patterns:
+     * 1. Function definition only: function fn() { return {...}; } - will call it
+     * 2. Self-executing: function fn() { return {...}; } fn(); - returns result directly
+     * 3. Object literal: ({ key: value }) - already an object
+     */
+    @SuppressWarnings("unchecked")
+    private void evalConfigJs(String js, String displayName) {
+        try {
+            Object result;
+
+            // Try wrapping in parentheses first (handles function definitions)
+            try {
+                Object fn = karate.engine.eval("(" + js + ")");
+                if (fn instanceof io.karatelabs.js.JsCallable) {
+                    // It's a function - invoke it
+                    result = ((io.karatelabs.js.JsCallable) fn).call(null);
+                } else {
+                    // Already evaluated to a value (e.g., object literal)
+                    result = fn;
+                }
+            } catch (Exception e) {
+                // If parentheses failed, try evaluating directly (self-invoking pattern)
+                result = karate.engine.eval(js);
+            }
+
+            // Apply config variables to engine
+            if (result instanceof Map) {
+                Map<String, Object> configVars = (Map<String, Object>) result;
+                for (var entry : configVars.entrySet()) {
+                    karate.engine.put(entry.getKey(), entry.getValue());
+                }
+                JvmLogger.debug("Evaluated {}: {} variables", displayName, configVars.size());
+            } else if (result != null) {
+                JvmLogger.warn("{} did not return an object, got: {}", displayName, result.getClass().getSimpleName());
+            }
+        } catch (Exception e) {
+            JvmLogger.warn("Failed to evaluate {}: {}", displayName, e.getMessage());
+            throw new RuntimeException("Config evaluation failed: " + displayName + " - " + e.getMessage(), e);
+        }
     }
 
     /**
@@ -268,6 +329,166 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
             return nestedFr.getLastExecuted().getAllVariables();
         }
         return new HashMap<>();
+    }
+
+    /**
+     * Execute karate.callSingle() - runs a file once per Suite and caches the result.
+     * Uses Suite-level locking to ensure thread-safe execution in parallel scenarios.
+     *
+     * Flow:
+     * 1. Check cache (lock-free for fast path)
+     * 2. If not cached, acquire Suite lock
+     * 3. Double-check cache (another thread may have cached while waiting)
+     * 4. Execute and cache result
+     * 5. Return deep copy to prevent cross-thread mutation
+     *
+     * Exceptions are cached and re-thrown on subsequent calls.
+     */
+    private Object executeCallSingle(String path, Object arg) {
+        if (featureRuntime == null || featureRuntime.getSuite() == null) {
+            throw new RuntimeException("karate.callSingle() requires a Suite context");
+        }
+
+        Suite suite = featureRuntime.getSuite();
+        Map<String, Object> cache = suite.getCallSingleCache();
+        ReentrantLock lock = suite.getCallSingleLock();
+
+        // Fast path: check if already cached (no locking needed)
+        if (cache.containsKey(path)) {
+            JvmLogger.trace("[callSingle] cache hit: {}", path);
+            return unwrapCachedResult(cache.get(path));
+        }
+
+        // Slow path: acquire lock and execute
+        long startWait = System.currentTimeMillis();
+        JvmLogger.debug("[callSingle] waiting for lock: {}", path);
+        lock.lock();
+        try {
+            // Double-check: another thread may have cached while we waited
+            if (cache.containsKey(path)) {
+                long waitTime = System.currentTimeMillis() - startWait;
+                JvmLogger.info("[callSingle] lock acquired after {}ms, cache hit: {}", waitTime, path);
+                return unwrapCachedResult(cache.get(path));
+            }
+
+            // This thread is the winner - execute the call
+            JvmLogger.info("[callSingle] >> executing: {}", path);
+            long startExec = System.currentTimeMillis();
+
+            Object result;
+            try {
+                result = executeCallSingleInternal(path, arg);
+            } catch (Exception e) {
+                // Cache the exception so subsequent calls also fail fast
+                JvmLogger.warn("[callSingle] caching exception for: {} - {}", path, e.getMessage());
+                cache.put(path, new CallSingleException(e));
+                throw e;
+            }
+
+            // Cache the result
+            cache.put(path, result);
+            long execTime = System.currentTimeMillis() - startExec;
+            JvmLogger.info("[callSingle] << cached in {}ms: {}", execTime, path);
+
+            return deepCopy(result);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * Internal execution of callSingle - reads and evaluates the file.
+     */
+    private Object executeCallSingleInternal(String path, Object arg) {
+        // Read the file using the engine (which has access to the read function)
+        Object content = karate.engine.eval("read('" + path.replace("'", "\\'") + "')");
+
+        if (content instanceof Feature) {
+            // Feature file - execute it
+            Feature calledFeature = (Feature) content;
+            @SuppressWarnings("unchecked")
+            Map<String, Object> callArg = arg != null ? (Map<String, Object>) arg : null;
+
+            FeatureRuntime nestedFr = new FeatureRuntime(
+                    featureRuntime.getSuite(),
+                    calledFeature,
+                    featureRuntime,
+                    this,
+                    false,  // Isolated scope
+                    callArg,
+                    null    // No tag selector
+            );
+            FeatureResult fr = nestedFr.call();
+
+            // Check if the feature failed
+            if (fr.isFailed()) {
+                String failureMsg = fr.getScenarioResults().stream()
+                        .filter(ScenarioResult::isFailed)
+                        .findFirst()
+                        .map(ScenarioResult::getFailureMessage)
+                        .orElse("callSingle feature failed");
+                throw new RuntimeException("callSingle failed: " + path + " - " + failureMsg);
+            }
+
+            if (nestedFr.getLastExecuted() != null) {
+                return nestedFr.getLastExecuted().getAllVariables();
+            }
+            return new HashMap<>();
+        } else if (content instanceof io.karatelabs.js.JsCallable) {
+            // JavaScript function - invoke it with the arg
+            io.karatelabs.js.JsCallable fn = (io.karatelabs.js.JsCallable) content;
+            return fn.call(null, arg == null ? new Object[0] : new Object[]{arg});
+        } else {
+            // Return as-is (JSON, text, etc.)
+            return content;
+        }
+    }
+
+    /**
+     * Unwrap cached result - throws if it's a cached exception.
+     */
+    private Object unwrapCachedResult(Object cached) {
+        if (cached instanceof CallSingleException) {
+            throw new RuntimeException(((CallSingleException) cached).cause.getMessage(),
+                    ((CallSingleException) cached).cause);
+        }
+        return deepCopy(cached);
+    }
+
+    /**
+     * Deep copy to prevent cross-thread mutation of cached data.
+     */
+    @SuppressWarnings("unchecked")
+    private Object deepCopy(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Map) {
+            Map<String, Object> copy = new LinkedHashMap<>();
+            for (Map.Entry<String, Object> entry : ((Map<String, Object>) value).entrySet()) {
+                copy.put(entry.getKey(), deepCopy(entry.getValue()));
+            }
+            return copy;
+        }
+        if (value instanceof List) {
+            List<Object> copy = new ArrayList<>();
+            for (Object item : (List<Object>) value) {
+                copy.add(deepCopy(item));
+            }
+            return copy;
+        }
+        // Primitives, strings, etc. are immutable - return as-is
+        return value;
+    }
+
+    /**
+     * Wrapper for cached exceptions to distinguish from null results.
+     */
+    private static class CallSingleException {
+        final Exception cause;
+        CallSingleException(Exception cause) {
+            this.cause = cause;
+        }
     }
 
     private void inheritVariables() {
