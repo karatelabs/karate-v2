@@ -263,11 +263,83 @@ assertEquals(2021, engine.eval("javaDate.getFullYear()"));
 
 ---
 
+## SimpleObject Pattern
+
+`SimpleObject` is an interface for exposing Java objects to JavaScript with custom property access. It extends `ObjectLike` and provides default implementations.
+
+### Required Methods
+
+| Method | Purpose |
+|--------|---------|
+| `jsGet(String name)` | Property accessor - implement via switch expression |
+| `keys()` | Return property names for serialization (override required) |
+
+### How It Works
+
+```java
+public class ProcessHandle implements SimpleObject {
+
+    // List of exposed properties - required for toMap()/toString
+    private static final List<String> KEYS = List.of(
+        "stdOut", "stdErr", "exitCode", "alive", "pid",
+        "waitSync", "close", "signal"
+    );
+
+    @Override
+    public Collection<String> keys() {
+        return KEYS;  // Enables enumeration and JSON serialization
+    }
+
+    @Override
+    public Object jsGet(String key) {
+        return switch (key) {
+            case "stdOut" -> getStdOut();
+            case "exitCode" -> getExitCode();
+            case "waitSync" -> (JsCallable) (ctx, args) -> waitSync();
+            // ... other properties
+            default -> null;
+        };
+    }
+}
+```
+
+### Key Behaviors
+
+1. **`keys()` enables serialization** - `toMap()` iterates over `keys()` and calls `jsGet()` for each:
+   ```java
+   default Map<String, Object> toMap() {
+       return toMap(keys(), this);  // Uses keys() to enumerate
+   }
+   ```
+
+2. **Custom `toString` support** - If the object has a `toString` property returning `JsCallable`, it's used:
+   ```java
+   default JsCallable jsToString() {
+       Object temp = jsGet("toString");
+       if (temp instanceof JsCallable jsc) {
+           return jsc;  // Use custom toString
+       }
+       return (context, args) -> toString(toMap());  // Fallback to JSON
+   }
+   ```
+
+3. **`jsGet()` handles property access** - The switch expression is efficient and type-safe. Return `JsCallable` for methods.
+
+### Why Both `keys()` and `jsGet()`?
+
+- **`jsGet()`** - Handles individual property access (e.g., `proc.stdOut`)
+- **`keys()`** - Enables enumeration for `toMap()`, JSON serialization, and `Object.keys()` in JS
+
+Without `keys()`, the object works for property access but serializes to `{}`.
+
+---
+
 ## File References
 
 | Purpose | File |
 |---------|------|
 | Engine | `karate-js/src/main/java/io/karatelabs/js/Engine.java` |
+| SimpleObject | `karate-js/src/main/java/io/karatelabs/js/SimpleObject.java` |
 | JavaMirror | `karate-js/src/main/java/io/karatelabs/js/JavaMirror.java` |
 | JsPrimitive | `karate-js/src/main/java/io/karatelabs/js/JsPrimitive.java` |
 | Terms | `karate-js/src/main/java/io/karatelabs/js/Terms.java` |
