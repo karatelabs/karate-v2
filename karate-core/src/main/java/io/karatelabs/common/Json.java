@@ -98,11 +98,18 @@ public class Json {
     }
 
     public static Object parseStrict(String json) {
+        return parseStrict(json, false);
+    }
+
+    public static Object parseStrict(String json, boolean keepOrder) {
         if (json == null || json.isBlank()) {
             throw new RuntimeException("invalid json: input is null or blank");
         }
         try {
             JSONParser parser = new JSONParser(JSONParser.MODE_RFC4627);
+            if (keepOrder) {
+                return parser.parse(json, defaultReader.DEFAULT_ORDERED);
+            }
             return parser.parse(json);
         } catch (Exception e) {
             throw new RuntimeException("invalid json: " + e.getMessage(), e);

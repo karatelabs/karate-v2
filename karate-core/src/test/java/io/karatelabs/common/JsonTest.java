@@ -150,6 +150,18 @@ class JsonTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void testJsonParseStrictKeepOrder() {
+        String json = """
+                { "z": 1, "a": 2, "m": 3 }
+                """;
+        Map<String, Object> ordered = (Map<String, Object>) Json.parseStrict(json, true);
+        // Verify order is preserved (z, a, m - not alphabetically sorted)
+        List<String> keys = new ArrayList<>(ordered.keySet());
+        assertEquals(Arrays.asList("z", "a", "m"), keys);
+    }
+
+    @Test
     void testJsonParseLenient() {
         // Lenient accepts unquoted keys and single quotes
         Object o = Json.parseLenient("{ hello: 'world' }");
