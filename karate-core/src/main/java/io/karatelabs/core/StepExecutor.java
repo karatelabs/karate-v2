@@ -255,17 +255,10 @@ public class StepExecutor {
                             : fn.call(null, new Object[0]);
                     runtime.setVariable(resultVar, result);
                     return;
-                } else if (evaluated instanceof Feature) {
-                    // It's a Feature - call it with arguments
-                    Feature calledFeature = (Feature) evaluated;
-                    Object arg = null;
-                    if (spaceIdx > 0) {
-                        String argExpr = callExpr.substring(spaceIdx + 1).trim();
-                        if (!argExpr.isEmpty()) {
-                            arg = runtime.eval(argExpr);
-                        }
-                    }
-                    executeFeatureCall(calledFeature, arg, resultVar);
+                } else if (evaluated instanceof FeatureCall || evaluated instanceof Feature) {
+                    // It's a Feature or FeatureCall - call it with arguments
+                    String argExpr = spaceIdx > 0 ? callExpr.substring(spaceIdx + 1).trim() : null;
+                    executeFeatureCall(evaluated, argExpr, resultVar);
                     return;
                 }
             } catch (Exception e) {
@@ -279,20 +272,30 @@ public class StepExecutor {
 
         // Resolve the feature file relative to current feature
         FeatureRuntime fr = runtime.getFeatureRuntime();
-        Resource calledResource = fr != null
-                ? fr.resolve(call.path)
-                : Resource.path(call.path);
+        Feature calledFeature;
 
-        Feature calledFeature = Feature.read(calledResource);
+        if (call.sameFile) {
+            // Same-file tag call - use current feature
+            calledFeature = fr != null ? fr.getFeature() : null;
+            if (calledFeature == null) {
+                throw new RuntimeException("call with tag selector requires a feature context");
+            }
+        } else {
+            Resource calledResource = fr != null
+                    ? fr.resolve(call.path)
+                    : Resource.path(call.path);
+            calledFeature = Feature.read(calledResource);
+        }
 
-        // Create nested FeatureRuntime with isolated scope (sharedScope=false)
+        // Create nested FeatureRuntime with isolated scope and optional tag selector
         FeatureRuntime nestedFr = new FeatureRuntime(
                 fr != null ? fr.getSuite() : null,
                 calledFeature,
                 fr,
                 runtime,
                 false,  // Isolated scope - copy variables, don't share
-                call.arg
+                call.arg,
+                call.tagSelector
         );
 
         // Execute the called feature
@@ -1929,6 +1932,10 @@ public class StepExecutor {
                             : fn.call(null, new Object[0]);
                     // For shared scope call (no assignment), result is ignored
                     return;
+                } else if (evaluated instanceof FeatureCall || evaluated instanceof Feature) {
+                    // It's a feature or feature call - handle below
+                    executeFeatureCall(evaluated, spaceIdx > 0 ? text.substring(spaceIdx + 1).trim() : null, null);
+                    return;
                 }
             } catch (Exception e) {
                 // Not a valid JS expression, fall through to feature call
@@ -1940,23 +1947,33 @@ public class StepExecutor {
 
         // Resolve the feature file relative to current feature
         FeatureRuntime fr = runtime.getFeatureRuntime();
-        Resource calledResource = fr != null
-                ? fr.resolve(call.path)
-                : Resource.path(call.path);
+        Feature calledFeature;
 
-        Feature calledFeature = Feature.read(calledResource);
+        if (call.sameFile) {
+            // Same-file tag call - use current feature
+            calledFeature = fr != null ? fr.getFeature() : null;
+            if (calledFeature == null) {
+                throw new RuntimeException("call with tag selector requires a feature context");
+            }
+        } else {
+            Resource calledResource = fr != null
+                    ? fr.resolve(call.path)
+                    : Resource.path(call.path);
+            calledFeature = Feature.read(calledResource);
+        }
 
         // Determine if shared scope (no resultVar) or isolated scope (has resultVar)
         boolean sharedScope = call.resultVar == null;
 
-        // Create nested FeatureRuntime
+        // Create nested FeatureRuntime with optional tag selector
         FeatureRuntime nestedFr = new FeatureRuntime(
                 fr != null ? fr.getSuite() : null,
                 calledFeature,
                 fr,
                 runtime,
                 sharedScope,
-                call.arg
+                call.arg,
+                call.tagSelector
         );
 
         // Execute the called feature
@@ -1970,6 +1987,112 @@ public class StepExecutor {
                 runtime.setVariable(call.resultVar, resultVars);
             } else {
                 // Shared scope - propagate all variables back to caller
+                for (Map.Entry<String, Object> entry : resultVars.entrySet()) {
+                    runtime.setVariable(entry.getKey(), entry.getValue());
+                }
+            }
+        }
+    }
+
+    /**
+     * Execute a feature call with a Feature or FeatureCall object.
+     * Used when the call expression evaluates to a Feature variable.
+     * Supports array loop calling when argExpr evaluates to a List.
+     */
+    @SuppressWarnings("unchecked")
+    private void executeFeatureCall(Object featureObj, String argExpr, String resultVar) {
+        FeatureRuntime fr = runtime.getFeatureRuntime();
+
+        Feature calledFeature;
+        String tagSelector = null;
+
+        if (featureObj instanceof FeatureCall) {
+            FeatureCall fc = (FeatureCall) featureObj;
+            if (fc.isSameFile()) {
+                calledFeature = fr != null ? fr.getFeature() : null;
+                if (calledFeature == null) {
+                    throw new RuntimeException("same-file tag call requires a feature context");
+                }
+            } else {
+                calledFeature = fc.getFeature();
+            }
+            tagSelector = fc.getTagSelector();
+        } else if (featureObj instanceof Feature) {
+            calledFeature = (Feature) featureObj;
+        } else {
+            throw new RuntimeException("expected Feature or FeatureCall, got: " + featureObj.getClass());
+        }
+
+        // Parse argument expression if provided
+        Object argObj = null;
+        if (argExpr != null && !argExpr.isEmpty()) {
+            argObj = runtime.eval(argExpr);
+        }
+
+        // Check if it's an array loop call
+        if (argObj instanceof List) {
+            List<?> argList = (List<?>) argObj;
+            List<Map<String, Object>> results = new ArrayList<>();
+
+            for (Object item : argList) {
+                Map<String, Object> callArg = null;
+                if (item instanceof Map) {
+                    callArg = (Map<String, Object>) item;
+                }
+
+                // Create nested FeatureRuntime for each iteration
+                FeatureRuntime nestedFr = new FeatureRuntime(
+                        fr != null ? fr.getSuite() : null,
+                        calledFeature,
+                        fr,
+                        runtime,
+                        false,  // Always isolated scope for array loop
+                        callArg,
+                        tagSelector
+                );
+
+                nestedFr.call();
+
+                if (nestedFr.getLastExecuted() != null) {
+                    results.add(nestedFr.getLastExecuted().getAllVariables());
+                }
+            }
+
+            if (resultVar != null) {
+                runtime.setVariable(resultVar, results);
+            }
+            return;
+        }
+
+        // Single call with Map argument
+        Map<String, Object> callArg = null;
+        if (argObj instanceof Map) {
+            callArg = (Map<String, Object>) argObj;
+        }
+
+        // Determine scope
+        boolean sharedScope = resultVar == null;
+
+        // Create nested FeatureRuntime
+        FeatureRuntime nestedFr = new FeatureRuntime(
+                fr != null ? fr.getSuite() : null,
+                calledFeature,
+                fr,
+                runtime,
+                sharedScope,
+                callArg,
+                tagSelector
+        );
+
+        // Execute the called feature
+        nestedFr.call();
+
+        // Capture result variables
+        if (nestedFr.getLastExecuted() != null) {
+            Map<String, Object> resultVars = nestedFr.getLastExecuted().getAllVariables();
+            if (resultVar != null) {
+                runtime.setVariable(resultVar, resultVars);
+            } else {
                 for (Map.Entry<String, Object> entry : resultVars.entrySet()) {
                     runtime.setVariable(entry.getKey(), entry.getValue());
                 }
@@ -2024,14 +2147,18 @@ public class StepExecutor {
                 // Extract path from read('path')
                 String readArg = text.substring(5, closeParen).trim();
                 // Remove quotes
+                String rawPath;
                 if ((readArg.startsWith("'") && readArg.endsWith("'")) ||
                         (readArg.startsWith("\"") && readArg.endsWith("\""))) {
-                    expr.path = readArg.substring(1, readArg.length() - 1);
+                    rawPath = readArg.substring(1, readArg.length() - 1);
                 } else {
                     // It's a variable reference
                     Object pathObj = runtime.eval(readArg);
-                    expr.path = pathObj != null ? pathObj.toString() : readArg;
+                    rawPath = pathObj != null ? pathObj.toString() : readArg;
                 }
+
+                // Parse tag selector from path
+                parsePathAndTag(rawPath, expr);
 
                 // Check for arguments after the read()
                 String remainder = text.substring(closeParen + 1).trim();
@@ -2056,7 +2183,7 @@ public class StepExecutor {
             // Could be a variable that holds a feature path
             Object result = runtime.eval(text);
             if (result instanceof String) {
-                expr.path = (String) result;
+                parsePathAndTag((String) result, expr);
             } else {
                 throw new RuntimeException("call expression must resolve to a feature path: " + text);
             }
@@ -2065,10 +2192,37 @@ public class StepExecutor {
         return expr;
     }
 
+    /**
+     * Parse path and tag selector from a feature path.
+     * Supports:
+     * - file.feature@tag - call specific scenario by tag
+     * - @tag - call scenario in same file by tag
+     */
+    private void parsePathAndTag(String rawPath, CallExpression expr) {
+        if (rawPath.startsWith("@")) {
+            // Same-file tag call: @tagname
+            expr.sameFile = true;
+            expr.tagSelector = rawPath;  // Keep the @ prefix
+            expr.path = null;
+        } else {
+            // Check for tag suffix: file.feature@tag
+            int tagPos = rawPath.indexOf(".feature@");
+            if (tagPos != -1) {
+                expr.path = rawPath.substring(0, tagPos + 8);  // "file.feature"
+                expr.tagSelector = "@" + rawPath.substring(tagPos + 9);  // "@tag"
+            } else {
+                // No tag - normal call
+                expr.path = rawPath;
+            }
+        }
+    }
+
     private static class CallExpression {
         String path;
         Map<String, Object> arg;
         String resultVar;
+        String tagSelector;  // For call-by-tag syntax
+        boolean sameFile;    // true if calling scenario in same file
     }
 
     private void executeEval(Step step) {

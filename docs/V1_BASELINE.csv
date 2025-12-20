@@ -25,8 +25,8 @@ java-023,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallJsFromFeat
 java-024,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallOnceJsFromFeatureUtilsDefinedInKarateConfig,,testCallOnceJsFromFeatureUtilsDefinedInKarateConfig,root,pending,,,
 java-025,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateJsGetScenario,,testKarateJsGetScenario,root,pending,,,
 java-026,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateJsFromKarateBase,,testKarateJsFromKarateBase,root,pending,,,
-java-027,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallByTag,,testCallByTag,root,pending,,,
-java-028,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallByTagCalled,,testCallByTagCalled,root,pending,,,
+java-027,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallByTag,,testCallByTag,root,passed,call-by-tag syntax implemented,io/karatelabs/core/CallFeatureTest,2025-12-20
+java-028,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallByTagCalled,,testCallByTagCalled,root,passed,call-by-tag called feature works,io/karatelabs/core/CallFeatureTest,2025-12-20
 java-029,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCopyAndClone,,testCopyAndClone,root,passed,runs copy.feature which passes,,2025-12-19
 java-030,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testMatchEachMagicVariables,,testMatchEachMagicVariables,root,passed,runs match-each-magic-variables.feature which passes,,2025-12-19
 java-031,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testEvalAndSet,,testEvalAndSet,root,passed,runs eval-and-set.feature which passes,,2025-12-19
@@ -299,8 +299,8 @@ feature-005,feature,call-arg-common.feature,,,call-arg-common.feature,call-arg-c
 feature-006,feature,call-arg-null-called.feature,,,call-arg-null-called.feature,called feature for call-arg-null test,root,passed,helper for call-arg-null.feature,,2025-12-18
 feature-007,feature,call-arg-null.feature,,,call-arg-null.feature,tests karate.call() with args overriding null var,root,passed,implemented karate.call(); added CallFeatureTest,io/karatelabs/core/CallFeatureTest,2025-12-18
 feature-008,feature,call-arg.feature,,,call-arg.feature,call-arg.feature,root,passed,call with arguments,,2025-12-19
-feature-009,feature,call-by-tag-called.feature,,,call-by-tag-called.feature,call-by-tag-called.feature,root,pending,,,
-feature-010,feature,call-by-tag.feature,,,call-by-tag.feature,call-by-tag.feature,root,pending,,,
+feature-009,feature,call-by-tag-called.feature,,,call-by-tag-called.feature,call-by-tag-called.feature,root,passed,helper for call-by-tag.feature,io/karatelabs/core/CallFeatureTest,2025-12-20
+feature-010,feature,call-by-tag.feature,,,call-by-tag.feature,call-by-tag.feature,root,passed,implemented call-by-tag syntax (@name=value and @tag same-file),io/karatelabs/core/CallFeatureTest,2025-12-20
 feature-011,feature,call-feature-called.feature,,,call-feature-called.feature,called feature for call-feature.feature,root,passed,helper for call-feature.feature,,2025-12-18
 feature-012,feature,call-feature.feature,,,call-feature.feature,call feature var with array loop,root,passed,implemented call with Feature var and array loop; uses karate.jsonPath instead of $var[*],io/karatelabs/core/CallFeatureTest,2025-12-18
 feature-013,feature,call-js-called.feature,,,call-js-called.feature,call-js-called.feature,root,pending,,,

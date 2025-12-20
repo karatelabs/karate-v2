@@ -100,11 +100,33 @@ public class KarateJs implements SimpleObject {
             if (args.length == 0) {
                 throw new RuntimeException("read() needs at least one argument");
             }
-            Resource resource = root.resolve((args[0] + ""));
+            String rawPath = args[0] + "";
+
+            // Parse tag selector for feature files
+            // Supports: file.feature@tag or @tag (same-file)
+            String path;
+            String tagSelector = null;
+            if (rawPath.startsWith("@")) {
+                // Same-file tag - return a FeatureCall wrapper
+                return new FeatureCall(null, rawPath);
+            } else {
+                int tagPos = rawPath.indexOf(".feature@");
+                if (tagPos != -1) {
+                    path = rawPath.substring(0, tagPos + 8);  // "file.feature"
+                    tagSelector = "@" + rawPath.substring(tagPos + 9);  // "@tag"
+                } else {
+                    path = rawPath;
+                }
+            }
+
+            Resource resource = root.resolve(path);
             return switch (resource.getExtension()) {
                 case "json" -> Json.of(resource.getText()).value();
                 case "js" -> engine.eval(resource.getText());
-                case "feature" -> Feature.read(resource);
+                case "feature" -> {
+                    Feature feature = Feature.read(resource);
+                    yield tagSelector != null ? new FeatureCall(feature, tagSelector) : feature;
+                }
                 case "xml" -> {
                     // Parse XML and process embedded expressions
                     Document doc = Xml.toXmlDoc(resource.getText());

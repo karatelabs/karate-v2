@@ -35,6 +35,8 @@ Pick the next `pending` feature from `docs/V1_BASELINE.csv` (top to bottom). Do 
 ./etc/run-v1-compat.sh <feature>.feature
 ```
 
+> **Note:** The script does NOT automatically copy all dependencies. If the test fails due to missing files (e.g., called features), manually copy them to the temp directory one by one and re-run.
+
 ### Step 3: Evaluate Result
 
 ```
@@ -58,6 +60,16 @@ Test passes?
 
 > **Build Note:** `run-v1-compat.sh` auto-detects source changes and rebuilds.
 > Manual rebuild: `mvn install -DskipTests -q -pl karate-js,karate-core`
+
+### Step 3b: Verify Full Test Suite
+
+Before marking complete, run the full test suite to ensure no regressions:
+
+```bash
+mvn test -pl karate-core
+```
+
+Fix any failures before proceeding.
 
 ### Step 4: Update CSV
 

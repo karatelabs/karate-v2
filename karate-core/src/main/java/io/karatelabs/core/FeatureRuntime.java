@@ -49,6 +49,7 @@ public class FeatureRuntime implements Callable<FeatureResult> {
     private final ScenarioRuntime callerScenario;  // The calling scenario's runtime (for variable inheritance)
     private final boolean sharedScope;  // true = pass variables by reference, false = pass copies
     private final Map<String, Object> callArg;
+    private final String callTagSelector;  // Tag selector for call-by-tag (e.g., "@name=second")
 
     // Caches (feature-level)
     final Map<String, Object> CALLONCE_CACHE = new ConcurrentHashMap<>();
@@ -71,12 +72,17 @@ public class FeatureRuntime implements Callable<FeatureResult> {
     }
 
     public FeatureRuntime(Suite suite, Feature feature, FeatureRuntime caller, ScenarioRuntime callerScenario, boolean sharedScope, Map<String, Object> callArg) {
+        this(suite, feature, caller, callerScenario, sharedScope, callArg, null);
+    }
+
+    public FeatureRuntime(Suite suite, Feature feature, FeatureRuntime caller, ScenarioRuntime callerScenario, boolean sharedScope, Map<String, Object> callArg, String callTagSelector) {
         this.suite = suite;
         this.feature = feature;
         this.caller = caller;
         this.callerScenario = callerScenario;
         this.sharedScope = sharedScope;
         this.callArg = callArg;
+        this.callTagSelector = callTagSelector;
         this.result = new FeatureResult(feature);
     }
 
@@ -405,14 +411,19 @@ public class FeatureRuntime implements Callable<FeatureResult> {
         }
 
         private boolean shouldSelect(Scenario scenario) {
-            // Check for @ignore tag
+            // Check for @ignore tag (unless callTagSelector explicitly requests it)
             List<Tag> tags = scenario.getTags();
-            if (tags != null) {
+            if (tags != null && callTagSelector == null) {
                 for (Tag tag : tags) {
                     if (Tag.IGNORE.equals(tag.getName())) {
                         return false;
                     }
                 }
+            }
+
+            // Apply call-level tag filter if specified (takes precedence)
+            if (callTagSelector != null) {
+                return matchesTags(scenario, callTagSelector);
             }
 
             // Apply suite tag filter if configured
@@ -424,32 +435,53 @@ public class FeatureRuntime implements Callable<FeatureResult> {
         }
 
         private boolean matchesTags(Scenario scenario, String tagSelector) {
-            // Simple tag matching - can be expanded for complex expressions
+            // Tag matching for call-by-tag syntax
+            // Supports: @tagname, @name=value
             List<Tag> tags = scenario.getTags();
             if (tags == null || tags.isEmpty()) {
-                // Scenario has no tags - check if selector requires tags
+                // Scenario has no tags - doesn't match if selector requires tags
                 return !tagSelector.startsWith("@");
-            }
-
-            // Simple implementation - checks if any tag matches
-            for (Tag tag : tags) {
-                if (tagSelector.contains(tag.getName())) {
-                    return true;
-                }
             }
 
             // Check if it's a negation
             if (tagSelector.startsWith("~")) {
                 String required = tagSelector.substring(1);
                 for (Tag tag : tags) {
-                    if (required.equals(tag.getName())) {
+                    if (matchesTag(tag, required)) {
                         return false;
                     }
                 }
                 return true;
             }
 
+            // Parse the selector (remove leading @)
+            String selector = tagSelector.startsWith("@") ? tagSelector.substring(1) : tagSelector;
+
+            // Check if any tag matches
+            for (Tag tag : tags) {
+                if (matchesTag(tag, selector)) {
+                    return true;
+                }
+            }
+
             return false;
+        }
+
+        /**
+         * Check if a tag matches a selector.
+         * Selector can be: "tagname" or "name=value"
+         */
+        private boolean matchesTag(Tag tag, String selector) {
+            int eqPos = selector.indexOf('=');
+            if (eqPos == -1) {
+                // Simple tag match: @tagname
+                return tag.getName().equals(selector);
+            } else {
+                // Value tag match: @name=value
+                String selectorName = selector.substring(0, eqPos);
+                String selectorValue = selector.substring(eqPos + 1);
+                return tag.getName().equals(selectorName) && tag.getValues().contains(selectorValue);
+            }
         }
     }
 

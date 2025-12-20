@@ -201,6 +201,10 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
     /**
      * Execute a feature via karate.call() and return its result variables.
      * This is used for JavaScript calls like: karate.call('other.feature', { arg: 'value' })
+     *
+     * Supports call-by-tag syntax:
+     * - call('file.feature@name=tagvalue') - call feature, run only scenario with matching tag
+     * - call('@tagname') - call scenario in same file by tag
      */
     @SuppressWarnings("unchecked")
     private Map<String, Object> executeJsCall(String path, Object arg) {
@@ -208,9 +212,32 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
             throw new RuntimeException("karate.call() requires a feature context");
         }
 
-        // Resolve the feature file relative to current feature
-        Resource calledResource = featureRuntime.resolve(path);
-        Feature calledFeature = Feature.read(calledResource);
+        // Parse path and tag selector
+        String featurePath;
+        String tagSelector;
+        Feature calledFeature;
+
+        if (path.startsWith("@")) {
+            // Same-file tag call: call('@tagname')
+            featurePath = null;
+            tagSelector = path;  // Keep the @ prefix
+            calledFeature = featureRuntime.getFeature();
+        } else {
+            // Check for tag suffix: file.feature@tag
+            int tagPos = path.indexOf(".feature@");
+            if (tagPos != -1) {
+                featurePath = path.substring(0, tagPos + 8);  // "file.feature"
+                tagSelector = "@" + path.substring(tagPos + 9);  // "@tag"
+                Resource calledResource = featureRuntime.resolve(featurePath);
+                calledFeature = Feature.read(calledResource);
+            } else {
+                // Normal call without tag
+                featurePath = path;
+                tagSelector = null;
+                Resource calledResource = featureRuntime.resolve(featurePath);
+                calledFeature = Feature.read(calledResource);
+            }
+        }
 
         // Convert arg to Map if needed
         Map<String, Object> callArg = null;
@@ -229,7 +256,8 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
                 featureRuntime,
                 this,
                 false,  // Isolated scope
-                callArg
+                callArg,
+                tagSelector
         );
 
         // Execute the called feature

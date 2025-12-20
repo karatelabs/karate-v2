@@ -263,6 +263,64 @@ class CallFeatureTest {
         assertTrue(result.isPassed(), "Call with feature var and array loop should work: " + getFailureMessage(result));
     }
 
+    @Test
+    void testCallByTag() throws Exception {
+        // Create called feature with multiple scenarios, each with a tag
+        Path calledFeature = tempDir.resolve("called.feature");
+        Files.writeString(calledFeature, """
+            Feature: Tagged Scenarios
+            @name=first
+            Scenario: First
+            * def bar = 1
+
+            @name=second
+            Scenario: Second
+            * def bar = 2
+
+            @name=third
+            Scenario: Third
+            * def bar = 3
+            """);
+
+        // Create caller that calls specific scenario by tag
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Call by Tag
+            Scenario: Call second scenario
+            * def foo = call read('called.feature@name=second')
+            * match foo.bar == 2
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "Call by tag should work: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testCallByTagSameFile() throws Exception {
+        // Create feature that calls a tagged scenario in the same file
+        Path feature = tempDir.resolve("sameFile.feature");
+        Files.writeString(feature, """
+            Feature: Same File Tag Call
+
+            Scenario: Caller
+            * def foo = call read('@target')
+            * match foo.bar == 42
+
+            @ignore @target
+            Scenario: Target
+            * def bar = 42
+            """);
+
+        Suite suite = Suite.of(tempDir, feature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "Same-file tag call should work: " + getFailureMessage(result));
+    }
+
     private String getFailureMessage(SuiteResult result) {
         if (result.isPassed()) return "none";
         for (FeatureResult fr : result.getFeatureResults()) {
