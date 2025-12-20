@@ -340,6 +340,24 @@ class StepDefTest {
     }
 
     @Test
+    void testYamlNestedStructure() {
+        // yaml keyword with nested objects
+        ScenarioRuntime sr = run("""
+            * yaml data =
+            \"\"\"
+            name: John
+            input:
+              id: 1
+              subType:
+                name: Smith
+                deleted: false
+            \"\"\"
+            * match data == { name: 'John', input: { id: 1, subType: { name: 'Smith', deleted: false } } }
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
     void testEvalWithDocString() {
         // eval keyword with docstring - multi-line JS with karate.set()
         ScenarioRuntime sr = run("""

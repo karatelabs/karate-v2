@@ -333,7 +333,7 @@ feature-039,feature,copy-called.feature,,,copy-called.feature,called file should
 feature-040,feature,copy.feature,,,copy.feature,the difference with variable scoping in 'isolated' and 'shared' mode,root,passed,implemented shared/isolated scope; added CopyTest,io/karatelabs/core/copy/,2025-12-17
 feature-041,feature,csv.feature,,,csv.feature,csv.feature,root,passed,csv keyword implemented,io/karatelabs/core/StepDefTest,2025-12-19
 feature-042,feature,dummy-ui-google.feature,,,dummy-ui-google.feature,dummy-ui-google.feature,root,pending,,,
-feature-043,feature,dummy.feature,,,dummy.feature,dummy.feature,root,pending,,,
+feature-043,feature,dummy.feature,,,dummy.feature,dummy.feature,root,passed,simple test feature,,2025-12-20
 feature-044,feature,eval-and-set.feature,,,eval-and-set.feature,eval-and-set.feature,root,passed,fixed eval docstring + karate.set(); added StepDefTest,io/karatelabs/core/StepDefTest,2025-12-18
 feature-045,feature,eval-assign.feature,,,eval-assign.feature,eval-assign.feature,root,passed,fixed property assignment with docstring; added StepDefTest,io/karatelabs/core/StepDefTest,2025-12-18
 feature-046,feature,exec.feature,,,exec.feature,exec.feature,root,pending,,,
@@ -351,7 +351,7 @@ feature-057,feature,fork-listener.feature,,,fork-listener.feature,log listener e
 feature-058,feature,fork.feature,,,fork.feature,fork.feature,root,pending,,,
 feature-059,feature,ignore-step-failure.feature,,,ignore-step-failure.feature,continue on step failure keyword,root,pending,,,
 feature-060,feature,js-arrays.feature,,,js-arrays.feature,various javascript tests,root,passed,73/73 scenarios; tests in StepJsTest StepTableTest,io/karatelabs/core/StepJsTest io/karatelabs/core/StepTableTest,2025-12-18
-feature-061,feature,js-map-repeat.feature,,,js-map-repeat.feature,js-map-repeat.feature,root,pending,,,
+feature-061,feature,js-map-repeat.feature,,,js-map-repeat.feature,js-map-repeat.feature,root,passed,karate.map and karate.repeat with arrays,,2025-12-20
 feature-062,feature,jscall/dummy.feature,,,dummy.feature,dummy.feature,jscall,pending,,,
 feature-063,feature,jscall/js-call.feature,,,js-call.feature,js-call.feature,jscall,pending,,,
 feature-064,feature,jscall/js-called.feature,,,js-called.feature,js-called.feature,jscall,pending,,,
@@ -519,10 +519,10 @@ feature-225,feature,tags/outline-tags.feature,,,outline-tags.feature,outline-tag
 feature-226,feature,to-bean-called.feature,,,to-bean-called.feature,to-bean-called.feature,root,pending,,,
 feature-227,feature,to-bean.feature,,,to-bean.feature,demo calling java methods with complex types,root,pending,,,
 feature-228,feature,type-conv.feature,,,type-conv.feature,"convert between json, xml and string",root,passed,19/23 pass; POJO tests skipped (V2 has equivalent); number formatting differences expected between JS engines,StepDefTest#testReplaceWithJsonObject StepJsTest#testJsonPathOnStringAutoConvert,2025-12-20
-feature-229,feature,type-conversion.feature,,,type-conversion.feature,type-conversion.feature,root,pending,,,
+feature-229,feature,type-conversion.feature,,,type-conversion.feature,type-conversion.feature,root,passed,csv/yaml parsing; added testYamlNestedStructure,StepDefTest,2025-12-20
 feature-230,feature,ui-google.feature,,,ui-google.feature,ui-google.feature,root,pending,,,
 feature-231,feature,users-doc.feature,,,users-doc.feature,users-doc.feature,root,pending,,,
-feature-232,feature,utils-reuse-common.feature,,,utils-reuse-common.feature,utils-reuse-common.feature,root,pending,,,
+feature-232,feature,utils-reuse-common.feature,,,utils-reuse-common.feature,utils-reuse-common.feature,root,passed,helper feature with common utils,,2025-12-20
 feature-233,feature,utils-reuse.feature,,,utils-reuse.feature,json and js functions loaded in the karate-config.js,root,pending,,,
 feature-234,feature,websocket.feature,,,websocket.feature,websocket.feature,root,pending,,,
 feature-235,feature,xml-pretty.feature,,,xml-pretty.feature,xml-pretty.feature,root,passed,XML literal + set + match support added,io/karatelabs/core/StepXmlTest,2025-12-19
