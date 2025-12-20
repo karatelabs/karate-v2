@@ -23,6 +23,8 @@
  */
 package io.karatelabs.log;
 
+import java.util.function.Consumer;
+
 /**
  * Thread-local log collector for scenario execution.
  * All user-script logging (print, karate.log, HTTP) goes here.
@@ -31,6 +33,8 @@ package io.karatelabs.log;
 public class LogContext {
 
     private static final ThreadLocal<LogContext> CURRENT = new ThreadLocal<>();
+
+    private static Consumer<String> cascade;
 
     private final StringBuilder buffer = new StringBuilder();
 
@@ -53,15 +57,31 @@ public class LogContext {
         CURRENT.remove();
     }
 
+    /**
+     * Set a cascade consumer to forward log messages to an external logger (e.g., SLF4J).
+     * This is optional and allows test logs to be visible in console/files while
+     * still being captured for reports.
+     */
+    public static void setCascade(Consumer<String> logger) {
+        cascade = logger;
+    }
+
     // ========== Logging ==========
 
     public void log(Object message) {
-        buffer.append(message).append('\n');
+        String msg = String.valueOf(message);
+        buffer.append(msg).append('\n');
+        if (cascade != null) {
+            cascade.accept(msg);
+        }
     }
 
     public void log(String format, Object... args) {
         String message = format(format, args);
         buffer.append(message).append('\n');
+        if (cascade != null) {
+            cascade.accept(message);
+        }
     }
 
     // ========== Collect ==========

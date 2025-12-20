@@ -66,6 +66,7 @@ public class Suite {
     private boolean outputJunitXml = false;
     private boolean outputCucumberJson = false;
     private boolean backupReportDir = false;
+    private boolean outputConsoleSummary = true;
 
     // Config variables from karate-config.js
     private Map<String, Object> configVariables = Collections.emptyMap();
@@ -206,6 +207,11 @@ public class Suite {
 
     public Suite backupReportDir(boolean backupReportDir) {
         this.backupReportDir = backupReportDir;
+        return this;
+    }
+
+    public Suite outputConsoleSummary(boolean outputConsoleSummary) {
+        this.outputConsoleSummary = outputConsoleSummary;
         return this;
     }
 
@@ -395,7 +401,9 @@ public class Suite {
             FeatureRuntime fr = new FeatureRuntime(this, feature);
             FeatureResult featureResult = fr.call();
             result.addFeatureResult(featureResult);
-            featureResult.printSummary();
+            if (outputConsoleSummary) {
+                featureResult.printSummary();
+            }
         }
     }
 
@@ -411,7 +419,9 @@ public class Suite {
                     try {
                         FeatureRuntime fr = new FeatureRuntime(this, feature);
                         FeatureResult featureResult = fr.call();
-                        featureResult.printSummary();
+                        if (outputConsoleSummary) {
+                            featureResult.printSummary();
+                        }
                         return featureResult;
                     } finally {
                         semaphore.release();

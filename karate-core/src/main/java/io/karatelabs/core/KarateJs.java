@@ -38,6 +38,7 @@ import io.karatelabs.js.GherkinParser;
 import io.karatelabs.js.Invokable;
 import io.karatelabs.js.JsCallable;
 import io.karatelabs.js.SimpleObject;
+import io.karatelabs.log.LogContext;
 import io.karatelabs.markup.Markup;
 import io.karatelabs.markup.ResourceResolver;
 import io.karatelabs.match.Match;
@@ -92,7 +93,7 @@ public class KarateJs implements SimpleObject {
         this.client = client;
         http = new HttpRequestBuilder(client);
         this.engine = new Engine();
-        engine.setOnConsoleLog(logger::info);
+        engine.setOnConsoleLog(s -> LogContext.get().log(s));
         // TODO: implement whitelisting for safety - currently allows access to all Java classes
         engine.setExternalBridge(new io.karatelabs.js.ExternalBridge() {});
         read = args -> {
@@ -908,7 +909,7 @@ public class KarateJs implements SimpleObject {
                     sb.append(arg);
                 }
             }
-            logger.info(sb.toString());
+            LogContext.get().log(sb.toString());
             return null;
         };
     }

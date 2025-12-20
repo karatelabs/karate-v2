@@ -156,9 +156,11 @@ class RunnerTest {
     @Test
     void testRunnerWithClasspathDirectory() {
         // This directory contains 2 feature files in test resources
+        // One has an intentionally failing scenario for report testing
         SuiteResult result = Runner.path("classpath:io/karatelabs/report")
                 .outputDir(tempDir.resolve("reports"))
                 .outputHtmlReport(false)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         // Should find both test-report.feature and second-feature.feature
@@ -170,9 +172,11 @@ class RunnerTest {
     @Test
     void testRunnerWithClasspathDirectoryTrailingSlash() {
         // Same test but with trailing slash
+        // Contains intentionally failing scenario for report testing
         SuiteResult result = Runner.path("classpath:io/karatelabs/report/")
                 .outputDir(tempDir.resolve("reports"))
                 .outputHtmlReport(false)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         assertEquals(2, result.getFeatureCount());

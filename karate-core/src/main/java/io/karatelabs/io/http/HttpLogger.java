@@ -25,8 +25,7 @@ package io.karatelabs.io.http;
 
 import io.karatelabs.common.FileUtils;
 import io.karatelabs.common.ResourceType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.karatelabs.log.LogContext;
 
 import java.util.List;
 import java.util.Map;
@@ -34,10 +33,8 @@ import java.util.function.Consumer;
 
 public class HttpLogger {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(HttpLogger.class);
-
     private int requestCount;
-    private Consumer<String> logger = LOGGER::debug;
+    private Consumer<String> logger = s -> LogContext.get().log(s);
 
     public void setLogger(Consumer<String> logger) {
         this.logger = logger;

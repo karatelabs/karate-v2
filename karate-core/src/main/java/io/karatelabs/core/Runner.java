@@ -100,6 +100,7 @@ public final class Runner {
         private boolean outputJunitXml;
         private boolean outputCucumberJson;
         private boolean backupReportDir;
+        private boolean outputConsoleSummary = true;
 
         Builder() {
         }
@@ -264,6 +265,16 @@ public final class Runner {
         }
 
         /**
+         * Enable/disable console summary output after test execution.
+         * When disabled, no summary is printed to console, but results
+         * are still available in the returned SuiteResult.
+         */
+        public Builder outputConsoleSummary(boolean enabled) {
+            this.outputConsoleSummary = enabled;
+            return this;
+        }
+
+        /**
          * Enable dry-run mode (parse but don't execute).
          */
         public Builder dryRun(boolean enabled) {
@@ -324,8 +335,10 @@ public final class Runner {
 
             SuiteResult result = suite.run();
 
-            // Print summary
-            result.printSummary(env, threadCount);
+            // Print summary if enabled
+            if (outputConsoleSummary) {
+                result.printSummary(env, threadCount);
+            }
 
             return result;
         }
@@ -366,6 +379,7 @@ public final class Runner {
             suite.outputJunitXml(outputJunitXml);
             suite.outputCucumberJson(outputCucumberJson);
             suite.backupReportDir(backupReportDir);
+            suite.outputConsoleSummary(outputConsoleSummary);
 
             // Add hooks
             for (RuntimeHook hook : hooks) {
