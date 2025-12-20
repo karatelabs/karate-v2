@@ -102,6 +102,64 @@ Uses Java 21+ virtual threads. Basic parallel execution is implemented in `Suite
 - `karate-config-{env}.js` for environment-specific config
 - Config values available as variables in scenarios
 
+**V2 Enhancement - Working Directory Fallback:**
+
+In V1, config files had to be on the Java classpath. V2 adds a fallback that searches the working directory when `classpath:karate-config.js` is not found. This makes Karate friendlier for users running from the file system without Java project structure:
+
+```bash
+# No classpath setup needed - just run from project directory
+./my-project/
+├── karate-config.js       # Found via working directory fallback
+├── karate-config-dev.js   # Env-specific also found
+└── tests/
+    └── users.feature
+```
+
+**Config Evaluation Per-Scenario:**
+
+Config is evaluated fresh for each scenario (not once per Suite). This enables:
+- `karate.callSingle()` in config for one-time initialization
+- `karate.env` access during config evaluation
+- Per-scenario isolation with shared caches
+
+### karate.callSingle()
+
+`karate.callSingle(path)` executes a feature or JS file **once per Suite** with thread-safe caching. This is commonly used in `karate-config.js` for expensive bootstrap operations (authentication, database setup, etc.).
+
+```javascript
+// karate-config.js
+function fn() {
+    var auth = karate.callSingle('classpath:auth.feature');
+    return {
+        authToken: auth.token,
+        baseUrl: 'http://localhost:8080'
+    };
+}
+```
+
+**Key features:**
+- **Suite-level caching** - Result cached and shared across all scenarios
+- **Thread-safe** - Uses `ReentrantLock` with double-checked locking pattern
+- **Exception caching** - Failed callSingle cached and re-thrown on subsequent calls
+- **Deep copy** - Cached results deep-copied to prevent cross-thread mutation
+- **Works in config** - Available in `karate-config.js` because config is evaluated per-scenario after providers are wired
+
+**Supported file types:**
+- `.feature` files - Returns map of all defined variables
+- `.js` files - Function is invoked, return value cached
+
+**With arguments:**
+```javascript
+var result = karate.callSingle('setup.feature', { name: 'World' });
+```
+
+**Implementation:**
+- `Suite` holds `CALLSINGLE_CACHE` (ConcurrentHashMap) and `callSingleLock` (ReentrantLock)
+- `ScenarioRuntime.executeCallSingle()` implements double-checked locking
+- `KarateJs.callSingle()` bridges to runtime via provider pattern
+
+See `io.karatelabs.core.callsingle.CallSingleTest` for comprehensive test coverage including parallel execution.
+
 ### Reports
 
 - Karate JSON report (`karate-summary.json`)
@@ -656,7 +714,8 @@ Tests are in `karate-core/src/test/java/io/karatelabs/core/`:
 | `DynamicOutlineTest` | Dynamic scenarios |
 | `BackgroundTest` | Background steps |
 | `CallFeatureTest` | Feature calling |
-| `ConfigTest` | Config loading |
+| `ConfigTest` | Config loading, working directory fallback |
+| `callsingle/CallSingleTest` | `karate.callSingle()`, thread-safe caching, parallel execution |
 | `RuntimeHookTest` | Hooks |
 | `ResultListenerTest` | Result streaming |
 | `RunnerTest` | Runner API, classpath directory scanning |
