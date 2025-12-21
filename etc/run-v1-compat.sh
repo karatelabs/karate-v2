@@ -118,7 +118,7 @@ cd "$V2_DIR"
 LOG_FILE="$RESULTS_DIR/$(basename "$FEATURE_PATH" .feature).log"
 
 set +e
-./etc/test-cli.sh "$TEMP_DIR/$(basename "$FEATURE_PATH")" 2>&1 | tee "$LOG_FILE"
+./etc/test-cli.sh run -w "$TEMP_DIR" "$TEMP_DIR/$(basename "$FEATURE_PATH")" 2>&1 | tee "$LOG_FILE"
 EXIT_CODE=${PIPESTATUS[0]}
 set -e
 

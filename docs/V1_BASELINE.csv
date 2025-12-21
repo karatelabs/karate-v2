@@ -20,8 +20,8 @@ java-018,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTags,,testTags
 java-019,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testAbort,,testAbort,root,passed,runs abort.feature which passes,,2025-12-19
 java-020,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testAlign,,testAlign,root,passed,runs align.feature which passes,,2025-12-19
 java-021,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testFailApi,,testFailApi,root,passed,karate.fail() implemented,ScenarioRuntimeTest,2025-12-21
-java-022,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallFeatureFromJs,,testCallFeatureFromJs,root,pending,,,
-java-023,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallJsFromFeatureUtilsDefinedInKarateConfig,,testCallJsFromFeatureUtilsDefinedInKarateConfig,root,pending,,,
+java-022,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallFeatureFromJs,,testCallFeatureFromJs,root,passed,V2 supports karate.call from JS functions,,2025-12-21
+java-023,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallJsFromFeatureUtilsDefinedInKarateConfig,,testCallJsFromFeatureUtilsDefinedInKarateConfig,root,passed,V2 supports karate.call from config (requires relative paths),ConfigTest,2025-12-21
 java-024,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallOnceJsFromFeatureUtilsDefinedInKarateConfig,,testCallOnceJsFromFeatureUtilsDefinedInKarateConfig,root,pending,,,
 java-025,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateJsGetScenario,,testKarateJsGetScenario,root,pending,,,
 java-026,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateJsFromKarateBase,,testKarateJsFromKarateBase,root,pending,,,

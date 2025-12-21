@@ -204,6 +204,79 @@ class ConfigTest {
     }
 
     @Test
+    void testCallFeatureFromConfigV1Style() throws Exception {
+        // This tests the V1 karate-config.js pattern where the function is defined
+        // but NOT called at the end - V2 should detect and invoke it automatically
+        Path utilsFeature = tempDir.resolve("utils.feature");
+        Files.writeString(utilsFeature, """
+            @ignore
+            Feature:
+            Scenario:
+            * def hello = function(){ return { helloVar: 'hello world' } }
+            """);
+
+        // V1-style config: function fn() defined but not called
+        Path configFile = tempDir.resolve("karate-config.js");
+        Files.writeString(configFile, """
+            function fn() {
+              var config = {
+                configUtils: karate.call('utils.feature')
+              };
+              return config;
+            }
+            """);
+
+        Path featureFile = tempDir.resolve("test.feature");
+        Files.writeString(featureFile, """
+            Feature: V1-style Config Test
+            Scenario: Call function from config-loaded feature
+            * call configUtils.hello
+            """);
+
+        Suite suite = Suite.of(tempDir, featureFile.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "V1-style config with karate.call should work");
+    }
+
+    @Test
+    void testCallFeatureFromConfig() throws Exception {
+        // Create a reusable feature that defines functions
+        Path utilsFeature = tempDir.resolve("utils.feature");
+        Files.writeString(utilsFeature, """
+            @ignore
+            Feature:
+            Scenario:
+            * def hello = function(){ return { helloVar: 'hello world' } }
+            """);
+
+        // Create karate-config.js that calls the utils feature
+        Path configFile = tempDir.resolve("karate-config.js");
+        Files.writeString(configFile, """
+            function fn() {
+              return {
+                configUtils: karate.call('utils.feature')
+              };
+            }
+            """);
+
+        // Create a feature that uses the config-loaded utils
+        Path featureFile = tempDir.resolve("test.feature");
+        Files.writeString(featureFile, """
+            Feature: Config Utils Test
+            Scenario: Call function from config-loaded feature
+            * call configUtils.hello
+            """);
+
+        Suite suite = Suite.of(tempDir, featureFile.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "Config with karate.call should work");
+    }
+
+    @Test
     void testEnvConfigFromWorkingDirectory() throws Exception {
         // Create base karate-config.js in working directory
         Path configFile = tempDir.resolve("karate-config.js");

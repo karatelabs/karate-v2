@@ -37,6 +37,8 @@ Pick the next `pending` feature from `docs/V1_BASELINE.csv` (top to bottom). Do 
 
 > **Note:** The script does NOT automatically copy all dependencies. If the test fails due to missing files (e.g., called features), manually copy them to the temp directory one by one and re-run.
 
+> **Note:** V1 uses `classpath:` prefixes (e.g., `classpath:com/intuit/karate/core/file.feature`) which don't work in the temp directory. Adapt these to relative paths in the debug directory and re-run.
+
 ### Step 3: Evaluate Result
 
 ```
