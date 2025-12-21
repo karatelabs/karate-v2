@@ -485,4 +485,31 @@ class DynamicOutlineTest {
         assertEquals(0, result.getFailedCount());
     }
 
+    @Test
+    void testDynamicOutlineWithUnnamedScenario() throws Exception {
+        // Tests that Scenario Outline without a name works correctly
+        // Regression test for NPE in Scenario.replace() when name is null
+        Path feature = tempDir.resolve("dynamic-unnamed.feature");
+        Files.writeString(feature, """
+            Feature:
+
+            @setup
+            Scenario:
+            * def data = [{ name: 'one' }, { name: 'two' }]
+
+            Scenario Outline:
+            * match name == "#present"
+
+            Examples:
+            | karate.setup().data |
+            """);
+
+        Feature f = Feature.read(Resource.from(feature, tempDir));
+        FeatureRuntime fr = new FeatureRuntime(null, f);
+        FeatureResult result = fr.call();
+
+        assertEquals(2, result.getPassedCount(), "Should have 2 passing scenarios from dynamic data");
+        assertEquals(0, result.getFailedCount());
+    }
+
 }

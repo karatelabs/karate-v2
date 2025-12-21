@@ -121,7 +121,11 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
 
         // Apply call arguments if present
         if (featureRuntime != null && featureRuntime.getCallArg() != null) {
-            for (var entry : featureRuntime.getCallArg().entrySet()) {
+            Map<String, Object> callArg = featureRuntime.getCallArg();
+            // Set __arg to the full argument map (V1 compatibility)
+            karate.engine.put("__arg", callArg);
+            // Also spread individual keys as variables
+            for (var entry : callArg.entrySet()) {
                 karate.engine.put(entry.getKey(), entry.getValue());
             }
         }

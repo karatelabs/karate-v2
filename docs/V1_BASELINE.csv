@@ -37,9 +37,9 @@ java-035,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTable,,testTab
 java-036,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSet,,testSet,root,passed,runs set.feature which passes,,2025-12-19
 java-037,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSetXml,,testSetXml,root,passed,karate.setXml() implemented,io/karatelabs/core/StepXmlTest,2025-12-19
 java-038,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead,,testJsRead,root,passed,call read shorthand and this: prefix implemented,,2025-12-21
-java-039,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead2,,testJsRead2,root,pending,,,
-java-040,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead3,,testJsRead3,root,pending,,,
-java-041,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead4,,testJsRead4,root,pending,,,
+java-039,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead2,,testJsRead2,root,passed,Fixed NPE in Scenario.replace() for unnamed scenario outlines,DynamicOutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
+java-040,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead3,,testJsRead3,root,passed,Same fix as java-039 - unnamed scenario outlines,DynamicOutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
+java-041,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead4,,testJsRead4,root,passed,Same fix as java-039 - unnamed scenario outlines,DynamicOutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
 java-042,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsMapRepeat,,testJsMapRepeat,root,pending,,,
 java-043,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallFeature,,testCallFeature,root,passed,runs call-feature.feature which passes,,2025-12-19
 java-044,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineGenerator,,testOutlineGenerator,root,pending,,,
@@ -363,9 +363,9 @@ feature-069,feature,jscall2/call-single.feature,,,call-single.feature,: common s
 feature-070,feature,jscall2/call.feature,,,call.feature,: common setup,jscall2,pending,,,
 feature-071,feature,jscall2/local.feature,,,local.feature,responseStatus callOnce test,jscall2,pending,,,
 feature-072,feature,jscall2/mock.feature,,,mock.feature,mock.feature,jscall2,pending,,,
-feature-073,feature,jsread/js-read-2.feature,,,js-read-2.feature,js-read-2.feature,jsread,pending,,,
-feature-074,feature,jsread/js-read-3.feature,,,js-read-3.feature,js-read-3.feature,jsread,pending,,,
-feature-075,feature,jsread/js-read-4.feature,,,js-read-4.feature,js-read-4.feature,jsread,pending,,,
+feature-073,feature,jsread/js-read-2.feature,,,js-read-2.feature,js-read-2.feature,jsread,passed,Fixed NPE in Scenario.replace() for unnamed scenario outlines,DynamicOutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
+feature-074,feature,jsread/js-read-3.feature,,,js-read-3.feature,js-read-3.feature,jsread,passed,Same fix as feature-073,DynamicOutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
+feature-075,feature,jsread/js-read-4.feature,,,js-read-4.feature,js-read-4.feature,jsread,passed,Same fix as feature-073,DynamicOutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
 feature-076,feature,jsread/js-read-called-2.feature,,,js-read-called-2.feature,js-read-called-2.feature,jsread,pending,,,
 feature-077,feature,jsread/js-read-called-3.feature,,,js-read-called-3.feature,js-read-called-3.feature,jsread,pending,,,
 feature-078,feature,jsread/js-read-called.feature,,,js-read-called.feature,js-read-called.feature,jsread,pending,,,

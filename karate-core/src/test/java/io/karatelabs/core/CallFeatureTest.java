@@ -321,6 +321,59 @@ class CallFeatureTest {
         assertTrue(result.isPassed(), "Same-file tag call should work: " + getFailureMessage(result));
     }
 
+    @Test
+    void testArgVariableInCalledFeature() throws Exception {
+        // Tests that __arg is available in called feature
+        Path calledFeature = tempDir.resolve("called.feature");
+        Files.writeString(calledFeature, """
+            Feature: Called
+            Scenario:
+            * match __arg == { foo: 'bar' }
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Caller
+            Scenario:
+            * def params = { foo: 'bar' }
+            * call read('called.feature') params
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "__arg should be available: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testArgVariableWithAssignment() throws Exception {
+        // Tests that __arg is available even when call result is assigned to a variable
+        // See https://github.com/karatelabs/karate/pull/1436
+        Path calledFeature = tempDir.resolve("called.feature");
+        Files.writeString(calledFeature, """
+            Feature: Called
+            Scenario:
+            * match __arg == { foo: 'bar' }
+            * def result = 'done'
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Caller
+            Scenario:
+            * def args = { foo: 'bar' }
+            * def response = call read('called.feature') args
+            * match response.result == 'done'
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "__arg should be available with assignment: " + getFailureMessage(result));
+    }
+
     private String getFailureMessage(SuiteResult result) {
         if (result.isPassed()) return "none";
         for (FeatureResult fr : result.getFeatureResults()) {

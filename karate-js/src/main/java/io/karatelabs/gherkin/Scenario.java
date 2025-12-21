@@ -108,7 +108,9 @@ public class Scenario {
             // user should be fine with karate-style plain-old variables
             return;
         }
-        name = name.replace(token, value);
+        if (name != null) {
+            name = name.replace(token, value);
+        }
         for (Step step : steps) {
             String text = step.getText();
             step.setText(text.replace(token, value));
