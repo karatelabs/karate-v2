@@ -97,7 +97,7 @@ class MockServerTest {
             }
         }
         if (server != null) {
-            server.stop();
+            server.stopAsync();
         }
     }
 

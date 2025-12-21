@@ -108,7 +108,7 @@ class MockE2eTest {
     @AfterAll
     static void stopServer() {
         if (server != null) {
-            server.stop();
+            server.stopAsync();
         }
     }
 

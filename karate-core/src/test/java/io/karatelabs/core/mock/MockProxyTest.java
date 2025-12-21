@@ -100,10 +100,10 @@ class MockProxyTest {
             }
         }
         if (proxyServer != null) {
-            proxyServer.stop();
+            proxyServer.stopAsync();
         }
         if (backendServer != null) {
-            backendServer.stop();
+            backendServer.stopAsync();
         }
     }
 
