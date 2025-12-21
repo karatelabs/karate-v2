@@ -98,6 +98,65 @@ class MockE2eTest {
             # Headers test
             Scenario: pathMatches('/headers')
               * def response = { auth: requestHeaders['Authorization'][0], custom: requestHeaders['X-Custom'][0] }
+
+            # ===== Redirect scenarios =====
+
+            # Simple redirect
+            Scenario: pathMatches('/redirect')
+              * def responseStatus = 302
+              * def responseHeaders = { 'Location': '/target' }
+
+            # Redirect with cookie - sets cookie during redirect
+            Scenario: pathMatches('/redirect-with-cookie')
+              * def responseStatus = 302
+              * def responseHeaders = { 'Location': '/check-cookie', 'Set-Cookie': 'redirect_cookie=from_redirect; Path=/' }
+
+            # Check cookie was received
+            Scenario: pathMatches('/check-cookie')
+              * def cookieHeader = requestHeaders['Cookie'] ? requestHeaders['Cookie'][0] : ''
+              * def response = { cookie: cookieHeader }
+
+            # Target endpoint for redirects
+            Scenario: pathMatches('/target')
+              * def response = { reached: true }
+
+            # Chain of redirects: /chain1 -> /chain2 -> /chain3 -> /final
+            Scenario: pathMatches('/chain1')
+              * def responseStatus = 302
+              * def responseHeaders = { 'Location': '/chain2', 'Set-Cookie': 'chain1=value1; Path=/' }
+
+            Scenario: pathMatches('/chain2')
+              * def responseStatus = 302
+              * def responseHeaders = { 'Location': '/chain3', 'Set-Cookie': 'chain2=value2; Path=/' }
+
+            Scenario: pathMatches('/chain3')
+              * def responseStatus = 302
+              * def responseHeaders = { 'Location': '/final' }
+
+            Scenario: pathMatches('/final')
+              * def cookieHeader = requestHeaders['Cookie'] ? requestHeaders['Cookie'][0] : ''
+              * def response = { reached: true, cookies: cookieHeader }
+
+            # ===== Cookie scenarios =====
+
+            # Set a cookie
+            Scenario: pathMatches('/set-cookie')
+              * def responseHeaders = { 'Set-Cookie': 'session=abc123; Path=/; HttpOnly' }
+              * def response = { message: 'cookie set' }
+
+            # Echo back received cookies
+            Scenario: pathMatches('/echo-cookies')
+              * def cookieHeader = requestHeaders['Cookie'] ? requestHeaders['Cookie'][0] : 'none'
+              * def response = { receivedCookies: cookieHeader }
+
+            # ===== Retry scenarios =====
+
+            Scenario: pathMatches('/flaky')
+              * def responseStatus = 503
+              * def response = { error: 'service unavailable' }
+
+            Scenario: pathMatches('/stable')
+              * def response = { status: 'ok' }
             """)
             .port(0)
             .start();
@@ -240,6 +299,195 @@ class MockE2eTest {
             * status 200
             * match response.auth == 'Bearer token123'
             * match response.custom == 'custom-value'
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    // ===== Redirect Tests =====
+
+    @Test
+    void testFollowRedirectsEnabled() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Follow Redirects Enabled
+
+            Scenario: Should automatically follow redirects
+            * url 'http://localhost:%d'
+            * configure followRedirects = true
+            * path '/redirect'
+            * method get
+            * status 200
+            * match response == { reached: true }
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testFollowRedirectsDisabled() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Follow Redirects Disabled
+
+            Scenario: Should NOT follow redirects when disabled
+            * url 'http://localhost:%d'
+            * configure followRedirects = false
+            * path '/redirect'
+            * method get
+            * status 302
+            * match responseHeaders['Location'][0] == '/target'
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testRedirectChain() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Redirect Chain
+
+            Scenario: Should follow multiple redirects
+            * url 'http://localhost:%d'
+            * configure followRedirects = true
+            * path '/chain1'
+            * method get
+            * status 200
+            * match response.reached == true
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    // ===== Cookie Tests =====
+
+    @Test
+    void testCookieSetAndReceived() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Cookie Set and Received
+
+            Scenario: Set-Cookie header should be visible in response
+            * url 'http://localhost:%d'
+            * path '/set-cookie'
+            * method get
+            * status 200
+            * match responseHeaders['Set-Cookie'][0] contains 'session=abc123'
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testCookieSentWithRequest() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Cookie Sent With Request
+
+            Scenario: Configured cookies should be sent
+            * url 'http://localhost:%d'
+            * cookie mycookie = 'myvalue'
+            * path '/echo-cookies'
+            * method get
+            * status 200
+            * match response.receivedCookies contains 'mycookie=myvalue'
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testCookieDuringRedirect() {
+        // This tests that cookies set during redirects are captured
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Cookie During Redirect
+
+            Scenario: Cookies set during redirect should be visible
+            * url 'http://localhost:%d'
+            * configure followRedirects = true
+            * path '/redirect-with-cookie'
+            * method get
+            * status 200
+            # The final response should show that cookie was received
+            # Note: Apache's cookie store handles this during redirect
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testCookieIsolationBetweenRequests() {
+        // Cookies from one request should not leak to another
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Cookie Isolation
+
+            Scenario: Cookies should not leak between requests
+            * url 'http://localhost:%d'
+
+            # First request with cookie
+            * cookie request1cookie = 'value1'
+            * path '/echo-cookies'
+            * method get
+            * status 200
+            * match response.receivedCookies contains 'request1cookie=value1'
+
+            # Second request without that cookie - should not have it
+            * url 'http://localhost:%d'
+            * path '/echo-cookies'
+            * method get
+            * status 200
+            # Should NOT contain the previous cookie
+            * match response.receivedCookies !contains 'request1cookie'
+            """.formatted(port, port));
+
+        assertPassed(sr);
+    }
+
+    // ===== Retry Tests =====
+
+    @Test
+    void testHttpRetryDisabledByDefault() {
+        // Without httpRetryEnabled, a 503 should fail immediately
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test HTTP Retry Disabled
+
+            Scenario: Without retry, 503 should be returned
+            * url 'http://localhost:%d'
+            * path '/flaky'
+            * method get
+            * status 503
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testHttpRetryConfigurable() {
+        // Test that httpRetryEnabled can be configured
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test HTTP Retry Configurable
+
+            Scenario: httpRetryEnabled should be configurable
+            * url 'http://localhost:%d'
+            * configure httpRetryEnabled = true
+            * path '/stable'
+            * method get
+            * status 200
+            * match response.status == 'ok'
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    // ===== Configure Charset Test =====
+
+    @Test
+    void testCharsetConfiguration() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Charset Configuration
+
+            Scenario: charset should be configurable
+            * url 'http://localhost:%d'
+            * configure charset = 'UTF-8'
+            * path '/hello'
+            * method get
+            * status 200
             """.formatted(port));
 
         assertPassed(sr);

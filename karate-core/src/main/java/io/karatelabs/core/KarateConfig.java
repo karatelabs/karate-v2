@@ -280,7 +280,7 @@ public class KarateConfig implements SimpleObject {
             }
             case "httpRetryEnabled" -> {
                 this.httpRetryEnabled = toBoolean(value);
-                yield false;
+                yield true; // Requires HTTP client rebuild
             }
             case "report" -> {
                 configureReport(value);

@@ -23,25 +23,36 @@
  */
 package io.karatelabs.io.http;
 
+import io.netty.handler.codec.http.cookie.ClientCookieDecoder;
+import io.netty.handler.codec.http.cookie.ServerCookieEncoder;
+import org.apache.hc.client5.http.auth.AuthScope;
+import org.apache.hc.client5.http.auth.NTCredentials;
 import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
 import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
 import org.apache.hc.client5.http.cookie.BasicCookieStore;
+import org.apache.hc.client5.http.cookie.Cookie;
 import org.apache.hc.client5.http.cookie.StandardCookieSpec;
 import org.apache.hc.client5.http.entity.EntityBuilder;
+import org.apache.hc.client5.http.impl.DefaultHttpRequestRetryStrategy;
 import org.apache.hc.client5.http.impl.DefaultRedirectStrategy;
+import org.apache.hc.client5.http.impl.DefaultSchemePortResolver;
+import org.apache.hc.client5.http.impl.routing.DefaultRoutePlanner;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.core5.util.TimeValue;
 import org.apache.hc.client5.http.ssl.NoopHostnameVerifier;
 import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
 import org.apache.hc.client5.http.ssl.TrustAllStrategy;
 import org.apache.hc.client5.http.ssl.TrustSelfSignedStrategy;
 import org.apache.hc.core5.http.*;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.protocol.HttpContext;
 import org.apache.hc.core5.http.io.SocketConfig;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
-import org.apache.hc.core5.http.protocol.HttpContext;
 import org.apache.hc.core5.ssl.SSLContextBuilder;
 import org.apache.hc.core5.ssl.SSLContexts;
 import org.slf4j.Logger;
@@ -53,12 +64,17 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
 import java.net.Socket;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
@@ -67,6 +83,7 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
 
     private HttpRequest request;
     private CloseableHttpClient httpClient;
+    private BasicCookieStore cookieStore;
     private volatile ClassicHttpRequest currentRequest;
 
     private int readTimeout = 30000;
@@ -88,6 +105,18 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
     private String sslTrustStorePassword;
     private String sslTrustStoreType;
     private boolean sslTrustAll = true;
+
+    private boolean httpRetryEnabled = false;
+    private int retryCount = 3;
+    private int retryInterval = 1000;
+
+    private Charset charset = StandardCharsets.UTF_8;
+    private InetAddress localAddress;
+
+    private String ntlmUsername;
+    private String ntlmPassword;
+    private String ntlmDomain;
+    private String ntlmWorkstation;
 
     private final HttpLogger logger = new HttpLogger();
 
@@ -155,6 +184,63 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
                     LOGGER.warn("boolean expected for: {}", key);
                 }
                 break;
+            case "httpRetryEnabled":
+                if (value instanceof Boolean flag) {
+                    httpRetryEnabled = flag;
+                } else {
+                    LOGGER.warn("boolean expected for: {}", key);
+                }
+                break;
+            case "retry":
+                if (value instanceof Map) {
+                    Map<String, Object> map = (Map<String, Object>) value;
+                    if (map.get("count") instanceof Number count) {
+                        retryCount = count.intValue();
+                    }
+                    if (map.get("interval") instanceof Number interval) {
+                        retryInterval = interval.intValue();
+                    }
+                }
+                break;
+            case "localAddress":
+                if (value instanceof String s) {
+                    try {
+                        localAddress = InetAddress.getByName(s);
+                    } catch (Exception e) {
+                        LOGGER.warn("invalid local address: {}", s);
+                    }
+                } else if (value == null) {
+                    localAddress = null;
+                } else {
+                    LOGGER.warn("string expected for: {}", key);
+                }
+                break;
+            case "charset":
+                if (value instanceof String s) {
+                    charset = Charset.forName(s);
+                } else if (value == null) {
+                    charset = StandardCharsets.UTF_8;
+                } else {
+                    LOGGER.warn("string expected for: {}", key);
+                }
+                break;
+            case "ntlmAuth":
+                if (value == null) {
+                    ntlmUsername = null;
+                    ntlmPassword = null;
+                    ntlmDomain = null;
+                    ntlmWorkstation = null;
+                } else if (value instanceof Map) {
+                    LOGGER.warn("ntlmAuth is deprecated in HttpClient 5, consider using Basic or Bearer auth with TLS");
+                    Map<String, Object> map = (Map<String, Object>) value;
+                    ntlmUsername = (String) map.get("username");
+                    ntlmPassword = (String) map.get("password");
+                    ntlmDomain = (String) map.get("domain");
+                    ntlmWorkstation = (String) map.get("workstation");
+                } else {
+                    LOGGER.warn("map expected for: {}", key);
+                }
+                break;
             default:
                 LOGGER.warn("unexpected key: {}", key);
         }
@@ -167,13 +253,21 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
         PoolingHttpClientConnectionManagerBuilder connectionManagerBuilder = PoolingHttpClientConnectionManagerBuilder.create();
         HttpClientBuilder clientBuilder = HttpClientBuilder.create();
         clientBuilder.useSystemProperties();
-        clientBuilder.disableAutomaticRetries();
+        if (httpRetryEnabled) {
+            clientBuilder.setRetryStrategy(new DefaultHttpRequestRetryStrategy(
+                    retryCount,
+                    TimeValue.ofMilliseconds(retryInterval)
+            ));
+        } else {
+            clientBuilder.disableAutomaticRetries();
+        }
         if (followRedirects) {
             clientBuilder.setRedirectStrategy(DefaultRedirectStrategy.INSTANCE);
         } else {
             clientBuilder.disableRedirectHandling();
         }
-        clientBuilder.setDefaultCookieStore(new BasicCookieStore());
+        cookieStore = new BasicCookieStore();
+        clientBuilder.setDefaultCookieStore(cookieStore);
         if (ssl) {
             KeyStore trustStore = getKeyStore(sslTrustStore, sslTrustStorePassword, sslTrustStoreType);
             KeyStore keyStore = getKeyStore(sslKeyStore, sslKeyStorePassword, sslKeyStoreType);
@@ -224,6 +318,30 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
                         .setSoTimeout(connectTimeout, TimeUnit.MILLISECONDS).build());
         RequestConfig.Builder configBuilder = RequestConfig.custom()
                 .setCookieSpec(StandardCookieSpec.STRICT);
+        // Configure NTLM authentication (deprecated in HttpClient 5)
+        if (ntlmUsername != null) {
+            @SuppressWarnings("deprecation")
+            BasicCredentialsProvider credsProvider = new BasicCredentialsProvider();
+            @SuppressWarnings("deprecation")
+            NTCredentials ntCredentials = new NTCredentials(
+                    ntlmUsername,
+                    ntlmPassword != null ? ntlmPassword.toCharArray() : null,
+                    ntlmWorkstation,
+                    ntlmDomain
+            );
+            credsProvider.setCredentials(new AuthScope(null, -1), ntCredentials);
+            clientBuilder.setDefaultCredentialsProvider(credsProvider);
+        }
+        // Configure local address binding via custom RoutePlanner
+        if (localAddress != null) {
+            final InetAddress addr = localAddress;
+            clientBuilder.setRoutePlanner(new DefaultRoutePlanner(DefaultSchemePortResolver.INSTANCE) {
+                @Override
+                protected InetAddress determineLocalAddress(HttpHost firstHop, HttpContext context) {
+                    return addr;
+                }
+            });
+        }
         clientBuilder
                 .setDefaultRequestConfig(configBuilder.build())
                 .setConnectionManager(connectionManagerBuilder.build())
@@ -239,6 +357,21 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
             ClassicRequestBuilder requestBuilder = ClassicRequestBuilder.create(request.getMethod()).setUri(request.getUrlAndPath());
             if (request.getBody() != null) {
                 EntityBuilder entityBuilder = EntityBuilder.create().setBinary(request.getBody());
+                // Apply charset to content type
+                String contentTypeHeader = request.getHeader(Http.Header.CONTENT_TYPE.key);
+                if (contentTypeHeader != null) {
+                    try {
+                        ContentType parsed = ContentType.parse(contentTypeHeader);
+                        // Use configured charset if not already specified in content-type
+                        if (parsed.getCharset() == null) {
+                            entityBuilder.setContentType(ContentType.create(parsed.getMimeType(), charset));
+                        } else {
+                            entityBuilder.setContentType(parsed);
+                        }
+                    } catch (Exception e) {
+                        LOGGER.debug("could not parse content-type: {}", contentTypeHeader);
+                    }
+                }
                 List<String> transferEncoding = request.getHeaderValues(Http.Header.TRANSFER_ENCODING.key);
                 if (transferEncoding != null) {
                     for (String te : transferEncoding) {
@@ -265,6 +398,8 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
             currentRequest = requestBuilder.build();
             HttpResponse finalResponse = httpClient.execute(currentRequest, response -> buildResponse(response, startTime));
             currentRequest = null; // clear after completion
+            // Merge cookies from the store (captured during redirects) with response headers
+            mergeCookiesFromStore(finalResponse);
             finalResponse.setRequest(request);
             logger.logResponse(finalResponse);
             return finalResponse;
@@ -315,6 +450,69 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
             }
         }
         return response;
+    }
+
+    /**
+     * Merge cookies from Apache's cookie store (captured during redirects) with response headers.
+     * This ensures cookies set during redirects are visible to Karate's cookie management.
+     * After merging, the cookie store is cleared for the next request.
+     */
+    private void mergeCookiesFromStore(HttpResponse response) {
+        if (cookieStore == null) {
+            return;
+        }
+        List<Cookie> storedCookies = cookieStore.getCookies();
+        Map<String, List<String>> headers = response.getHeaders();
+        if (headers == null) {
+            headers = new LinkedHashMap<>();
+            response.setHeaders(headers);
+        }
+        List<String> responseCookies = headers.get(Http.Header.SET_COOKIE.key);
+        if (responseCookies == null) {
+            responseCookies = new ArrayList<>();
+        }
+        // Track cookie names already in response to avoid duplicates
+        Set<String> alreadyMerged = new HashSet<>();
+        for (String cookieValue : responseCookies) {
+            try {
+                io.netty.handler.codec.http.cookie.Cookie c = ClientCookieDecoder.LAX.decode(cookieValue);
+                if (c != null) {
+                    alreadyMerged.add(c.name());
+                }
+            } catch (Exception e) {
+                LOGGER.debug("could not decode cookie: {}", cookieValue);
+            }
+        }
+        // Add cookies from store that aren't already in response
+        List<String> mergedCookies = new ArrayList<>(responseCookies);
+        for (Cookie c : storedCookies) {
+            String name = c.getName();
+            if (!alreadyMerged.contains(name)) {
+                // Convert Apache Cookie to Set-Cookie header format
+                Map<String, Object> map = new LinkedHashMap<>();
+                map.put(Cookies.NAME, name);
+                map.put(Cookies.VALUE, c.getValue());
+                if (c.getDomain() != null) {
+                    map.put(Cookies.DOMAIN, c.getDomain());
+                }
+                if (c.getPath() != null) {
+                    map.put(Cookies.PATH, c.getPath());
+                }
+                if (c.getExpiryDate() != null) {
+                    map.put(Cookies.MAX_AGE, c.getExpiryDate().getTime());
+                }
+                map.put(Cookies.SECURE, c.isSecure());
+                io.netty.handler.codec.http.cookie.Cookie nettyCookie = Cookies.fromMap(map);
+                String cookieValue = ServerCookieEncoder.LAX.encode(nettyCookie);
+                mergedCookies.add(cookieValue);
+                alreadyMerged.add(name);
+            }
+        }
+        if (!mergedCookies.isEmpty()) {
+            headers.put(Http.Header.SET_COOKIE.key, mergedCookies);
+        }
+        // Clear cookie store for next request - Karate manages cookies at a higher level
+        cookieStore.clear();
     }
 
     private static Map<String, List<String>> toHeaders(HttpMessage msg) {
