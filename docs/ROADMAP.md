@@ -85,7 +85,7 @@ The Gherkin parser lives in `karate-js` (reuses the JS lexer). The ScenarioEngin
 - [x] Environment-based config (`karate.env`)
 - [x] RuntimeHook interface (before/after suite/feature/scenario)
 - [ ] Plugin system support
-- [ ] `karate-base.js` (shared config from classpath JAR)
+- [x] `karate-base.js` (shared config from classpath JAR)
 
 ### Reporting
 

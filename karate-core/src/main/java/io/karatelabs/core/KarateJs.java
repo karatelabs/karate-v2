@@ -62,6 +62,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -891,6 +893,41 @@ public class KarateJs implements SimpleObject {
         };
     }
 
+    private Invokable extract() {
+        return args -> {
+            if (args.length < 3) {
+                throw new RuntimeException("extract() needs three arguments: text, regex, group");
+            }
+            String text = args[0].toString();
+            String regex = args[1].toString();
+            int group = ((Number) args[2]).intValue();
+            Pattern pattern = Pattern.compile(regex);
+            Matcher matcher = pattern.matcher(text);
+            if (!matcher.find()) {
+                return null;
+            }
+            return matcher.group(group);
+        };
+    }
+
+    private Invokable extractAll() {
+        return args -> {
+            if (args.length < 3) {
+                throw new RuntimeException("extractAll() needs three arguments: text, regex, group");
+            }
+            String text = args[0].toString();
+            String regex = args[1].toString();
+            int group = ((Number) args[2]).intValue();
+            Pattern pattern = Pattern.compile(regex);
+            Matcher matcher = pattern.matcher(text);
+            List<String> list = new ArrayList<>();
+            while (matcher.find()) {
+                list.add(matcher.group(group));
+            }
+            return list;
+        };
+    }
+
     private Map<String, Object> getOsInfo() {
         Map<String, Object> result = new LinkedHashMap<>();
         String osName = System.getProperty("os.name", "unknown").toLowerCase();
@@ -1520,6 +1557,8 @@ public class KarateJs implements SimpleObject {
             case "env" -> env;
             case "eval" -> eval();
             case "exec" -> exec();
+            case "extract" -> extract();
+            case "extractAll" -> extractAll();
             case "fork" -> fork();
             case "filter" -> filter();
             case "filterKeys" -> filterKeys();

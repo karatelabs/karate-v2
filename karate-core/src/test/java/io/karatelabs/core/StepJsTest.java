@@ -792,4 +792,36 @@ class StepJsTest {
         assertPassed(sr);
     }
 
+    // ========== karate.extract / extractAll ==========
+
+    @Test
+    void testExtract() {
+        ScenarioRuntime sr = run("""
+            * def text = '<input name="token" value="secret123"/>'
+            * def token = karate.extract(text, 'value="([^"]+)', 1)
+            * match token == 'secret123'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testExtractAll() {
+        ScenarioRuntime sr = run("""
+            * def text = '<input name="token1" value="aaa"/><input name="token2" value="bbb"/>'
+            * def tokens = karate.extractAll(text, 'value="([^"]+)', 1)
+            * match tokens == ['aaa', 'bbb']
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testExtractNoMatch() {
+        ScenarioRuntime sr = run("""
+            * def text = 'no match here'
+            * def result = karate.extract(text, 'xyz([0-9]+)', 1)
+            * match result == null
+            """);
+        assertPassed(sr);
+    }
+
 }

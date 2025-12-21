@@ -70,6 +70,7 @@ public class Suite {
     private boolean outputConsoleSummary = true;
 
     // Config content (loaded at Suite level, evaluated per-scenario)
+    private String baseContent;      // karate-base.js (shared functions)
     private String configContent;
     private String configEnvContent;
     // Legacy: evaluated config variables (for backward compatibility with tests)
@@ -236,10 +237,16 @@ public class Suite {
     // ========== Execution ==========
 
     /**
-     * Loads karate-config.js content (and env-specific config) without evaluating.
+     * Loads karate-base.js, karate-config.js content (and env-specific config) without evaluating.
      * The content is evaluated per-scenario in ScenarioRuntime where callSingle is available.
      */
     private void loadConfig() {
+        // Load karate-base.js (shared functions, evaluated before config)
+        baseContent = tryLoadConfig("classpath:karate-base.js");
+        if (baseContent != null) {
+            JvmLogger.debug("Loaded karate-base.js");
+        }
+
         // Load main config content
         configContent = tryLoadConfig(configPath);
         if (configContent != null) {
@@ -516,6 +523,10 @@ public class Suite {
 
     public Map<String, Object> getConfigVariables() {
         return configVariables;
+    }
+
+    public String getBaseContent() {
+        return baseContent;
     }
 
     public String getConfigContent() {

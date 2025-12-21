@@ -380,4 +380,87 @@ class ConfigTest {
         assertTrue(result.isPassed(), "Base and env configs should load from working directory");
     }
 
+    // ========== karate-base.js Tests ==========
+
+    @Test
+    void testKarateBaseJsDefinesSharedFunctions() throws Exception {
+        // Create karate-base.js that defines a shared function
+        Path baseFile = tempDir.resolve("karate-base.js");
+        Files.writeString(baseFile, """
+            function fn() {
+              return {
+                functionFromKarateBase: function() { return 'fromKarateBase' }
+              };
+            }
+            """);
+
+        // Create karate-config.js that uses the function from karate-base.js
+        Path configFile = tempDir.resolve("karate-config.js");
+        Files.writeString(configFile, """
+            function fn() {
+              return {
+                variableFromKarateBase: functionFromKarateBase()
+              };
+            }
+            """);
+
+        // Create a feature file that verifies the variable
+        Path featureFile = tempDir.resolve("test.feature");
+        Files.writeString(featureFile, """
+            Feature: karate-base.js Test
+            Scenario: Variable from karate-base.js function
+            * match variableFromKarateBase == 'fromKarateBase'
+            """);
+
+        // Run with configs from working directory
+        Suite suite = Suite.of(tempDir, featureFile.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "karate-base.js function should be available to karate-config.js");
+    }
+
+    @Test
+    void testKarateBaseJsWithEnvConfig() throws Exception {
+        // Create karate-base.js with shared utility function
+        Path baseFile = tempDir.resolve("karate-base.js");
+        Files.writeString(baseFile, """
+            function fn() {
+              return {
+                getEnvUrl: function(env) {
+                  if (env == 'dev') return 'http://dev.example.com';
+                  if (env == 'staging') return 'http://staging.example.com';
+                  return 'http://localhost:8080';
+                }
+              };
+            }
+            """);
+
+        // Create karate-config.js that uses the shared function
+        Path configFile = tempDir.resolve("karate-config.js");
+        Files.writeString(configFile, """
+            function fn() {
+              return {
+                baseUrl: getEnvUrl(karate.env)
+              };
+            }
+            """);
+
+        // Create a feature file
+        Path featureFile = tempDir.resolve("test.feature");
+        Files.writeString(featureFile, """
+            Feature: karate-base.js with Env
+            Scenario: Shared function works with env
+            * match baseUrl == 'http://dev.example.com'
+            """);
+
+        // Run with env=dev
+        Suite suite = Suite.of(tempDir, featureFile.toString())
+                .env("dev")
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "karate-base.js functions should work with env config");
+    }
+
 }

@@ -24,14 +24,14 @@ java-022,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallFeatureFro
 java-023,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallJsFromFeatureUtilsDefinedInKarateConfig,,testCallJsFromFeatureUtilsDefinedInKarateConfig,root,passed,V2 supports karate.call from config (requires relative paths),ConfigTest,2025-12-21
 java-024,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallOnceJsFromFeatureUtilsDefinedInKarateConfig,,testCallOnceJsFromFeatureUtilsDefinedInKarateConfig,root,passed,karate.callonce() JS method implemented,ConfigTest#testCallonceFromConfig,2025-12-21
 java-025,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateJsGetScenario,,testKarateJsGetScenario,root,passed,karate.scenario property implemented,ConfigTest#testScenarioPropertyFromConfig,2025-12-21
-java-026,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateJsFromKarateBase,,testKarateJsFromKarateBase,root,pending,,,
+java-026,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateJsFromKarateBase,,testKarateJsFromKarateBase,root,passed,karate-base.js implemented - shared functions available to configs,ConfigTest#testKarateBaseJs*,2025-12-21
 java-027,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallByTag,,testCallByTag,root,passed,call-by-tag syntax implemented,io/karatelabs/core/CallFeatureTest,2025-12-20
 java-028,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallByTagCalled,,testCallByTagCalled,root,passed,call-by-tag called feature works,io/karatelabs/core/CallFeatureTest,2025-12-20
 java-029,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCopyAndClone,,testCopyAndClone,root,passed,runs copy.feature which passes,,2025-12-19
 java-030,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testMatchEachMagicVariables,,testMatchEachMagicVariables,root,passed,runs match-each-magic-variables.feature which passes,,2025-12-19
 java-031,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testEvalAndSet,,testEvalAndSet,root,passed,runs eval-and-set.feature which passes,,2025-12-19
 java-032,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testEvalAssign,,testEvalAssign,root,passed,runs eval-assign.feature which passes,,2025-12-19
-java-033,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testExtract,,testExtract,root,pending,,,
+java-033,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testExtract,,testExtract,root,passed,karate.extract() and extractAll() implemented,StepJsTest#testExtract*,2025-12-21
 java-034,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testConfigureInJs,,testConfigureInJs,root,pending,,,
 java-035,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTable,,testTable,root,passed,runs table.feature which passes,,2025-12-19
 java-036,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSet,,testSet,root,passed,runs set.feature which passes,,2025-12-19
@@ -337,7 +337,7 @@ feature-043,feature,dummy.feature,,,dummy.feature,dummy.feature,root,passed,simp
 feature-044,feature,eval-and-set.feature,,,eval-and-set.feature,eval-and-set.feature,root,passed,fixed eval docstring + karate.set(); added StepDefTest,io/karatelabs/core/StepDefTest,2025-12-18
 feature-045,feature,eval-assign.feature,,,eval-assign.feature,eval-assign.feature,root,passed,fixed property assignment with docstring; added StepDefTest,io/karatelabs/core/StepDefTest,2025-12-18
 feature-046,feature,exec.feature,,,exec.feature,exec.feature,root,passed,karate.exec() implemented,io/karatelabs/core/StepExecTest,2025-12-20
-feature-047,feature,extract.feature,,,extract.feature,karate.extract(),root,pending,,,
+feature-047,feature,extract.feature,,,extract.feature,karate.extract(),root,passed,karate.extract() and extractAll() implemented,StepJsTest#testExtract*,2025-12-21
 feature-048,feature,fail-api.feature,,,fail-api.feature,fail-api.feature,root,pending,,,
 feature-049,feature,fail-js.feature,,,fail-js.feature,fail-js.feature,root,pending,,,
 feature-050,feature,fail-tag-failure.feature,,,fail-tag-failure.feature,fail tag failure,root,pending,,,
@@ -374,7 +374,7 @@ feature-080,feature,jsread/js-read-reuse-only-background.feature,,,js-read-reuse
 feature-081,feature,jsread/js-read-reuse.feature,,,js-read-reuse.feature,js-read-reuse.feature,jsread,pending,,,
 feature-082,feature,jsread/js-read.feature,,,js-read.feature,js-read.feature,jsread,pending,,,
 feature-083,feature,karate-config-fn.feature,,,karate-config-fn.feature,feature reuse from karate-config.js,root,pending,,,
-feature-084,feature,karate-config-frombase.feature,,,karate-config-frombase.feature,karate-config-frombase.feature,root,pending,,,
+feature-084,feature,karate-config-frombase.feature,,,karate-config-frombase.feature,karate-config-frombase.feature,root,passed,karate-base.js implemented - covered by java-026 and unit tests,ConfigTest#testKarateBaseJs*,2025-12-21
 feature-085,feature,karate-config-getscenario.feature,,,karate-config-getscenario.feature,karate-config-getscenario.feature,root,pending,,,
 feature-086,feature,karate-config-utils.feature,,,karate-config-utils.feature,karate-config-utils.feature,root,pending,,,
 feature-087,feature,karate-get-called.feature,,,karate-get-called.feature,karate-get-called.feature,root,pending,,,

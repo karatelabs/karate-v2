@@ -138,12 +138,18 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
     }
 
     /**
-     * Evaluate karate-config.js (and env-specific config) in this scenario's context.
+     * Evaluate karate-base.js, karate-config.js (and env-specific config) in this scenario's context.
      * This allows callSingle and other karate.* functions to work during config.
      */
     @SuppressWarnings("unchecked")
     private void evalConfig() {
         Suite suite = featureRuntime.getSuite();
+
+        // Evaluate karate-base.js first (shared functions available to configs)
+        String baseContent = suite.getBaseContent();
+        if (baseContent != null) {
+            evalConfigJs(baseContent, "karate-base.js");
+        }
 
         // Evaluate main config
         String configContent = suite.getConfigContent();
