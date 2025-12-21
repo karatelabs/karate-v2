@@ -1057,21 +1057,21 @@ karate-v2/
 | 5 | MockServer public API wrapper | ✅ Complete |
 | 6 | SslConfig + SslContextFactory | ✅ Complete |
 | 7 | CertificateGenerator (self-signed certs via Netty) | ✅ Complete |
-| 8 | HTTP Client SSL | ⏳ Pending (separate task) |
-| 9 | Mock Server SSL | ⚠️ Partial (API ready, HttpServer integration pending) |
+| 8 | HTTP Client SSL | ✅ Complete (ApacheHttpClient already supports SSL) |
+| 9 | Mock Server SSL | ✅ Complete (HttpServer + MockServer integration) |
 | 10 | karate.start() integration | ✅ Complete |
 | 11 | CLI mock subcommand | ✅ Complete |
 | 12 | Manual CLI testing | ⏳ Pending |
-| 13-14 | Stateful and integration tests | ✅ Complete (17 tests) |
-| 15 | SSL integration tests | ⏳ Pending |
-| 16 | karate.proceed() proxy mode | ⏳ Pending |
-| 17 | V1 compat tests | ⏳ Pending |
+| 13-14 | Stateful and integration tests | ✅ Complete (30 tests) |
+| 15 | SSL integration tests | ✅ Complete (5 tests) |
+| 16 | karate.proceed() proxy mode | ✅ Complete |
+| 17 | V1 compat tests | ✅ Complete (5 end-to-end tests) |
 
 ### Files Created
 
 **Production code:**
-- `MockHandler.java` - Core request routing with matcher functions
-- `MockServer.java` - Public API with Builder pattern
+- `MockHandler.java` - Core request routing with matcher functions, uses KarateJs for karate.* access
+- `MockServer.java` - Public API with Builder pattern, SSL support
 - `MockConfig.java` - CORS, response headers, afterScenario configuration
 - `SslConfig.java` - SSL configuration holder
 - `SslContextFactory.java` - SSLContext creation from config
@@ -1079,25 +1079,31 @@ karate-v2/
 - `MockCommand.java` - CLI subcommand for `karate mock`
 
 **Modified files:**
-- `KarateJs.java` - Added `karate.start()` method
+- `KarateJs.java` - Added `karate.start()` and `karate.proceed()` methods
+- `HttpServer.java` - Added SSL support with SslContext parameter
 - `Main.java` - Added MockCommand to subcommands
 
-**Tests (17 total):**
+**Tests (30 total):**
 - `MockHandlerTest.java` - 11 unit tests for handler, matchers, CORS
 - `MockServerTest.java` - 6 integration tests with real HTTP
+- `MockServerSslTest.java` - 5 SSL integration tests (HTTPS, self-signed certs)
+- `MockProxyTest.java` - 3 proxy mode tests (karate.proceed())
+- `MockV1CompatTest.java` - 5 V1 compatibility end-to-end tests using Karate features
+
+Note: Tests from karate-demo are a separate exercise and not covered here.
 
 ### Implementation Notes
 
-1. **Thread-local pattern:** MockHandler uses `ThreadLocal<HttpRequest>` for matcher function access
+1. **Thread-local pattern:** MockHandler uses `ThreadLocal<HttpRequest>` for matcher function access and `karate.proceed()`
 2. **Netty SSL:** CertificateGenerator uses `io.netty.handler.ssl.util.SelfSignedCertificate`
-3. **No MockRuntime:** Simplified design - MockHandler directly uses KarateJs for scenario execution
+3. **KarateJs integration:** MockHandler creates a KarateJs instance for scenario execution, providing access to all karate.* functions
 4. **Console methods:** MockCommand uses `Console.info()`, `Console.pass()`, etc. (not Console.Color enum)
+5. **HttpResponse pass-through:** When `karate.proceed()` is used, the response (HttpResponse) is passed through directly with status, headers, and body
 
 ### Known Limitations
 
-1. **SSL not wired to HttpServer:** `MockServer.Builder.ssl(true)` logs warning; needs HttpServer SSL support
-2. **karate.proceed() not implemented:** Proxy mode requires HttpClient integration
-3. **No watch mode:** `-W` flag not implemented yet
+1. **No watch mode:** `-W` flag not implemented yet
+2. **Manual CLI testing pending:** Need to verify with curl as described in Manual CLI Testing section
 
 ---
 

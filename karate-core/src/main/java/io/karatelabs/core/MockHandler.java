@@ -24,6 +24,7 @@
 package io.karatelabs.core;
 
 import io.karatelabs.common.FileUtils;
+import io.karatelabs.common.Resource;
 import io.karatelabs.common.ResourceType;
 import io.karatelabs.common.StringUtils;
 import io.karatelabs.common.Xml;
@@ -61,13 +62,22 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
 
     private static final String ALLOWED_METHODS = "GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS";
 
-    // Thread-local for current request (used by matcher functions)
+    // Thread-local for current request (used by matcher functions and karate.proceed())
     private static final ThreadLocal<HttpRequest> LOCAL_REQUEST = new ThreadLocal<>();
+
+    /**
+     * Get the current request being processed (for use in mock scenarios).
+     * Used by karate.proceed() for proxy mode.
+     */
+    public static HttpRequest getCurrentRequest() {
+        return LOCAL_REQUEST.get();
+    }
 
     private final List<Feature> features = new ArrayList<>();
     private final Map<String, Object> globals = new LinkedHashMap<>();
     private final MockConfig config = new MockConfig();
     private final ReentrantLock requestLock = new ReentrantLock();
+    private final KarateJs karateJs;
     private final Engine engine;
     private final String pathPrefix;
 
@@ -86,7 +96,11 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
 
     public MockHandler(List<Feature> features, Map<String, Object> args, String pathPrefix) {
         this.pathPrefix = pathPrefix;
-        this.engine = new Engine();
+
+        // Use KarateJs to get access to karate.* functions (including proceed())
+        Resource root = features.isEmpty() ? Resource.path(".") : features.get(0).getResource();
+        this.karateJs = new KarateJs(root);
+        this.engine = karateJs.engine;
 
         // Register matcher functions
         registerMatcherFunctions();
@@ -360,6 +374,21 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
         Object responseStatus = engine.get("responseStatus");
         Object responseHeaders = engine.get("responseHeaders");
         Object responseDelay = engine.get("responseDelay");
+
+        // Handle karate.proceed() result - if response is an HttpResponse, pass it through
+        if (responseBody instanceof HttpResponse proceedResponse) {
+            // Pass through the proceed response directly
+            response.setStatus(proceedResponse.getStatus());
+            response.setBody(proceedResponse.getBodyBytes(), proceedResponse.getResourceType());
+            if (proceedResponse.getHeaders() != null) {
+                response.setHeaders(proceedResponse.getHeaders());
+            }
+            // Apply CORS if enabled (still need to add this after)
+            if (config.isCorsEnabled()) {
+                response.setHeader("Access-Control-Allow-Origin", "*");
+            }
+            return response;
+        }
 
         // Set status
         if (responseStatus instanceof Number) {

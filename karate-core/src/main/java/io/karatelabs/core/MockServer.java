@@ -26,6 +26,7 @@ package io.karatelabs.core;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.io.http.HttpServer;
 import io.karatelabs.js.SimpleObject;
+import io.netty.handler.ssl.SslContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,6 +100,21 @@ public class MockServer implements SimpleObject {
     }
 
     /**
+     * Check if the server is using SSL/TLS.
+     */
+    public boolean isSsl() {
+        return httpServer.isSsl();
+    }
+
+    /**
+     * Get the base URL for the server (e.g., http://localhost:8080 or https://localhost:8443).
+     */
+    public String getUrl() {
+        String protocol = isSsl() ? "https" : "http";
+        return protocol + "://localhost:" + port;
+    }
+
+    /**
      * Stop the mock server.
      */
     public void stop() {
@@ -139,6 +155,8 @@ public class MockServer implements SimpleObject {
     public Object jsGet(String key) {
         return switch (key) {
             case "port" -> port;
+            case "url" -> getUrl();
+            case "ssl" -> isSsl();
             case "stop" -> (Runnable) this::stop;
             default -> null;
         };
@@ -242,15 +260,20 @@ public class MockServer implements SimpleObject {
 
             MockHandler handler = new MockHandler(features, args, pathPrefix);
 
-            // TODO: Add SSL support when SslConfig is implemented
+            SslContext sslContext = null;
             if (ssl) {
-                logger.warn("SSL support not yet implemented, starting HTTP server");
+                if (certPath != null && keyPath != null) {
+                    sslContext = CertificateGenerator.createNettySslContext(certPath, keyPath);
+                } else {
+                    sslContext = CertificateGenerator.generateNettySslContext();
+                }
             }
 
-            HttpServer httpServer = HttpServer.start(port, handler);
+            HttpServer httpServer = HttpServer.start(port, sslContext, handler);
             int actualPort = httpServer.getPort();
 
-            logger.info("mock server started on port {}", actualPort);
+            String protocol = ssl ? "https" : "http";
+            logger.info("mock server started on {}://localhost:{}", protocol, actualPort);
             return new MockServer(httpServer, handler, actualPort);
         }
 

@@ -29,7 +29,9 @@ import io.karatelabs.common.StringUtils;
 import io.karatelabs.common.Xml;
 import io.karatelabs.io.http.ApacheHttpClient;
 import io.karatelabs.io.http.HttpClient;
+import io.karatelabs.io.http.HttpRequest;
 import io.karatelabs.io.http.HttpRequestBuilder;
+import io.karatelabs.io.http.HttpResponse;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.MatchExpression;
 import io.karatelabs.js.Context;
@@ -1690,6 +1692,67 @@ public class KarateJs implements SimpleObject {
         };
     }
 
+    /**
+     * karate.proceed() - Forward the current request to a target URL (proxy mode).
+     * Can only be used within a mock scenario.
+     * Usage:
+     * <pre>
+     * // Forward to specific target
+     * var response = karate.proceed('http://backend:8080');
+     *
+     * // Forward using Host header from request
+     * var response = karate.proceed();
+     * </pre>
+     */
+    private Invokable proceed() {
+        return args -> {
+            HttpRequest currentRequest = MockHandler.getCurrentRequest();
+            if (currentRequest == null) {
+                throw new RuntimeException("proceed() can only be called within a mock scenario");
+            }
+
+            String targetUrl;
+            if (args.length > 0 && args[0] != null) {
+                targetUrl = args[0].toString();
+            } else {
+                // Use Host header from request
+                String host = currentRequest.getHeader("Host");
+                if (host == null) {
+                    throw new RuntimeException("proceed() needs a target URL or Host header in request");
+                }
+                targetUrl = "http://" + host;
+            }
+
+            // Build request manually to avoid header conflicts
+            HttpRequestBuilder builder = new HttpRequestBuilder(client);
+            builder.url(targetUrl);
+            builder.path(currentRequest.getPath());
+            builder.method(currentRequest.getMethod());
+
+            // Copy headers except those that will be auto-set
+            if (currentRequest.getHeaders() != null) {
+                currentRequest.getHeaders().forEach((name, values) -> {
+                    String lowerName = name.toLowerCase();
+                    // Skip headers that are auto-managed
+                    if (!lowerName.equals("content-length") && !lowerName.equals("host")
+                            && !lowerName.equals("transfer-encoding")) {
+                        builder.header(name, values);
+                    }
+                });
+            }
+
+            // Set body (this will set Content-Length appropriately)
+            Object body = currentRequest.getBodyConverted();
+            if (body != null) {
+                builder.body(body);
+            }
+
+            // Execute and return the response
+            HttpResponse response = builder.invoke();
+            return response;
+        };
+    }
+
     @Override
     public Object jsGet(String key) {
         return switch (key) {
@@ -1727,6 +1790,7 @@ public class KarateJs implements SimpleObject {
             case "os" -> getOsInfo();
             case "pretty" -> pretty();
             case "prettyXml" -> prettyXml();
+            case "proceed" -> proceed();
             case "read" -> read;
             case "readAsString" -> readAsString();
             case "remove" -> remove();

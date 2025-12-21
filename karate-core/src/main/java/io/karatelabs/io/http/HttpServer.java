@@ -33,6 +33,7 @@ import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.cors.CorsConfig;
 import io.netty.handler.codec.http.cors.CorsConfigBuilder;
 import io.netty.handler.codec.http.cors.CorsHandler;
+import io.netty.handler.ssl.SslContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,11 +64,20 @@ public class HttpServer {
     private final EventLoopGroup workerGroup;
     private final Channel channel;
     private final int port;
+    private final SslContext sslContext;
 
     final Function<HttpRequest, HttpResponse> handler;
 
     public static HttpServer start(int port, Function<HttpRequest, HttpResponse> handler) {
-        return new HttpServer(port, handler);
+        return new HttpServer(port, null, handler);
+    }
+
+    public static HttpServer start(int port, SslContext sslContext, Function<HttpRequest, HttpResponse> handler) {
+        return new HttpServer(port, sslContext, handler);
+    }
+
+    public boolean isSsl() {
+        return sslContext != null;
     }
 
     public int getPort() {
@@ -110,8 +120,9 @@ public class HttpServer {
         };
     }
 
-    private HttpServer(int requestedPort, Function<HttpRequest, HttpResponse> handler) {
+    private HttpServer(int requestedPort, SslContext sslContext, Function<HttpRequest, HttpResponse> handler) {
         this.handler = handler;
+        this.sslContext = sslContext;
         bossGroup = new MultiThreadIoEventLoopGroup(1, daemonThreadFactory("http-boss-"), NioIoHandler.newFactory());
         workerGroup = new MultiThreadIoEventLoopGroup(daemonThreadFactory("http-worker-"), NioIoHandler.newFactory());
         CorsConfig corsConfig = CorsConfigBuilder
@@ -128,6 +139,9 @@ public class HttpServer {
                         @Override
                         protected void initChannel(Channel c) {
                             ChannelPipeline p = c.pipeline();
+                            if (sslContext != null) {
+                                p.addLast(sslContext.newHandler(c.alloc()));
+                            }
                             p.addLast(new HttpServerCodec());
                             p.addLast(new HttpObjectAggregator(Http.MEGABYTE));
                             p.addLast(new CorsHandler(corsConfig));
@@ -138,7 +152,8 @@ public class HttpServer {
             InetSocketAddress isa = (InetSocketAddress) channel.localAddress();
             port = isa.getPort();
             ACTIVE_SERVERS.add(this);
-            logger.info("http server started on port: {}", port);
+            String protocol = sslContext != null ? "https" : "http";
+            logger.info("{} server started on port: {}", protocol, port);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
