@@ -32,8 +32,8 @@ import org.junit.jupiter.api.Test;
 import static io.karatelabs.core.TestUtils.*;
 
 /**
- * V1 Compatibility tests for mock features.
- * Tests V1-style mock features (without @mock tag) work with V2 MockHandler.
+ * End-to-end tests for mock features.
+ * Tests mock features (without @mock tag) work with V2 MockHandler.
  *
  * These are end-to-end tests that:
  * 1. Start a MockServer with a mock feature
@@ -43,7 +43,7 @@ import static io.karatelabs.core.TestUtils.*;
  * NOTE: Tests from karate-demo (e.g., demo/mock/) are a separate exercise.
  * This file focuses on core mock functionality from karate-core.
  */
-class MockV1CompatTest {
+class MockE2eTest {
 
     private MockServer server;
 
