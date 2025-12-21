@@ -48,7 +48,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
     private final KarateJs karate;
     private final StepExecutor executor;
     private final ScenarioResult result;
-    private final Map<String, Object> configSettings;
+    private final KarateConfig config;
 
     private Step currentStep;
     private boolean stopped;
@@ -70,7 +70,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
 
         this.executor = new StepExecutor(this);
         this.result = new ScenarioResult(scenario);
-        this.configSettings = new HashMap<>();
+        this.config = new KarateConfig();
 
         initEngine();
     }
@@ -84,10 +84,12 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         this.karate = karate;
         this.executor = new StepExecutor(this);
         this.result = new ScenarioResult(scenario);
-        this.configSettings = new HashMap<>();
+        this.config = new KarateConfig();
 
         // Wire up karate.abort() for standalone execution
         karate.setAbortHandler(this::abort);
+        karate.setConfigureHandler(this::configure);
+        karate.setConfigProvider(() -> config);
     }
 
     private void initEngine() {
@@ -102,7 +104,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         karate.setScenarioProvider(this::getScenarioData);
         karate.setSignalConsumer(this::setListenResult);
         karate.setConfigureHandler(this::configure);
-        karate.setConfigProvider(() -> configSettings);
+        karate.setConfigProvider(() -> config);
         karate.setCurrentResourceProvider(this::getCurrentResource);
 
         // Set karate.env before config evaluation
@@ -708,44 +710,27 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
     }
 
     public void configure(String key, Object value) {
-        // Apply configuration to relevant components
-        switch (key) {
-            case "ssl", "proxy", "readTimeout", "connectTimeout", "followRedirects" -> {
-                // HTTP client configuration - delegate to client
-                configSettings.put(key, value);
-                karate.client.config(key, value);
-            }
-            case "headers" -> {
-                // Set default headers on HTTP request builder
-                configSettings.put(key, value);
-                if (value instanceof Map) {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> headers = (Map<String, Object>) value;
-                    karate.http.headers(headers);
-                }
-            }
-            case "charset" -> {
-                // Set default charset for HTTP requests
-                configSettings.put(key, value);
-                if (value instanceof String) {
-                    karate.http.charset((String) value);
-                }
-            }
-            // TODO: Add more V1 configure keys as needed (see RUNTIME.md)
-            case "url", "cookies", "lowerCaseResponseHeaders", "logPrettyRequest",
-                 "logPrettyResponse", "printEnabled", "retry", "report",
-                 "httpRetryEnabled", "localAddress", "ntlmAuth", "callSingleCache",
-                 "continueOnStepFailure", "abortedStepsShouldPass", "abortSuiteOnFailure" -> {
-                // Recognized but not yet implemented
-                configSettings.put(key, value);
-                JvmLogger.warn("configure '{}' not yet implemented in V2", key);
-            }
-            default -> throw new RuntimeException("unexpected 'configure' key: '" + key + "'");
+        // Delegate to KarateConfig for type-safe storage
+        boolean requiresHttpClientRebuild = config.configure(key, value);
+
+        // Apply to HTTP client if needed
+        if (requiresHttpClientRebuild) {
+            karate.client.config(key, value);
+        }
+
+        // Additional side effects for specific keys
+        if ("headers".equals(key) && value instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> headers = (Map<String, Object>) value;
+            karate.http.headers(headers);
+        }
+        if ("charset".equals(key) && value instanceof String) {
+            karate.http.charset((String) value);
         }
     }
 
-    public Object getConfig(String key) {
-        return configSettings.get(key);
+    public KarateConfig getConfig() {
+        return config;
     }
 
     // ========== State Access ==========

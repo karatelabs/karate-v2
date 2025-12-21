@@ -25,7 +25,7 @@ package io.karatelabs.cli;
 
 import io.karatelabs.core.Console;
 import io.karatelabs.core.Globals;
-import io.karatelabs.core.KarateConfig;
+import io.karatelabs.core.KaratePom;
 import io.karatelabs.core.Runner;
 import io.karatelabs.core.SuiteResult;
 import picocli.CommandLine.Command;
@@ -150,7 +150,7 @@ public class RunCommand implements Callable<Integer> {
     boolean noPom;
 
     // Loaded pom config
-    private KarateConfig pom;
+    private KaratePom pom;
 
     @Override
     public Integer call() {
@@ -260,7 +260,7 @@ public class RunCommand implements Callable<Integer> {
 
         if (Files.exists(pomPath)) {
             try {
-                pom = KarateConfig.load(pomPath);
+                pom = KaratePom.load(pomPath);
                 Console.println(Console.info("Loaded: " + pomPath));
             } catch (Exception e) {
                 Console.println(Console.warn("Failed to load pom: " + e.getMessage()));
@@ -332,7 +332,7 @@ public class RunCommand implements Callable<Integer> {
         if (backup != null) {
             return backup;
         }
-        // Note: KarateConfig doesn't support backup yet
+        // Note: KaratePom doesn't support backup yet
         // Default is true (matches v1 behavior)
         return true;
     }

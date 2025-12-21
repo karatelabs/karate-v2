@@ -415,7 +415,7 @@ io.karatelabs/
     └── CleanCommand.java  # karate clean
 
 io.karatelabs.core/
-├── KarateConfig.java      # JSON pom parsing
+├── KaratePom.java         # JSON pom parsing
 ├── Runner.java            # Programmatic API
 └── ...
 ```

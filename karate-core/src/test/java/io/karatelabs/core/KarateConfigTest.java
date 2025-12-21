@@ -24,352 +24,265 @@
 package io.karatelabs.core;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
+import java.util.Map;
 
+import static io.karatelabs.core.TestUtils.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Tests for KarateConfig (configure keyword and karate.config getter).
+ */
 class KarateConfigTest {
 
-    @TempDir
-    Path tempDir;
-
     @Test
-    void testParseMinimalConfig() {
-        String json = """
-            {
-              "paths": ["src/test/features"]
-            }
-            """;
-
-        KarateConfig config = KarateConfig.parse(json);
-
-        assertEquals(List.of("src/test/features"), config.getPaths());
-        assertTrue(config.getTags().isEmpty());
-        assertNull(config.getEnv());
-        assertEquals(1, config.getThreads());
-        assertFalse(config.isDryRun());
-        assertFalse(config.isClean());
-
-        // Default output settings
-        assertEquals("target/karate-reports", config.getOutput().getDir());
-        assertTrue(config.getOutput().isHtml());
-        assertFalse(config.getOutput().isJunitXml());
-        assertFalse(config.getOutput().isCucumberJson());
-        assertFalse(config.getOutput().isNdjson());
-    }
-
-    @Test
-    void testParseFullConfig() {
-        String json = """
-            {
-              "paths": ["src/test/features/api", "src/test/features/ui"],
-              "tags": ["@smoke", "~@slow"],
-              "env": "dev",
-              "threads": 5,
-              "scenarioName": ".*login.*",
-              "configDir": "src/test/resources",
-              "dryRun": true,
-              "clean": true,
-              "output": {
-                "dir": "target/custom-reports",
-                "html": true,
-                "junitXml": true,
-                "cucumberJson": true,
-                "ndjson": true
-              }
-            }
-            """;
-
-        KarateConfig config = KarateConfig.parse(json);
-
-        assertEquals(List.of("src/test/features/api", "src/test/features/ui"), config.getPaths());
-        assertEquals(List.of("@smoke", "~@slow"), config.getTags());
-        assertEquals("dev", config.getEnv());
-        assertEquals(5, config.getThreads());
-        assertEquals(".*login.*", config.getScenarioName());
-        assertEquals("src/test/resources", config.getConfigDir());
-        assertTrue(config.isDryRun());
-        assertTrue(config.isClean());
-
-        assertEquals("target/custom-reports", config.getOutput().getDir());
-        assertTrue(config.getOutput().isHtml());
-        assertTrue(config.getOutput().isJunitXml());
-        assertTrue(config.getOutput().isCucumberJson());
-        assertTrue(config.getOutput().isNdjson());
-    }
-
-    @Test
-    void testParsePartialOutputConfig() {
-        String json = """
-            {
-              "paths": ["features"],
-              "output": {
-                "dir": "reports",
-                "junitXml": true
-              }
-            }
-            """;
-
-        KarateConfig config = KarateConfig.parse(json);
-
-        assertEquals("reports", config.getOutput().getDir());
-        assertTrue(config.getOutput().isHtml()); // default
-        assertTrue(config.getOutput().isJunitXml()); // overridden
-        assertFalse(config.getOutput().isCucumberJson()); // default
-        assertFalse(config.getOutput().isNdjson()); // default
-    }
-
-    @Test
-    void testLoadFromFile() throws Exception {
-        Path configFile = tempDir.resolve("karate.json");
-        Files.writeString(configFile, """
-            {
-              "paths": ["src/test/features"],
-              "env": "test",
-              "threads": 3
-            }
+    void testConfigureSslBoolean() {
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * configure ssl = true
+            * def cfg = karate.config
+            * match cfg.sslEnabled == true
             """);
-
-        KarateConfig config = KarateConfig.load(configFile);
-
-        assertEquals(List.of("src/test/features"), config.getPaths());
-        assertEquals("test", config.getEnv());
-        assertEquals(3, config.getThreads());
+        assertPassed(sr);
     }
 
     @Test
-    void testLoadFromFilePath() throws Exception {
-        Path configFile = tempDir.resolve("karate.json");
-        Files.writeString(configFile, """
-            {
-              "paths": ["features"],
-              "tags": ["@api"]
-            }
+    void testConfigureSslAlgorithm() {
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * configure ssl = 'TLSv1.2'
+            * def cfg = karate.config
+            * match cfg.sslEnabled == true
+            * match cfg.sslAlgorithm == 'TLSv1.2'
             """);
-
-        KarateConfig config = KarateConfig.load(configFile.toString());
-
-        assertEquals(List.of("features"), config.getPaths());
-        assertEquals(List.of("@api"), config.getTags());
+        assertPassed(sr);
     }
 
     @Test
-    void testLoadFileNotFound() {
-        assertThrows(RuntimeException.class, () -> {
-            KarateConfig.load("nonexistent.json");
-        });
+    void testConfigureSslMap() {
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * configure ssl = { trustAll: false, algorithm: 'TLSv1.3' }
+            * def cfg = karate.config
+            * match cfg.sslEnabled == true
+            * match cfg.sslTrustAll == false
+            * match cfg.sslAlgorithm == 'TLSv1.3'
+            """);
+        assertPassed(sr);
     }
 
     @Test
-    void testLoadInvalidJson() throws Exception {
-        Path configFile = tempDir.resolve("invalid.json");
-        // An array is valid JSON but not a valid config (must be object)
-        Files.writeString(configFile, "[1, 2, 3]");
+    void testConfigureProxyString() {
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * configure proxy = 'http://proxy.example.com:8080'
+            * def cfg = karate.config
+            * match cfg.proxyUri == 'http://proxy.example.com:8080'
+            """);
+        assertPassed(sr);
+    }
 
+    @Test
+    void testConfigureProxyMap() {
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * configure proxy = { uri: 'http://proxy:8080', username: 'user', password: 'pass' }
+            * def cfg = karate.config
+            * match cfg.proxyUri == 'http://proxy:8080'
+            * match cfg.proxyUsername == 'user'
+            * match cfg.proxyPassword == 'pass'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureTimeout() {
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * configure readTimeout = 60000
+            * configure connectTimeout = 15000
+            * def cfg = karate.config
+            * match cfg.readTimeout == 60000
+            * match cfg.connectTimeout == 15000
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureFollowRedirects() {
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * configure followRedirects = false
+            * def cfg = karate.config
+            * match cfg.followRedirects == false
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureRetry() {
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * configure retry = { interval: 5000, count: 5 }
+            * def cfg = karate.config
+            * match cfg.retryInterval == 5000
+            * match cfg.retryCount == 5
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureReport() {
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * configure report = { showLog: false, showAllSteps: false }
+            * def cfg = karate.config
+            * match cfg.showLog == false
+            * match cfg.showAllSteps == false
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureReportBoolean() {
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * configure report = false
+            * def cfg = karate.config
+            * match cfg.showLog == false
+            * match cfg.showAllSteps == false
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureUnknownKeyThrows() {
+        // Test directly on KarateConfig, not via feature execution
+        KarateConfig config = new KarateConfig();
         RuntimeException ex = assertThrows(RuntimeException.class, () -> {
-            KarateConfig.load(configFile);
+            config.configure("unknownKey", "value");
         });
-        // Exception is wrapped, check the cause
-        assertTrue(ex.getCause().getMessage().contains("expected JSON object"));
+        assertTrue(ex.getMessage().contains("unexpected 'configure' key"));
     }
 
     @Test
-    void testParseInvalidJsonDirectly() {
-        // Test parse() directly with an array
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> {
-            KarateConfig.parse("[1, 2, 3]");
-        });
-        assertTrue(ex.getMessage().contains("expected JSON object"));
-    }
-
-    @Test
-    void testApplyToRunner() throws Exception {
-        // Create a simple feature for testing
-        Path featureFile = tempDir.resolve("test.feature");
-        Files.writeString(featureFile, """
-            Feature: Test
-            Scenario: Test scenario
-            * def x = 1
+    void testConfigCopy() {
+        // Test that karate.config returns a copy (mutations don't affect original)
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * configure readTimeout = 30000
+            * def cfg1 = karate.config
+            * configure readTimeout = 60000
+            * def cfg2 = karate.config
+            # cfg1 should still have old value (it's a copy)
+            * match cfg1.readTimeout == 30000
+            * match cfg2.readTimeout == 60000
             """);
-
-        String json = """
-            {
-              "paths": ["%s"],
-              "env": "dev",
-              "threads": 2,
-              "output": {
-                "html": false,
-                "junitXml": true
-              }
-            }
-            """.formatted(featureFile.toString().replace("\\", "\\\\"));
-
-        KarateConfig config = KarateConfig.parse(json);
-        Runner.Builder builder = Runner.builder();
-        config.applyTo(builder);
-
-        // Build suite to verify settings were applied
-        Suite suite = builder.buildSuite();
-        assertNotNull(suite);
-        assertEquals("dev", suite.getEnv());
+        assertPassed(sr);
     }
 
     @Test
-    void testEmptyConfig() {
-        String json = "{}";
-
-        KarateConfig config = KarateConfig.parse(json);
-
-        assertTrue(config.getPaths().isEmpty());
-        assertTrue(config.getTags().isEmpty());
-        assertNull(config.getEnv());
-        assertEquals(1, config.getThreads());
-    }
-
-    @Test
-    void testParseWithClasspathPaths() {
-        String json = """
-            {
-              "paths": ["classpath:features/api", "classpath:features/ui"],
-              "env": "ci"
-            }
-            """;
-
-        KarateConfig config = KarateConfig.parse(json);
-
-        assertEquals(List.of("classpath:features/api", "classpath:features/ui"), config.getPaths());
-        assertEquals("ci", config.getEnv());
-    }
-
-    @Test
-    void testParseSingleTag() {
-        String json = """
-            {
-              "paths": ["features"],
-              "tags": ["@smoke"]
-            }
-            """;
-
-        KarateConfig config = KarateConfig.parse(json);
-
-        assertEquals(List.of("@smoke"), config.getTags());
-    }
-
-    @Test
-    void testSettersAndGetters() {
-        KarateConfig config = new KarateConfig();
-
-        config.setPaths(List.of("path1", "path2"));
-        config.setTags(List.of("@tag1"));
-        config.setEnv("prod");
-        config.setThreads(10);
-        config.setScenarioName("test.*");
-        config.setConfigDir("config");
-        config.setDryRun(true);
-        config.setClean(true);
-
-        KarateConfig.OutputConfig output = new KarateConfig.OutputConfig();
-        output.setDir("output");
-        output.setHtml(false);
-        output.setJunitXml(true);
-        output.setCucumberJson(true);
-        output.setNdjson(true);
-        config.setOutput(output);
-
-        assertEquals(List.of("path1", "path2"), config.getPaths());
-        assertEquals(List.of("@tag1"), config.getTags());
-        assertEquals("prod", config.getEnv());
-        assertEquals(10, config.getThreads());
-        assertEquals("test.*", config.getScenarioName());
-        assertEquals("config", config.getConfigDir());
-        assertTrue(config.isDryRun());
-        assertTrue(config.isClean());
-
-        assertEquals("output", config.getOutput().getDir());
-        assertFalse(config.getOutput().isHtml());
-        assertTrue(config.getOutput().isJunitXml());
-        assertTrue(config.getOutput().isCucumberJson());
-        assertTrue(config.getOutput().isNdjson());
-    }
-
-    @Test
-    void testSetPathsWithNull() {
-        KarateConfig config = new KarateConfig();
-        config.setPaths(null);
-        assertNotNull(config.getPaths());
-        assertTrue(config.getPaths().isEmpty());
-    }
-
-    @Test
-    void testSetTagsWithNull() {
-        KarateConfig config = new KarateConfig();
-        config.setTags(null);
-        assertNotNull(config.getTags());
-        assertTrue(config.getTags().isEmpty());
-    }
-
-    @Test
-    void testSetOutputWithNull() {
-        KarateConfig config = new KarateConfig();
-        config.setOutput(null);
-        assertNotNull(config.getOutput());
-        assertEquals("target/karate-reports", config.getOutput().getDir());
-    }
-
-    @Test
-    void testParseWorkingDir() {
-        String json = """
-            {
-              "paths": ["src/test/features"],
-              "workingDir": "/home/user/project"
-            }
-            """;
-
-        KarateConfig config = KarateConfig.parse(json);
-
-        assertEquals("/home/user/project", config.getWorkingDir());
-    }
-
-    @Test
-    void testWorkingDirSetterGetter() {
-        KarateConfig config = new KarateConfig();
-        assertNull(config.getWorkingDir());
-
-        config.setWorkingDir("/path/to/project");
-        assertEquals("/path/to/project", config.getWorkingDir());
-    }
-
-    @Test
-    void testApplyWorkingDirToRunner() throws Exception {
-        // Create a simple feature for testing
-        Path featureFile = tempDir.resolve("test.feature");
-        Files.writeString(featureFile, """
-            Feature: Test
-            Scenario: Test scenario
-            * def x = 1
+    void testConfigureUrl() {
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * configure url = 'http://example.com/api'
+            * def cfg = karate.config
+            * match cfg.url == 'http://example.com/api'
             """);
+        assertPassed(sr);
+    }
 
-        String json = """
-            {
-              "paths": ["%s"],
-              "workingDir": "/custom/workdir"
-            }
-            """.formatted(featureFile.toString().replace("\\", "\\\\"));
+    @Test
+    void testConfigurePrintEnabled() {
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * configure printEnabled = false
+            * def cfg = karate.config
+            * match cfg.printEnabled == false
+            """);
+        assertPassed(sr);
+    }
 
-        KarateConfig config = KarateConfig.parse(json);
-        Runner.Builder builder = Runner.builder();
-        config.applyTo(builder);
+    @Test
+    void testConfigureCallSingleCache() {
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * configure callSingleCache = { minutes: 10, dir: '/tmp/cache' }
+            * def cfg = karate.config
+            * match cfg.callSingleCacheMinutes == 10
+            * match cfg.callSingleCacheDir == '/tmp/cache'
+            """);
+        assertPassed(sr);
+    }
 
-        // Build suite to verify workingDir was applied
-        Suite suite = builder.buildSuite();
-        assertNotNull(suite);
-        assertNotNull(suite.getWorkingDir());
-        assertTrue(suite.getWorkingDir().toString().contains("workdir") ||
-                   suite.getWorkingDir().isAbsolute());
+    @Test
+    void testKarateConfigDefaults() {
+        KarateConfig config = new KarateConfig();
+        assertEquals(30000, config.getReadTimeout());
+        assertEquals(30000, config.getConnectTimeout());
+        assertTrue(config.isFollowRedirects());
+        assertFalse(config.isSslEnabled());
+        assertEquals("TLS", config.getSslAlgorithm());
+        assertTrue(config.isSslTrustAll());
+        assertTrue(config.isPrintEnabled());
+        assertEquals(3000, config.getRetryInterval());
+        assertEquals(3, config.getRetryCount());
+        assertTrue(config.isShowLog());
+        assertTrue(config.isShowAllSteps());
+    }
+
+    @Test
+    void testKarateConfigCopy() {
+        KarateConfig original = new KarateConfig();
+        original.configure("ssl", true);
+        original.configure("readTimeout", 60000);
+        original.configure("proxy", "http://proxy:8080");
+
+        KarateConfig copy = original.copy();
+
+        // Verify copy has same values
+        assertEquals(original.isSslEnabled(), copy.isSslEnabled());
+        assertEquals(original.getReadTimeout(), copy.getReadTimeout());
+        assertEquals(original.getProxyUri(), copy.getProxyUri());
+
+        // Modify original, verify copy is unaffected
+        original.configure("readTimeout", 90000);
+        assertEquals(60000, copy.getReadTimeout());
+        assertEquals(90000, original.getReadTimeout());
+    }
+
+    @Test
+    void testSimpleObjectKeys() {
+        KarateConfig config = new KarateConfig();
+        assertTrue(config.keys().contains("readTimeout"));
+        assertTrue(config.keys().contains("sslEnabled"));
+        assertTrue(config.keys().contains("proxyUri"));
+        assertTrue(config.keys().contains("headers"));
+    }
+
+    @Test
+    void testSimpleObjectJsGet() {
+        KarateConfig config = new KarateConfig();
+        config.configure("readTimeout", 45000);
+        config.configure("ssl", true);
+
+        assertEquals(45000, config.jsGet("readTimeout"));
+        assertEquals(true, config.jsGet("sslEnabled"));
+        assertEquals(30000, config.jsGet("connectTimeout")); // default
     }
 
 }

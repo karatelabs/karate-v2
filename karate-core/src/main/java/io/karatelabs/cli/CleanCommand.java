@@ -24,7 +24,7 @@
 package io.karatelabs.cli;
 
 import io.karatelabs.core.Console;
-import io.karatelabs.core.KarateConfig;
+import io.karatelabs.core.KaratePom;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -85,7 +85,7 @@ public class CleanCommand implements Callable<Integer> {
     boolean noPom;
 
     // Loaded pom config
-    private KarateConfig pom;
+    private KaratePom pom;
 
     @Override
     public Integer call() {
@@ -133,7 +133,7 @@ public class CleanCommand implements Callable<Integer> {
 
         if (Files.exists(pomPath)) {
             try {
-                pom = KarateConfig.load(pomPath);
+                pom = KaratePom.load(pomPath);
             } catch (Exception e) {
                 // Ignore pom errors for clean command
             }

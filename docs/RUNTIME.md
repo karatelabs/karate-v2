@@ -502,7 +502,7 @@ karate run -e prod -T 10 features/   # CLI args override pom values
 
 **Precedence:** CLI arguments override config file values.
 
-See `io.karatelabs.core.KarateConfig` for implementation.
+See `io.karatelabs.core.KaratePom` for implementation.
 
 ---
 
@@ -530,7 +530,7 @@ Runner.path("src/test/features")
 
 **Implementation details:**
 - `Main.java` - Added `-w, --workdir` CLI option
-- `KarateConfig.java` - Added `workingDir` JSON field
+- `KaratePom.java` - Added `workingDir` JSON field
 - `Runner.Builder` - Added `workingDir(String/Path)` methods
 - `Suite` - Stores and propagates working directory for resource creation
 - `Resource.scanClasspath()` - Accepts optional root parameter for relative path computation
@@ -1083,7 +1083,7 @@ Tests are in `karate-core/src/test/java/io/karatelabs/core/`:
 | `RuntimeHookTest` | Hooks |
 | `ResultListenerTest` | Result streaming |
 | `RunnerTest` | Runner API, classpath directory scanning |
-| `KarateConfigTest` | JSON config file parsing and loading |
+| `KaratePomTest` | JSON pom file parsing and loading |
 | `JunitXmlWriterTest` | JUnit XML report generation |
 | `CucumberJsonWriterTest` | Cucumber JSON report generation |
 | `HtmlReportListenerTest` | Async HTML report generation. See [HTML_REPORTS.md](./HTML_REPORTS.md) |
