@@ -90,9 +90,11 @@ public class KarateJs implements SimpleObject {
     private Supplier<Map<String, Object>> infoProvider;
     private Supplier<Map<String, Object>> scenarioProvider;
     private Consumer<Object> signalConsumer;
+    private BiConsumer<String, Object> configureHandler;
+    private Supplier<Resource> currentResourceProvider;
     private String env;
 
-    private final Invokable read;
+    private final JsCallable read;
 
     public KarateJs(Resource root) {
         this(root, new ApacheHttpClient());
@@ -106,7 +108,7 @@ public class KarateJs implements SimpleObject {
         engine.setOnConsoleLog(s -> LogContext.get().log(s));
         // TODO: implement whitelisting for safety - currently allows access to all Java classes
         engine.setExternalBridge(new io.karatelabs.js.ExternalBridge() {});
-        read = args -> {
+        read = (context, args) -> {
             if (args.length == 0) {
                 throw new RuntimeException("read() needs at least one argument");
             }
@@ -129,7 +131,17 @@ public class KarateJs implements SimpleObject {
                 }
             }
 
-            Resource resource = root.resolve(path);
+            // V1 compatibility: handle 'this:' prefix for relative paths
+            // 'this:file.ext' means relative to current feature file's directory
+            Resource resource;
+            if (path.startsWith("this:")) {
+                path = path.substring(5);  // Remove 'this:' prefix
+                // Resolve relative to current feature's resource
+                Resource currentResource = currentResourceProvider != null ? currentResourceProvider.get() : null;
+                resource = currentResource != null ? currentResource.resolve(path) : root.resolve(path);
+            } else {
+                resource = root.resolve(path);
+            }
             return switch (resource.getExtension()) {
                 case "json" -> Json.of(resource.getText()).value();
                 case "js" -> engine.eval(resource.getText());
@@ -212,6 +224,14 @@ public class KarateJs implements SimpleObject {
 
     public void setSignalConsumer(Consumer<Object> consumer) {
         this.signalConsumer = consumer;
+    }
+
+    public void setConfigureHandler(BiConsumer<String, Object> handler) {
+        this.configureHandler = handler;
+    }
+
+    public void setCurrentResourceProvider(Supplier<Resource> provider) {
+        this.currentResourceProvider = provider;
     }
 
     private Map<String, Object> getInfo() {
@@ -612,6 +632,24 @@ public class KarateJs implements SimpleObject {
             String path = args[0].toString();
             Object arg = args.length > 1 ? args[1] : null;
             return callSingleProvider.apply(path, arg);
+        };
+    }
+
+    /**
+     * karate.configure() - Apply configuration from JavaScript.
+     * Usage: karate.configure('key', value)
+     */
+    private Invokable configure() {
+        return args -> {
+            if (args.length < 2) {
+                throw new RuntimeException("configure() needs two arguments: key and value");
+            }
+            String key = args[0].toString();
+            Object value = args[1];
+            if (configureHandler != null) {
+                configureHandler.accept(key, value);
+            }
+            return null;
         };
     }
 
@@ -1553,6 +1591,7 @@ public class KarateJs implements SimpleObject {
             case "call" -> call();
             case "callonce" -> callonce();
             case "callSingle" -> callSingle();
+            case "configure" -> configure();
             case "doc" -> doc();
             case "env" -> env;
             case "eval" -> eval();

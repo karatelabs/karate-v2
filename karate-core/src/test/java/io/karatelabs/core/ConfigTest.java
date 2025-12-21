@@ -463,4 +463,30 @@ class ConfigTest {
         assertTrue(result.isPassed(), "karate-base.js functions should work with env config");
     }
 
+    // ========== karate.configure() from JavaScript Tests ==========
+
+    @Test
+    void testConfigureFromJs() throws Exception {
+        // Test that karate.configure() can be called from JavaScript (eval block)
+        // This is the V1 pattern for programmatic configuration
+        Path featureFile = tempDir.resolve("test.feature");
+        Files.writeString(featureFile, """
+            Feature: Configure from JS
+            Scenario: Call karate.configure from eval block
+            * eval
+            \"\"\"
+            var config = {
+              proxy: { uri: 'http://my-proxy.com:3128', nonProxyHosts: ['my-api.com'] }
+            };
+            karate.configure('proxy', config.proxy);
+            \"\"\"
+            """);
+
+        Suite suite = Suite.of(tempDir, featureFile.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "karate.configure() should work from JavaScript eval block");
+    }
+
 }

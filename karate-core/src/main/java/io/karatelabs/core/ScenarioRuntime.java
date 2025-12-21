@@ -101,6 +101,8 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         karate.setInfoProvider(this::getScenarioInfo);
         karate.setScenarioProvider(this::getScenarioData);
         karate.setSignalConsumer(this::setListenResult);
+        karate.setConfigureHandler(this::configure);
+        karate.setCurrentResourceProvider(this::getCurrentResource);
 
         // Set karate.env before config evaluation
         if (featureRuntime != null && featureRuntime.getSuite() != null) {
@@ -737,6 +739,10 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
 
     public FeatureRuntime getFeatureRuntime() {
         return featureRuntime;
+    }
+
+    private Resource getCurrentResource() {
+        return featureRuntime != null ? featureRuntime.getFeature().getResource() : null;
     }
 
     public ScenarioResult getResult() {

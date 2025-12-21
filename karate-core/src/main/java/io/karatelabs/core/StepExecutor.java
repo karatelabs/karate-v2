@@ -1940,9 +1940,16 @@ public class StepExecutor {
                         }
                     }
                     Object result = arg != null
-                            ? fn.call(null, new Object[]{arg})
-                            : fn.call(null, new Object[0]);
-                    // For shared scope call (no assignment), result is ignored
+                            ? fn.call(null, arg)
+                            : fn.call(null);
+                    // V1 behavior: if result is a Map, spread all keys as shared scope variables
+                    if (result instanceof Map) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> map = (Map<String, Object>) result;
+                        for (Map.Entry<String, Object> entry : map.entrySet()) {
+                            runtime.setVariable(entry.getKey(), entry.getValue());
+                        }
+                    }
                     return;
                 } else if (evaluated instanceof FeatureCall || evaluated instanceof Feature) {
                     // It's a feature or feature call - handle below

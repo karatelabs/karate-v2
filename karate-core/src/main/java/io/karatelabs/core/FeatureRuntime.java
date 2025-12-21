@@ -488,6 +488,10 @@ public class FeatureRuntime implements Callable<FeatureResult> {
     // ========== Resource Resolution ==========
 
     public Resource resolve(String path) {
+        // V1 compatibility: handle 'this:' prefix for relative paths
+        if (path.startsWith("this:")) {
+            path = path.substring(5);  // Remove 'this:' prefix
+        }
         return feature.getResource().resolve(path);
     }
 

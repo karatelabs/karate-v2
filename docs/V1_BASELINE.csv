@@ -32,11 +32,11 @@ java-030,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testMatchEachMagic
 java-031,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testEvalAndSet,,testEvalAndSet,root,passed,runs eval-and-set.feature which passes,,2025-12-19
 java-032,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testEvalAssign,,testEvalAssign,root,passed,runs eval-assign.feature which passes,,2025-12-19
 java-033,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testExtract,,testExtract,root,passed,karate.extract() and extractAll() implemented,StepJsTest#testExtract*,2025-12-21
-java-034,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testConfigureInJs,,testConfigureInJs,root,pending,,,
+java-034,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testConfigureInJs,,testConfigureInJs,root,passed,karate.configure() from JS implemented,ConfigTest#testConfigureFromJs,2025-12-21
 java-035,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTable,,testTable,root,passed,runs table.feature which passes,,2025-12-19
 java-036,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSet,,testSet,root,passed,runs set.feature which passes,,2025-12-19
 java-037,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSetXml,,testSetXml,root,passed,karate.setXml() implemented,io/karatelabs/core/StepXmlTest,2025-12-19
-java-038,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead,,testJsRead,root,pending,,,
+java-038,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead,,testJsRead,root,passed,call read shorthand and this: prefix implemented,,2025-12-21
 java-039,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead2,,testJsRead2,root,pending,,,
 java-040,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead3,,testJsRead3,root,pending,,,
 java-041,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead4,,testJsRead4,root,pending,,,
@@ -326,7 +326,7 @@ feature-032,feature,callonce-config-called.feature,,,callonce-config-called.feat
 feature-033,feature,callonce-config.feature,,,callonce-config.feature,callonce-config.feature,root,pending,,,
 feature-034,feature,callonce-global-called.feature,,,callonce-global-called.feature,callonce-global-called.feature,root,pending,,,
 feature-035,feature,callonce-global.feature,,,callonce-global.feature,make sure a callonce (with shared scope) in the background ,root,pending,,,
-feature-036,feature,configure-in-js.feature,,,configure-in-js.feature,configure-in-js.feature,root,pending,,,
+feature-036,feature,configure-in-js.feature,,,configure-in-js.feature,configure-in-js.feature,root,passed,karate.configure() from JS implemented,ConfigTest#testConfigureFromJs,2025-12-21
 feature-037,feature,copy-called-nested.feature,,,copy-called-nested.feature,called file that overwites nested data,root,passed,helper for copy.feature,io/karatelabs/core/copy/,2025-12-17
 feature-038,feature,copy-called-overwrite.feature,,,copy-called-overwrite.feature,called file that may or may not over-write variable in caller,root,passed,helper for copy.feature,io/karatelabs/core/copy/,2025-12-17
 feature-039,feature,copy-called.feature,,,copy-called.feature,called file should not clobber vars in caller,root,passed,helper for copy.feature,io/karatelabs/core/copy/,2025-12-17
@@ -372,7 +372,7 @@ feature-078,feature,jsread/js-read-called.feature,,,js-read-called.feature,js-re
 feature-079,feature,jsread/js-read-reuse-2.feature,,,js-read-reuse-2.feature,js-read-reuse-2.feature,jsread,pending,,,
 feature-080,feature,jsread/js-read-reuse-only-background.feature,,,js-read-reuse-only-background.feature,js-read-reuse-only-background.feature,jsread,pending,,,
 feature-081,feature,jsread/js-read-reuse.feature,,,js-read-reuse.feature,js-read-reuse.feature,jsread,pending,,,
-feature-082,feature,jsread/js-read.feature,,,js-read.feature,js-read.feature,jsread,pending,,,
+feature-082,feature,jsread/js-read.feature,,,js-read.feature,js-read.feature,jsread,passed,call read shorthand and this: prefix implemented,,2025-12-21
 feature-083,feature,karate-config-fn.feature,,,karate-config-fn.feature,feature reuse from karate-config.js,root,pending,,,
 feature-084,feature,karate-config-frombase.feature,,,karate-config-frombase.feature,karate-config-frombase.feature,root,passed,karate-base.js implemented - covered by java-026 and unit tests,ConfigTest#testKarateBaseJs*,2025-12-21
 feature-085,feature,karate-config-getscenario.feature,,,karate-config-getscenario.feature,karate-config-getscenario.feature,root,pending,,,
