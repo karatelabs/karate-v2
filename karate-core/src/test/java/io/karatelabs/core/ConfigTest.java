@@ -277,6 +277,69 @@ class ConfigTest {
     }
 
     @Test
+    void testScenarioPropertyFromConfig() throws Exception {
+        // V1 pattern: access karate.scenario in config
+        Path configFile = tempDir.resolve("karate-config.js");
+        Files.writeString(configFile, """
+            function fn() {
+              var config = {};
+              config.data = karate.scenario;
+              return config;
+            }
+            """);
+
+        Path featureFile = tempDir.resolve("test.feature");
+        Files.writeString(featureFile, """
+            Feature: Scenario Property Test
+            Scenario: my test scenario
+            * match karate.scenario.name == 'my test scenario'
+            * match data.sectionIndex == 0
+            * match data.exampleIndex == -1
+            """);
+
+        Suite suite = Suite.of(tempDir, featureFile.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "karate.scenario property should work in config");
+    }
+
+    @Test
+    void testCallonceFromConfig() throws Exception {
+        // V1 pattern: karate.callonce() in config to load utils once
+        Path utilsFeature = tempDir.resolve("utils.feature");
+        Files.writeString(utilsFeature, """
+            @ignore
+            Feature:
+            Scenario:
+            * def hello = function(name){ return 'hello ' + name }
+            """);
+
+        // Config that uses karate.callonce to load utils
+        Path configFile = tempDir.resolve("karate-config.js");
+        Files.writeString(configFile, """
+            function fn() {
+              var config = karate.callonce('utils.feature');
+              return config;
+            }
+            """);
+
+        Path featureFile = tempDir.resolve("test.feature");
+        Files.writeString(featureFile, """
+            Feature: Callonce Config Test
+            Scenario: Use function from callonce-loaded feature
+            * def result = hello('world')
+            * match result == 'hello world'
+            """);
+
+        Suite suite = Suite.of(tempDir, featureFile.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "karate.callonce() in config should work");
+    }
+
+    @Test
     void testEnvConfigFromWorkingDirectory() throws Exception {
         // Create base karate-config.js in working directory
         Path configFile = tempDir.resolve("karate-config.js");

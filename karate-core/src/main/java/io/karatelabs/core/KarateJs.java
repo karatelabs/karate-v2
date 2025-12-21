@@ -83,8 +83,10 @@ public class KarateJs implements SimpleObject {
     private Function<String, Map<String, Object>> setupOnceProvider;
     private Runnable abortHandler;
     private BiFunction<String, Object, Map<String, Object>> callProvider;
+    private BiFunction<String, Object, Map<String, Object>> callOnceProvider;
     private BiFunction<String, Object, Object> callSingleProvider;
     private Supplier<Map<String, Object>> infoProvider;
+    private Supplier<Map<String, Object>> scenarioProvider;
     private Consumer<Object> signalConsumer;
     private String env;
 
@@ -186,12 +188,20 @@ public class KarateJs implements SimpleObject {
         this.callProvider = provider;
     }
 
+    public void setCallOnceProvider(BiFunction<String, Object, Map<String, Object>> provider) {
+        this.callOnceProvider = provider;
+    }
+
     public void setCallSingleProvider(BiFunction<String, Object, Object> provider) {
         this.callSingleProvider = provider;
     }
 
     public void setInfoProvider(Supplier<Map<String, Object>> provider) {
         this.infoProvider = provider;
+    }
+
+    public void setScenarioProvider(Supplier<Map<String, Object>> provider) {
+        this.scenarioProvider = provider;
     }
 
     public void setEnv(String env) {
@@ -205,6 +215,13 @@ public class KarateJs implements SimpleObject {
     private Map<String, Object> getInfo() {
         if (infoProvider != null) {
             return infoProvider.get();
+        }
+        return Map.of();
+    }
+
+    private Map<String, Object> getScenario() {
+        if (scenarioProvider != null) {
+            return scenarioProvider.get();
         }
         return Map.of();
     }
@@ -554,6 +571,24 @@ public class KarateJs implements SimpleObject {
             String path = args[0].toString();
             Object arg = args.length > 1 ? args[1] : null;
             return callProvider.apply(path, arg);
+        };
+    }
+
+    /**
+     * karate.callonce() - Execute a feature file once per feature and cache the result.
+     * Same as: callonce result = call read('path')
+     */
+    private Invokable callonce() {
+        return args -> {
+            if (callOnceProvider == null) {
+                throw new RuntimeException("karate.callonce() is not available in this context");
+            }
+            if (args.length == 0) {
+                throw new RuntimeException("karate.callonce() requires at least one argument (feature path)");
+            }
+            String path = args[0].toString();
+            Object arg = args.length > 1 ? args[1] : null;
+            return callOnceProvider.apply(path, arg);
         };
     }
 
@@ -1479,6 +1514,7 @@ public class KarateJs implements SimpleObject {
             case "fail" -> fail();
             case "appendTo" -> appendTo();
             case "call" -> call();
+            case "callonce" -> callonce();
             case "callSingle" -> callSingle();
             case "doc" -> doc();
             case "env" -> env;
@@ -1507,6 +1543,7 @@ public class KarateJs implements SimpleObject {
             case "readAsString" -> readAsString();
             case "remove" -> remove();
             case "repeat" -> repeat();
+            case "scenario" -> getScenario();
             case "set" -> set();
             case "setup" -> setup();
             case "signal" -> signal();

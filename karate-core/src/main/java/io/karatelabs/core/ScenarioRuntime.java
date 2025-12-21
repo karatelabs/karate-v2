@@ -96,8 +96,10 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         karate.setSetupOnceProvider(this::executeSetupOnce);
         karate.setAbortHandler(this::abort);
         karate.setCallProvider(this::executeJsCall);
+        karate.setCallOnceProvider(this::executeJsCallOnce);
         karate.setCallSingleProvider(this::executeCallSingle);
         karate.setInfoProvider(this::getScenarioInfo);
+        karate.setScenarioProvider(this::getScenarioData);
         karate.setSignalConsumer(this::setListenResult);
 
         // Set karate.env before config evaluation
@@ -219,6 +221,26 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
     }
 
     /**
+     * Returns scenario data map for karate.scenario.
+     * V1 compatible fields: name, sectionIndex, exampleIndex, exampleData, line, description
+     */
+    private Map<String, Object> getScenarioData() {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("name", scenario.getName());
+        data.put("description", scenario.getDescription());
+        data.put("line", scenario.getLine());
+        // Section index: position of this scenario in the feature
+        data.put("sectionIndex", scenario.getSection().getIndex());
+        // Example index: -1 if not a scenario outline, otherwise the example row index
+        data.put("exampleIndex", scenario.getExampleIndex());
+        Map<String, Object> exampleData = scenario.getExampleData();
+        if (exampleData != null) {
+            data.put("exampleData", exampleData);
+        }
+        return data;
+    }
+
+    /**
      * Execute the @setup scenario and return all its variables.
      */
     private Map<String, Object> executeSetup(String name) {
@@ -336,6 +358,39 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
             return nestedFr.getLastExecuted().getAllVariables();
         }
         return new HashMap<>();
+    }
+
+    /**
+     * Execute karate.callonce() - runs a feature once per FeatureRuntime and caches the result.
+     * Uses the same cache as the callonce keyword.
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> executeJsCallOnce(String path, Object arg) {
+        if (featureRuntime == null) {
+            throw new RuntimeException("karate.callonce() requires a feature context");
+        }
+
+        // Use the same cache key format as the keyword: "callonce:call read('path')"
+        String cacheKey = "callonce:call read('" + path + "')";
+
+        // Get cache from Suite or FeatureRuntime
+        Map<String, Object> cache = featureRuntime.getSuite() != null
+                ? featureRuntime.getSuite().getCallOnceCache()
+                : featureRuntime.CALLONCE_CACHE;
+
+        // Check cache first
+        Map<String, Object> cached = (Map<String, Object>) cache.get(cacheKey);
+        if (cached != null) {
+            return new HashMap<>(cached);
+        }
+
+        // Not cached - execute the call
+        Map<String, Object> result = executeJsCall(path, arg);
+
+        // Cache the result
+        cache.put(cacheKey, new HashMap<>(result));
+
+        return result;
     }
 
     /**

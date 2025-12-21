@@ -22,8 +22,8 @@ java-020,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testAlign,,testAli
 java-021,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testFailApi,,testFailApi,root,passed,karate.fail() implemented,ScenarioRuntimeTest,2025-12-21
 java-022,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallFeatureFromJs,,testCallFeatureFromJs,root,passed,V2 supports karate.call from JS functions,,2025-12-21
 java-023,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallJsFromFeatureUtilsDefinedInKarateConfig,,testCallJsFromFeatureUtilsDefinedInKarateConfig,root,passed,V2 supports karate.call from config (requires relative paths),ConfigTest,2025-12-21
-java-024,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallOnceJsFromFeatureUtilsDefinedInKarateConfig,,testCallOnceJsFromFeatureUtilsDefinedInKarateConfig,root,pending,,,
-java-025,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateJsGetScenario,,testKarateJsGetScenario,root,pending,,,
+java-024,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallOnceJsFromFeatureUtilsDefinedInKarateConfig,,testCallOnceJsFromFeatureUtilsDefinedInKarateConfig,root,passed,karate.callonce() JS method implemented,ConfigTest#testCallonceFromConfig,2025-12-21
+java-025,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateJsGetScenario,,testKarateJsGetScenario,root,passed,karate.scenario property implemented,ConfigTest#testScenarioPropertyFromConfig,2025-12-21
 java-026,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateJsFromKarateBase,,testKarateJsFromKarateBase,root,pending,,,
 java-027,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallByTag,,testCallByTag,root,passed,call-by-tag syntax implemented,io/karatelabs/core/CallFeatureTest,2025-12-20
 java-028,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallByTagCalled,,testCallByTagCalled,root,passed,call-by-tag called feature works,io/karatelabs/core/CallFeatureTest,2025-12-20
