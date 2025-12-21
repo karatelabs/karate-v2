@@ -1042,6 +1042,65 @@ karate-v2/
 
 ---
 
+## Implementation Status
+
+**Last updated:** 2025-12-21
+
+### Completed Phases
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 1 | Core MockHandler + MockConfig | ✅ Complete |
+| 2 | Matcher functions (pathMatches, methodIs, typeContains, etc.) | ✅ Complete |
+| 3 | Request/response variables | ✅ Complete |
+| 4 | MockConfig (CORS, responseHeaders, afterScenario) | ✅ Complete |
+| 5 | MockServer public API wrapper | ✅ Complete |
+| 6 | SslConfig + SslContextFactory | ✅ Complete |
+| 7 | CertificateGenerator (self-signed certs via Netty) | ✅ Complete |
+| 8 | HTTP Client SSL | ⏳ Pending (separate task) |
+| 9 | Mock Server SSL | ⚠️ Partial (API ready, HttpServer integration pending) |
+| 10 | karate.start() integration | ✅ Complete |
+| 11 | CLI mock subcommand | ✅ Complete |
+| 12 | Manual CLI testing | ⏳ Pending |
+| 13-14 | Stateful and integration tests | ✅ Complete (17 tests) |
+| 15 | SSL integration tests | ⏳ Pending |
+| 16 | karate.proceed() proxy mode | ⏳ Pending |
+| 17 | V1 compat tests | ⏳ Pending |
+
+### Files Created
+
+**Production code:**
+- `MockHandler.java` - Core request routing with matcher functions
+- `MockServer.java` - Public API with Builder pattern
+- `MockConfig.java` - CORS, response headers, afterScenario configuration
+- `SslConfig.java` - SSL configuration holder
+- `SslContextFactory.java` - SSLContext creation from config
+- `CertificateGenerator.java` - Self-signed certificate generation via Netty
+- `MockCommand.java` - CLI subcommand for `karate mock`
+
+**Modified files:**
+- `KarateJs.java` - Added `karate.start()` method
+- `Main.java` - Added MockCommand to subcommands
+
+**Tests (17 total):**
+- `MockHandlerTest.java` - 11 unit tests for handler, matchers, CORS
+- `MockServerTest.java` - 6 integration tests with real HTTP
+
+### Implementation Notes
+
+1. **Thread-local pattern:** MockHandler uses `ThreadLocal<HttpRequest>` for matcher function access
+2. **Netty SSL:** CertificateGenerator uses `io.netty.handler.ssl.util.SelfSignedCertificate`
+3. **No MockRuntime:** Simplified design - MockHandler directly uses KarateJs for scenario execution
+4. **Console methods:** MockCommand uses `Console.info()`, `Console.pass()`, etc. (not Console.Color enum)
+
+### Known Limitations
+
+1. **SSL not wired to HttpServer:** `MockServer.Builder.ssl(true)` logs warning; needs HttpServer SSL support
+2. **karate.proceed() not implemented:** Proxy mode requires HttpClient integration
+3. **No watch mode:** `-W` flag not implemented yet
+
+---
+
 ## V2 Classes to Reference
 
 Before implementing, study these existing V2 classes:

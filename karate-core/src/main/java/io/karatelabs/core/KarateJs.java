@@ -1634,6 +1634,62 @@ public class KarateJs implements SimpleObject {
         };
     }
 
+    /**
+     * karate.start() - Start a mock server from a feature file.
+     * Usage:
+     * <pre>
+     * var server = karate.start('api.feature');
+     * var server = karate.start({ mock: 'api.feature', port: 8080 });
+     * var server = karate.start({ mock: 'api.feature', port: 8443, ssl: true });
+     * </pre>
+     */
+    @SuppressWarnings("unchecked")
+    private Invokable start() {
+        return args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("start() needs at least one argument: feature path or config map");
+            }
+            Object arg = args[0];
+            MockServer.Builder builder;
+
+            if (arg instanceof String path) {
+                // Simple path: karate.start('api.feature')
+                builder = MockServer.feature(root.resolve(path));
+            } else if (arg instanceof Map) {
+                // Config map: karate.start({ mock: 'api.feature', port: 8080 })
+                Map<String, Object> config = (Map<String, Object>) arg;
+                String mockPath = (String) config.get("mock");
+                if (mockPath == null) {
+                    throw new RuntimeException("start() config requires 'mock' key with feature path");
+                }
+                builder = MockServer.feature(root.resolve(mockPath));
+
+                if (config.containsKey("port")) {
+                    builder.port(((Number) config.get("port")).intValue());
+                }
+                if (config.containsKey("ssl")) {
+                    builder.ssl(Boolean.TRUE.equals(config.get("ssl")));
+                }
+                if (config.containsKey("cert")) {
+                    builder.certPath((String) config.get("cert"));
+                }
+                if (config.containsKey("key")) {
+                    builder.keyPath((String) config.get("key"));
+                }
+                if (config.containsKey("arg")) {
+                    builder.arg((Map<String, Object>) config.get("arg"));
+                }
+                if (config.containsKey("pathPrefix")) {
+                    builder.pathPrefix((String) config.get("pathPrefix"));
+                }
+            } else {
+                throw new RuntimeException("start() argument must be a string path or config map");
+            }
+
+            return builder.start();
+        };
+    }
+
     @Override
     public Object jsGet(String key) {
         return switch (key) {
@@ -1679,6 +1735,7 @@ public class KarateJs implements SimpleObject {
             case "set" -> set();
             case "setup" -> setup();
             case "signal" -> signal();
+            case "start" -> start();
             case "setupOnce" -> setupOnce();
             case "setXml" -> setXml();
             case "sizeOf" -> sizeOf();

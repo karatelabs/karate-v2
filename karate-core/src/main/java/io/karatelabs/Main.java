@@ -24,6 +24,7 @@
 package io.karatelabs;
 
 import io.karatelabs.cli.CleanCommand;
+import io.karatelabs.cli.MockCommand;
 import io.karatelabs.cli.RunCommand;
 import io.karatelabs.core.Console;
 import io.karatelabs.core.Globals;
@@ -55,6 +56,7 @@ import java.util.concurrent.Callable;
         description = "Karate API testing framework",
         subcommands = {
                 RunCommand.class,
+                MockCommand.class,
                 CleanCommand.class
         }
 )

@@ -1,0 +1,259 @@
+/*
+ * The MIT License
+ *
+ * Copyright 2025 Karate Labs Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+package io.karatelabs.core;
+
+import io.karatelabs.gherkin.Feature;
+import io.karatelabs.io.http.HttpServer;
+import io.karatelabs.js.SimpleObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Public API for creating mock servers from feature files.
+ * <p>
+ * Usage:
+ * <pre>
+ * MockServer server = MockServer.feature("api.feature")
+ *     .port(8080)
+ *     .arg(Map.of("key", "value"))
+ *     .start();
+ *
+ * // ... use server ...
+ *
+ * server.stop();
+ * </pre>
+ */
+public class MockServer implements SimpleObject {
+
+    private static final Logger logger = LoggerFactory.getLogger(MockServer.class);
+
+    private final HttpServer httpServer;
+    private final MockHandler handler;
+    private final int port;
+
+    private MockServer(HttpServer httpServer, MockHandler handler, int port) {
+        this.httpServer = httpServer;
+        this.handler = handler;
+        this.port = port;
+    }
+
+    /**
+     * Create a builder for a mock server from a feature file path.
+     */
+    public static Builder feature(String path) {
+        return new Builder().feature(path);
+    }
+
+    /**
+     * Create a builder for a mock server from a parsed Feature.
+     */
+    public static Builder feature(Feature feature) {
+        return new Builder().feature(feature);
+    }
+
+    /**
+     * Create a builder for a mock server from a Resource.
+     */
+    public static Builder feature(io.karatelabs.common.Resource resource) {
+        return new Builder().feature(Feature.read(resource));
+    }
+
+    /**
+     * Create a builder for a mock server from a feature string.
+     * Useful for inline feature definitions in tests.
+     */
+    public static Builder featureString(String featureContent) {
+        return new Builder().featureString(featureContent);
+    }
+
+    /**
+     * Get the port the server is listening on.
+     */
+    public int getPort() {
+        return port;
+    }
+
+    /**
+     * Stop the mock server.
+     */
+    public void stop() {
+        logger.info("stopping mock server on port {}", port);
+        httpServer.stop();
+    }
+
+    /**
+     * Stop the mock server asynchronously (non-blocking).
+     */
+    public void stopAsync() {
+        logger.info("stopping mock server async on port {}", port);
+        httpServer.stopAsync();
+    }
+
+    /**
+     * Wait for the server to be stopped (blocking).
+     */
+    public void waitSync() {
+        httpServer.waitSync();
+    }
+
+    /**
+     * Get a variable from the mock handler's global context.
+     */
+    public Object getVariable(String name) {
+        return handler.getVariable(name);
+    }
+
+    /**
+     * Get the underlying MockHandler.
+     */
+    public MockHandler getHandler() {
+        return handler;
+    }
+
+    @Override
+    public Object jsGet(String key) {
+        return switch (key) {
+            case "port" -> port;
+            case "stop" -> (Runnable) this::stop;
+            default -> null;
+        };
+    }
+
+    /**
+     * Builder for creating MockServer instances.
+     */
+    public static class Builder {
+
+        private final List<Feature> features = new ArrayList<>();
+        private int port = 0; // 0 = dynamic port
+        private Map<String, Object> args;
+        private String pathPrefix;
+        private boolean ssl;
+        private String certPath;
+        private String keyPath;
+
+        private Builder() {
+        }
+
+        /**
+         * Add a feature file by path.
+         */
+        public Builder feature(String path) {
+            features.add(Feature.read(path));
+            return this;
+        }
+
+        /**
+         * Add a parsed Feature.
+         */
+        public Builder feature(Feature feature) {
+            features.add(feature);
+            return this;
+        }
+
+        /**
+         * Add a feature from inline string content.
+         */
+        public Builder featureString(String featureContent) {
+            features.add(Feature.read(io.karatelabs.common.Resource.text(featureContent)));
+            return this;
+        }
+
+        /**
+         * Set the port to listen on. 0 = dynamic port.
+         */
+        public Builder port(int port) {
+            this.port = port;
+            return this;
+        }
+
+        /**
+         * Set initial arguments (variables) for the mock.
+         */
+        public Builder arg(Map<String, Object> args) {
+            this.args = args;
+            return this;
+        }
+
+        /**
+         * Set a path prefix to strip from incoming requests.
+         */
+        public Builder pathPrefix(String prefix) {
+            this.pathPrefix = prefix;
+            return this;
+        }
+
+        /**
+         * Enable SSL/TLS.
+         */
+        public Builder ssl(boolean ssl) {
+            this.ssl = ssl;
+            return this;
+        }
+
+        /**
+         * Set the SSL certificate file path (PEM format).
+         */
+        public Builder certPath(String certPath) {
+            this.certPath = certPath;
+            return this;
+        }
+
+        /**
+         * Set the SSL private key file path (PEM format).
+         */
+        public Builder keyPath(String keyPath) {
+            this.keyPath = keyPath;
+            return this;
+        }
+
+        /**
+         * Start the mock server.
+         */
+        public MockServer start() {
+            if (features.isEmpty()) {
+                throw new RuntimeException("at least one feature file is required");
+            }
+
+            MockHandler handler = new MockHandler(features, args, pathPrefix);
+
+            // TODO: Add SSL support when SslConfig is implemented
+            if (ssl) {
+                logger.warn("SSL support not yet implemented, starting HTTP server");
+            }
+
+            HttpServer httpServer = HttpServer.start(port, handler);
+            int actualPort = httpServer.getPort();
+
+            logger.info("mock server started on port {}", actualPort);
+            return new MockServer(httpServer, handler, actualPort);
+        }
+
+    }
+
+}
