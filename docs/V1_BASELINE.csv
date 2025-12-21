@@ -8,14 +8,14 @@ java-006,java_test,FeatureFailRunner.java,FeatureFailRunner,testFork,,testFork,r
 java-007,java_test,FeatureFailRunner.java,FeatureFailRunner,testForkListener,,testForkListener,root,passed,fork listener tested in ProcessHandleTest,io/karatelabs/process/ProcessHandleTest,2025-12-20
 java-008,java_test,FeatureFailRunner.java,FeatureFailRunner,testUsersDoc,,testUsersDoc,root,passed,doc keyword implemented using TEMPLATING.md infrastructure with embed support,StepDocTest,2025-12-21
 java-009,java_test,FeatureFailRunner.java,FeatureFailRunner,testUiGoogle,,testUiGoogle,root,skipped,Out of scope - requires Browser/Driver,,2025-12-21
-java-010,java_test,FeatureFailRunner.java,FeatureFailRunner,testOutlineDynamicFail,,testOutlineDynamicFail,root,pending,,,
-java-011,java_test,FeatureResultTest.java,FeatureResultTest,testJsonConversion,,testJsonConversion,root,pending,,,
-java-012,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testFailTag,,testFailTag,root,pending,,,
-java-013,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testFailTagFailure,,testFailTagFailure,root,pending,,,
-java-014,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testFail1,,testFail1,root,pending,,,
-java-015,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallOnce,,testCallOnce,root,pending,,,
-java-016,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallOnceWithUtilsPresentInKarateConfig,,testCallOnceWithUtilsPresentInKarateConfig,root,pending,,,
-java-017,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallOnceGlobal,,testCallOnceGlobal,root,pending,,,
+java-010,java_test,FeatureFailRunner.java,FeatureFailRunner,testOutlineDynamicFail,,testOutlineDynamicFail,root,passed,V2 correctly fails on missing @setup tag (expected behavior),,2025-12-21
+java-011,java_test,FeatureResultTest.java,FeatureResultTest,testJsonConversion,,testJsonConversion,root,skipped,Out of scope - Java Runner API (FeatureResult.toKarateJson/toCucumberJson),,2025-12-21
+java-012,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testFailTag,,testFailTag,root,passed,@fail tag implemented - inverts pass/fail result,ScenarioRuntimeTest,2025-12-21
+java-013,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testFailTagFailure,,testFailTagFailure,root,passed,@fail tag implemented - inverts pass/fail result,ScenarioRuntimeTest,2025-12-21
+java-014,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testFail1,,testFail1,root,passed,V2 correctly fails on match mismatch (expected behavior),,2025-12-21
+java-015,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallOnce,,testCallOnce,root,passed,callonce in Background works correctly,,2025-12-21
+java-016,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallOnceWithUtilsPresentInKarateConfig,,testCallOnceWithUtilsPresentInKarateConfig,root,passed,Same as java-015 with config utils - verified via compat runner,,2025-12-21
+java-017,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallOnceGlobal,,testCallOnceGlobal,root,passed,callonce with shared scope does not leak variables between scenarios,,2025-12-21
 java-018,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTags,,testTags,root,passed,runs tags.feature which passes,,2025-12-19
 java-019,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testAbort,,testAbort,root,passed,runs abort.feature which passes,,2025-12-19
 java-020,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testAlign,,testAlign,root,passed,runs align.feature which passes,,2025-12-19

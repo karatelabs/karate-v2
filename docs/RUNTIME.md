@@ -755,6 +755,75 @@ Runner.path("features/")
 
 ---
 
+## Built-in Tags
+
+Karate supports several built-in tags that modify scenario execution behavior.
+
+| Tag | Scope | Description |
+|-----|-------|-------------|
+| `@ignore` | Scenario/Feature | Skip execution entirely |
+| `@env=<name>` | Scenario/Feature | Run only when `karate.env` matches |
+| `@envnot=<name>` | Scenario/Feature | Skip when `karate.env` matches |
+| `@setup` | Scenario | Mark as setup for dynamic outlines via `karate.setup()` |
+| `@fail` | Scenario | Invert pass/fail result (expect failure) |
+
+### @ignore
+
+Skip a scenario or entire feature from execution:
+
+```gherkin
+@ignore
+Scenario: Work in progress
+  * print 'this will not run'
+```
+
+### @env / @envnot
+
+Control execution based on environment:
+
+```gherkin
+@env=dev
+Scenario: Only runs in dev
+  * print 'dev-only test'
+
+@envnot=prod
+Scenario: Skip in production
+  * print 'not in prod'
+```
+
+### @setup
+
+Mark a scenario as a data provider for dynamic scenario outlines:
+
+```gherkin
+@setup
+Scenario: Provide test data
+  * def data = [{name: 'Alice'}, {name: 'Bob'}]
+
+Scenario Outline: Test each user
+  * match '<name>' == __row.name
+
+Examples:
+| karate.setup().data |
+```
+
+### @fail
+
+Expect a scenario to fail - useful for testing error conditions:
+
+```gherkin
+@fail
+Scenario: This should fail
+  * def a = 1
+  * match a == 2
+```
+
+With `@fail`:
+- If the scenario fails → test passes (expected behavior)
+- If the scenario passes → test fails (unexpected - should have failed)
+
+---
+
 ## Future Phase
 
 Lower priority features for later implementation.

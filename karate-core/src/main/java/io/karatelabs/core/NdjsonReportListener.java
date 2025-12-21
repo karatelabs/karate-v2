@@ -234,12 +234,20 @@ public class NdjsonReportListener implements ResultListener {
      */
     private Map<String, Object> buildStepData(StepResult step) {
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("prefix", step.getStep().getPrefix());
-        data.put("keyword", step.getStep().getKeyword());
-        data.put("text", step.getStep().getText());
+        if (step.getStep() != null) {
+            data.put("prefix", step.getStep().getPrefix());
+            data.put("keyword", step.getStep().getKeyword());
+            data.put("text", step.getStep().getText());
+            data.put("line", step.getStep().getLine());
+        } else {
+            // Fake step (e.g., for @fail tag)
+            data.put("prefix", "*");
+            data.put("keyword", "*");
+            data.put("text", step.getLog() != null ? step.getLog() : "");
+            data.put("line", 0);
+        }
         data.put("status", step.getStatus().name().toLowerCase());
         data.put("ms", step.getDurationNanos() / 1_000_000);
-        data.put("line", step.getStep().getLine());
 
         // Log indicator for UI
         boolean hasLogs = step.getLog() != null && !step.getLog().isEmpty();

@@ -577,6 +577,10 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
             stopped = true;
         } finally {
             afterScenario();
+            // Handle @fail tag - invert pass/fail result
+            if (scenario.isFail()) {
+                result.applyFailTag();
+            }
             result.setEndTime(System.currentTimeMillis());
             LogContext.clear();
         }

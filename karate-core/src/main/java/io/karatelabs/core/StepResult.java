@@ -64,6 +64,24 @@ public class StepResult {
         return new StepResult(step, Status.SKIPPED, startTime, 0, null);
     }
 
+    /**
+     * Create a fake success step result (for @fail tag handling).
+     */
+    public static StepResult fakeSuccess(String message, long startTime) {
+        StepResult sr = new StepResult(null, Status.PASSED, startTime, 0, null);
+        sr.log = message;
+        return sr;
+    }
+
+    /**
+     * Create a fake failure step result (for @fail tag handling).
+     */
+    public static StepResult fakeFailure(String message, long startTime, Throwable error) {
+        StepResult sr = new StepResult(null, Status.FAILED, startTime, 0, error);
+        sr.log = message;
+        return sr;
+    }
+
     public Step getStep() {
         return step;
     }
@@ -125,14 +143,21 @@ public class StepResult {
 
     public Map<String, Object> toKarateJson() {
         Map<String, Object> map = new LinkedHashMap<>();
-        map.put("line", step.getLine());
-        map.put("keyword", step.getKeyword());
-        map.put("name", step.getText());
+        if (step != null) {
+            map.put("line", step.getLine());
+            map.put("keyword", step.getKeyword());
+            map.put("name", step.getText());
+        } else {
+            // Fake step (e.g., for @fail tag)
+            map.put("line", 0);
+            map.put("keyword", "*");
+            map.put("name", log != null ? log : "");
+        }
         map.put("result", resultToMap());
-        if (step.getDocString() != null) {
+        if (step != null && step.getDocString() != null) {
             map.put("doc_string", step.getDocString());
         }
-        if (step.getTable() != null) {
+        if (step != null && step.getTable() != null) {
             map.put("table", step.getTable().toKarateJson());
         }
         if (log != null && !log.isEmpty()) {

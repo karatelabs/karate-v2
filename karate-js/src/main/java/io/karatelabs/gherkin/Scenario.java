@@ -270,4 +270,11 @@ public class Scenario {
                 .anyMatch((t) -> t.equals(Tag.SETUP));
     }
 
+    public boolean isFail() {
+        return getTags() != null && getTags()
+                .stream()
+                .map(Tag::getName)
+                .anyMatch((t) -> t.equals(Tag.FAIL));
+    }
+
 }

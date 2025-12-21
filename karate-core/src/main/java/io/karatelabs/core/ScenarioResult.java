@@ -33,11 +33,14 @@ import java.util.Map;
 
 public class ScenarioResult implements Comparable<ScenarioResult> {
 
+    public static final String EXPECT_TEST_TO_FAIL_BECAUSE_OF_FAIL_TAG = "Expect test to fail because of @fail tag";
+
     private final Scenario scenario;
     private final List<StepResult> stepResults = new ArrayList<>();
     private long startTime;
     private long endTime;
     private String threadName;
+    private boolean failTagApplied;
 
     public ScenarioResult(Scenario scenario) {
         this.scenario = scenario;
@@ -80,10 +83,22 @@ public class ScenarioResult implements Comparable<ScenarioResult> {
     }
 
     public boolean isPassed() {
+        if (failTagApplied) {
+            // When @fail tag is applied, check if the last (fake) step passed
+            if (!stepResults.isEmpty()) {
+                return stepResults.get(stepResults.size() - 1).isPassed();
+            }
+        }
         return stepResults.stream().noneMatch(StepResult::isFailed);
     }
 
     public boolean isFailed() {
+        if (failTagApplied) {
+            // When @fail tag is applied, check if the last (fake) step failed
+            if (!stepResults.isEmpty()) {
+                return stepResults.get(stepResults.size() - 1).isFailed();
+            }
+        }
         return stepResults.stream().anyMatch(StepResult::isFailed);
     }
 
@@ -123,6 +138,29 @@ public class ScenarioResult implements Comparable<ScenarioResult> {
 
     public int getSkippedCount() {
         return (int) stepResults.stream().filter(StepResult::isSkipped).count();
+    }
+
+    /**
+     * Apply @fail tag logic: invert the pass/fail result.
+     * If the scenario failed (as expected with @fail), mark it as passed.
+     * If the scenario passed (unexpectedly with @fail), mark it as failed.
+     */
+    public void applyFailTag() {
+        boolean originallyFailed = stepResults.stream().anyMatch(StepResult::isFailed);
+        if (originallyFailed) {
+            // Expected: test was supposed to fail and it did - mark as success
+            // Add a fake passing step to indicate the @fail expectation was met
+            stepResults.add(StepResult.fakeSuccess(EXPECT_TEST_TO_FAIL_BECAUSE_OF_FAIL_TAG, System.currentTimeMillis()));
+        } else {
+            // Unexpected: test was supposed to fail but passed - mark as failure
+            stepResults.add(StepResult.fakeFailure(EXPECT_TEST_TO_FAIL_BECAUSE_OF_FAIL_TAG, System.currentTimeMillis(),
+                    new RuntimeException(EXPECT_TEST_TO_FAIL_BECAUSE_OF_FAIL_TAG)));
+        }
+        failTagApplied = true;
+    }
+
+    public boolean isFailTagApplied() {
+        return failTagApplied;
     }
 
     public Map<String, Object> toKarateJson() {
