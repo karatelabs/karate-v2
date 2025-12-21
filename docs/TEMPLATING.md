@@ -1825,6 +1825,99 @@ Available properties: `iter.index`, `iter.count`, `iter.first`, `iter.last`, `it
 
 ---
 
+## Using Templates from Karate Features
+
+The `doc` keyword allows rendering HTML templates directly from Karate feature files. This is useful for generating custom reports, documentation, or any HTML output during test execution.
+
+### Basic Usage
+
+```cucumber
+Feature: Generate Report
+
+Scenario: Create user report
+  * def users = [{name: 'Alice', role: 'Admin'}, {name: 'Bob', role: 'User'}]
+  * def reportTitle = 'User Summary'
+  * doc 'user-report.html'
+```
+
+**user-report.html:**
+```html
+<!DOCTYPE html>
+<html>
+<head><title th:text="reportTitle">Report</title></head>
+<body>
+  <h1 th:text="reportTitle">Title</h1>
+  <table>
+    <tr th:each="user : users">
+      <td th:text="user.name">Name</td>
+      <td th:text="user.role">Role</td>
+    </tr>
+  </table>
+</body>
+</html>
+```
+
+### Syntax Options
+
+```cucumber
+# String path (resolves relative to feature file)
+* doc 'template.html'
+
+# Map syntax with read key
+* doc { read: 'reports/summary.html' }
+```
+
+### Path Resolution
+
+Templates are resolved relative to the feature file's parent directory:
+
+| Path | Resolution |
+|------|------------|
+| `template.html` | Relative to feature file directory |
+| `reports/summary.html` | Subdirectory relative to feature |
+| `/templates/report.html` | Leading `/` stripped, still relative to feature directory |
+| `classpath:templates/report.html` | Classpath lookup (for templates in JARs) |
+
+**Important:** A path starting with `/` does NOT resolve to the filesystem root. It is treated as relative to the feature file's parent directory (the leading `/` is stripped). This matches V1 behavior.
+
+### Variable Access
+
+All scenario variables are automatically available in templates:
+
+```cucumber
+* def title = 'My Report'
+* def items = [{id: 1, name: 'Item 1'}, {id: 2, name: 'Item 2'}]
+* def config = { showDetails: true }
+* doc 'report.html'
+```
+
+```html
+<h1 th:text="title">Title</h1>
+<div th:if="config.showDetails">
+  <ul>
+    <li th:each="item : items" th:text="item.name">Item</li>
+  </ul>
+</div>
+```
+
+### Report Integration
+
+The rendered HTML is automatically embedded in the step result, making it visible in HTML reports. The embed appears with MIME type `text/html`.
+
+### Programmatic Access
+
+For advanced use cases, you can capture the rendered HTML:
+
+```java
+// In Java/test setup
+karateJs.setOnDoc(html -> {
+    // Process the rendered HTML
+    saveToFile(html, "output.html");
+});
+```
+
+---
+
 ## Summary
 
 | Feature | Syntax | Description |
@@ -1844,3 +1937,4 @@ Available properties: `iter.index`, `iter.count`, `iter.first`, `iter.last`, `it
 | HTMX target | `ka:target="#id"` | Update target element |
 | HTMX swap | `ka:swap="outerHTML"` | How to update content |
 | Alpine binding | `ka:data="var:expr"` | Bind server data to AlpineJS form |
+| Karate doc | `* doc 'template.html'` | Render template from feature file |

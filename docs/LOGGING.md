@@ -67,6 +67,31 @@ ctx.log("Value: {}", someValue);  // SLF4J-style formatting
 String allLogs = ctx.collect();  // Get captured logs
 ```
 
+### Embedding Content
+
+`LogContext` also collects embedded content (HTML, images, etc.) for inclusion in reports:
+
+```java
+LogContext ctx = LogContext.get();
+
+// Embed HTML content
+ctx.embed(htmlBytes, "text/html");
+
+// Embed with optional name
+ctx.embed(imageBytes, "image/png", "screenshot.png");
+
+// Collect embeds (typically done by StepExecutor)
+List<StepResult.Embed> embeds = ctx.collectEmbeds();
+```
+
+The `doc` keyword uses this system to embed rendered templates:
+
+```gherkin
+* doc 'report.html'  # Rendered HTML is embedded in step result
+```
+
+Embeds appear in HTML reports and are included in the JSON output as Base64-encoded data.
+
 ### Forwarding to SLF4J (Cascade)
 
 By default, test logs only go to reports. To also forward to SLF4J:

@@ -58,9 +58,32 @@ Suite → FeatureRuntime → ScenarioRuntime → StepExecutor
 
 **HTTP:** `url`, `path`, `param`, `params`, `header`, `headers`, `cookie`, `cookies`, `form field`, `form fields`, `request`, `method`, `status`, `multipart file`, `multipart field`, `multipart fields`, `multipart files`, `multipart entity`
 
-**Control Flow:** `call`, `callonce`, `eval`
+**Control Flow:** `call`, `callonce`, `eval`, `doc`
 
 **Config:** `configure` (ssl, proxy, readTimeout, connectTimeout, followRedirects, headers, charset)
+
+#### doc Keyword
+
+The `doc` keyword renders HTML templates and embeds the output in test reports. Uses the templating infrastructure from [TEMPLATING.md](./TEMPLATING.md).
+
+```cucumber
+# String path syntax
+* doc 'users.html'
+
+# Map syntax with read key
+* doc { read: 'report-template.html' }
+```
+
+**Path resolution:**
+- Relative paths resolve from the feature file's parent directory
+- `/path` → strips leading `/`, resolves relative to feature's parent (NOT filesystem root)
+- `classpath:path` → classpath lookup (for templates in JARs)
+
+**Behavior:**
+- Template is rendered using the Karate templating engine (Thymeleaf-style syntax with JavaScript expressions)
+- All scenario variables are available in the template
+- Rendered HTML is embedded in the step result for reports
+- If `karate.setOnDoc(consumer)` is set, the HTML is also sent to that consumer
 
 #### Data Conversion Keywords
 

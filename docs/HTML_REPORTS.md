@@ -251,6 +251,35 @@ The v2 JSON uses **step-level source** - each step carries its own text with ind
 | `steps[].hasLogs` | True if step has log output |
 | `steps[].logs` | Log entries (HTTP, print, etc.) |
 | `steps[].error` | Error message if failed |
+| `steps[].embeds` | Array of embedded content (HTML from `doc`, images, etc.) |
+| `embeds[].mime_type` | MIME type (e.g., `text/html`, `image/png`) |
+| `embeds[].data` | Base64-encoded content |
+| `embeds[].name` | Optional name/label |
+
+### Embeds
+
+Steps can include embedded content that appears in HTML reports. The `doc` keyword automatically embeds rendered HTML templates:
+
+```cucumber
+* doc 'user-report.html'
+```
+
+This produces a step result with:
+```json
+{
+  "keyword": "doc",
+  "text": "'user-report.html'",
+  "status": "passed",
+  "embeds": [
+    {
+      "mime_type": "text/html",
+      "data": "PCFET0NUWVBFIGh0bWw+Li4u"
+    }
+  ]
+}
+```
+
+The embed system is extensible via `LogContext.get().embed(data, mimeType)` for custom embed types.
 
 ---
 
