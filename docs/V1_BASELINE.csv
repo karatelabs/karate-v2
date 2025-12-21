@@ -40,14 +40,14 @@ java-038,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead,,testJs
 java-039,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead2,,testJsRead2,root,passed,Fixed NPE in Scenario.replace() for unnamed scenario outlines,DynamicOutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
 java-040,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead3,,testJsRead3,root,passed,Same fix as java-039 - unnamed scenario outlines,DynamicOutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
 java-041,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead4,,testJsRead4,root,passed,Same fix as java-039 - unnamed scenario outlines,DynamicOutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
-java-042,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsMapRepeat,,testJsMapRepeat,root,pending,,,
+java-042,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsMapRepeat,,testJsMapRepeat,root,passed,karate.map and karate.repeat work correctly,StepJsTest,2025-12-21
 java-043,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallFeature,,testCallFeature,root,passed,runs call-feature.feature which passes,,2025-12-19
-java-044,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineGenerator,,testOutlineGenerator,root,pending,,,
-java-045,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testToBean,,testToBean,root,pending,,,
+java-044,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineGenerator,,testOutlineGenerator,root,passed,dynamic outline generator with karate.setup() works,,2025-12-21
+java-045,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testToBean,,testToBean,root,passed,Cat class and toBean/toJson/toJava tests added,JavaInteropTest,2025-12-21
 java-046,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutline,,testOutline,root,passed,runs outline.feature which passes,,2025-12-19
-java-047,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineBackground,,testOutlineBackground,root,pending,,,
-java-048,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineDynamic,,testOutlineDynamic,root,pending,,,
-java-049,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineSetupOnce,,testOutlineSetupOnce,root,pending,,,
+java-047,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineBackground,,testOutlineBackground,root,passed,table in @setup with dynamic outline works - added testDynamicOutlineWithTableKeyword,DynamicOutlineTest,2025-12-21
+java-048,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineDynamic,,testOutlineDynamic,root,passed,dynamic outline with __row and __num works,DynamicOutlineTest,2025-12-21
+java-049,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineSetupOnce,,testOutlineSetupOnce,root,passed,setupOnce with dynamic outline works,DynamicOutlineTest,2025-12-21
 java-050,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineConfigJsParallel,,testOutlineConfigJsParallel,root,pending,,,
 java-051,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineConfigJsCallSingleParallel,,testOutlineConfigJsCallSingleParallel,root,pending,,,
 java-052,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallSingleOutlineExampleByTag,,testCallSingleOutlineExampleByTag,root,pending,,,

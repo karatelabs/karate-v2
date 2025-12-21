@@ -512,4 +512,33 @@ class DynamicOutlineTest {
         assertEquals(0, result.getFailedCount());
     }
 
+    @Test
+    void testDynamicOutlineWithTableKeyword() throws Exception {
+        // Tests that table keyword in @setup scenario works with dynamic outline
+        Path feature = tempDir.resolve("dynamic-table.feature");
+        Files.writeString(feature, """
+            Feature:
+
+            @setup
+            Scenario:
+            * table data
+                | name  | extra   |
+                | 'one' |         |
+                | 'two' | 'value' |
+
+            Scenario Outline:
+            * assert name == 'one' || name == 'two'
+
+            Examples:
+            | karate.setup().data |
+            """);
+
+        Feature f = Feature.read(Resource.from(feature, tempDir));
+        FeatureRuntime fr = new FeatureRuntime(null, f);
+        FeatureResult result = fr.call();
+
+        assertEquals(2, result.getPassedCount(), "Should have 2 passing scenarios from table data");
+        assertEquals(0, result.getFailedCount());
+    }
+
 }

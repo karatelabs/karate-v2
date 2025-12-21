@@ -1071,6 +1071,42 @@ public class KarateJs implements SimpleObject {
         };
     }
 
+    private Invokable toJava() {
+        return args -> {
+            logger.warn("karate.toJava() is deprecated and a no-op in V2 - JavaScript arrays work directly with Java");
+            if (args.length < 1) {
+                return null;
+            }
+            return args[0]; // no-op, just return the input
+        };
+    }
+
+    private Invokable toJson() {
+        return args -> {
+            if (args.length < 1) {
+                throw new RuntimeException("toJson() needs at least one argument");
+            }
+            Object obj = args[0];
+            boolean removeNulls = args.length > 1 && Boolean.TRUE.equals(args[1]);
+            Object result = Json.of(obj).value();
+            if (removeNulls) {
+                removeNullValues(result);
+            }
+            return result;
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private void removeNullValues(Object obj) {
+        if (obj instanceof Map) {
+            Map<String, Object> map = (Map<String, Object>) obj;
+            map.entrySet().removeIf(e -> e.getValue() == null);
+            map.values().forEach(this::removeNullValues);
+        } else if (obj instanceof List) {
+            ((List<?>) obj).forEach(this::removeNullValues);
+        }
+    }
+
     private Invokable remove() {
         return args -> {
             if (args.length < 2) {
@@ -1630,6 +1666,8 @@ public class KarateJs implements SimpleObject {
             case "sizeOf" -> sizeOf();
             case "sort" -> sort();
             case "toBean" -> toBean();
+            case "toJava" -> toJava();
+            case "toJson" -> toJson();
             case "toStringPretty" -> toStringPretty();
             case "typeOf" -> typeOf();
             case "valuesOf" -> valuesOf();

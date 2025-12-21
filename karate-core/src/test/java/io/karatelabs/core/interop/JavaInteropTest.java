@@ -79,4 +79,53 @@ class JavaInteropTest {
         assertPassed(sr);
     }
 
+    @Test
+    void testCatConstructorAndSetters() {
+        // Test creating Cat with constructor and setters
+        ScenarioRuntime sr = run("""
+            * def Cat = Java.type('io.karatelabs.core.interop.Cat')
+            * def toJson = function(x){ return karate.toJson(x, true) }
+            * def billie = new Cat()
+            * billie.id = 1
+            * billie.name = 'Billie'
+            * match toJson(billie) == { id: 1, name: 'Billie' }
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testCatToBeanWithKittens() {
+        // Test karate.toBean() with nested Cat objects
+        ScenarioRuntime sr = run("""
+            * def catType = 'io.karatelabs.core.interop.Cat'
+            * def toCat = function(x){ return karate.toBean(x, catType) }
+            * def toJson = function(x){ return karate.toJson(x, true) }
+            * def billie = toCat({ id: 1, name: 'Billie' })
+            * def bob = toCat({ id: 2, name: 'Bob' })
+            * def wild = toCat({ id: 3, name: 'Wild' })
+            * billie.addKitten(bob)
+            * billie.addKitten(wild)
+            * def result = toJson(billie)
+            * match result == { id: 1, name: 'Billie', kittens: [{ id: 2, name: 'Bob' }, { id: 3, name: 'Wild' }] }
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testCatKittensWithToJava() {
+        // Test setting kittens list using karate.toJava()
+        ScenarioRuntime sr = run("""
+            * def catType = 'io.karatelabs.core.interop.Cat'
+            * def toCat = function(x){ return karate.toBean(x, catType) }
+            * def toJson = function(x){ return karate.toJson(x, true) }
+            * def billie = toCat({ id: 1, name: 'Billie' })
+            * def names = ['Bob', 'Wild']
+            * def fun = function(n, i){ return { id: i + 2, name: n } }
+            * def kittens = karate.map(names, fun)
+            * billie.kittens = karate.toJava(kittens)
+            * match toJson(billie) contains { kittens: '#[2]' }
+            """);
+        assertPassed(sr);
+    }
+
 }
