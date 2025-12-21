@@ -26,29 +26,87 @@ package io.karatelabs.core.mock;
 import io.karatelabs.core.MockServer;
 import io.karatelabs.core.ScenarioRuntime;
 import io.karatelabs.io.http.ApacheHttpClient;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static io.karatelabs.core.TestUtils.*;
 
 /**
  * End-to-end tests for mock features.
- * Tests mock features (without @mock tag) work with V2 MockHandler.
- *
- * These are end-to-end tests that:
- * 1. Start a MockServer with a mock feature
- * 2. Run Karate feature tests that make HTTP calls to the mock
- * 3. Verify the responses using Karate match expressions
+ * Uses a shared mock server for all tests, running Karate features against it.
  *
  * NOTE: Tests from karate-demo (e.g., demo/mock/) are a separate exercise.
  * This file focuses on core mock functionality from karate-core.
  */
 class MockE2eTest {
 
-    private MockServer server;
+    private static MockServer server;
+    private static int port;
 
-    @AfterEach
-    void cleanup() {
+    @BeforeAll
+    static void startServer() {
+        // Comprehensive mock server handling all test scenarios
+        server = MockServer.featureString("""
+            Feature: E2E Test Mock
+
+            Background:
+              * def counter = 0
+              * def payments = {}
+              * def foo = { bar: 'baz' }
+
+            # Payment CRUD scenarios
+            Scenario: pathMatches('/payments') && methodIs('post')
+              * def payment = request
+              * def counter = counter + 1
+              * def id = '' + counter
+              * payment.id = id
+              * payments[id] = payment
+              * def response = payment
+
+            Scenario: pathMatches('/payments/{id}') && methodIs('put')
+              * payments[pathParams.id] = request
+              * def response = request
+
+            Scenario: pathMatches('/payments/{id}') && methodIs('delete')
+              * karate.remove('payments', pathParams.id)
+              * def responseStatus = 204
+
+            Scenario: pathMatches('/payments/{id}')
+              * def response = payments[pathParams.id]
+              * def responseStatus = response ? 200 : 404
+
+            Scenario: pathMatches('/payments')
+              * def response = karate.valuesOf(payments)
+
+            # Simple response scenarios
+            Scenario: pathMatches('/hello')
+              * def response = foo
+
+            # Performance test scenarios
+            Scenario: pathMatches('/fast')
+              * def response = { speed: 'fast' }
+
+            Scenario: pathMatches('/slow')
+              * def responseDelay = 100
+              * def response = { speed: 'slow' }
+
+            # Path params test
+            Scenario: pathMatches('/users/{userId}/orders/{orderId}')
+              * def response = { userId: pathParams.userId, orderId: pathParams.orderId }
+
+            # Headers test
+            Scenario: pathMatches('/headers')
+              * def response = { auth: requestHeaders['Authorization'][0], custom: requestHeaders['X-Custom'][0] }
+            """)
+            .port(0)
+            .start();
+
+        port = server.getPort();
+    }
+
+    @AfterAll
+    static void stopServer() {
         if (server != null) {
             server.stop();
         }
@@ -56,41 +114,6 @@ class MockE2eTest {
 
     @Test
     void testPaymentsMockCrud() {
-        // Start mock server with V1-style feature (no @mock tag)
-        server = MockServer.featureString("""
-            Feature:
-
-            Background:
-            * def counter = 0
-            * def payments = {}
-
-            Scenario: pathMatches('/payments') && methodIs('post')
-            * def payment = request
-            * def counter = counter + 1
-            * def id = '' + counter
-            * payment.id = id
-            * payments[id] = payment
-            * def response = payment
-
-            Scenario: pathMatches('/payments')
-            * def response = karate.valuesOf(payments)
-
-            Scenario: pathMatches('/payments/{id}') && methodIs('put')
-            * payments[pathParams.id] = request
-            * def response = request
-
-            Scenario: pathMatches('/payments/{id}') && methodIs('delete')
-            * karate.remove('payments', pathParams.id)
-            * def responseStatus = 204
-
-            Scenario: pathMatches('/payments/{id}')
-            * def response = payments[pathParams.id]
-            * def responseStatus = response ? 200 : 404
-            """)
-            .port(0)
-            .start();
-
-        // Run Karate feature to test the mock
         ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
             Feature: Test Payments Mock
 
@@ -140,27 +163,13 @@ class MockE2eTest {
             * path '/payments/' + id
             * method get
             * status 404
-            """.formatted(server.getPort()));
+            """.formatted(port));
 
         assertPassed(sr);
     }
 
     @Test
     void testCallResponseMock() {
-        // V1-style mock with background variables
-        server = MockServer.featureString("""
-            Feature:
-
-            Background:
-            * def foo = { bar: 'baz' }
-
-            Scenario: pathMatches('/hello')
-            * def response = foo
-            """)
-            .port(0)
-            .start();
-
-        // Run Karate feature test
         ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
             Feature: Test Call Response Mock
 
@@ -170,28 +179,13 @@ class MockE2eTest {
             * method get
             * status 200
             * match response == { bar: 'baz' }
-            """.formatted(server.getPort()));
+            """.formatted(port));
 
         assertPassed(sr);
     }
 
     @Test
     void testPerfMock() {
-        // V1-style mock with response delay
-        server = MockServer.featureString("""
-            Feature:
-
-            Scenario: pathMatches('/fast')
-            * def response = { speed: 'fast' }
-
-            Scenario: pathMatches('/slow')
-            * def responseDelay = 100
-            * def response = { speed: 'slow' }
-            """)
-            .port(0)
-            .start();
-
-        // Run Karate feature test with responseTime assertions
         ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
             Feature: Test Perf Mock
 
@@ -211,23 +205,13 @@ class MockE2eTest {
             * status 200
             * match response.speed == 'slow'
             * assert responseTime >= 100
-            """.formatted(server.getPort()));
+            """.formatted(port));
 
         assertPassed(sr);
     }
 
     @Test
     void testPathParams() {
-        // Test path parameter extraction (V1 pattern)
-        server = MockServer.featureString("""
-            Feature:
-
-            Scenario: pathMatches('/users/{userId}/orders/{orderId}')
-            * def response = { userId: pathParams.userId, orderId: pathParams.orderId }
-            """)
-            .port(0)
-            .start();
-
         ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
             Feature: Test Path Params
 
@@ -237,23 +221,13 @@ class MockE2eTest {
             * method get
             * status 200
             * match response == { userId: '123', orderId: '456' }
-            """.formatted(server.getPort()));
+            """.formatted(port));
 
         assertPassed(sr);
     }
 
     @Test
     void testRequestHeaders() {
-        // Test request header access (V1 pattern)
-        server = MockServer.featureString("""
-            Feature:
-
-            Scenario: pathMatches('/headers')
-            * def response = { auth: requestHeaders['Authorization'][0], custom: requestHeaders['X-Custom'][0] }
-            """)
-            .port(0)
-            .start();
-
         ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
             Feature: Test Request Headers
 
@@ -266,7 +240,7 @@ class MockE2eTest {
             * status 200
             * match response.auth == 'Bearer token123'
             * match response.custom == 'custom-value'
-            """.formatted(server.getPort()));
+            """.formatted(port));
 
         assertPassed(sr);
     }

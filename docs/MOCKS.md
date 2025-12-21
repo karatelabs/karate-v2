@@ -15,7 +15,6 @@ Mock servers in Karate allow you to create API test-doubles using feature files.
 - Keep JS functions as `JsCallable` for engine context injection
 - Request locking may still be needed for thread safety
 - Most tests use in-memory harness; real HTTP tests are minimal
-- New `@mock` tag identifies mock feature files
 - CLI: all mock functionality under `mock` subcommand
 
 ---
@@ -52,7 +51,6 @@ CLI / karate.start()
 ## Feature File Structure
 
 ```gherkin
-@mock
 Feature: User API Mock
 
 Background:
@@ -80,9 +78,9 @@ Scenario:
   * def response = { error: 'not found' }
 ```
 
-### @mock Tag
+### Mock Feature Structure
 
-The `@mock` tag at feature level indicates this is a mock definition (not a test):
+Mock feature files have a different execution model than test features:
 - Background executes once on server startup
 - Scenarios are request matchers, not test cases
 - Scenario names/descriptions are JavaScript expressions for matching
@@ -537,7 +535,6 @@ void testSslConfigParsing() {
 @Test
 void testMockServerWithSsl() {
     MockServer server = MockServer.feature("""
-        @mock
         Feature:
         Scenario: methodIs('get')
           * def response = { secure: true }
@@ -687,7 +684,7 @@ engine.put("typeContains", (JsCallable) args -> {
 
 Modify scenario execution for mock mode:
 
-1. Detect `@mock` tag on feature
+1. Feature is loaded as mock (via MockServer/MockHandler)
 2. Skip normal test execution
 3. Execute Background once on initialization
 4. For each request, evaluate scenario matchers and execute first match
@@ -784,7 +781,6 @@ Use `InMemoryHttpClient` pattern for fast, isolated tests:
 @Test
 void testMockHandler() {
     Feature mock = Feature.parse("""
-        @mock
         Feature:
         Background:
           * def data = { name: 'test' }
@@ -839,9 +835,11 @@ public class MockIntegrationTest {
 }
 ```
 
-### V1 Compatibility Tests
+### End-to-End Tests
 
-Run V1 mock-related tests via `run-v1-compat.sh`:
+End-to-end tests in `MockE2eTest.java` start a mock server and run Karate feature tests against it.
+
+For running tests from karate-demo, use `run-v1-compat.sh` (separate exercise):
 
 ```bash
 ./etc/run-v1-compat.sh mock-crud.feature
@@ -856,7 +854,6 @@ After implementing the CLI mock subcommand, manually verify with curl:
 
 ```bash
 cat > /tmp/test-mock.feature << 'EOF'
-@mock
 Feature: Test Mock
 
 Background:
@@ -1038,7 +1035,7 @@ karate-v2/
 14. **Integration tests** - Real HTTP with parallel
 15. **SSL integration tests** - HTTPS and mTLS tests
 16. **karate.proceed()** - Proxy mode
-17. **V1 compat tests** - Run mock-related V1 tests
+17. **E2e tests** - End-to-end mock tests using Karate features
 
 ---
 
@@ -1065,7 +1062,7 @@ karate-v2/
 | 13-14 | Stateful and integration tests | ✅ Complete (30 tests) |
 | 15 | SSL integration tests | ✅ Complete (5 tests) |
 | 16 | karate.proceed() proxy mode | ✅ Complete |
-| 17 | V1 compat tests | ✅ Complete (5 end-to-end tests) |
+| 17 | E2e tests | ✅ Complete (5 end-to-end tests) |
 
 ### Files Created
 
@@ -1088,7 +1085,7 @@ karate-v2/
 - `MockServerTest.java` - 6 integration tests with real HTTP
 - `MockServerSslTest.java` - 5 SSL integration tests (HTTPS, self-signed certs)
 - `MockProxyTest.java` - 3 proxy mode tests (karate.proceed())
-- `MockV1CompatTest.java` - 5 V1 compatibility end-to-end tests using Karate features
+- `MockE2eTest.java` - 5 end-to-end tests using Karate features
 
 Note: Tests from karate-demo are a separate exercise and not covered here.
 

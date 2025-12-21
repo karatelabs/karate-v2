@@ -37,18 +37,17 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Integration tests for MockServer using real HTTP connections.
+ * Integration tests for MockServer using real HTTPS connections.
+ * Uses SSL to also verify SSL functionality works.
  */
 class MockServerTest {
 
     private static MockServer server;
     private static HttpClient client;
-    private static String baseUrl;
 
     @BeforeAll
     static void startServer() {
         server = MockServer.featureString("""
-            @mock
             Feature: Integration Test Mock
 
             Background:
@@ -81,10 +80,11 @@ class MockServerTest {
               * def response = { error: 'not found' }
             """)
             .port(0)
+            .ssl(true)
             .start();
 
-        baseUrl = "http://localhost:" + server.getPort();
         client = new ApacheHttpClient();
+        client.config("ssl", true);
     }
 
     @AfterAll
@@ -107,7 +107,7 @@ class MockServerTest {
 
     private HttpResponse request(String method, String path, Object body) {
         HttpRequestBuilder builder = new HttpRequestBuilder(client);
-        builder.url(baseUrl).path(path).method(method);
+        builder.url(server.getUrl()).path(path).method(method);
         if (body != null) {
             builder.body(body);
         }
@@ -177,8 +177,10 @@ class MockServerTest {
     }
 
     @Test
-    void testServerPort() {
+    void testServerProperties() {
         assertTrue(server.getPort() > 0);
+        assertTrue(server.isSsl());
+        assertEquals("https://localhost:" + server.getPort(), server.getUrl());
     }
 
 }

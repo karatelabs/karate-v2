@@ -60,7 +60,6 @@ class MockHandlerTest {
     @Test
     void testSimpleGetResponse() {
         Feature feature = parseFeature("""
-            @mock
             Feature: Test Mock
 
             Scenario: pathMatches('/hello')
@@ -78,7 +77,6 @@ class MockHandlerTest {
     @Test
     void testMethodMatching() {
         Feature feature = parseFeature("""
-            @mock
             Feature: Test Mock
 
             Scenario: pathMatches('/api') && methodIs('get')
@@ -106,7 +104,6 @@ class MockHandlerTest {
     @Test
     void testPathParamsExtraction() {
         Feature feature = parseFeature("""
-            @mock
             Feature: Test Mock
 
             Scenario: pathMatches('/users/{id}')
@@ -124,7 +121,6 @@ class MockHandlerTest {
     @Test
     void testResponseStatus() {
         Feature feature = parseFeature("""
-            @mock
             Feature: Test Mock
 
             Scenario: pathMatches('/created')
@@ -142,7 +138,6 @@ class MockHandlerTest {
     @Test
     void testCatchAllScenario() {
         Feature feature = parseFeature("""
-            @mock
             Feature: Test Mock
 
             Scenario: pathMatches('/specific')
@@ -171,7 +166,6 @@ class MockHandlerTest {
     @Test
     void testStatefulMock() {
         Feature feature = parseFeature("""
-            @mock
             Feature: Test Mock
 
             Background:
@@ -204,7 +198,6 @@ class MockHandlerTest {
     @Test
     void testCorsConfiguration() {
         Feature feature = parseFeature("""
-            @mock
             Feature: Test Mock
 
             Background:
@@ -232,7 +225,6 @@ class MockHandlerTest {
     @Test
     void testConfigureResponseHeaders() {
         Feature feature = parseFeature("""
-            @mock
             Feature: Test Mock
 
             Background:
@@ -253,7 +245,6 @@ class MockHandlerTest {
     @Test
     void testTypeContains() {
         Feature feature = parseFeature("""
-            @mock
             Feature: Test Mock
 
             Scenario: pathMatches('/api') && typeContains('json')
@@ -275,7 +266,6 @@ class MockHandlerTest {
     @Test
     void testRequestVariables() {
         Feature feature = parseFeature("""
-            @mock
             Feature: Test Mock
 
             Scenario: pathMatches('/echo')
@@ -294,7 +284,6 @@ class MockHandlerTest {
     @Test
     void testNoMatchReturns404() {
         Feature feature = parseFeature("""
-            @mock
             Feature: Test Mock
 
             Scenario: pathMatches('/specific')

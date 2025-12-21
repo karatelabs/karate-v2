@@ -28,7 +28,8 @@ import io.karatelabs.io.http.ApacheHttpClient;
 import io.karatelabs.io.http.HttpClient;
 import io.karatelabs.io.http.HttpRequestBuilder;
 import io.karatelabs.io.http.HttpResponse;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -37,15 +38,60 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for karate.proceed() proxy mode functionality.
+ * Uses shared backend and proxy servers for efficiency.
  */
 class MockProxyTest {
 
-    private MockServer backendServer;
-    private MockServer proxyServer;
-    private HttpClient client;
+    private static MockServer backendServer;
+    private static MockServer proxyServer;
+    private static HttpClient client;
 
-    @AfterEach
-    void cleanup() {
+    @BeforeAll
+    static void startServers() {
+        // Backend handles multiple endpoints for all tests
+        backendServer = MockServer.featureString("""
+            Feature: Backend API
+
+            Scenario: pathMatches('/api/data') && methodIs('get')
+              * def response = { source: 'backend', message: 'hello from backend' }
+
+            Scenario: pathMatches('/echo') && methodIs('post')
+              * def response = { received: request }
+              * def responseStatus = 201
+
+            Scenario: methodIs('get')
+              * def response = { original: true }
+            """)
+            .port(0)
+            .start();
+
+        // Proxy forwards to backend with different behaviors per path
+        String backendUrl = "http://localhost:" + backendServer.getPort();
+        proxyServer = MockServer.featureString("""
+            Feature: Proxy
+
+            Background:
+              * def backendUrl = '%s'
+
+            Scenario: pathMatches('/api/data')
+              * def response = karate.proceed(backendUrl)
+
+            Scenario: pathMatches('/echo') && methodIs('post')
+              * def response = karate.proceed(backendUrl)
+
+            Scenario: pathMatches('/modify')
+              * def backendResponse = karate.proceed(backendUrl)
+              * def originalBody = backendResponse.body
+              * def response = { original: originalBody.original, modified: true, timestamp: 'now' }
+            """.formatted(backendUrl))
+            .port(0)
+            .start();
+
+        client = new ApacheHttpClient();
+    }
+
+    @AfterAll
+    static void stopServers() {
         if (client != null) {
             try {
                 client.close();
@@ -63,33 +109,6 @@ class MockProxyTest {
 
     @Test
     void testProceedWithTargetUrl() {
-        // Start a backend server
-        backendServer = MockServer.featureString("""
-            @mock
-            Feature: Backend API
-
-            Scenario: pathMatches('/api/data')
-              * def response = { source: 'backend', message: 'hello from backend' }
-            """)
-            .port(0)
-            .start();
-
-        // Start a proxy server that forwards to backend
-        String backendUrl = "http://localhost:" + backendServer.getPort();
-        proxyServer = MockServer.featureString("""
-            @mock
-            Feature: Proxy
-
-            Background:
-              * def backendUrl = '%s'
-
-            Scenario: pathMatches('/api/data')
-              * def response = karate.proceed(backendUrl)
-            """.formatted(backendUrl))
-            .port(0)
-            .start();
-
-        client = new ApacheHttpClient();
         HttpRequestBuilder builder = new HttpRequestBuilder(client);
         builder.url("http://localhost:" + proxyServer.getPort()).path("/api/data").method("GET");
         HttpResponse response = builder.invoke();
@@ -104,34 +123,6 @@ class MockProxyTest {
 
     @Test
     void testProceedWithPostRequest() {
-        // Backend that echoes the request body
-        backendServer = MockServer.featureString("""
-            @mock
-            Feature: Backend Echo
-
-            Scenario: pathMatches('/echo') && methodIs('post')
-              * def response = { received: request }
-              * def responseStatus = 201
-            """)
-            .port(0)
-            .start();
-
-        // Proxy that forwards POST requests
-        String backendUrl = "http://localhost:" + backendServer.getPort();
-        proxyServer = MockServer.featureString("""
-            @mock
-            Feature: Proxy
-
-            Background:
-              * def backendUrl = '%s'
-
-            Scenario: pathMatches('/echo') && methodIs('post')
-              * def response = karate.proceed(backendUrl)
-            """.formatted(backendUrl))
-            .port(0)
-            .start();
-
-        client = new ApacheHttpClient();
         HttpRequestBuilder builder = new HttpRequestBuilder(client);
         builder.url("http://localhost:" + proxyServer.getPort())
             .path("/echo")
@@ -153,37 +144,8 @@ class MockProxyTest {
 
     @Test
     void testProceedWithResponseModification() {
-        // Backend returns basic data
-        backendServer = MockServer.featureString("""
-            @mock
-            Feature: Backend
-
-            Scenario: methodIs('get')
-              * def response = { original: true }
-            """)
-            .port(0)
-            .start();
-
-        // Proxy modifies the response before returning
-        String backendUrl = "http://localhost:" + backendServer.getPort();
-        proxyServer = MockServer.featureString("""
-            @mock
-            Feature: Modifying Proxy
-
-            Background:
-              * def backendUrl = '%s'
-
-            Scenario: methodIs('get')
-              * def backendResponse = karate.proceed(backendUrl)
-              * def originalBody = backendResponse.body
-              * def response = { original: originalBody.original, modified: true, timestamp: 'now' }
-            """.formatted(backendUrl))
-            .port(0)
-            .start();
-
-        client = new ApacheHttpClient();
         HttpRequestBuilder builder = new HttpRequestBuilder(client);
-        builder.url("http://localhost:" + proxyServer.getPort()).path("/").method("GET");
+        builder.url("http://localhost:" + proxyServer.getPort()).path("/modify").method("GET");
         HttpResponse response = builder.invoke();
 
         assertEquals(200, response.getStatus());
