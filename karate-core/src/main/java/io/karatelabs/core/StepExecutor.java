@@ -333,8 +333,8 @@ public class StepExecutor {
             @SuppressWarnings("unchecked")
             Map<String, Object> cached = (Map<String, Object>) cache.get(cacheKey);
             if (cached != null) {
-                // Return cached result
-                runtime.setVariable(resultVar, cached);
+                // Return deep copy to prevent cross-scenario mutation
+                runtime.setVariable(resultVar, deepCopy(cached));
                 return;
             }
         }
@@ -342,12 +342,12 @@ public class StepExecutor {
         // Not cached - execute the call
         executeCallWithResult(callExpr, resultVar);
 
-        // Cache the result
+        // Cache a deep copy of the result
         if (cache != null) {
             @SuppressWarnings("unchecked")
             Map<String, Object> resultVars = (Map<String, Object>) runtime.getVariable(resultVar);
             if (resultVars != null) {
-                cache.put(cacheKey, new HashMap<>(resultVars));
+                cache.put(cacheKey, deepCopy(resultVars));
             }
         }
     }
@@ -2133,8 +2133,10 @@ public class StepExecutor {
             @SuppressWarnings("unchecked")
             Map<String, Object> cached = (Map<String, Object>) cache.get(cacheKey);
             if (cached != null) {
-                // Apply cached variables to current runtime
-                for (Map.Entry<String, Object> entry : cached.entrySet()) {
+                // Apply deep copies of cached variables to current runtime
+                @SuppressWarnings("unchecked")
+                Map<String, Object> copies = (Map<String, Object>) deepCopy(cached);
+                for (Map.Entry<String, Object> entry : copies.entrySet()) {
                     runtime.setVariable(entry.getKey(), entry.getValue());
                 }
                 return;
@@ -2144,9 +2146,9 @@ public class StepExecutor {
         // Not cached - execute the call
         executeCall(step);
 
-        // Cache the result
+        // Cache a deep copy of the result
         if (cache != null && fr.getLastExecuted() != null) {
-            cache.put(cacheKey, new HashMap<>(runtime.getAllVariables()));
+            cache.put(cacheKey, deepCopy(runtime.getAllVariables()));
         }
     }
 
@@ -2705,6 +2707,35 @@ public class StepExecutor {
                 }
             }
         }
+    }
+
+    // ========== Deep Copy Utility ==========
+
+    /**
+     * Deep copy to prevent cross-scenario mutation of cached data.
+     * Creates new ArrayList/LinkedHashMap instances for collections.
+     */
+    @SuppressWarnings("unchecked")
+    private Object deepCopy(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Map) {
+            Map<String, Object> copy = new LinkedHashMap<>();
+            for (Map.Entry<String, Object> entry : ((Map<String, Object>) value).entrySet()) {
+                copy.put(entry.getKey(), deepCopy(entry.getValue()));
+            }
+            return copy;
+        }
+        if (value instanceof List) {
+            List<Object> copy = new ArrayList<>();
+            for (Object item : (List<Object>) value) {
+                copy.add(deepCopy(item));
+            }
+            return copy;
+        }
+        // Primitives, strings, functions, etc. are immutable - return as-is
+        return value;
     }
 
 }

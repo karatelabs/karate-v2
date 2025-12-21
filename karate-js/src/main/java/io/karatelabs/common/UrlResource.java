@@ -122,7 +122,12 @@ public class UrlResource implements Resource {
 
     @Override
     public Resource resolve(String path) {
+        // Handle classpath: prefix - delegate to Resource.path() for classpath lookup
+        if (path.startsWith(Resource.CLASSPATH_COLON)) {
+            return Resource.path(path);
+        }
         // For URL resources, resolve creates a new URL relative to this one
+        // Note: leading "/" is URL-relative (e.g., https://host/path), not working dir
         try {
             URI baseUri = url.toURI();
             URI resolvedUri = baseUri.resolve(path);

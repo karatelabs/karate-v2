@@ -102,6 +102,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         karate.setScenarioProvider(this::getScenarioData);
         karate.setSignalConsumer(this::setListenResult);
         karate.setConfigureHandler(this::configure);
+        karate.setConfigProvider(() -> configSettings);
         karate.setCurrentResourceProvider(this::getCurrentResource);
 
         // Set karate.env before config evaluation
@@ -393,14 +394,15 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         // Check cache first
         Map<String, Object> cached = (Map<String, Object>) cache.get(cacheKey);
         if (cached != null) {
-            return new HashMap<>(cached);
+            // Deep copy to prevent cross-scenario mutation
+            return (Map<String, Object>) deepCopy(cached);
         }
 
         // Not cached - execute the call
         Map<String, Object> result = executeJsCall(path, arg);
 
-        // Cache the result
-        cache.put(cacheKey, new HashMap<>(result));
+        // Cache a deep copy to prevent the caller from mutating the cache
+        cache.put(cacheKey, (Map<String, Object>) deepCopy(result));
 
         return result;
     }
@@ -706,15 +708,16 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
     }
 
     public void configure(String key, Object value) {
-        configSettings.put(key, value);
         // Apply configuration to relevant components
         switch (key) {
             case "ssl", "proxy", "readTimeout", "connectTimeout", "followRedirects" -> {
                 // HTTP client configuration - delegate to client
+                configSettings.put(key, value);
                 karate.client.config(key, value);
             }
             case "headers" -> {
                 // Set default headers on HTTP request builder
+                configSettings.put(key, value);
                 if (value instanceof Map) {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> headers = (Map<String, Object>) value;
@@ -723,11 +726,21 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
             }
             case "charset" -> {
                 // Set default charset for HTTP requests
+                configSettings.put(key, value);
                 if (value instanceof String) {
                     karate.http.charset((String) value);
                 }
             }
-            // Additional configure options can be added as needed
+            // TODO: Add more V1 configure keys as needed (see RUNTIME.md)
+            case "url", "cookies", "lowerCaseResponseHeaders", "logPrettyRequest",
+                 "logPrettyResponse", "printEnabled", "retry", "report",
+                 "httpRetryEnabled", "localAddress", "ntlmAuth", "callSingleCache",
+                 "continueOnStepFailure", "abortedStepsShouldPass", "abortSuiteOnFailure" -> {
+                // Recognized but not yet implemented
+                configSettings.put(key, value);
+                JvmLogger.warn("configure '{}' not yet implemented in V2", key);
+            }
+            default -> throw new RuntimeException("unexpected 'configure' key: '" + key + "'");
         }
     }
 

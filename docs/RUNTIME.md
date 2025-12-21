@@ -60,7 +60,7 @@ Suite → FeatureRuntime → ScenarioRuntime → StepExecutor
 
 **Control Flow:** `call`, `callonce`, `eval`, `doc`
 
-**Config:** `configure` (ssl, proxy, readTimeout, connectTimeout, followRedirects, headers, charset)
+**Config:** `configure` (see [Configure Keys](#configure-keys) for status)
 
 #### doc Keyword
 
@@ -821,6 +821,53 @@ Scenario: This should fail
 With `@fail`:
 - If the scenario fails → test passes (expected behavior)
 - If the scenario passes → test fails (unexpected - should have failed)
+
+---
+
+## Configure Keys
+
+The `configure` keyword only accepts specific keys (like V1). Unknown keys throw an error.
+
+### Implemented
+
+| Key | Description |
+|-----|-------------|
+| `ssl` | SSL/TLS configuration |
+| `proxy` | HTTP proxy settings |
+| `readTimeout` | HTTP read timeout (ms) |
+| `connectTimeout` | HTTP connect timeout (ms) |
+| `followRedirects` | Follow HTTP redirects |
+| `headers` | Default HTTP headers |
+| `charset` | Default charset for requests |
+
+### TODO - Recognized but Not Yet Implemented
+
+| Key | V1 Description | Priority |
+|-----|----------------|----------|
+| `url` | Base URL for HTTP requests | High |
+| `cookies` | Default cookies | High |
+| `lowerCaseResponseHeaders` | Normalize response header names | Medium |
+| `logPrettyRequest` | Pretty-print request logs | Medium |
+| `logPrettyResponse` | Pretty-print response logs | Medium |
+| `printEnabled` | Enable/disable print output | Medium |
+| `retry` | Retry configuration `{ count, interval }` | Medium |
+| `report` | Report verbosity `{ showLog, showAllSteps }` | Medium |
+| `httpRetryEnabled` | Auto-retry failed HTTP requests | Low |
+| `localAddress` | Bind to specific local address | Low |
+| `ntlmAuth` | NTLM authentication | Low |
+| `callSingleCache` | File-based callSingle cache | Low |
+| `continueOnStepFailure` | Continue after match failures | Low |
+| `abortedStepsShouldPass` | Aborted steps count as passed | Low |
+| `abortSuiteOnFailure` | Stop suite on first failure | Low |
+
+### Out of Scope (V2 not implementing)
+
+| Key | Reason |
+|-----|--------|
+| `driver`, `robot` | Browser/UI automation not in V2 |
+| `driverTarget` | Browser/UI automation not in V2 |
+| `kafka`, `grpc`, `websocket`, `webhook` | Specialized protocols |
+| `responseHeaders`, `responseDelay`, `cors` | Mock server features |
 
 ---
 

@@ -1,0 +1,151 @@
+/*
+ * The MIT License
+ *
+ * Copyright 2025 Karate Labs Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+package io.karatelabs.core.parallel;
+
+import io.karatelabs.core.Runner;
+import io.karatelabs.core.SuiteResult;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Tests for parallel execution to verify thread safety and isolation.
+ * <p>
+ * These tests verify:
+ * - callSingle returns same instance across threads
+ * - callonce evaluated once per feature
+ * - Config functions available in all parallel scenarios
+ * - karate-base.js functions shared across threads
+ * - Variables don't leak between parallel scenarios
+ * - Dynamic outlines work correctly in parallel
+ */
+class ParallelTest {
+
+    /**
+     * Test that dynamic scenario outlines work correctly in parallel.
+     * Each outline example runs in its own thread but shares the @setup data.
+     */
+    @Test
+    void testDynamicOutlineParallel() {
+        SuiteResult result = Runner.path("classpath:io/karatelabs/core/parallel/outline-parallel.feature")
+                .configDir("classpath:io/karatelabs/core/parallel")
+                .outputConsoleSummary(false)
+                .parallel(4);
+        assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
+        // Should have 4 scenarios (from the @setup data)
+        assertEquals(4, result.getScenarioCount());
+    }
+
+    /**
+     * Test that callSingle returns the same instance across parallel threads.
+     * This is critical for thread safety - the singleton pattern must work.
+     */
+    @Test
+    void testCallSingleThreadSafety() {
+        SuiteResult result = Runner.path("classpath:io/karatelabs/core/parallel/callsingle-parallel.feature")
+                .configDir("classpath:io/karatelabs/core/parallel")
+                .outputConsoleSummary(false)
+                .parallel(5);
+        assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
+    }
+
+    /**
+     * Test that callonce in Background is evaluated once and shared across scenarios.
+     */
+    @Test
+    void testCallonceParallel() {
+        SuiteResult result = Runner.path("classpath:io/karatelabs/core/parallel/callonce-parallel.feature")
+                .configDir("classpath:io/karatelabs/core/parallel")
+                .outputConsoleSummary(false)
+                .parallel(3);
+        assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
+    }
+
+    /**
+     * Test that variables are isolated between parallel scenarios.
+     * Each scenario should have its own variable scope.
+     */
+    @Test
+    void testVariableIsolation() {
+        SuiteResult result = Runner.path("classpath:io/karatelabs/core/parallel/variable-isolation.feature")
+                .configDir("classpath:io/karatelabs/core/parallel")
+                .outputConsoleSummary(false)
+                .parallel(4);
+        assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
+    }
+
+    /**
+     * Test that config functions work correctly across parallel threads.
+     */
+    @Test
+    void testConfigFunctionsParallel() {
+        SuiteResult result = Runner.path("classpath:io/karatelabs/core/parallel/config-functions-parallel.feature")
+                .configDir("classpath:io/karatelabs/core/parallel")
+                .outputConsoleSummary(false)
+                .parallel(4);
+        assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
+    }
+
+    /**
+     * Test that karate-base.js functions work correctly across parallel threads.
+     */
+    @Test
+    void testKarateBaseParallel() {
+        SuiteResult result = Runner.path("classpath:io/karatelabs/core/parallel/karate-base-parallel.feature")
+                .configDir("classpath:io/karatelabs/core/parallel")
+                .outputConsoleSummary(false)
+                .parallel(4);
+        assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
+    }
+
+    /**
+     * Test running multiple features in parallel.
+     */
+    @Test
+    void testMultipleFeaturesParallel() {
+        SuiteResult result = Runner.path(
+                        "classpath:io/karatelabs/core/parallel/feature1.feature",
+                        "classpath:io/karatelabs/core/parallel/feature2.feature",
+                        "classpath:io/karatelabs/core/parallel/feature3.feature"
+                )
+                .configDir("classpath:io/karatelabs/core/parallel")
+                .outputConsoleSummary(false)
+                .parallel(3);
+        assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
+        assertEquals(3, result.getFeatureCount());
+    }
+
+    /**
+     * Test karate.config API returns configure settings.
+     */
+    @Test
+    void testKarateConfigApi() {
+        SuiteResult result = Runner.path("classpath:io/karatelabs/core/parallel/config-test.feature")
+                .configDir("classpath:io/karatelabs/core/parallel")
+                .outputConsoleSummary(false)
+                .parallel(1);
+        assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
+    }
+
+}

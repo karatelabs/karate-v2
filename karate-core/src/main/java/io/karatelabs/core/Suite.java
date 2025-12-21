@@ -241,10 +241,18 @@ public class Suite {
      * The content is evaluated per-scenario in ScenarioRuntime where callSingle is available.
      */
     private void loadConfig() {
+        // Derive base.js path from config path (same directory)
+        String basePath;
+        if (configPath.endsWith("karate-config.js")) {
+            basePath = configPath.replace("karate-config.js", "karate-base.js");
+        } else {
+            basePath = "classpath:karate-base.js";
+        }
+
         // Load karate-base.js (shared functions, evaluated before config)
-        baseContent = tryLoadConfig("classpath:karate-base.js");
+        baseContent = tryLoadConfig(basePath);
         if (baseContent != null) {
-            JvmLogger.debug("Loaded karate-base.js");
+            JvmLogger.debug("Loaded karate-base.js from {}", basePath);
         }
 
         // Load main config content

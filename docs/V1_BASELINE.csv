@@ -48,9 +48,9 @@ java-046,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutline,,testO
 java-047,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineBackground,,testOutlineBackground,root,passed,table in @setup with dynamic outline works - added testDynamicOutlineWithTableKeyword,DynamicOutlineTest,2025-12-21
 java-048,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineDynamic,,testOutlineDynamic,root,passed,dynamic outline with __row and __num works,DynamicOutlineTest,2025-12-21
 java-049,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineSetupOnce,,testOutlineSetupOnce,root,passed,setupOnce with dynamic outline works,DynamicOutlineTest,2025-12-21
-java-050,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineConfigJsParallel,,testOutlineConfigJsParallel,root,pending,,,
-java-051,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineConfigJsCallSingleParallel,,testOutlineConfigJsCallSingleParallel,root,pending,,,
-java-052,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallSingleOutlineExampleByTag,,testCallSingleOutlineExampleByTag,root,pending,,,
+java-050,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineConfigJsParallel,,testOutlineConfigJsParallel,root,passed,Parallel execution with config functions and callSingle works - deep copy for thread safety implemented,io/karatelabs/core/parallel/ParallelTest,2025-12-21
+java-051,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineConfigJsCallSingleParallel,,testOutlineConfigJsCallSingleParallel,root,passed,callSingle thread safety verified - same instance across threads with deep copy isolation,io/karatelabs/core/parallel/ParallelTest,2025-12-21
+java-052,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallSingleOutlineExampleByTag,,testCallSingleOutlineExampleByTag,root,passed,callSingle with tag selector works in parallel,io/karatelabs/core/parallel/ParallelTest,2025-12-21
 java-053,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallArg,,testCallArg,root,passed,runs call-arg.feature which passes,,2025-12-19
 java-054,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallArgNull,,testCallArgNull,root,passed,runs call-arg-null.feature which passes,,2025-12-19
 java-055,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testIgnoreStepFailure,,testIgnoreStepFailure,root,pending,,,
@@ -201,9 +201,9 @@ java-199,java_test,VariableTest.java,VariableTest,testClass,,testClass,root,pend
 java-200,java_test,VariableTest.java,VariableTest,testJavaFunction,,testJavaFunction,root,pending,,,
 java-201,java_test,features/RemainingFeaturesTest.java,RemainingFeaturesTest,testRemainingFeaturesSingleThread,,testRemainingFeaturesSingleThread,features,pending,,,
 java-202,java_test,features/RemainingFeaturesTest.java,RemainingFeaturesTest,testRemainingFeaturesParallel,,testRemainingFeaturesParallel,features,pending,,,
-java-203,java_test,jscall/JsCallTest.java,JsCallTest,testParallel,,testParallel,jscall,pending,,,
-java-204,java_test,jscall/JsCallonceTest.java,JsCallonceTest,testParallel,,testParallel,jscall,pending,,,
-java-205,java_test,jscall2/JsCall2Test.java,JsCall2Test,testParallel,,testParallel,jscall2,pending,,,
+java-203,java_test,jscall/JsCallTest.java,JsCallTest,testParallel,,testParallel,jscall,passed,Config functions work correctly in parallel scenarios,io/karatelabs/core/parallel/ParallelTest,2025-12-21
+java-204,java_test,jscall/JsCallonceTest.java,JsCallonceTest,testParallel,,testParallel,jscall,passed,callonce in Background with parallel execution works - deep copy isolation implemented,io/karatelabs/core/parallel/ParallelTest,2025-12-21
+java-205,java_test,jscall2/JsCall2Test.java,JsCall2Test,testParallel,,testParallel,jscall2,skipped,Out of scope - requires MockServer (HTTP tests in parallel),,2025-12-21
 java-206,java_test,mock/MockRunner.java,MockRunner,testBinary,,testBinary,mock,skipped,Out of scope - V2 mock server not implemented,,
 java-207,java_test,mock/MockRunner.java,MockRunner,testBrotli,,testBrotli,mock,skipped,Out of scope - V2 mock server not implemented,,
 java-208,java_test,mock/MockRunner.java,MockRunner,testHtml,,testHtml,mock,skipped,Out of scope - V2 mock server not implemented,,
@@ -213,10 +213,10 @@ java-211,java_test,mock/MockRunner.java,MockRunner,testInvalidCookie,,testInvali
 java-212,java_test,mock/MockSslTest.java,MockSslTest,testMock,,testMock,mock,skipped,Out of scope - V2 mock server not implemented,,
 java-213,java_test,mock/MockTest.java,MockTest,testMock,,testMock,mock,skipped,Out of scope - V2 mock server not implemented,,
 java-214,java_test,parajava/ParallelJavaTest.java,ParallelJavaTest,testParallel,,testParallel,parajava,skipped,Out of scope - legacy parallel runner,,
-java-215,java_test,parallel/HelloTest.java,HelloTest,testParallel,,testParallel,parallel,pending,,,
-java-216,java_test,parallel/ParallelCsvTest.java,ParallelCsvTest,testParallel,,testParallel,parallel,pending,,,
-java-217,java_test,parallel/ParallelOutlineTest.java,ParallelOutlineTest,testParallelOutline,,testParallelOutline,parallel,pending,,,
-java-218,java_test,parallel/ParallelTest.java,ParallelTest,testParallel,,testParallel,parallel,pending,,,
+java-215,java_test,parallel/HelloTest.java,HelloTest,testParallel,,testParallel,parallel,skipped,Out of scope - requires MockServer (HTTP tests in parallel),,2025-12-21
+java-216,java_test,parallel/ParallelCsvTest.java,ParallelCsvTest,testParallel,,testParallel,parallel,skipped,Out of scope - requires MockServer (HTTP tests in parallel),,2025-12-21
+java-217,java_test,parallel/ParallelOutlineTest.java,ParallelOutlineTest,testParallelOutline,,testParallelOutline,parallel,skipped,Out of scope - requires MockServer (HTTP tests in parallel),,2025-12-21
+java-218,java_test,parallel/ParallelTest.java,ParallelTest,testParallel,,testParallel,parallel,skipped,Out of scope - requires MockServer (HTTP tests in parallel),,2025-12-21
 java-219,java_test,parasimple/ParallelOutlineSimpleTest.java,ParallelOutlineSimpleTest,testParallelOutline,,testParallelOutline,parasimple,skipped,Out of scope - legacy parallel runner,,
 java-220,java_test,parser/FeatureParserTest.java,FeatureParserTest,testEngineForSimpleFeature,,testEngineForSimpleFeature,parser,pending,,,
 java-221,java_test,parser/FeatureParserTest.java,FeatureParserTest,testEngineForSimpleFeatureWithBackground,,testEngineForSimpleFeatureWithBackground,parser,pending,,,

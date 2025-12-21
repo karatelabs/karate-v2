@@ -91,6 +91,7 @@ public class KarateJs implements SimpleObject {
     private Supplier<Map<String, Object>> scenarioProvider;
     private Consumer<Object> signalConsumer;
     private BiConsumer<String, Object> configureHandler;
+    private Supplier<Map<String, Object>> configProvider;
     private Supplier<Resource> currentResourceProvider;
     private String env;
 
@@ -230,6 +231,10 @@ public class KarateJs implements SimpleObject {
         this.configureHandler = handler;
     }
 
+    public void setConfigProvider(Supplier<Map<String, Object>> provider) {
+        this.configProvider = provider;
+    }
+
     public void setCurrentResourceProvider(Supplier<Resource> provider) {
         this.currentResourceProvider = provider;
     }
@@ -244,6 +249,18 @@ public class KarateJs implements SimpleObject {
     private Map<String, Object> getScenario() {
         if (scenarioProvider != null) {
             return scenarioProvider.get();
+        }
+        return Map.of();
+    }
+
+    /**
+     * Returns the config settings (from configure keyword) as a read-only map.
+     * Useful for testing config snapshotting in callonce/callSingle scenarios.
+     */
+    private Map<String, Object> getConfig() {
+        if (configProvider != null) {
+            // Return a shallow copy to prevent mutation
+            return new LinkedHashMap<>(configProvider.get());
         }
         return Map.of();
     }
@@ -1628,6 +1645,7 @@ public class KarateJs implements SimpleObject {
             case "callonce" -> callonce();
             case "callSingle" -> callSingle();
             case "configure" -> configure();
+            case "config" -> getConfig();
             case "doc" -> doc();
             case "env" -> env;
             case "eval" -> eval();

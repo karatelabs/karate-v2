@@ -120,6 +120,22 @@ public class PathResource implements Resource {
 
     @Override
     public Resource resolve(String childPath) {
+        // Handle classpath: prefix - delegate to Resource.path() for classpath lookup
+        if (childPath.startsWith(Resource.CLASSPATH_COLON)) {
+            return Resource.path(childPath);
+        }
+        // Handle Windows absolute paths (e.g., C:\path\file.txt, D:/path/file.js)
+        // Only check on Windows to avoid regex overhead on other platforms
+        if (OsUtils.isWindows() && childPath.length() > 1 && childPath.charAt(1) == ':') {
+            return Resource.path(childPath);
+        }
+        // Leading "/" resolves relative to working directory (root), not filesystem root
+        // Users who want filesystem root should use "file:" prefix
+        if (childPath.startsWith("/")) {
+            Path resolved = root.resolve(childPath.substring(1));
+            return new PathResource(resolved, root, classpath);
+        }
+
         // Resolve from parent if this path is explicitly a file, otherwise from itself
         // Check: isDirectory OR has extension (heuristic for non-existent files)
         Path base;
