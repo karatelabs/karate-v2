@@ -70,7 +70,7 @@ public class StepExecutor {
         if (!beforeStep(step)) {
             // Hook returned false - skip this step
             StepResult skipped = StepResult.skipped(step, startTime);
-            skipped.setLog(LogContext.get().collect());
+            collectLogsAndEmbeds(skipped);
             return skipped;
         }
 
@@ -135,6 +135,7 @@ public class StepExecutor {
                     case "call" -> executeCall(step);
                     case "callonce" -> executeCallOnce(step);
                     case "eval" -> executeEval(step);
+                    case "doc" -> executeDoc(step);
 
                     // Config
                     case "configure" -> executeConfigure(step);
@@ -154,14 +155,14 @@ public class StepExecutor {
 
             long elapsedNanos = System.nanoTime() - startNanos;
             StepResult result = StepResult.passed(step, startTime, elapsedNanos);
-            result.setLog(LogContext.get().collect());
+            collectLogsAndEmbeds(result);
             afterStep(result);
             return result;
 
         } catch (AssertionError | Exception e) {
             long elapsedNanos = System.nanoTime() - startNanos;
             StepResult result = StepResult.failed(step, startTime, elapsedNanos, e);
-            result.setLog(LogContext.get().collect());
+            collectLogsAndEmbeds(result);
             afterStep(result);
             return result;
         }
@@ -184,6 +185,17 @@ public class StepExecutor {
         if (fr != null && fr.getSuite() != null) {
             for (RuntimeHook hook : fr.getSuite().getHooks()) {
                 hook.afterStep(result, runtime);
+            }
+        }
+    }
+
+    private void collectLogsAndEmbeds(StepResult result) {
+        LogContext ctx = LogContext.get();
+        result.setLog(ctx.collect());
+        java.util.List<StepResult.Embed> embeds = ctx.collectEmbeds();
+        if (embeds != null) {
+            for (StepResult.Embed embed : embeds) {
+                result.addEmbed(embed);
             }
         }
     }
@@ -2231,6 +2243,26 @@ public class StepExecutor {
             expr = step.getText();
         }
         runtime.eval(expr);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void executeDoc(Step step) {
+        String text = step.getText();
+        Object value = runtime.eval(text);
+        // karate.doc() expects either a string path or a map with 'read' key
+        // Convert string to the expected format
+        String html;
+        if (value instanceof String path) {
+            html = runtime.getKarate().doc(Map.of("read", path));
+        } else if (value instanceof Map) {
+            html = runtime.getKarate().doc((Map<String, Object>) value);
+        } else {
+            throw new RuntimeException("doc requires a string path or map with 'read' key, got: " + value);
+        }
+        // Embed the rendered HTML in the step result for reports
+        if (html != null && !html.isEmpty()) {
+            LogContext.get().embed(html.getBytes(java.nio.charset.StandardCharsets.UTF_8), "text/html");
+        }
     }
 
     // ========== Config ==========

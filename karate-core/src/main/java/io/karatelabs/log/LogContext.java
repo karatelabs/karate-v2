@@ -23,12 +23,17 @@
  */
 package io.karatelabs.log;
 
+import io.karatelabs.core.StepResult;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 /**
  * Thread-local log collector for scenario execution.
  * All user-script logging (print, karate.log, HTTP) goes here.
- * The collected log is written to karate-json reports.
+ * Also collects embeds (HTML from doc, images, etc.) for reports.
+ * The collected log/embeds are written to karate-json reports.
  */
 public class LogContext {
 
@@ -37,6 +42,7 @@ public class LogContext {
     private static Consumer<String> cascade;
 
     private final StringBuilder buffer = new StringBuilder();
+    private List<StepResult.Embed> embeds;
 
     // ========== Thread-Local Access ==========
 
@@ -82,6 +88,34 @@ public class LogContext {
         if (cascade != null) {
             cascade.accept(message);
         }
+    }
+
+    // ========== Embeds ==========
+
+    /**
+     * Add an embed (HTML, image, etc.) to be included in step result.
+     */
+    public void embed(byte[] data, String mimeType, String name) {
+        if (embeds == null) {
+            embeds = new ArrayList<>();
+        }
+        embeds.add(new StepResult.Embed(data, mimeType, name));
+    }
+
+    /**
+     * Add an embed with just data and mime type.
+     */
+    public void embed(byte[] data, String mimeType) {
+        embed(data, mimeType, null);
+    }
+
+    /**
+     * Collect and clear embeds.
+     */
+    public List<StepResult.Embed> collectEmbeds() {
+        List<StepResult.Embed> result = embeds;
+        embeds = null;
+        return result;
     }
 
     // ========== Collect ==========

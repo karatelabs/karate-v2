@@ -369,3 +369,18 @@ Set `logToContext: true` to capture process output in test logs:
 ```
 
 This integrates with Karate's LogContext for test output reporting.
+
+---
+
+## TODO
+
+### Flaky Test: testExecWithOptionsViaJs
+
+The `ProcessTest.testExecWithOptionsViaJs` test is currently disabled due to intermittent failures. The test uses `karate.exec()` with a map options argument and sometimes fails with output assertion issues.
+
+**Investigation needed:**
+- The test passes when run individually but fails intermittently when run with the full test suite
+- May be related to test ordering or thread-local state cleanup between tests
+- Consider if there's a race condition in the process execution output capture
+
+**Test location:** `karate-core/src/test/java/io/karatelabs/core/ProcessTest.java`

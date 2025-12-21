@@ -24,6 +24,7 @@
 package io.karatelabs.core;
 
 import io.karatelabs.common.Resource;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
@@ -238,6 +239,7 @@ class ProcessTest {
 
     @Test
     @DisabledOnOs(OS.WINDOWS)
+    @Disabled("Flaky test - see TODO in docs/PROCESS_BUILDER.md")
     void testExecWithOptionsViaJs() {
         KarateJs karate = new KarateJs(Resource.path(""));
         String js = """

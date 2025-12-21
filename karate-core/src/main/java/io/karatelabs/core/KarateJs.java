@@ -218,6 +218,26 @@ public class KarateJs implements SimpleObject {
         };
     }
 
+    /**
+     * Renders an HTML template and returns the result.
+     * Also sends to onDoc consumer if set.
+     * Called by the 'doc' keyword in StepExecutor.
+     *
+     * @param options map containing 'read' key with template path
+     * @return the rendered HTML string
+     */
+    public String doc(Map<String, Object> options) {
+        String read = (String) options.get("read");
+        if (read == null) {
+            throw new RuntimeException("doc() requires 'read' key with template path");
+        }
+        String html = markup().processPath(read, null);
+        if (onDoc != null) {
+            onDoc.accept(html);
+        }
+        return html;
+    }
+
     @SuppressWarnings("unchecked")
     private Invokable doc() {
         return args -> {
