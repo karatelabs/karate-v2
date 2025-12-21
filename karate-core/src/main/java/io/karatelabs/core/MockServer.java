@@ -46,7 +46,8 @@ import java.util.Map;
  *
  * // ... use server ...
  *
- * server.stop();
+ * server.stopAsync();     // non-blocking
+ * server.stopAndWait();   // blocking
  * </pre>
  */
 public class MockServer implements SimpleObject {
@@ -115,15 +116,17 @@ public class MockServer implements SimpleObject {
     }
 
     /**
-     * Stop the mock server.
+     * Stop the mock server and wait for shutdown to complete (blocking).
+     * @see #stopAsync()
      */
-    public void stop() {
+    public void stopAndWait() {
         logger.info("stopping mock server on port {}", port);
-        httpServer.stop();
+        httpServer.stopAndWait();
     }
 
     /**
      * Stop the mock server asynchronously (non-blocking).
+     * @see #stopAndWait()
      */
     public void stopAsync() {
         logger.info("stopping mock server async on port {}", port);
@@ -157,7 +160,7 @@ public class MockServer implements SimpleObject {
             case "port" -> port;
             case "url" -> getUrl();
             case "ssl" -> isSsl();
-            case "stop" -> (Runnable) this::stop;
+            case "stop" -> (Runnable) this::stopAsync;
             default -> null;
         };
     }

@@ -152,7 +152,7 @@ public class LocalCallbackServer {
     public void stopAndWait() {
         if (server != null) {
             logger.info("Stopping OAuth callback server on port {}", port);
-            server.stop();
+            server.stopAndWait();
         }
     }
 }

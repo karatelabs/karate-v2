@@ -146,7 +146,7 @@ public class MockCommand implements Callable<Integer> {
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 Console.println();
                 Console.println(Console.warn("Shutting down mock server..."));
-                server.stop();
+                server.stopAndWait();
                 Console.println(Console.pass("Mock server stopped."));
             }));
 

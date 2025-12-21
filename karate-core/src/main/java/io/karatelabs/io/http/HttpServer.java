@@ -92,7 +92,7 @@ public class HttpServer {
         }
     }
 
-    public void stop() {
+    public void stopAndWait() {
         stopAsync();
         try {
             bossGroup.terminationFuture().sync();

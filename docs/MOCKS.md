@@ -549,7 +549,7 @@ void testMockServerWithSsl() {
         var response = http.get();
         assertEquals(true, response.body().get("secure"));
     } finally {
-        server.stop();
+        server.stopAndWait();
     }
 }
 ```
@@ -579,7 +579,7 @@ void testMutualTls() {
         var response = http.get("/secure");
         assertEquals(200, response.status());
     } finally {
-        server.stop();
+        server.stopAndWait();
     }
 }
 ```
@@ -820,7 +820,7 @@ public class MockIntegrationTest {
 
     @AfterAll
     static void stopServer() {
-        server.stop();
+        server.stopAndWait();
     }
 
     @Test
