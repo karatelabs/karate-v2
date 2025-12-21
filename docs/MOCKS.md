@@ -1059,10 +1059,10 @@ karate-v2/
 | 10 | karate.start() integration | ✅ Complete |
 | 11 | CLI mock subcommand | ✅ Complete |
 | 12 | Manual CLI testing | ⏳ Pending |
-| 13-14 | Stateful and integration tests | ✅ Complete (30 tests) |
-| 15 | SSL integration tests | ✅ Complete (5 tests) |
+| 13-14 | Stateful and integration tests | ✅ Complete |
+| 15 | SSL integration tests | ✅ Complete (merged into MockServerTest) |
 | 16 | karate.proceed() proxy mode | ✅ Complete |
-| 17 | E2e tests | ✅ Complete (5 end-to-end tests) |
+| 17 | E2e tests | ✅ Complete |
 
 ### Files Created
 
@@ -1077,17 +1077,17 @@ karate-v2/
 
 **Modified files:**
 - `KarateJs.java` - Added `karate.start()` and `karate.proceed()` methods
-- `HttpServer.java` - Added SSL support with SslContext parameter
+- `HttpServer.java` - Added SSL support with SslContext parameter, renamed `stop()` to `stopAndWait()`
 - `Main.java` - Added MockCommand to subcommands
 
-**Tests (30 total):**
-- `MockHandlerTest.java` - 11 unit tests for handler, matchers, CORS
-- `MockServerTest.java` - 6 integration tests with real HTTP
-- `MockServerSslTest.java` - 5 SSL integration tests (HTTPS, self-signed certs)
-- `MockProxyTest.java` - 3 proxy mode tests (karate.proceed())
-- `MockE2eTest.java` - 5 end-to-end tests using Karate features
+**Tests (25 total):**
+- `MockHandlerTest.java` - 11 in-memory unit tests (no server)
+- `MockServerTest.java` - 6 integration tests with shared HTTPS server
+- `MockProxyTest.java` - 3 proxy mode tests with shared servers
+- `MockE2eTest.java` - 5 end-to-end tests with shared server
 
-Note: Tests from karate-demo are a separate exercise and not covered here.
+Note: Tests use `@BeforeAll` for shared servers and `stopAsync()` for fast shutdown (~3.5s total).
+Tests from karate-demo are a separate exercise and not covered here.
 
 ### Implementation Notes
 
@@ -1096,6 +1096,7 @@ Note: Tests from karate-demo are a separate exercise and not covered here.
 3. **KarateJs integration:** MockHandler creates a KarateJs instance for scenario execution, providing access to all karate.* functions
 4. **Console methods:** MockCommand uses `Console.info()`, `Console.pass()`, etc. (not Console.Color enum)
 5. **HttpResponse pass-through:** When `karate.proceed()` is used, the response (HttpResponse) is passed through directly with status, headers, and body
+6. **Server stop API:** Use `stopAsync()` for non-blocking or `stopAndWait()` for blocking shutdown
 
 ### Known Limitations
 
