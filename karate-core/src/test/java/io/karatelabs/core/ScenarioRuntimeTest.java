@@ -50,4 +50,17 @@ class ScenarioRuntimeTest {
         assertFailedWith(sr, ScenarioResult.EXPECT_TEST_TO_FAIL_BECAUSE_OF_FAIL_TAG);
     }
 
+    @Test
+    void testKarateFail() {
+        // karate.fail() should fail the scenario with custom message
+        ScenarioRuntime sr = run("""
+            * def before = true
+            * karate.fail('test fail message')
+            * def after = true
+            """);
+        assertFailedWith(sr, "test fail message");
+        // 'before' should be defined, 'after' should not (execution stopped at fail)
+        matchVar(sr, "before", true);
+    }
+
 }

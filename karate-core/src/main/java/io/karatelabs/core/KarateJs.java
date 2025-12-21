@@ -218,6 +218,13 @@ public class KarateJs implements SimpleObject {
         };
     }
 
+    private Invokable fail() {
+        return args -> {
+            String message = args.length > 0 && args[0] != null ? args[0].toString() : "karate.fail() called";
+            throw new RuntimeException(message);
+        };
+    }
+
     /**
      * Renders an HTML template and returns the result.
      * Also sends to onDoc consumer if set.
@@ -1469,6 +1476,7 @@ public class KarateJs implements SimpleObject {
         return switch (key) {
             case "abort" -> abort();
             case "append" -> append();
+            case "fail" -> fail();
             case "appendTo" -> appendTo();
             case "call" -> call();
             case "callSingle" -> callSingle();
