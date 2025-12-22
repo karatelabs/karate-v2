@@ -124,6 +124,10 @@ public class PathResource implements Resource {
         if (childPath.startsWith(Resource.CLASSPATH_COLON)) {
             return Resource.path(childPath);
         }
+        // Handle file: prefix - delegate to Resource.path()
+        if (childPath.startsWith(Resource.FILE_COLON)) {
+            return Resource.path(childPath);
+        }
         // Handle Windows absolute paths (e.g., C:\path\file.txt, D:/path/file.js)
         // Only check on Windows to avoid regex overhead on other platforms
         if (OsUtils.isWindows() && childPath.length() > 1 && childPath.charAt(1) == ':') {

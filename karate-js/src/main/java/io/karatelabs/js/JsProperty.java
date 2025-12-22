@@ -198,6 +198,11 @@ class JsProperty {
                 }
                 return bytes[i] & 0xFF;
             }
+            // Handle Java native arrays via toObjectLike conversion to JsArray
+            ObjectLike converted = Terms.toObjectLike(object);
+            if (converted instanceof JsArray jsArray) {
+                return jsArray.get(i);
+            }
             // For objects (Map, ObjectLike), convert numeric index to string for property access
             if (object instanceof Map || object instanceof ObjectLike) {
                 name = index + "";

@@ -399,6 +399,10 @@ public interface Resource {
             } catch (Exception e) {
                 throw new RuntimeException("Failed to create resource from classpath: " + path, e);
             }
+        } else if (path.startsWith(FILE_COLON)) {
+            // Handle file: prefix by stripping it and creating PathResource
+            String filePath = removePrefix(path);
+            return new PathResource(Path.of(filePath));
         } else {
             return new PathResource(Path.of(path));
         }

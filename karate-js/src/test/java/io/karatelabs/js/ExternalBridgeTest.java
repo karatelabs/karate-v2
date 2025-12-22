@@ -336,6 +336,93 @@ class ExternalBridgeTest extends EvalBase {
     }
 
     @Test
+    void testJavaArrayConvertedToJsList() {
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+
+        // Java array should be converted to a JS-compatible list
+        String[] items = {"a", "b", "c"};
+        engine.put("items", items);
+
+        // Basic access should work
+        assertEquals("a", engine.eval("items[0]"));
+        assertEquals(3, engine.eval("items.length"));
+
+        // JS array methods should work after conversion
+        Object mapped = engine.eval("items.map(x => x.toUpperCase())");
+        assertEquals(List.of("A", "B", "C"), mapped);
+
+        Object filtered = engine.eval("items.filter(x => x !== 'b')");
+        assertEquals(List.of("a", "c"), filtered);
+
+        Object joined = engine.eval("items.join('-')");
+        assertEquals("a-b-c", joined);
+    }
+
+    @Test
+    void testJavaIntArrayConvertedToJsList() {
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+
+        // Primitive int array
+        int[] numbers = {1, 2, 3, 4, 5};
+        engine.put("numbers", numbers);
+
+        assertEquals(1, engine.eval("numbers[0]"));
+        assertEquals(5, engine.eval("numbers.length"));
+
+        // JS array methods
+        Object sum = engine.eval("numbers.reduce((a, b) => a + b, 0)");
+        assertEquals(15, sum);
+
+        Object doubled = engine.eval("numbers.map(x => x * 2)");
+        assertEquals(List.of(2, 4, 6, 8, 10), doubled);
+    }
+
+    @Test
+    void testJavaObjectArrayConvertedToJsList() {
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+
+        // Object array with mixed types
+        Object[] mixed = {"hello", 42, true};
+        engine.put("mixed", mixed);
+
+        assertEquals("hello", engine.eval("mixed[0]"));
+        assertEquals(42, engine.eval("mixed[1]"));
+        assertEquals(true, engine.eval("mixed[2]"));
+        assertEquals(3, engine.eval("mixed.length"));
+
+        // forEach should work
+        engine.eval("var result = []; mixed.forEach(x => result.push(x))");
+        assertEquals(List.of("hello", 42, true), engine.get("result"));
+    }
+
+    @Test
+    void testJavaListBracketAccess() {
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+
+        // This replicates the mock multipart access pattern: requestParts['myFile'][0]
+        Map<String, Object> filePart = new HashMap<>();
+        filePart.put("name", "myFile");
+        filePart.put("filename", "test.xlsx");
+        filePart.put("value", new byte[]{1, 2, 3});
+
+        List<Map<String, Object>> partsList = List.of(filePart);
+        Map<String, List<Map<String, Object>>> requestParts = new HashMap<>();
+        requestParts.put("myFile", partsList);
+
+        engine.put("requestParts", requestParts);
+
+        // This should work: access list element via bracket notation
+        Object result = engine.eval("requestParts['myFile'][0]");
+        assertNotNull(result);
+        assertInstanceOf(Map.class, result);
+        assertEquals("myFile", ((Map<?, ?>) result).get("name"));
+    }
+
+    @Test
     void testXmlDocumentPassthrough() {
         engine = new Engine();
         engine.setExternalBridge(bridge);

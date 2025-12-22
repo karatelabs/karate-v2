@@ -25,7 +25,7 @@ package io.karatelabs.js;
 
 import java.util.*;
 
-class JsArray extends JsObject {
+class JsArray extends JsObject implements JavaMirror {
 
     final List<Object> list;
 
@@ -35,6 +35,11 @@ class JsArray extends JsObject {
 
     public JsArray() {
         this(new ArrayList<>());
+    }
+
+    @Override
+    public Object getJavaValue() {
+        return list;
     }
 
     Prototype initPrototype() {

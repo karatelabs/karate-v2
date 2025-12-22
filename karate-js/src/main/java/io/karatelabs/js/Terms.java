@@ -27,10 +27,12 @@ import io.karatelabs.common.Xml;
 import net.minidev.json.JSONValue;
 import org.w3c.dom.Node;
 
+import java.lang.reflect.Array;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -303,6 +305,9 @@ public class Terms {
     }
 
     static JavaMirror toJavaMirror(Object o) {
+        if (o == null) {
+            return null;
+        }
         return switch (o) {
             case String s -> new JsString(s);
             case Number n -> new JsNumber(n);
@@ -313,7 +318,18 @@ public class Terms {
             case LocalDate ld -> new JsDate(ld);
             case ZonedDateTime zdt -> new JsDate(zdt);
             case byte[] bytes -> new JsUint8Array(bytes);
-            case null, default -> null;
+            default -> {
+                // Handle other Java arrays (String[], int[], Object[], etc.)
+                if (o.getClass().isArray()) {
+                    int length = Array.getLength(o);
+                    List<Object> list = new ArrayList<>(length);
+                    for (int i = 0; i < length; i++) {
+                        list.add(Array.get(o, i));
+                    }
+                    yield new JsArray(list);
+                }
+                yield null;
+            }
         };
     }
 
@@ -322,13 +338,13 @@ public class Terms {
         if (o instanceof ObjectLike ol) {
             return ol;
         }
-        if (o instanceof List list) {
+        if (o instanceof List<?> list) {
             return new JsArray((List<Object>) list);
         }
         // XML Node: convert to Map structure for JS-style property access
         if (o instanceof Node node) {
             Object converted = Xml.toObject(node);
-            if (converted instanceof Map map) {
+            if (converted instanceof Map<?, ?> map) {
                 return new JsObject((Map<String, Object>) map);
             }
         }
@@ -344,6 +360,10 @@ public class Terms {
         }
         if (o instanceof List) {
             return new JsArray((List<Object>) o);
+        }
+        JavaMirror mirror = toJavaMirror(o);
+        if (mirror instanceof JsArray jsArray) {
+            return jsArray;
         }
         if (o instanceof Map) {
             return new JsObject((Map<String, Object>) o);

@@ -151,6 +151,30 @@ class ResourceTest {
     }
 
     @Test
+    void testMemoryResourceResolveClasspathPrefix() {
+        // MemoryResource.resolve() should handle classpath: prefix
+        Resource resource = Resource.text("Feature: test");
+
+        // This should not prepend temp directory to the classpath path
+        // Instead, it should delegate to Resource.path() for classpath: prefixed paths
+        assertThrows(RuntimeException.class, () -> {
+            // Should attempt to load from classpath, not file system
+            resource.resolve("classpath:nonexistent/test.feature");
+        });
+    }
+
+    @Test
+    void testMemoryResourceResolveFilePrefix() {
+        // MemoryResource.resolve() should handle file: prefix
+        Resource resource = Resource.text("Feature: test");
+
+        // file: prefix should be handled by Resource.path()
+        Resource resolved = resource.resolve("file:" + tempDir.resolve("test.txt").toAbsolutePath());
+        assertNotNull(resolved);
+        assertTrue(resolved.isFile());
+    }
+
+    @Test
     void testMemoryResourceGetStream() throws IOException {
         Resource resource = Resource.text("Stream Test");
         String content = FileUtils.toString(resource.getStream());
@@ -513,6 +537,41 @@ class ResourceTest {
 
         assertNotNull(resolved);
         assertTrue(resolved.getRelativePath().contains("CHANGELOG.md"));
+    }
+
+    @Test
+    void testPathResourceResolveClasspathPrefix() throws IOException {
+        // PathResource.resolve() should handle classpath: prefix
+        Path dir = tempDir.resolve("src");
+        Files.createDirectories(dir);
+        Path file = dir.resolve("Main.java");
+        Files.writeString(file, "class Main {}");
+
+        Resource resource = Resource.from(file);
+
+        // Should attempt to load from classpath, not resolve as relative path
+        assertThrows(RuntimeException.class, () -> {
+            resource.resolve("classpath:nonexistent/test.feature");
+        });
+    }
+
+    @Test
+    void testPathResourceResolveFilePrefix() throws IOException {
+        // PathResource.resolve() should handle file: prefix
+        Path dir = tempDir.resolve("project");
+        Files.createDirectories(dir);
+        Path file1 = dir.resolve("file1.txt");
+        Path file2 = dir.resolve("file2.txt");
+        Files.writeString(file1, "content1");
+        Files.writeString(file2, "content2");
+
+        Resource resource = Resource.from(file1);
+
+        // file: prefix should work with absolute paths
+        Resource resolved = resource.resolve("file:" + file2.toAbsolutePath());
+        assertNotNull(resolved);
+        assertTrue(resolved.isFile());
+        assertEquals("content2", resolved.getText());
     }
 
     @Test
