@@ -811,4 +811,90 @@ class MockE2eTest {
         assertPassed(sr);
     }
 
+    // ===== Configure afterScenario Tests =====
+
+    @Test
+    void testConfigureAfterScenarioModifiesResponse() {
+        // afterScenario hook can modify the response using karate.set('response')
+        MockServer afterScenarioServer = MockServer.featureString("""
+            Feature: afterScenario Response Modification Test
+
+            Background:
+              * configure afterScenario = function(){ var r = karate.get('response'); r.modified = true; karate.set('response', r) }
+
+            Scenario: pathMatches('/test')
+              * def response = { original: true }
+            """)
+            .port(0)
+            .start();
+
+        try {
+            int testPort = afterScenarioServer.getPort();
+            ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+                Feature: Test afterScenario modifies response
+
+                Scenario: Response should have field added by afterScenario
+                * url 'http://localhost:%d'
+                * path '/test'
+                * method get
+                * status 200
+                * match response.original == true
+                * match response.modified == true
+                """.formatted(testPort));
+
+            assertPassed(sr);
+        } finally {
+            afterScenarioServer.stopAsync();
+        }
+    }
+
+    @Test
+    void testConfigureAfterScenarioWithCounter() {
+        // afterScenario hook can increment a counter for tracking
+        MockServer counterServer = MockServer.featureString("""
+            Feature: afterScenario Counter Test
+
+            Background:
+              * def requestCount = { value: 0 }
+              * configure afterScenario = function(){ requestCount.value++ }
+
+            Scenario: pathMatches('/count')
+              * def response = { count: requestCount.value }
+            """)
+            .port(0)
+            .start();
+
+        try {
+            int testPort = counterServer.getPort();
+            ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+                Feature: Test afterScenario counter
+
+                Scenario: Multiple requests should increment counter
+                * url 'http://localhost:%d'
+
+                # First request - count should be 0 before afterScenario runs
+                * path '/count'
+                * method get
+                * status 200
+                * match response.count == 0
+
+                # Second request - afterScenario from first request already ran
+                * path '/count'
+                * method get
+                * status 200
+                * match response.count == 1
+
+                # Third request
+                * path '/count'
+                * method get
+                * status 200
+                * match response.count == 2
+                """.formatted(testPort));
+
+            assertPassed(sr);
+        } finally {
+            counterServer.stopAsync();
+        }
+    }
+
 }

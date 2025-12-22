@@ -37,6 +37,7 @@ import io.karatelabs.io.http.HttpRequest;
 import io.karatelabs.io.http.HttpResponse;
 import io.karatelabs.js.Engine;
 import io.karatelabs.js.Invokable;
+import io.karatelabs.js.JsCallable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Node;
@@ -64,16 +65,8 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
 
     private static final String ALLOWED_METHODS = "GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS";
 
-    // Thread-local for current request (used by matcher functions and karate.proceed())
-    private static final ThreadLocal<HttpRequest> LOCAL_REQUEST = new ThreadLocal<>();
-
-    /**
-     * Get the current request being processed (for use in mock scenarios).
-     * Used by karate.proceed() for proxy mode.
-     */
-    public static HttpRequest getCurrentRequest() {
-        return LOCAL_REQUEST.get();
-    }
+    // Internal key for storing the current HttpRequest in the engine
+    static final String HTTP_REQUEST_KEY = "__httpRequest";
 
     private final List<Feature> features = new ArrayList<>();
     private final Map<String, Object> globals = new LinkedHashMap<>();
@@ -124,16 +117,77 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
         // Create ScenarioRuntime with the FeatureRuntime (enables proper resource resolution)
         ScenarioRuntime runtime = new ScenarioRuntime(featureRuntime, scenario);
 
-        // Register matcher functions in the engine
+        // Register matcher functions in the engine (lambdas capture engine reference)
         Engine engine = runtime.getEngine();
-        engine.put("pathMatches", (Invokable) a -> pathMatches(a[0] + ""));
-        engine.put("methodIs", (Invokable) a -> methodIs(a[0] + ""));
-        engine.put("typeContains", (Invokable) a -> typeContains(a[0] + ""));
-        engine.put("acceptContains", (Invokable) a -> acceptContains(a[0] + ""));
-        engine.put("headerContains", (Invokable) a -> headerContains(a[0] + "", a[1] + ""));
-        engine.put("paramValue", (Invokable) a -> paramValue(a[0] + ""));
-        engine.put("paramExists", (Invokable) a -> paramExists(a[0] + ""));
-        engine.put("bodyPath", (Invokable) a -> bodyPath(a[0] + ""));
+        engine.put("pathMatches", (Invokable) a -> {
+            HttpRequest req = (HttpRequest) engine.get(HTTP_REQUEST_KEY);
+            if (req == null) return false;
+            boolean matched = req.pathMatches(a[0] + "");
+            if (matched) {
+                engine.put("pathParams", req.getPathParams());
+            }
+            return matched;
+        });
+        engine.put("methodIs", (Invokable) a -> {
+            HttpRequest req = (HttpRequest) engine.get(HTTP_REQUEST_KEY);
+            return req != null && (a[0] + "").equalsIgnoreCase(req.getMethod());
+        });
+        engine.put("typeContains", (Invokable) a -> {
+            HttpRequest req = (HttpRequest) engine.get(HTTP_REQUEST_KEY);
+            if (req == null) return false;
+            String contentType = req.getContentType();
+            return contentType != null && contentType.contains(a[0] + "");
+        });
+        engine.put("acceptContains", (Invokable) a -> {
+            HttpRequest req = (HttpRequest) engine.get(HTTP_REQUEST_KEY);
+            if (req == null) return false;
+            String accept = req.getHeader("Accept");
+            return accept != null && accept.contains(a[0] + "");
+        });
+        engine.put("headerContains", (Invokable) a -> {
+            HttpRequest req = (HttpRequest) engine.get(HTTP_REQUEST_KEY);
+            if (req == null) return false;
+            List<String> values = req.getHeaderValues(a[0] + "");
+            if (values != null) {
+                String search = a[1] + "";
+                for (String v : values) {
+                    if (v.contains(search)) return true;
+                }
+            }
+            return false;
+        });
+        engine.put("paramValue", (Invokable) a -> {
+            HttpRequest req = (HttpRequest) engine.get(HTTP_REQUEST_KEY);
+            return req != null ? req.getParam(a[0] + "") : null;
+        });
+        engine.put("paramExists", (Invokable) a -> {
+            HttpRequest req = (HttpRequest) engine.get(HTTP_REQUEST_KEY);
+            if (req == null) return false;
+            List<String> values = req.getParamValues(a[0] + "");
+            return values != null && !values.isEmpty();
+        });
+        engine.put("bodyPath", (Invokable) a -> {
+            HttpRequest req = (HttpRequest) engine.get(HTTP_REQUEST_KEY);
+            if (req == null) return null;
+            Object body = req.getBodyConverted();
+            if (body == null) return null;
+            String path = a[0] + "";
+            if (path.startsWith("/")) {
+                // XPath for XML
+                if (body instanceof Node) {
+                    return Xml.getTextValueByPath((Node) body, path);
+                }
+                return null;
+            } else {
+                // JsonPath for JSON
+                try {
+                    return JsonPath.read(body, path);
+                } catch (Exception e) {
+                    logger.debug("bodyPath evaluation failed: {}", e.getMessage());
+                    return null;
+                }
+            }
+        });
 
         // Put args into globals if provided
         if (args != null) {
@@ -166,8 +220,8 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
                 config.setResponseHeaders((Map<String, Object>) responseHeaders);
             }
             Object afterScenario = karateConfig.getAfterScenario();
-            if (afterScenario instanceof Invokable) {
-                config.setAfterScenario((Invokable) afterScenario);
+            if (afterScenario instanceof JsCallable callable) {
+                config.setAfterScenario(callable);
             }
         }
 
@@ -234,38 +288,30 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
         // Process body for form-urlencoded and multipart
         request.processBody();
 
-        // Set thread-local request for matcher functions
-        LOCAL_REQUEST.set(request);
+        // Find matching scenario and execute
+        for (Feature feature : features) {
+            ScenarioRuntime runtime = runtimes.get(feature);
+            Engine engine = runtime.getEngine();
 
-        try {
-            // Find matching scenario and execute
-            for (Feature feature : features) {
-                ScenarioRuntime runtime = runtimes.get(feature);
-                Engine engine = runtime.getEngine();
+            // Set up request variables (includes storing HttpRequest for matcher functions)
+            setupRequestVariables(engine, request);
 
-                // Set up request variables
-                setupRequestVariables(engine, request);
+            for (FeatureSection section : feature.getSections()) {
+                if (section.isOutline()) {
+                    logger.warn("skipping scenario outline in mock - {}:{}", feature, section.getScenarioOutline().getLine());
+                    continue;
+                }
 
-                for (FeatureSection section : feature.getSections()) {
-                    if (section.isOutline()) {
-                        logger.warn("skipping scenario outline in mock - {}:{}", feature, section.getScenarioOutline().getLine());
-                        continue;
-                    }
-
-                    Scenario scenario = section.getScenario();
-                    if (isMatchingScenario(scenario, engine)) {
-                        return executeScenario(runtime, scenario, request);
-                    }
+                Scenario scenario = section.getScenario();
+                if (isMatchingScenario(scenario, engine)) {
+                    return executeScenario(runtime, scenario, request);
                 }
             }
-
-            // No match found - return 404
-            logger.warn("no scenarios matched, returning 404: {} {}", request.getMethod(), request.getPath());
-            return createNotFoundResponse();
-
-        } finally {
-            LOCAL_REQUEST.remove();
         }
+
+        // No match found - return 404
+        logger.warn("no scenarios matched, returning 404: {} {}", request.getMethod(), request.getPath());
+        return createNotFoundResponse();
     }
 
     private HttpResponse handleCorsPreFlight(HttpRequest request) {
@@ -286,6 +332,9 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
         for (Map.Entry<String, Object> entry : globals.entrySet()) {
             engine.put(entry.getKey(), entry.getValue());
         }
+
+        // Store HttpRequest for matcher functions and karate.proceed()
+        engine.put(HTTP_REQUEST_KEY, request);
 
         // Set request variables as per MOCKS.md specification
         engine.put("request", request.getBodyConverted());
@@ -351,10 +400,11 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
         saveGlobals(engine);
 
         // Execute afterScenario hook if configured
-        Invokable afterScenario = config.getAfterScenario();
+        // Pass null context - the JS function uses its declaredContext which has access to karate object
+        JsCallable afterScenario = config.getAfterScenario();
         if (afterScenario != null) {
             try {
-                afterScenario.invoke();
+                afterScenario.call(null);
             } catch (Exception e) {
                 logger.warn("afterScenario hook failed: {}", e.getMessage());
             }
@@ -439,112 +489,6 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
         response.setStatus(404);
         response.setBody(Map.of("error", "no matching scenario"));
         return response;
-    }
-
-    // ===== Matcher Functions =====
-
-    public boolean pathMatches(String pattern) {
-        HttpRequest request = LOCAL_REQUEST.get();
-        if (request == null) {
-            return false;
-        }
-        boolean matched = request.pathMatches(pattern);
-        if (matched) {
-            // Store path params in the matching feature's engine
-            for (Feature feature : features) {
-                ScenarioRuntime runtime = runtimes.get(feature);
-                if (runtime != null) {
-                    runtime.getEngine().put("pathParams", request.getPathParams());
-                }
-            }
-        }
-        return matched;
-    }
-
-    public boolean methodIs(String method) {
-        HttpRequest request = LOCAL_REQUEST.get();
-        if (request == null) {
-            return false;
-        }
-        return method.equalsIgnoreCase(request.getMethod());
-    }
-
-    public boolean typeContains(String text) {
-        HttpRequest request = LOCAL_REQUEST.get();
-        if (request == null) {
-            return false;
-        }
-        String contentType = request.getContentType();
-        return contentType != null && contentType.contains(text);
-    }
-
-    public boolean acceptContains(String text) {
-        HttpRequest request = LOCAL_REQUEST.get();
-        if (request == null) {
-            return false;
-        }
-        String accept = request.getHeader("Accept");
-        return accept != null && accept.contains(text);
-    }
-
-    public boolean headerContains(String name, String value) {
-        HttpRequest request = LOCAL_REQUEST.get();
-        if (request == null) {
-            return false;
-        }
-        List<String> values = request.getHeaderValues(name);
-        if (values != null) {
-            for (String v : values) {
-                if (v.contains(value)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    public String paramValue(String name) {
-        HttpRequest request = LOCAL_REQUEST.get();
-        if (request == null) {
-            return null;
-        }
-        return request.getParam(name);
-    }
-
-    public boolean paramExists(String name) {
-        HttpRequest request = LOCAL_REQUEST.get();
-        if (request == null) {
-            return false;
-        }
-        List<String> values = request.getParamValues(name);
-        return values != null && !values.isEmpty();
-    }
-
-    public Object bodyPath(String path) {
-        HttpRequest request = LOCAL_REQUEST.get();
-        if (request == null) {
-            return null;
-        }
-        Object body = request.getBodyConverted();
-        if (body == null) {
-            return null;
-        }
-
-        if (path.startsWith("/")) {
-            // XPath for XML
-            if (body instanceof Node) {
-                return Xml.getTextValueByPath((Node) body, path);
-            }
-            return null;
-        } else {
-            // JsonPath for JSON
-            try {
-                return JsonPath.read(body, path);
-            } catch (Exception e) {
-                logger.debug("bodyPath evaluation failed: {}", e.getMessage());
-                return null;
-            }
-        }
     }
 
     // ===== Accessors =====

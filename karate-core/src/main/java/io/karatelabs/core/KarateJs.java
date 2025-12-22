@@ -1780,7 +1780,7 @@ public class KarateJs implements SimpleObject {
      */
     private Invokable proceed() {
         return args -> {
-            HttpRequest currentRequest = MockHandler.getCurrentRequest();
+            HttpRequest currentRequest = (HttpRequest) engine.get(MockHandler.HTTP_REQUEST_KEY);
             if (currentRequest == null) {
                 throw new RuntimeException("proceed() can only be called within a mock scenario");
             }

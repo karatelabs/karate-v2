@@ -23,7 +23,7 @@
  */
 package io.karatelabs.core;
 
-import io.karatelabs.js.Invokable;
+import io.karatelabs.js.JsCallable;
 
 import java.util.Map;
 
@@ -35,7 +35,7 @@ public class MockConfig {
 
     private boolean corsEnabled;
     private Map<String, Object> responseHeaders;
-    private Invokable afterScenario;
+    private JsCallable afterScenario;
 
     public boolean isCorsEnabled() {
         return corsEnabled;
@@ -53,11 +53,11 @@ public class MockConfig {
         this.responseHeaders = responseHeaders;
     }
 
-    public Invokable getAfterScenario() {
+    public JsCallable getAfterScenario() {
         return afterScenario;
     }
 
-    public void setAfterScenario(Invokable afterScenario) {
+    public void setAfterScenario(JsCallable afterScenario) {
         this.afterScenario = afterScenario;
     }
 
