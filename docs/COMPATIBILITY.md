@@ -126,7 +126,7 @@ Follow `Step{Keyword}Test.java` convention:
 | HTTP keywords | `StepHttpTest` |
 | multipart | `StepMultipartTest` |
 | karate.abort() | `StepAbortTest` |
-| call/callonce | `CallFeatureTest` |
+| call/callonce | `StepCallTest` |
 | JS functions, arrays | `StepJsTest` |
 | XML | `StepXmlTest` |
 | eval | `StepEvalTest` |

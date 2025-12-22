@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Tests for call and callonce feature execution.
  */
-class CallFeatureTest {
+class StepCallTest {
 
     @TempDir
     Path tempDir;

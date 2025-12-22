@@ -21,33 +21,33 @@ java-019,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testAbort,,testAbo
 java-020,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testAlign,,testAlign,root,passed,runs align.feature which passes,,2025-12-19
 java-021,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testFailApi,,testFailApi,root,passed,karate.fail() implemented,ScenarioRuntimeTest,2025-12-21
 java-022,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallFeatureFromJs,,testCallFeatureFromJs,root,passed,V2 supports karate.call from JS functions,,2025-12-21
-java-023,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallJsFromFeatureUtilsDefinedInKarateConfig,,testCallJsFromFeatureUtilsDefinedInKarateConfig,root,passed,V2 supports karate.call from config (requires relative paths),ConfigTest,2025-12-21
-java-024,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallOnceJsFromFeatureUtilsDefinedInKarateConfig,,testCallOnceJsFromFeatureUtilsDefinedInKarateConfig,root,passed,karate.callonce() JS method implemented,ConfigTest#testCallonceFromConfig,2025-12-21
-java-025,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateJsGetScenario,,testKarateJsGetScenario,root,passed,karate.scenario property implemented,ConfigTest#testScenarioPropertyFromConfig,2025-12-21
-java-026,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateJsFromKarateBase,,testKarateJsFromKarateBase,root,passed,karate-base.js implemented - shared functions available to configs,ConfigTest#testKarateBaseJs*,2025-12-21
-java-027,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallByTag,,testCallByTag,root,passed,call-by-tag syntax implemented,io/karatelabs/core/CallFeatureTest,2025-12-20
-java-028,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallByTagCalled,,testCallByTagCalled,root,passed,call-by-tag called feature works,io/karatelabs/core/CallFeatureTest,2025-12-20
+java-023,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallJsFromFeatureUtilsDefinedInKarateConfig,,testCallJsFromFeatureUtilsDefinedInKarateConfig,root,passed,V2 supports karate.call from config (requires relative paths),ScenarioConfigTest,2025-12-21
+java-024,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallOnceJsFromFeatureUtilsDefinedInKarateConfig,,testCallOnceJsFromFeatureUtilsDefinedInKarateConfig,root,passed,karate.callonce() JS method implemented,ScenarioConfigTest#testCallonceFromConfig,2025-12-21
+java-025,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateJsGetScenario,,testKarateJsGetScenario,root,passed,karate.scenario property implemented,ScenarioConfigTest#testScenarioPropertyFromConfig,2025-12-21
+java-026,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateJsFromKarateBase,,testKarateJsFromKarateBase,root,passed,karate-base.js implemented - shared functions available to configs,ScenarioConfigTest#testKarateBaseJs*,2025-12-21
+java-027,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallByTag,,testCallByTag,root,passed,call-by-tag syntax implemented,io/karatelabs/core/StepCallTest,2025-12-20
+java-028,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallByTagCalled,,testCallByTagCalled,root,passed,call-by-tag called feature works,io/karatelabs/core/StepCallTest,2025-12-20
 java-029,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCopyAndClone,,testCopyAndClone,root,passed,runs copy.feature which passes,,2025-12-19
 java-030,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testMatchEachMagicVariables,,testMatchEachMagicVariables,root,passed,runs match-each-magic-variables.feature which passes,,2025-12-19
 java-031,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testEvalAndSet,,testEvalAndSet,root,passed,runs eval-and-set.feature which passes,,2025-12-19
 java-032,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testEvalAssign,,testEvalAssign,root,passed,runs eval-assign.feature which passes,,2025-12-19
 java-033,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testExtract,,testExtract,root,passed,karate.extract() and extractAll() implemented,StepJsTest#testExtract*,2025-12-21
-java-034,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testConfigureInJs,,testConfigureInJs,root,passed,karate.configure() from JS implemented,ConfigTest#testConfigureFromJs,2025-12-21
+java-034,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testConfigureInJs,,testConfigureInJs,root,passed,karate.configure() from JS implemented,ScenarioConfigTest#testConfigureFromJs,2025-12-21
 java-035,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTable,,testTable,root,passed,runs table.feature which passes,,2025-12-19
 java-036,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSet,,testSet,root,passed,runs set.feature which passes,,2025-12-19
 java-037,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSetXml,,testSetXml,root,passed,karate.setXml() implemented,io/karatelabs/core/StepXmlTest,2025-12-19
 java-038,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead,,testJsRead,root,passed,call read shorthand and this: prefix implemented,,2025-12-21
-java-039,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead2,,testJsRead2,root,passed,Fixed NPE in Scenario.replace() for unnamed scenario outlines,DynamicOutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
-java-040,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead3,,testJsRead3,root,passed,Same fix as java-039 - unnamed scenario outlines,DynamicOutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
-java-041,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead4,,testJsRead4,root,passed,Same fix as java-039 - unnamed scenario outlines,DynamicOutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
+java-039,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead2,,testJsRead2,root,passed,Fixed NPE in Scenario.replace() for unnamed scenario outlines,OutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
+java-040,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead3,,testJsRead3,root,passed,Same fix as java-039 - unnamed scenario outlines,OutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
+java-041,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsRead4,,testJsRead4,root,passed,Same fix as java-039 - unnamed scenario outlines,OutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
 java-042,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsMapRepeat,,testJsMapRepeat,root,passed,karate.map and karate.repeat work correctly,StepJsTest,2025-12-21
 java-043,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallFeature,,testCallFeature,root,passed,runs call-feature.feature which passes,,2025-12-19
 java-044,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineGenerator,,testOutlineGenerator,root,passed,dynamic outline generator with karate.setup() works,,2025-12-21
-java-045,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testToBean,,testToBean,root,passed,Cat class and toBean/toJson/toJava tests added,JavaInteropTest,2025-12-21
+java-045,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testToBean,,testToBean,root,passed,Cat class and toBean/toJson/toJava tests added,InteropTest,2025-12-21
 java-046,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutline,,testOutline,root,passed,runs outline.feature which passes,,2025-12-19
-java-047,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineBackground,,testOutlineBackground,root,passed,table in @setup with dynamic outline works - added testDynamicOutlineWithTableKeyword,DynamicOutlineTest,2025-12-21
-java-048,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineDynamic,,testOutlineDynamic,root,passed,dynamic outline with __row and __num works,DynamicOutlineTest,2025-12-21
-java-049,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineSetupOnce,,testOutlineSetupOnce,root,passed,setupOnce with dynamic outline works,DynamicOutlineTest,2025-12-21
+java-047,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineBackground,,testOutlineBackground,root,passed,table in @setup with dynamic outline works - added testDynamicOutlineWithTableKeyword,OutlineTest,2025-12-21
+java-048,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineDynamic,,testOutlineDynamic,root,passed,dynamic outline with __row and __num works,OutlineTest,2025-12-21
+java-049,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineSetupOnce,,testOutlineSetupOnce,root,passed,setupOnce with dynamic outline works,OutlineTest,2025-12-21
 java-050,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineConfigJsParallel,,testOutlineConfigJsParallel,root,passed,Parallel execution with config functions and callSingle works - deep copy for thread safety implemented,io/karatelabs/core/parallel/ParallelTest,2025-12-21
 java-051,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineConfigJsCallSingleParallel,,testOutlineConfigJsCallSingleParallel,root,passed,callSingle thread safety verified - same instance across threads with deep copy isolation,io/karatelabs/core/parallel/ParallelTest,2025-12-21
 java-052,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallSingleOutlineExampleByTag,,testCallSingleOutlineExampleByTag,root,passed,callSingle with tag selector works in parallel,io/karatelabs/core/parallel/ParallelTest,2025-12-21
@@ -297,12 +297,12 @@ feature-003,feature,big-decimal.feature,,,big-decimal.feature,big-decimal.featur
 feature-004,feature,call-arg-called.feature,,,call-arg-called.feature,call-arg-called.feature,root,passed,helper for call-arg.feature,,2025-12-19
 feature-005,feature,call-arg-common.feature,,,call-arg-common.feature,call-arg-common.feature,root,passed,helper for call-arg.feature,,2025-12-19
 feature-006,feature,call-arg-null-called.feature,,,call-arg-null-called.feature,called feature for call-arg-null test,root,passed,helper for call-arg-null.feature,,2025-12-18
-feature-007,feature,call-arg-null.feature,,,call-arg-null.feature,tests karate.call() with args overriding null var,root,passed,implemented karate.call(); added CallFeatureTest,io/karatelabs/core/CallFeatureTest,2025-12-18
+feature-007,feature,call-arg-null.feature,,,call-arg-null.feature,tests karate.call() with args overriding null var,root,passed,implemented karate.call(); added StepCallTest,io/karatelabs/core/StepCallTest,2025-12-18
 feature-008,feature,call-arg.feature,,,call-arg.feature,call-arg.feature,root,passed,call with arguments,,2025-12-19
-feature-009,feature,call-by-tag-called.feature,,,call-by-tag-called.feature,call-by-tag-called.feature,root,passed,helper for call-by-tag.feature,io/karatelabs/core/CallFeatureTest,2025-12-20
-feature-010,feature,call-by-tag.feature,,,call-by-tag.feature,call-by-tag.feature,root,passed,implemented call-by-tag syntax (@name=value and @tag same-file),io/karatelabs/core/CallFeatureTest,2025-12-20
+feature-009,feature,call-by-tag-called.feature,,,call-by-tag-called.feature,call-by-tag-called.feature,root,passed,helper for call-by-tag.feature,io/karatelabs/core/StepCallTest,2025-12-20
+feature-010,feature,call-by-tag.feature,,,call-by-tag.feature,call-by-tag.feature,root,passed,implemented call-by-tag syntax (@name=value and @tag same-file),io/karatelabs/core/StepCallTest,2025-12-20
 feature-011,feature,call-feature-called.feature,,,call-feature-called.feature,called feature for call-feature.feature,root,passed,helper for call-feature.feature,,2025-12-18
-feature-012,feature,call-feature.feature,,,call-feature.feature,call feature var with array loop,root,passed,implemented call with Feature var and array loop; uses karate.jsonPath instead of $var[*],io/karatelabs/core/CallFeatureTest,2025-12-18
+feature-012,feature,call-feature.feature,,,call-feature.feature,call feature var with array loop,root,passed,implemented call with Feature var and array loop; uses karate.jsonPath instead of $var[*],io/karatelabs/core/StepCallTest,2025-12-18
 feature-013,feature,call-js-called.feature,,,call-js-called.feature,call-js-called.feature,root,pending,,,
 feature-014,feature,call-js.feature,,,call-js.feature,will a js call show up in the report,root,pending,,,
 feature-015,feature,call-jsonpath-called.feature,,,call-jsonpath-called.feature,call-jsonpath-called.feature,root,pending,,,
@@ -326,7 +326,7 @@ feature-032,feature,callonce-config-called.feature,,,callonce-config-called.feat
 feature-033,feature,callonce-config.feature,,,callonce-config.feature,callonce-config.feature,root,pending,,,
 feature-034,feature,callonce-global-called.feature,,,callonce-global-called.feature,callonce-global-called.feature,root,pending,,,
 feature-035,feature,callonce-global.feature,,,callonce-global.feature,make sure a callonce (with shared scope) in the background ,root,pending,,,
-feature-036,feature,configure-in-js.feature,,,configure-in-js.feature,configure-in-js.feature,root,passed,karate.configure() from JS implemented,ConfigTest#testConfigureFromJs,2025-12-21
+feature-036,feature,configure-in-js.feature,,,configure-in-js.feature,configure-in-js.feature,root,passed,karate.configure() from JS implemented,ScenarioConfigTest#testConfigureFromJs,2025-12-21
 feature-037,feature,copy-called-nested.feature,,,copy-called-nested.feature,called file that overwites nested data,root,passed,helper for copy.feature,io/karatelabs/core/copy/,2025-12-17
 feature-038,feature,copy-called-overwrite.feature,,,copy-called-overwrite.feature,called file that may or may not over-write variable in caller,root,passed,helper for copy.feature,io/karatelabs/core/copy/,2025-12-17
 feature-039,feature,copy-called.feature,,,copy-called.feature,called file should not clobber vars in caller,root,passed,helper for copy.feature,io/karatelabs/core/copy/,2025-12-17
@@ -363,9 +363,9 @@ feature-069,feature,jscall2/call-single.feature,,,call-single.feature,: common s
 feature-070,feature,jscall2/call.feature,,,call.feature,: common setup,jscall2,pending,,,
 feature-071,feature,jscall2/local.feature,,,local.feature,responseStatus callOnce test,jscall2,pending,,,
 feature-072,feature,jscall2/mock.feature,,,mock.feature,mock.feature,jscall2,pending,,,
-feature-073,feature,jsread/js-read-2.feature,,,js-read-2.feature,js-read-2.feature,jsread,passed,Fixed NPE in Scenario.replace() for unnamed scenario outlines,DynamicOutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
-feature-074,feature,jsread/js-read-3.feature,,,js-read-3.feature,js-read-3.feature,jsread,passed,Same fix as feature-073,DynamicOutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
-feature-075,feature,jsread/js-read-4.feature,,,js-read-4.feature,js-read-4.feature,jsread,passed,Same fix as feature-073,DynamicOutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
+feature-073,feature,jsread/js-read-2.feature,,,js-read-2.feature,js-read-2.feature,jsread,passed,Fixed NPE in Scenario.replace() for unnamed scenario outlines,OutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
+feature-074,feature,jsread/js-read-3.feature,,,js-read-3.feature,js-read-3.feature,jsread,passed,Same fix as feature-073,OutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
+feature-075,feature,jsread/js-read-4.feature,,,js-read-4.feature,js-read-4.feature,jsread,passed,Same fix as feature-073,OutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
 feature-076,feature,jsread/js-read-called-2.feature,,,js-read-called-2.feature,js-read-called-2.feature,jsread,pending,,,
 feature-077,feature,jsread/js-read-called-3.feature,,,js-read-called-3.feature,js-read-called-3.feature,jsread,pending,,,
 feature-078,feature,jsread/js-read-called.feature,,,js-read-called.feature,js-read-called.feature,jsread,pending,,,
@@ -374,7 +374,7 @@ feature-080,feature,jsread/js-read-reuse-only-background.feature,,,js-read-reuse
 feature-081,feature,jsread/js-read-reuse.feature,,,js-read-reuse.feature,js-read-reuse.feature,jsread,pending,,,
 feature-082,feature,jsread/js-read.feature,,,js-read.feature,js-read.feature,jsread,passed,call read shorthand and this: prefix implemented,,2025-12-21
 feature-083,feature,karate-config-fn.feature,,,karate-config-fn.feature,feature reuse from karate-config.js,root,pending,,,
-feature-084,feature,karate-config-frombase.feature,,,karate-config-frombase.feature,karate-config-frombase.feature,root,passed,karate-base.js implemented - covered by java-026 and unit tests,ConfigTest#testKarateBaseJs*,2025-12-21
+feature-084,feature,karate-config-frombase.feature,,,karate-config-frombase.feature,karate-config-frombase.feature,root,passed,karate-base.js implemented - covered by java-026 and unit tests,ScenarioConfigTest#testKarateBaseJs*,2025-12-21
 feature-085,feature,karate-config-getscenario.feature,,,karate-config-getscenario.feature,karate-config-getscenario.feature,root,pending,,,
 feature-086,feature,karate-config-utils.feature,,,karate-config-utils.feature,karate-config-utils.feature,root,pending,,,
 feature-087,feature,karate-get-called.feature,,,karate-get-called.feature,karate-get-called.feature,root,pending,,,

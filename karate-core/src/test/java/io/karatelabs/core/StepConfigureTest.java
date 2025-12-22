@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Tests for KarateConfig (configure keyword and karate.config getter).
  */
-class KarateConfigTest {
+class StepConfigureTest {
 
     @Test
     void testConfigureSslBoolean() {

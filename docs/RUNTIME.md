@@ -570,7 +570,7 @@ Examples:
 - `FeatureRuntime.evaluateGeneratorFunction()` - Calls function repeatedly via `JsCallable.call(null, index)` until termination
 - `ScenarioRuntime.initEngine()` - Sets `__num` and `__row` variables
 
-See `io.karatelabs.core.DynamicOutlineTest` for comprehensive test coverage.
+See `io.karatelabs.core.OutlineTest` for comprehensive test coverage.
 
 ---
 
@@ -1072,12 +1072,12 @@ Tests are in `karate-core/src/test/java/io/karatelabs/core/`:
 | `step/MatchStepTest` | Match assertions |
 | `step/HttpStepTest` | HTTP operations |
 | `step/MultipartStepTest` | Multipart uploads |
-| `step/PrintAssertTest` | Print and assert |
-| `ScenarioOutlineTest` | Outline expansion |
-| `DynamicOutlineTest` | Dynamic scenarios |
+| `StepPrintTest` | Print statements |
+| `StepAssertTest` | Assert statements |
+| `OutlineTest` | Scenario outline expansion and dynamic scenarios |
 | `BackgroundTest` | Background steps |
-| `CallFeatureTest` | Feature calling |
-| `ConfigTest` | Config loading, working directory fallback |
+| `StepCallTest` | Feature calling |
+| `ScenarioConfigTest` | Config loading, working directory fallback |
 | `callsingle/CallSingleTest` | `karate.callSingle()`, thread-safe caching, parallel execution |
 | `log/Slf4jCascadeTest` | SLF4J cascade for test logs |
 | `RuntimeHookTest` | Hooks |

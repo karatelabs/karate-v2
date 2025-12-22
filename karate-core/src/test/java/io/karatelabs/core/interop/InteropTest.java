@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Tests for Java interop via Java.type() and related features.
  */
-class JavaInteropTest {
+class InteropTest {
 
     @Test
     void testJavaTypeAndNewPojo() {

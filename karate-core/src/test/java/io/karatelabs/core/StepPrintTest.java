@@ -30,9 +30,7 @@ import java.util.List;
 import static io.karatelabs.core.TestUtils.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-class PrintAssertTest {
-
-    // ========== Print ==========
+class StepPrintTest {
 
     @Test
     void testPrintString() {
@@ -83,95 +81,6 @@ class PrintAssertTest {
             * print 'x squared is:', x * x
             """);
         assertPassed(sr);
-    }
-
-    // ========== Assert ==========
-
-    @Test
-    void testAssertTrue() {
-        ScenarioRuntime sr = run("""
-            * assert 1 + 1 == 2
-            """);
-        assertPassed(sr);
-    }
-
-    @Test
-    void testAssertFalse() {
-        ScenarioRuntime sr = run("""
-            * assert 1 + 1 == 3
-            """);
-        assertFailed(sr);
-    }
-
-    @Test
-    void testAssertWithVariable() {
-        ScenarioRuntime sr = run("""
-            * def x = 10
-            * assert x > 5
-            """);
-        assertPassed(sr);
-    }
-
-    @Test
-    void testAssertWithVariableFailure() {
-        ScenarioRuntime sr = run("""
-            * def x = 3
-            * assert x > 5
-            """);
-        assertFailed(sr);
-    }
-
-    @Test
-    void testAssertComplex() {
-        ScenarioRuntime sr = run("""
-            * def arr = [1, 2, 3]
-            * assert arr.length == 3
-            """);
-        assertPassed(sr);
-    }
-
-    @Test
-    void testAssertString() {
-        ScenarioRuntime sr = run("""
-            * def s = 'hello'
-            * assert s.startsWith('hel')
-            """);
-        assertPassed(sr);
-    }
-
-    // ========== Eval ==========
-
-    @Test
-    void testEval() {
-        ScenarioRuntime sr = run("""
-            * def counter = 0
-            * eval counter = counter + 1
-            * match counter == 1
-            """);
-        assertPassed(sr);
-    }
-
-    @Test
-    void testEvalFunction() {
-        ScenarioRuntime sr = run("""
-            * def result = null
-            * def fn = function(x) { return x * 2 }
-            * eval result = fn(5)
-            * match result == 10
-            """);
-        assertPassed(sr);
-    }
-
-    // ========== Configure ==========
-
-    @Test
-    void testConfigure() {
-        ScenarioRuntime sr = run("""
-            * configure ssl = true
-            * def x = 1
-            """);
-        assertPassed(sr);
-        // Just verify it doesn't fail - configure is a no-op for most settings in tests
     }
 
 }

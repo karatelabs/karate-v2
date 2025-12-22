@@ -36,7 +36,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Tests for karate-config.js loading.
  */
-class ConfigTest {
+class ScenarioConfigTest {
 
     @TempDir
     Path tempDir;
