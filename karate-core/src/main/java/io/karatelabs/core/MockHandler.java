@@ -155,6 +155,16 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
             }
             // Save background variables to globals
             saveGlobals(engine);
+
+            // Transfer configure settings to MockConfig
+            KarateConfig karateConfig = runtime.getConfig();
+            if (karateConfig.isCorsEnabled()) {
+                config.setCorsEnabled(true);
+            }
+            Object responseHeaders = karateConfig.getResponseHeaders();
+            if (responseHeaders instanceof Map) {
+                config.setResponseHeaders((Map<String, Object>) responseHeaders);
+            }
         }
 
         logger.debug("initialized feature: {}", feature);

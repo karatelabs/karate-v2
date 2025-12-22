@@ -58,6 +58,7 @@ B_COMMENT = "/*"([^*]|\*+[^*/])*(\*+"/")?
 D_STRING = \"([^\"]|\\\")*\"?
 S_STRING = '([^']|\\')*'?
 IDENT = [:jletter:][:jletterdigit:]*
+DOT_IDENT = {IDENT} ("." {IDENT})+
 T_STRING = [^`$]+ | "$"[^{$`]+
 REGEX = "/" [^*/\n] ([^/\\\n]|\\{NOT_LF})* "/" [:jletter:]*
 
@@ -240,9 +241,12 @@ GM_TAG = "@" {NOT_WSLF}+
   "match"                       { yybegin(GS_STEP_MATCH); return G_KEYWORD; }
   {GM_TYPE_KEYWORD} | {GM_ASSIGN_KEYWORD} { return G_KEYWORD; }
   {GM_SPACED_KEYWORD}           { yybegin(GS_RHS); return G_KEYWORD; }
+  {DOT_IDENT} / {WS_ONE_LF}     { yybegin(GHERKIN); return G_KEYWORD; } // dotted keyword for docstring or table
   {IDENT} / {WS_ONE_LF}         { yybegin(GHERKIN); return G_KEYWORD; } // docstring or table
   "=" / {WS_ONE_LF}             { yybegin(GHERKIN); return EQ; } // docstring or table
-  {IDENT} / [\[(.]              { rewind(GS_RHS); } // js expression like foo[x] or foo.bar()
+  {DOT_IDENT} / [\[(]           { rewind(GS_RHS); } // js expression like foo.bar[x] or foo.bar()
+  {IDENT} / [\[(]               { rewind(GS_RHS); } // js expression like foo[x]
+  {DOT_IDENT}                   { return G_KEYWORD; } // dotted keyword like foo.bar
   {IDENT}                       { return G_KEYWORD; }
   "="                           { yybegin(GS_RHS); return EQ; }
   {NOT_WSLF}                    { rewind(GS_RHS); } // js

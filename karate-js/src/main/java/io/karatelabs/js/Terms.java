@@ -318,19 +318,22 @@ public class Terms {
             case LocalDate ld -> new JsDate(ld);
             case ZonedDateTime zdt -> new JsDate(zdt);
             case byte[] bytes -> new JsUint8Array(bytes);
-            default -> {
-                // Handle other Java arrays (String[], int[], Object[], etc.)
-                if (o.getClass().isArray()) {
-                    int length = Array.getLength(o);
-                    List<Object> list = new ArrayList<>(length);
-                    for (int i = 0; i < length; i++) {
-                        list.add(Array.get(o, i));
-                    }
-                    yield new JsArray(list);
-                }
-                yield null;
-            }
+            default -> null;
         };
+    }
+
+    // Convert Java native arrays (String[], int[], Object[], etc.) to JsArray
+    // Note: byte[] is excluded as it has special handling (JsUint8Array)
+    static JsArray toJsArray(Object o) {
+        if (o != null && o.getClass().isArray() && !(o instanceof byte[])) {
+            int length = Array.getLength(o);
+            List<Object> list = new ArrayList<>(length);
+            for (int i = 0; i < length; i++) {
+                list.add(Array.get(o, i));
+            }
+            return new JsArray(list);
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")
@@ -340,6 +343,11 @@ public class Terms {
         }
         if (o instanceof List<?> list) {
             return new JsArray((List<Object>) list);
+        }
+        // Java native arrays (String[], int[], Object[], etc.)
+        JsArray jsArray = toJsArray(o);
+        if (jsArray != null) {
+            return jsArray;
         }
         // XML Node: convert to Map structure for JS-style property access
         if (o instanceof Node node) {
@@ -361,8 +369,9 @@ public class Terms {
         if (o instanceof List) {
             return new JsArray((List<Object>) o);
         }
-        JavaMirror mirror = toJavaMirror(o);
-        if (mirror instanceof JsArray jsArray) {
+        // Java native arrays (String[], int[], Object[], etc.)
+        JsArray jsArray = toJsArray(o);
+        if (jsArray != null) {
             return jsArray;
         }
         if (o instanceof Map) {

@@ -78,7 +78,9 @@ public class KarateConfig implements SimpleObject {
             // Execution control
             "continueOnStepFailure", "abortedStepsShouldPass", "abortSuiteOnFailure",
             // NTLM Auth
-            "ntlmUsername", "ntlmPassword", "ntlmDomain", "ntlmWorkstation"
+            "ntlmUsername", "ntlmPassword", "ntlmDomain", "ntlmWorkstation",
+            // Mock settings
+            "corsEnabled", "responseHeaders"
     );
 
     // ===== HTTP Client (requires rebuild when changed) =====
@@ -140,6 +142,10 @@ public class KarateConfig implements SimpleObject {
     private String ntlmDomain;
     private String ntlmWorkstation;
 
+    // Mock settings
+    private boolean corsEnabled;
+    private Object responseHeaders;  // Map<String,Object> or JS function
+
     /**
      * Create a deep copy of this configuration.
      * Used to snapshot config state for callonce/callSingle isolation.
@@ -197,6 +203,9 @@ public class KarateConfig implements SimpleObject {
         copy.ntlmPassword = this.ntlmPassword;
         copy.ntlmDomain = this.ntlmDomain;
         copy.ntlmWorkstation = this.ntlmWorkstation;
+        // Mock settings
+        copy.corsEnabled = this.corsEnabled;
+        copy.responseHeaders = this.responseHeaders;
         return copy;
     }
 
@@ -300,6 +309,16 @@ public class KarateConfig implements SimpleObject {
             }
             case "abortSuiteOnFailure" -> {
                 this.abortSuiteOnFailure = toBoolean(value);
+                yield false;
+            }
+
+            // Mock settings
+            case "cors" -> {
+                this.corsEnabled = toBoolean(value);
+                yield false;
+            }
+            case "responseHeaders" -> {
+                this.responseHeaders = value;
                 yield false;
             }
 
@@ -670,6 +689,14 @@ public class KarateConfig implements SimpleObject {
 
     public String getNtlmWorkstation() {
         return ntlmWorkstation;
+    }
+
+    public boolean isCorsEnabled() {
+        return corsEnabled;
+    }
+
+    public Object getResponseHeaders() {
+        return responseHeaders;
     }
 
 }
