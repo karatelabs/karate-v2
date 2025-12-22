@@ -33,6 +33,7 @@ import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.MatchExpression;
 import io.karatelabs.gherkin.Step;
 import io.karatelabs.gherkin.Table;
+import io.karatelabs.io.http.HttpRequest;
 import io.karatelabs.io.http.HttpRequestBuilder;
 import io.karatelabs.io.http.HttpResponse;
 import io.karatelabs.js.GherkinParser;
@@ -1631,24 +1632,21 @@ public class StepExecutor {
     }
 
     private void executeCookie(Step step) {
-        // Basic cookie support
+        // Cookies are accumulated in HttpRequestBuilder and combined when request is built
         String text = step.getText();
         int eqIndex = findAssignmentOperator(text);
         String name = text.substring(0, eqIndex).trim();
         Object value = runtime.eval(text.substring(eqIndex + 1).trim());
-        http().header("Cookie", name + "=" + value);
+        http().cookie(name, value.toString());
     }
 
     @SuppressWarnings("unchecked")
     private void executeCookies(Step step) {
         Object value = runtime.eval(step.getText());
         if (value instanceof Map<?, ?> map) {
-            StringBuilder sb = new StringBuilder();
             for (Map.Entry<?, ?> entry : map.entrySet()) {
-                if (sb.length() > 0) sb.append("; ");
-                sb.append(entry.getKey()).append("=").append(entry.getValue());
+                http().cookie(entry.getKey().toString(), entry.getValue().toString());
             }
-            http().header("Cookie", sb.toString());
         }
     }
 
@@ -1680,8 +1678,32 @@ public class StepExecutor {
         http().body(body);
     }
 
+    @SuppressWarnings("unchecked")
     private void executeMethod(Step step) {
         String method = step.getText().trim().toUpperCase();
+
+        // Apply configured cookies before invoking request
+        KarateConfig config = runtime.getConfig();
+        Object configCookies = config.getCookies();
+        if (configCookies instanceof Map<?, ?> cookieMap) {
+            for (Map.Entry<?, ?> entry : cookieMap.entrySet()) {
+                http().cookie(entry.getKey().toString(), entry.getValue().toString());
+            }
+        }
+
+        // Apply configured headers - may be a Map or a JsCallable function
+        Object configHeaders = config.getHeaders();
+        if (configHeaders instanceof JsCallable headersFn) {
+            // Build request first so function can access current state (for signing etc.)
+            HttpRequest request = http().build();
+            Object result = headersFn.call(null, request);
+            if (result instanceof Map<?, ?> headersMap) {
+                http().headers((Map<String, Object>) headersMap);
+            }
+        } else if (configHeaders instanceof Map<?, ?> headersMap) {
+            http().headers((Map<String, Object>) headersMap);
+        }
+
         HttpResponse response = http().invoke(method);
 
         // Set response variables

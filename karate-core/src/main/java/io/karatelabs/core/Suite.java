@@ -76,6 +76,9 @@ public class Suite {
     // Legacy: evaluated config variables (for backward compatibility with tests)
     private Map<String, Object> configVariables = Collections.emptyMap();
 
+    // System properties (available via karate.properties)
+    private Map<String, String> systemProperties;
+
     // Hooks
     private final List<RuntimeHook> hooks = new ArrayList<>();
 
@@ -231,6 +234,15 @@ public class Suite {
 
     public Suite resultListener(ResultListener listener) {
         this.resultListeners.add(listener);
+        return this;
+    }
+
+    /**
+     * Set system properties that will be available via karate.properties in scripts.
+     * If null, defaults to System.getProperties() at runtime.
+     */
+    public Suite systemProperties(Map<String, String> props) {
+        this.systemProperties = props;
         return this;
     }
 
@@ -551,6 +563,24 @@ public class Suite {
 
     public List<ResultListener> getResultListeners() {
         return resultListeners;
+    }
+
+    /**
+     * Get system properties for karate.properties.
+     * If none were set explicitly, returns System.getProperties() as a Map.
+     */
+    public Map<String, String> getSystemProperties() {
+        if (systemProperties == null) {
+            // Fallback to JVM system properties
+            Map<String, String> props = new HashMap<>();
+            System.getProperties().forEach((k, v) -> props.put(k.toString(), v.toString()));
+            return props;
+        }
+        // Merge with JVM system properties (explicit properties take precedence)
+        Map<String, String> merged = new HashMap<>();
+        System.getProperties().forEach((k, v) -> merged.put(k.toString(), v.toString()));
+        merged.putAll(systemProperties);
+        return merged;
     }
 
 }

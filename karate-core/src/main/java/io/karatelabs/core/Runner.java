@@ -32,7 +32,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Main entry point for running Karate tests programmatically.
@@ -101,6 +103,7 @@ public final class Runner {
         private boolean outputCucumberJson;
         private boolean backupReportDir;
         private boolean outputConsoleSummary = true;
+        private Map<String, String> systemProperties;
 
         Builder() {
         }
@@ -176,6 +179,18 @@ public final class Runner {
          */
         public Builder configDir(String dir) {
             this.configDir = dir;
+            return this;
+        }
+
+        /**
+         * Set a system property that will be available via karate.properties in scripts.
+         * Multiple properties can be set by calling this method multiple times.
+         */
+        public Builder systemProperty(String key, String value) {
+            if (systemProperties == null) {
+                systemProperties = new HashMap<>();
+            }
+            systemProperties.put(key, value);
             return this;
         }
 
@@ -380,6 +395,9 @@ public final class Runner {
             suite.outputCucumberJson(outputCucumberJson);
             suite.backupReportDir(backupReportDir);
             suite.outputConsoleSummary(outputConsoleSummary);
+            if (systemProperties != null) {
+                suite.systemProperties(systemProperties);
+            }
 
             // Add hooks
             for (RuntimeHook hook : hooks) {

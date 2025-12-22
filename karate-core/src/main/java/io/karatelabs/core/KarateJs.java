@@ -95,6 +95,7 @@ public class KarateJs implements SimpleObject {
     private BiConsumer<String, Object> configureHandler;
     private Supplier<KarateConfig> configProvider;
     private Supplier<Resource> currentResourceProvider;
+    private Supplier<Map<String, String>> propertiesProvider;
     private String env;
     private MockHandler mockHandler; // non-null only in mock context
 
@@ -240,6 +241,10 @@ public class KarateJs implements SimpleObject {
 
     public void setCurrentResourceProvider(Supplier<Resource> provider) {
         this.currentResourceProvider = provider;
+    }
+
+    public void setPropertiesProvider(Supplier<Map<String, String>> provider) {
+        this.propertiesProvider = provider;
     }
 
     public void setMockHandler(MockHandler handler) {
@@ -1029,6 +1034,21 @@ public class KarateJs implements SimpleObject {
             result.put("type", "unknown");
         }
         return result;
+    }
+
+    /**
+     * Returns system properties available via karate.properties['key'].
+     * If a propertiesProvider is set (from Suite), uses that.
+     * Otherwise falls back to JVM System.getProperties().
+     */
+    private Map<String, String> getProperties() {
+        if (propertiesProvider != null) {
+            return propertiesProvider.get();
+        }
+        // Fallback to JVM system properties
+        Map<String, String> props = new HashMap<>();
+        System.getProperties().forEach((k, v) -> props.put(k.toString(), v.toString()));
+        return props;
     }
 
     // ========== Type Utilities ==========
@@ -1870,6 +1890,7 @@ public class KarateJs implements SimpleObject {
             case "os" -> getOsInfo();
             case "pretty" -> pretty();
             case "prettyXml" -> prettyXml();
+            case "properties" -> getProperties();
             case "proceed" -> proceed();
             case "read" -> read;
             case "readAsBytes" -> readAsBytes();

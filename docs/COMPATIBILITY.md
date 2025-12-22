@@ -190,11 +190,32 @@ From `io.karatelabs.core.TestUtils`:
 
 ---
 
+## Pending V1 Parity
+
+Features that need implementation for full V1 compatibility:
+
+| Feature | V1 Pattern | V2 Status | Notes |
+|---------|-----------|-----------|-------|
+| Java Function as callable | `Hello.sayHelloFactory()` returns `Function<String,String>`, callable in JS | ❌ Pending | JS engine needs to wrap `java.util.function.Function`, `Callable`, `Runnable`, `Predicate` as `JsCallable` |
+| callSingle returning Java fn | `karate.callSingle('file.js')` where JS returns Java Function | ❌ Pending | Depends on above |
+
+**Reference:** V1 parallel test `call-single-from-config3.js`:
+```javascript
+var Hello = Java.type('com.intuit.karate.core.parallel.Hello');
+result.sayHello = Hello.sayHelloFactory();  // Function<String, String>
+```
+
+Used in feature:
+```gherkin
+* match sayHello('world') == 'hello world'
+```
+
+---
+
 ## Out of Scope
 
 | Area | Reason |
 |------|--------|
-| Mock Server | Not yet implemented in V2 |
 | Browser/Driver | Not yet implemented in V2 |
 | Performance | Not yet implemented in V2 |
 | WebSocket | Not yet implemented in V2 |

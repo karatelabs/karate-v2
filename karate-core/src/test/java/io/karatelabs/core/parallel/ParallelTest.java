@@ -23,8 +23,11 @@
  */
 package io.karatelabs.core.parallel;
 
+import io.karatelabs.core.MockServer;
 import io.karatelabs.core.Runner;
 import io.karatelabs.core.SuiteResult;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -39,8 +42,24 @@ import static org.junit.jupiter.api.Assertions.*;
  * - karate-base.js functions shared across threads
  * - Variables don't leak between parallel scenarios
  * - Dynamic outlines work correctly in parallel
+ * - HTTP calls work in parallel with configure headers/cookies
+ * - Java interop works across parallel scenarios
  */
 class ParallelTest {
+
+    private static MockServer mockServer;
+
+    @BeforeAll
+    static void startMockServer() {
+        mockServer = MockServer.feature("classpath:io/karatelabs/core/parallel/http/http-mock.feature").start();
+    }
+
+    @AfterAll
+    static void stopMockServer() {
+        if (mockServer != null) {
+            mockServer.stopAndWait();
+        }
+    }
 
     /**
      * Test that dynamic scenario outlines work correctly in parallel.
@@ -146,6 +165,39 @@ class ParallelTest {
                 .outputConsoleSummary(false)
                 .parallel(1);
         assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
+    }
+
+    /**
+     * Comprehensive parallel HTTP test combining:
+     * - Multiple scenarios with HTTP calls
+     * - Dynamic scenario outline with HTTP
+     * - configure headers (from callonce)
+     * - configure cookies (set in feature)
+     * - configure afterScenario hook
+     * - callonce with Java.type
+     * - callSingle from config with Java interop
+     * - karate-base.js functions
+     * - call to another feature within outline
+     * <p>
+     * This single test covers the functionality of V1's:
+     * - ParallelTest.testParallel
+     * - ParallelOutlineTest.testParallelOutline
+     * - HelloTest.testParallel
+     */
+    @Test
+    void testHttpParallel() {
+        SuiteResult result = Runner.path(
+                        "classpath:io/karatelabs/core/parallel/http/http-parallel.feature",
+                        "classpath:io/karatelabs/core/parallel/http/http-outline.feature"
+                )
+                .configDir("classpath:io/karatelabs/core/parallel/http")
+                .systemProperty("server.port", mockServer.getPort() + "")
+                .outputConsoleSummary(false)
+                .parallel(4);
+        assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
+        // 3 scenarios from http-parallel + 3 from outline = 6 total
+        assertEquals(6, result.getScenarioCount());
+        assertEquals(2, result.getFeatureCount());
     }
 
 }

@@ -144,10 +144,16 @@ class MockE2eTest {
               * def responseHeaders = { 'Set-Cookie': 'session=abc123; Path=/; HttpOnly' }
               * def response = { message: 'cookie set' }
 
-            # Echo back received cookies
+            # Echo back received cookies (using raw Cookie header)
             Scenario: pathMatches('/echo-cookies')
               * def cookieHeader = requestHeaders['Cookie'] ? requestHeaders['Cookie'][0] : 'none'
               * def response = { receivedCookies: cookieHeader }
+
+            # Echo back cookies using requestCookies variable
+            Scenario: pathMatches('/echo-cookies-parsed')
+              * def session = requestCookies['session'] ? requestCookies['session'].value : 'none'
+              * def user = requestCookies['user'] ? requestCookies['user'].value : 'none'
+              * def response = { session: session, user: user }
 
             # ===== Retry scenarios =====
 
@@ -498,6 +504,25 @@ class MockE2eTest {
             # Should NOT contain the previous cookie
             * match response.receivedCookies !contains 'request1cookie'
             """.formatted(port, port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testRequestCookiesParsedInMock() {
+        // Test that requestCookies variable properly parses cookies
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test requestCookies Variable
+
+            Scenario: requestCookies should parse Cookie header
+            * url 'http://localhost:%d'
+            * cookie session = 'abc123'
+            * cookie user = 'john'
+            * path '/echo-cookies-parsed'
+            * method get
+            * status 200
+            * match response == { session: 'abc123', user: 'john' }
+            """.formatted(port));
 
         assertPassed(sr);
     }

@@ -207,6 +207,8 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
             currentRequest != null ? currentRequest.getParams() : null);
         engine.put("requestParts", (Supplier<Map<String, List<Map<String, Object>>>>) () ->
             currentRequest != null ? currentRequest.getMultiParts() : null);
+        engine.put("requestCookies", (Supplier<Map<String, Map<String, String>>>) () ->
+            currentRequest != null ? currentRequest.getCookies() : null);
 
         // Put args into globals if provided
         if (args != null) {
@@ -364,7 +366,7 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
     }
 
     private boolean isMatchingScenario(Scenario scenario, Engine engine) {
-        String expression = StringUtils.trimToNull(scenario.getNameAndDescription());
+        String expression = StringUtils.trimToNull(scenario.getName());
 
         // Empty/null expression means catch-all (always matches)
         if (expression == null) {

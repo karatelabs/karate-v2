@@ -91,7 +91,8 @@ Available in all mock scenarios:
 | `requestUri` | String | Path with query string (e.g., `/users?name=bob`) |
 | `requestUrlBase` | String | Base URL (e.g., `http://localhost:8080`) |
 | `requestMethod` | String | HTTP method in uppercase (GET, POST, etc.) |
-| `requestHeaders` | Map | Request headers (case-insensitive access) |
+| `requestHeaders` | Map | Request headers as `Map<String, List<String>>` |
+| `requestCookies` | Map | Request cookies as `Map<String, { name, value }>` |
 | `requestParams` | Map | Query string or form parameters |
 | `requestParts` | Map | Multipart request parts (file uploads) |
 | `pathParams` | Map | Path parameters extracted by `pathMatches()` |

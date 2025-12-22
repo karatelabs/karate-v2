@@ -224,6 +224,35 @@ public class HttpRequest implements SimpleObject {
         return getHeader(Http.Header.CONTENT_TYPE.key);
     }
 
+    /**
+     * Parse cookies from the Cookie header(s).
+     * Returns a map where each cookie name maps to a map with 'name' and 'value' keys.
+     * This matches V1 behavior where cookies are accessed as: requestCookies['name'].value
+     * Handles both single Cookie header with semicolon-separated values, and multiple Cookie headers.
+     */
+    public Map<String, Map<String, String>> getCookies() {
+        List<String> cookieHeaders = getHeaderValues("Cookie");
+        if (cookieHeaders == null || cookieHeaders.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<String, Map<String, String>> cookies = new LinkedHashMap<>();
+        for (String cookieHeader : cookieHeaders) {
+            for (String part : cookieHeader.split(";")) {
+                String trimmed = part.trim();
+                int eqPos = trimmed.indexOf('=');
+                if (eqPos > 0) {
+                    String name = trimmed.substring(0, eqPos).trim();
+                    String value = trimmed.substring(eqPos + 1).trim();
+                    Map<String, String> cookie = new LinkedHashMap<>();
+                    cookie.put("name", name);
+                    cookie.put("value", value);
+                    cookies.put(name, cookie);
+                }
+            }
+        }
+        return cookies;
+    }
+
     public void setContentType(String contentType) {
         putHeader(Http.Header.CONTENT_TYPE.key, contentType);
     }

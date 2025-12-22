@@ -110,6 +110,8 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         // Set karate.env before config evaluation
         if (featureRuntime != null && featureRuntime.getSuite() != null) {
             karate.setEnv(featureRuntime.getSuite().getEnv());
+            // Set karate.properties provider
+            karate.setPropertiesProvider(() -> featureRuntime.getSuite().getSystemProperties());
         }
 
         // Evaluate config (only for top-level scenarios, not called features)
