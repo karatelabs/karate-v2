@@ -1,5 +1,5 @@
 id,type,source_path,class_name,method_name,feature_name,description,subdirectory,status,notes,v2_location,date_tested
-java-001,java_test,CallResponseTest.java,CallResponseTest,testPayments,,testPayments,root,skipped,Out of scope - requires MockServer,,2025-12-20
+java-001,java_test,CallResponseTest.java,CallResponseTest,testPayments,,testPayments,root,passed,MockServer implemented - covered by MockE2eTest.testCallResponseMock,io/karatelabs/core/mock/MockE2eTest,2025-12-22
 java-002,java_test,DummyUiTest.java,DummyUiTest,testUiGoogle,,testUiGoogle,root,skipped,Out of scope - requires Browser/Driver,,2025-12-20
 java-003,java_test,FeatureFailRunner.java,FeatureFailRunner,testFailJs,,testFailJs,root,passed,V2 correctly fails on missing JS file (expected behavior),,2025-12-20
 java-004,java_test,FeatureFailRunner.java,FeatureFailRunner,testCallSingleFail,,testCallSingleFail,root,passed,callSingle implemented - test needs env/config propagation in compat runner,CallSingleTest,2025-12-20
@@ -203,20 +203,20 @@ java-201,java_test,features/RemainingFeaturesTest.java,RemainingFeaturesTest,tes
 java-202,java_test,features/RemainingFeaturesTest.java,RemainingFeaturesTest,testRemainingFeaturesParallel,,testRemainingFeaturesParallel,features,pending,,,
 java-203,java_test,jscall/JsCallTest.java,JsCallTest,testParallel,,testParallel,jscall,passed,Config functions work correctly in parallel scenarios,io/karatelabs/core/parallel/ParallelTest,2025-12-21
 java-204,java_test,jscall/JsCallonceTest.java,JsCallonceTest,testParallel,,testParallel,jscall,passed,callonce in Background with parallel execution works - deep copy isolation implemented,io/karatelabs/core/parallel/ParallelTest,2025-12-21
-java-205,java_test,jscall2/JsCall2Test.java,JsCall2Test,testParallel,,testParallel,jscall2,skipped,Out of scope - requires MockServer (HTTP tests in parallel),,2025-12-21
-java-206,java_test,mock/MockRunner.java,MockRunner,testBinary,,testBinary,mock,skipped,Out of scope - V2 mock server not implemented,,
-java-207,java_test,mock/MockRunner.java,MockRunner,testBrotli,,testBrotli,mock,skipped,Out of scope - V2 mock server not implemented,,
-java-208,java_test,mock/MockRunner.java,MockRunner,testHtml,,testHtml,mock,skipped,Out of scope - V2 mock server not implemented,,
-java-209,java_test,mock/MockRunner.java,MockRunner,testMalformed,,testMalformed,mock,skipped,Out of scope - V2 mock server not implemented,,
-java-210,java_test,mock/MockRunner.java,MockRunner,testMultipart,,testMultipart,mock,skipped,Out of scope - V2 mock server not implemented,,
-java-211,java_test,mock/MockRunner.java,MockRunner,testInvalidCookie,,testInvalidCookie,mock,skipped,Out of scope - V2 mock server not implemented,,
-java-212,java_test,mock/MockSslTest.java,MockSslTest,testMock,,testMock,mock,skipped,Out of scope - V2 mock server not implemented,,
-java-213,java_test,mock/MockTest.java,MockTest,testMock,,testMock,mock,skipped,Out of scope - V2 mock server not implemented,,
+java-205,java_test,jscall2/JsCall2Test.java,JsCall2Test,testParallel,,testParallel,jscall2,pending,MockServer now available - parallel HTTP tests can be implemented,,2025-12-22
+java-206,java_test,mock/MockRunner.java,MockRunner,testBinary,,testBinary,mock,passed,Binary upload/download covered by MockE2eTest.testBinaryDownload/Upload,io/karatelabs/core/mock/MockE2eTest,2025-12-22
+java-207,java_test,mock/MockRunner.java,MockRunner,testBrotli,,testBrotli,mock,skipped,Brotli encoding not implemented in V2,,2025-12-22
+java-208,java_test,mock/MockRunner.java,MockRunner,testHtml,,testHtml,mock,skipped,HTML response parsing not explicitly tested in V2,,2025-12-22
+java-209,java_test,mock/MockRunner.java,MockRunner,testMalformed,,testMalformed,mock,skipped,Malformed JSON handling not explicitly tested in V2,,2025-12-22
+java-210,java_test,mock/MockRunner.java,MockRunner,testMultipart,,testMultipart,mock,passed,Multipart covered by MockE2eTest.testMultipartFileUpload,io/karatelabs/core/mock/MockE2eTest,2025-12-22
+java-211,java_test,mock/MockRunner.java,MockRunner,testInvalidCookie,,testInvalidCookie,mock,skipped,Invalid cookie edge case not explicitly tested in V2,,2025-12-22
+java-212,java_test,mock/MockSslTest.java,MockSslTest,testMock,,testMock,mock,passed,SSL mock covered by MockServerTest (uses SSL),io/karatelabs/core/mock/MockServerTest,2025-12-22
+java-213,java_test,mock/MockTest.java,MockTest,testMock,,testMock,mock,passed,Mock tests covered by MockHandlerTest/MockServerTest/MockE2eTest,io/karatelabs/core/mock/,2025-12-22
 java-214,java_test,parajava/ParallelJavaTest.java,ParallelJavaTest,testParallel,,testParallel,parajava,skipped,Out of scope - legacy parallel runner,,
-java-215,java_test,parallel/HelloTest.java,HelloTest,testParallel,,testParallel,parallel,skipped,Out of scope - requires MockServer (HTTP tests in parallel),,2025-12-21
-java-216,java_test,parallel/ParallelCsvTest.java,ParallelCsvTest,testParallel,,testParallel,parallel,skipped,Out of scope - requires MockServer (HTTP tests in parallel),,2025-12-21
-java-217,java_test,parallel/ParallelOutlineTest.java,ParallelOutlineTest,testParallelOutline,,testParallelOutline,parallel,skipped,Out of scope - requires MockServer (HTTP tests in parallel),,2025-12-21
-java-218,java_test,parallel/ParallelTest.java,ParallelTest,testParallel,,testParallel,parallel,skipped,Out of scope - requires MockServer (HTTP tests in parallel),,2025-12-21
+java-215,java_test,parallel/HelloTest.java,HelloTest,testParallel,,testParallel,parallel,pending,MockServer now available - parallel HTTP tests can be implemented,,2025-12-22
+java-216,java_test,parallel/ParallelCsvTest.java,ParallelCsvTest,testParallel,,testParallel,parallel,pending,MockServer now available - parallel HTTP tests can be implemented,,2025-12-22
+java-217,java_test,parallel/ParallelOutlineTest.java,ParallelOutlineTest,testParallelOutline,,testParallelOutline,parallel,pending,MockServer now available - parallel HTTP tests can be implemented,,2025-12-22
+java-218,java_test,parallel/ParallelTest.java,ParallelTest,testParallel,,testParallel,parallel,pending,MockServer now available - parallel HTTP tests can be implemented,,2025-12-22
 java-219,java_test,parasimple/ParallelOutlineSimpleTest.java,ParallelOutlineSimpleTest,testParallelOutline,,testParallelOutline,parasimple,skipped,Out of scope - legacy parallel runner,,
 java-220,java_test,parser/FeatureParserTest.java,FeatureParserTest,testEngineForSimpleFeature,,testEngineForSimpleFeature,parser,pending,,,
 java-221,java_test,parser/FeatureParserTest.java,FeatureParserTest,testEngineForSimpleFeatureWithBackground,,testEngineForSimpleFeatureWithBackground,parser,pending,,,
@@ -382,34 +382,34 @@ feature-088,feature,karate-get.feature,,,karate-get.feature,karate-get.feature,r
 feature-089,feature,lower-case.feature,,,lower-case.feature,lower case helper method,root,passed,karate.lowerCase - JSON passes (XML literal parsing separate issue),io/karatelabs/core/StepJsTest,2025-12-19
 feature-090,feature,match-each-magic-variables.feature,,,match-each-magic-variables.feature,match-each-magic-variables.feature,root,passed,_$ and _$$ magic variables,,2025-12-19
 feature-091,feature,match-step.feature,,,match-step.feature,an edge case for com.intuit.karate.MatchStep,root,passed,match step parsing edge case,,2025-12-19
-feature-092,feature,mock/_mock.feature,,,_mock.feature,_mock.feature,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-093,feature,mock/_simple.feature,,,_simple.feature,_simple.feature,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-094,feature,mock/binary.feature,,,binary.feature,testing binary response handling,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-095,feature,mock/brotli.feature,,,brotli.feature,brotli,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-096,feature,mock/call.feature,,,call.feature,call.feature,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-097,feature,mock/called.feature,,,called.feature,called.feature,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-098,feature,mock/cookies.feature,,,cookies.feature,testing cookies from server,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-099,feature,mock/delete.feature,,,delete.feature,testing http delete method,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-100,feature,mock/download.feature,,,download.feature,file serving / download,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-101,feature,mock/form.feature,,,form.feature,testing form submits,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-102,feature,mock/german.feature,,,german.feature,german characters and response encoding,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-103,feature,mock/headers.feature,,,headers.feature,no response headers,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-104,feature,mock/hello-data-driven.feature,,,hello-data-driven.feature,a karate test using cucumber scenario outlines,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-105,feature,mock/hello-world.feature,,,hello-world.feature,simple example of a karate test,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-106,feature,mock/html.feature,,,html.feature,html,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-107,feature,mock/invalid-cookie.feature,,,invalid-cookie.feature,invalid-cookie.feature,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-108,feature,mock/json-bad.feature,,,json-bad.feature,json,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-109,feature,mock/json-order-mock-test.feature,,,json-order-mock-test.feature,json-order-mock-test.feature,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-110,feature,mock/json-order-mock.feature,,,json-order-mock.feature,simple mock,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-111,feature,mock/malformed.feature,,,malformed.feature,malformed response json,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-112,feature,mock/multi-params.feature,,,multi-params.feature,testing multi param values,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-113,feature,mock/no-headers.feature,,,no-headers.feature,no response headers,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-114,feature,mock/no-match.feature,,,no-match.feature,no scenario matched,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-115,feature,mock/param-commas.feature,,,param-commas.feature,testing commas in param values,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-116,feature,mock/patch.feature,,,patch.feature,testing http patch method,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-117,feature,mock/upload.feature,,,upload.feature,upload file,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-118,feature,mock/url-encoding.feature,,,url-encoding.feature,url encoding,mock,skipped,Out of scope - V2 mock server not implemented,,
-feature-119,feature,mock/white-space.feature,,,white-space.feature,white space edge cases,mock,skipped,Out of scope - V2 mock server not implemented,,
+feature-092,feature,mock/_mock.feature,,,_mock.feature,_mock.feature,mock,passed,Mock feature - functionality covered by V2 MockE2eTest,io/karatelabs/core/mock/MockE2eTest,2025-12-22
+feature-093,feature,mock/_simple.feature,,,_simple.feature,_simple.feature,mock,passed,Simple mock - functionality covered by V2 MockHandlerTest,io/karatelabs/core/mock/MockHandlerTest,2025-12-22
+feature-094,feature,mock/binary.feature,,,binary.feature,testing binary response handling,mock,passed,Binary covered by MockE2eTest.testBinaryDownload/Upload,io/karatelabs/core/mock/MockE2eTest,2025-12-22
+feature-095,feature,mock/brotli.feature,,,brotli.feature,brotli,mock,skipped,Brotli encoding not implemented in V2,,2025-12-22
+feature-096,feature,mock/call.feature,,,call.feature,call.feature,mock,skipped,Call in mock not explicitly tested - uses V1 classpath syntax,,2025-12-22
+feature-097,feature,mock/called.feature,,,called.feature,called.feature,mock,skipped,Helper for call.feature,,2025-12-22
+feature-098,feature,mock/cookies.feature,,,cookies.feature,testing cookies from server,mock,passed,Cookies covered by MockE2eTest cookie tests,io/karatelabs/core/mock/MockE2eTest,2025-12-22
+feature-099,feature,mock/delete.feature,,,delete.feature,testing http delete method,mock,passed,DELETE method covered by MockE2eTest.testPaymentsMockCrud,io/karatelabs/core/mock/MockE2eTest,2025-12-22
+feature-100,feature,mock/download.feature,,,download.feature,file serving / download,mock,skipped,File download with read() not explicitly tested,,2025-12-22
+feature-101,feature,mock/form.feature,,,form.feature,testing form submits,mock,passed,Form fields covered by MockE2eTest.testFormFieldPost,io/karatelabs/core/mock/MockE2eTest,2025-12-22
+feature-102,feature,mock/german.feature,,,german.feature,german characters and response encoding,mock,passed,German encoding covered by MockE2eTest.testGermanUmlauts,io/karatelabs/core/mock/MockE2eTest,2025-12-22
+feature-103,feature,mock/headers.feature,,,headers.feature,no response headers,mock,passed,Headers covered by MockE2eTest.testNoHeadersEmptyResponse,io/karatelabs/core/mock/MockE2eTest,2025-12-22
+feature-104,feature,mock/hello-data-driven.feature,,,hello-data-driven.feature,a karate test using cucumber scenario outlines,mock,skipped,Scenario outline not supported in mock mode,,2025-12-22
+feature-105,feature,mock/hello-world.feature,,,hello-world.feature,simple example of a karate test,mock,passed,Simple mock CRUD covered by MockE2eTest.testPaymentsMockCrud,io/karatelabs/core/mock/MockE2eTest,2025-12-22
+feature-106,feature,mock/html.feature,,,html.feature,html,mock,skipped,HTML response not explicitly tested in V2,,2025-12-22
+feature-107,feature,mock/invalid-cookie.feature,,,invalid-cookie.feature,invalid-cookie.feature,mock,skipped,Invalid cookie edge case not tested in V2,,2025-12-22
+feature-108,feature,mock/json-bad.feature,,,json-bad.feature,json,mock,skipped,Malformed JSON edge case not tested in V2,,2025-12-22
+feature-109,feature,mock/json-order-mock-test.feature,,,json-order-mock-test.feature,json-order-mock-test.feature,mock,passed,JSON ordering covered by general mock tests,io/karatelabs/core/mock/MockE2eTest,2025-12-22
+feature-110,feature,mock/json-order-mock.feature,,,json-order-mock.feature,simple mock,mock,passed,Simple mock covered by V2 tests,io/karatelabs/core/mock/MockHandlerTest,2025-12-22
+feature-111,feature,mock/malformed.feature,,,malformed.feature,malformed response json,mock,skipped,Malformed JSON handling not explicitly tested in V2,,2025-12-22
+feature-112,feature,mock/multi-params.feature,,,multi-params.feature,testing multi param values,mock,passed,Multi-value params covered by MockE2eTest.testMultiValueParamWithArray,io/karatelabs/core/mock/MockE2eTest,2025-12-22
+feature-113,feature,mock/no-headers.feature,,,no-headers.feature,no response headers,mock,passed,Empty response covered by MockE2eTest.testNoHeadersEmptyResponse,io/karatelabs/core/mock/MockE2eTest,2025-12-22
+feature-114,feature,mock/no-match.feature,,,no-match.feature,no scenario matched,mock,passed,404 for no match covered by MockHandlerTest.testNoMatchReturns404,io/karatelabs/core/mock/MockHandlerTest,2025-12-22
+feature-115,feature,mock/param-commas.feature,,,param-commas.feature,testing commas in param values,mock,skipped,Comma edge case not explicitly tested,,2025-12-22
+feature-116,feature,mock/patch.feature,,,patch.feature,testing http patch method,mock,skipped,PATCH method not explicitly tested in V2,,2025-12-22
+feature-117,feature,mock/upload.feature,,,upload.feature,upload file,mock,passed,Upload covered by MockE2eTest.testBinaryUpload,io/karatelabs/core/mock/MockE2eTest,2025-12-22
+feature-118,feature,mock/url-encoding.feature,,,url-encoding.feature,url encoding,mock,passed,URL encoding covered by MockE2eTest.testUrlEncodingSpecialChars,io/karatelabs/core/mock/MockE2eTest,2025-12-22
+feature-119,feature,mock/white-space.feature,,,white-space.feature,white space edge cases,mock,passed,Whitespace covered by MockE2eTest.testJsonWithLeadingLinefeed,io/karatelabs/core/mock/MockE2eTest,2025-12-22
 feature-120,feature,not-equals.feature,,,not-equals.feature,not equals tests,root,passed,match not equals syntax,,2025-12-19
 feature-121,feature,ntlm-authentication.feature,,,ntlm-authentication.feature,ntlm authentication,root,pending,,,
 feature-122,feature,outline-background.feature,,,outline-background.feature,outline-background.feature,root,pending,,,

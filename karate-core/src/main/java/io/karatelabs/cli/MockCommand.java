@@ -96,6 +96,12 @@ public class MockCommand implements Callable<Integer> {
     )
     String pathPrefix;
 
+    @Option(
+            names = {"-W", "--watch"},
+            description = "Enable hot-reload when feature files change"
+    )
+    boolean watch;
+
     @Override
     public Integer call() {
         try {
@@ -126,6 +132,10 @@ public class MockCommand implements Callable<Integer> {
                 builder.pathPrefix(pathPrefix);
             }
 
+            if (watch) {
+                builder.watch(true);
+            }
+
             // Start server
             MockServer server = builder.start();
 
@@ -137,6 +147,10 @@ public class MockCommand implements Callable<Integer> {
 
             if (ssl) {
                 Console.println("  SSL: enabled" + (certPath != null ? " (custom certificate)" : " (self-signed)"));
+            }
+
+            if (watch) {
+                Console.println("  Watch: enabled (hot-reload on file change)");
             }
 
             Console.println();

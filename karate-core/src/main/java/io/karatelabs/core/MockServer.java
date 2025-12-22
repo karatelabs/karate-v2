@@ -23,7 +23,10 @@
  */
 package io.karatelabs.core;
 
+import io.karatelabs.common.Resource;
 import io.karatelabs.gherkin.Feature;
+import io.karatelabs.io.http.HttpRequest;
+import io.karatelabs.io.http.HttpResponse;
 import io.karatelabs.io.http.HttpServer;
 import io.karatelabs.js.SimpleObject;
 import io.netty.handler.ssl.SslContext;
@@ -31,8 +34,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Public API for creating mock servers from feature files.
@@ -177,6 +182,7 @@ public class MockServer implements SimpleObject {
         private boolean ssl;
         private String certPath;
         private String keyPath;
+        private boolean watch;
 
         private Builder() {
         }
@@ -254,6 +260,18 @@ public class MockServer implements SimpleObject {
         }
 
         /**
+         * Enable watch mode for hot-reloading feature files when they change.
+         * The server will check file modification times before each request
+         * and reload features if any have changed.
+         * <p>
+         * Note: Watch mode only works for file-based features, not classpath resources in JARs.
+         */
+        public Builder watch(boolean watch) {
+            this.watch = watch;
+            return this;
+        }
+
+        /**
          * Start the mock server.
          */
         public MockServer start() {
@@ -261,7 +279,19 @@ public class MockServer implements SimpleObject {
                 throw new RuntimeException("at least one feature file is required");
             }
 
-            MockHandler handler = new MockHandler(features, args, pathPrefix);
+            // Create handler - use ReloadingHandler wrapper if watch mode is enabled
+            Function<HttpRequest, HttpResponse> requestHandler;
+            MockHandler handler;
+
+            if (watch) {
+                ReloadingHandler reloadingHandler = new ReloadingHandler(features, args, pathPrefix);
+                handler = reloadingHandler.getHandler();
+                requestHandler = reloadingHandler;
+                logger.info("watch mode enabled - features will be reloaded when modified");
+            } else {
+                handler = new MockHandler(features, args, pathPrefix);
+                requestHandler = handler;
+            }
 
             SslContext sslContext = null;
             if (ssl) {
@@ -272,12 +302,95 @@ public class MockServer implements SimpleObject {
                 }
             }
 
-            HttpServer httpServer = HttpServer.start(port, sslContext, handler);
+            HttpServer httpServer = HttpServer.start(port, sslContext, requestHandler);
             int actualPort = httpServer.getPort();
 
             String protocol = ssl ? "https" : "http";
             logger.info("mock server started on {}://localhost:{}", protocol, actualPort);
             return new MockServer(httpServer, handler, actualPort);
+        }
+
+    }
+
+    /**
+     * Handler that wraps MockHandler to support hot-reloading of feature files.
+     * Checks file modification times before each request and reloads if any have changed.
+     */
+    private static class ReloadingHandler implements Function<HttpRequest, HttpResponse> {
+
+        private final Map<String, Object> args;
+        private final String pathPrefix;
+        private final Map<Resource, Long> watchedFiles = new LinkedHashMap<>();
+        private MockHandler handler;
+
+        ReloadingHandler(List<Feature> features, Map<String, Object> args, String pathPrefix) {
+            this.args = args;
+            this.pathPrefix = pathPrefix;
+
+            // Track file modification times for each feature
+            for (Feature feature : features) {
+                Resource resource = feature.getResource();
+                if (resource.isLocalFile()) {
+                    watchedFiles.put(resource, resource.getLastModified());
+                    logger.debug("watching file: {} (modified: {})", resource.getRelativePath(), resource.getLastModified());
+                } else {
+                    logger.warn("watch mode: cannot watch non-file resource: {} (classpath resources in JARs are not watchable)",
+                            resource.getRelativePath());
+                }
+            }
+
+            if (watchedFiles.isEmpty()) {
+                logger.warn("watch mode enabled but no watchable files found - features may be from classpath JARs");
+            }
+
+            // Initialize handler
+            handler = new MockHandler(features, args, pathPrefix);
+        }
+
+        MockHandler getHandler() {
+            return handler;
+        }
+
+        @Override
+        public HttpResponse apply(HttpRequest request) {
+            // Check if any watched file has been modified
+            boolean needsReload = false;
+            for (Map.Entry<Resource, Long> entry : watchedFiles.entrySet()) {
+                Resource resource = entry.getKey();
+                long lastKnown = entry.getValue();
+                long current = resource.getLastModified();
+                if (current > lastKnown) {
+                    logger.info("file modified, reloading: {} (was: {}, now: {})",
+                            resource.getRelativePath(), lastKnown, current);
+                    needsReload = true;
+                    break;
+                }
+            }
+
+            if (needsReload) {
+                // Reload all features - must create NEW Resource objects to avoid cached content
+                List<Feature> reloadedFeatures = new ArrayList<>();
+                Map<Resource, Long> newWatchedFiles = new LinkedHashMap<>();
+
+                for (Resource oldResource : watchedFiles.keySet()) {
+                    // Create fresh Resource from the file path to get new content
+                    Resource freshResource = Resource.from(oldResource.getPath());
+                    Feature feature = Feature.read(freshResource);
+                    reloadedFeatures.add(feature);
+                    // Track the new resource with current modification time
+                    newWatchedFiles.put(freshResource, freshResource.getLastModified());
+                }
+
+                // Replace watched files map with new resources
+                watchedFiles.clear();
+                watchedFiles.putAll(newWatchedFiles);
+
+                // Create new handler with reloaded features
+                handler = new MockHandler(reloadedFeatures, args, pathPrefix);
+                logger.info("reloaded {} feature(s)", reloadedFeatures.size());
+            }
+
+            return handler.apply(request);
         }
 
     }
