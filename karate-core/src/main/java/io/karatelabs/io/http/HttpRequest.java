@@ -99,6 +99,10 @@ public class HttpRequest implements SimpleObject {
         this.params = params;
     }
 
+    public Map<String, List<String>> getParams() {
+        return params;
+    }
+
     public String getPath() {
         return path;
     }
@@ -305,22 +309,28 @@ public class HttpRequest implements SimpleObject {
         try {
             for (InterfaceHttpData part : decoder.getBodyHttpDatas()) {
                 String name = part.getName();
-                if (multipart && part instanceof FileUpload) {
-                    List<Map<String, Object>> list = multiParts.computeIfAbsent(name, k -> new ArrayList<>());
-                    Map<String, Object> map = new HashMap<>();
-                    list.add(map);
-                    FileUpload fup = (FileUpload) part;
-                    map.put("name", name);
-                    map.put("filename", fup.getFilename());
-                    Charset charset = fup.getCharset();
-                    if (charset != null) {
-                        map.put("charset", charset.name());
-                    }
-                    map.put("contentType", fup.getContentType());
-                    map.put("value", fup.get()); // bytes
-                    String transferEncoding = fup.getContentTransferEncoding();
-                    if (transferEncoding != null) {
-                        map.put("transferEncoding", transferEncoding);
+                if (multipart && part instanceof FileUpload fup) {
+                    String filename = fup.getFilename();
+                    // Empty filename means it's a form field, not a file upload
+                    if (filename == null || filename.isEmpty()) {
+                        List<String> list = params.computeIfAbsent(name, k -> new ArrayList<>());
+                        list.add(fup.getString(fup.getCharset()));
+                    } else {
+                        List<Map<String, Object>> list = multiParts.computeIfAbsent(name, k -> new ArrayList<>());
+                        Map<String, Object> map = new HashMap<>();
+                        list.add(map);
+                        map.put("name", name);
+                        map.put("filename", filename);
+                        Charset charset = fup.getCharset();
+                        if (charset != null) {
+                            map.put("charset", charset.name());
+                        }
+                        map.put("contentType", fup.getContentType());
+                        map.put("value", fup.get()); // bytes
+                        String transferEncoding = fup.getContentTransferEncoding();
+                        if (transferEncoding != null) {
+                            map.put("transferEncoding", transferEncoding);
+                        }
                     }
                 } else {
                     // form-field, url-encoded if not multipart

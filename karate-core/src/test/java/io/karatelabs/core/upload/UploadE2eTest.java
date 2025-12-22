@@ -62,6 +62,15 @@ class UploadE2eTest {
             Scenario: pathMatches('/multipart')
               * def response = { success: true }
 
+            Scenario: pathMatches('/multipart/json')
+              * json jsonField = requestParams['jsonData'][0]
+              * def response = jsonField
+
+            Scenario: pathMatches('/multipart/mixed')
+              * def textField = requestParams['textField'][0]
+              * json jsonField = requestParams['jsonField'][0]
+              * def response = { text: textField, json: jsonField }
+
             # ===== Brotli Scenarios =====
 
             Scenario: pathMatches('/brotli')
@@ -190,6 +199,42 @@ class UploadE2eTest {
             * method post
             * status 200
             * match response == { success: true }
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMultipartWithJsonField() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Multipart with JSON Field
+
+            Scenario: Send JSON as multipart field
+            * url 'http://localhost:%d'
+            * path '/multipart/json'
+            * multipart field jsonData = { hello: 'world', count: 42 }
+            * method post
+            * status 200
+            * match response == { hello: 'world', count: 42 }
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMultipartWithMixedFields() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Multipart with Mixed Fields
+
+            Scenario: Send text and JSON fields together
+            * url 'http://localhost:%d'
+            * path '/multipart/mixed'
+            * multipart field textField = 'plain text value'
+            * multipart field jsonField = { nested: { data: 'value' }, list: [1, 2, 3] }
+            * method post
+            * status 200
+            * match response.text == 'plain text value'
+            * match response.json == { nested: { data: 'value' }, list: [1, 2, 3] }
             """.formatted(port));
 
         assertPassed(sr);

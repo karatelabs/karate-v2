@@ -291,7 +291,7 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
         engine.put("requestUrlBase", request.jsGet("urlBase"));
         engine.put("requestMethod", request.getMethod());
         engine.put("requestHeaders", request.getHeaders());
-        engine.put("requestParams", request.jsGet("params"));
+        engine.put("requestParams", request.getParams());  // Keep as Map<String, List<String>> like v1
         engine.put("requestParts", request.getMultiParts());
 
         // Initialize response variables with defaults
