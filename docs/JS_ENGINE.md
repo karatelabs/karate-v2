@@ -334,6 +334,57 @@ Without `keys()`, the object works for property access but serializes to `{}`.
 
 ---
 
+## Lazy Variables with Supplier
+
+The engine supports lazy/computed variables via `java.util.function.Supplier`. When a variable's value is a `Supplier`, it is automatically invoked when accessed:
+
+```java
+// In CoreContext.get()
+if (result instanceof Supplier<?> supplier) {
+    return supplier.get();
+}
+```
+
+### Usage
+
+```java
+Engine engine = new Engine();
+
+// Static value - evaluated once at put time
+engine.put("staticValue", someObject.getValue());
+
+// Lazy value - evaluated each time it's accessed
+engine.put("lazyValue", (Supplier<String>) () -> someObject.getValue());
+```
+
+### Use Cases
+
+1. **Deferred computation** - Value is computed only when accessed
+2. **Dynamic values** - Value can change between accesses
+3. **Reduced per-call overhead** - Set up once, resolve on demand
+
+### Example: Mock Server Request Variables
+
+The mock server uses this pattern to avoid setting request variables on every HTTP request:
+
+```java
+// Set up once during initialization
+engine.put("requestPath", (Supplier<String>) () ->
+    currentRequest != null ? currentRequest.getPath() : null);
+engine.put("requestMethod", (Supplier<String>) () ->
+    currentRequest != null ? currentRequest.getMethod() : null);
+
+// Per request, only update the reference
+this.currentRequest = incomingRequest;
+
+// When script accesses requestPath, Supplier.get() is called automatically
+// * def path = requestPath  →  invokes the Supplier
+```
+
+This reduces per-request `engine.put()` calls from many to just one field assignment.
+
+---
+
 ## File References
 
 | Purpose | File |

@@ -96,6 +96,7 @@ public class KarateJs implements SimpleObject {
     private Supplier<KarateConfig> configProvider;
     private Supplier<Resource> currentResourceProvider;
     private String env;
+    private MockHandler mockHandler; // non-null only in mock context
 
     private final JsCallable read;
 
@@ -239,6 +240,10 @@ public class KarateJs implements SimpleObject {
 
     public void setCurrentResourceProvider(Supplier<Resource> provider) {
         this.currentResourceProvider = provider;
+    }
+
+    public void setMockHandler(MockHandler handler) {
+        this.mockHandler = handler;
     }
 
     private Map<String, Object> getInfo() {
@@ -1780,10 +1785,10 @@ public class KarateJs implements SimpleObject {
      */
     private Invokable proceed() {
         return args -> {
-            HttpRequest currentRequest = (HttpRequest) engine.get(MockHandler.HTTP_REQUEST_KEY);
-            if (currentRequest == null) {
+            if (mockHandler == null) {
                 throw new RuntimeException("proceed() can only be called within a mock scenario");
             }
+            HttpRequest currentRequest = mockHandler.getCurrentRequest();
 
             String targetUrl;
             if (args.length > 0 && args[0] != null) {

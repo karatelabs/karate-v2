@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * Mock server request handler that routes requests to matching scenarios.
@@ -65,8 +66,12 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
 
     private static final String ALLOWED_METHODS = "GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS";
 
-    // Internal key for storing the current HttpRequest in the engine
-    static final String HTTP_REQUEST_KEY = "__httpRequest";
+    // Current request being processed (protected by requestLock)
+    private HttpRequest currentRequest;
+
+    public HttpRequest getCurrentRequest() {
+        return currentRequest;
+    }
 
     private final List<Feature> features = new ArrayList<>();
     private final Map<String, Object> globals = new LinkedHashMap<>();
@@ -117,37 +122,34 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
         // Create ScenarioRuntime with the FeatureRuntime (enables proper resource resolution)
         ScenarioRuntime runtime = new ScenarioRuntime(featureRuntime, scenario);
 
-        // Register matcher functions in the engine (lambdas capture engine reference)
+        // Wire up MockHandler reference for karate.proceed()
+        runtime.getKarate().setMockHandler(this);
+
+        // Register matcher functions (lambdas read from currentRequest field)
         Engine engine = runtime.getEngine();
         engine.put("pathMatches", (Invokable) a -> {
-            HttpRequest req = (HttpRequest) engine.get(HTTP_REQUEST_KEY);
-            if (req == null) return false;
-            boolean matched = req.pathMatches(a[0] + "");
+            if (currentRequest == null) return false;
+            boolean matched = currentRequest.pathMatches(a[0] + "");
             if (matched) {
-                engine.put("pathParams", req.getPathParams());
+                engine.put("pathParams", currentRequest.getPathParams());
             }
             return matched;
         });
-        engine.put("methodIs", (Invokable) a -> {
-            HttpRequest req = (HttpRequest) engine.get(HTTP_REQUEST_KEY);
-            return req != null && (a[0] + "").equalsIgnoreCase(req.getMethod());
-        });
+        engine.put("methodIs", (Invokable) a ->
+            currentRequest != null && (a[0] + "").equalsIgnoreCase(currentRequest.getMethod()));
         engine.put("typeContains", (Invokable) a -> {
-            HttpRequest req = (HttpRequest) engine.get(HTTP_REQUEST_KEY);
-            if (req == null) return false;
-            String contentType = req.getContentType();
+            if (currentRequest == null) return false;
+            String contentType = currentRequest.getContentType();
             return contentType != null && contentType.contains(a[0] + "");
         });
         engine.put("acceptContains", (Invokable) a -> {
-            HttpRequest req = (HttpRequest) engine.get(HTTP_REQUEST_KEY);
-            if (req == null) return false;
-            String accept = req.getHeader("Accept");
+            if (currentRequest == null) return false;
+            String accept = currentRequest.getHeader("Accept");
             return accept != null && accept.contains(a[0] + "");
         });
         engine.put("headerContains", (Invokable) a -> {
-            HttpRequest req = (HttpRequest) engine.get(HTTP_REQUEST_KEY);
-            if (req == null) return false;
-            List<String> values = req.getHeaderValues(a[0] + "");
+            if (currentRequest == null) return false;
+            List<String> values = currentRequest.getHeaderValues(a[0] + "");
             if (values != null) {
                 String search = a[1] + "";
                 for (String v : values) {
@@ -156,20 +158,16 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
             }
             return false;
         });
-        engine.put("paramValue", (Invokable) a -> {
-            HttpRequest req = (HttpRequest) engine.get(HTTP_REQUEST_KEY);
-            return req != null ? req.getParam(a[0] + "") : null;
-        });
+        engine.put("paramValue", (Invokable) a ->
+            currentRequest != null ? currentRequest.getParam(a[0] + "") : null);
         engine.put("paramExists", (Invokable) a -> {
-            HttpRequest req = (HttpRequest) engine.get(HTTP_REQUEST_KEY);
-            if (req == null) return false;
-            List<String> values = req.getParamValues(a[0] + "");
+            if (currentRequest == null) return false;
+            List<String> values = currentRequest.getParamValues(a[0] + "");
             return values != null && !values.isEmpty();
         });
         engine.put("bodyPath", (Invokable) a -> {
-            HttpRequest req = (HttpRequest) engine.get(HTTP_REQUEST_KEY);
-            if (req == null) return null;
-            Object body = req.getBodyConverted();
+            if (currentRequest == null) return null;
+            Object body = currentRequest.getBodyConverted();
             if (body == null) return null;
             String path = a[0] + "";
             if (path.startsWith("/")) {
@@ -188,6 +186,27 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
                 }
             }
         });
+
+        // Register lazy request variables (resolved via Supplier when accessed)
+        // These read from currentRequest field which is set per-request
+        engine.put("request", (Supplier<Object>) () ->
+            currentRequest != null ? currentRequest.getBodyConverted() : null);
+        engine.put("requestBytes", (Supplier<byte[]>) () ->
+            currentRequest != null ? currentRequest.getBody() : null);
+        engine.put("requestPath", (Supplier<String>) () ->
+            currentRequest != null ? currentRequest.getPath() : null);
+        engine.put("requestUri", (Supplier<String>) () ->
+            currentRequest != null ? currentRequest.getPathRaw() : null);
+        engine.put("requestUrlBase", (Supplier<Object>) () ->
+            currentRequest != null ? currentRequest.jsGet("urlBase") : null);
+        engine.put("requestMethod", (Supplier<String>) () ->
+            currentRequest != null ? currentRequest.getMethod() : null);
+        engine.put("requestHeaders", (Supplier<Map<String, List<String>>>) () ->
+            currentRequest != null ? currentRequest.getHeaders() : null);
+        engine.put("requestParams", (Supplier<Map<String, List<String>>>) () ->
+            currentRequest != null ? currentRequest.getParams() : null);
+        engine.put("requestParts", (Supplier<Map<String, List<Map<String, Object>>>>) () ->
+            currentRequest != null ? currentRequest.getMultiParts() : null);
 
         // Put args into globals if provided
         if (args != null) {
@@ -328,26 +347,15 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
     }
 
     private void setupRequestVariables(Engine engine, HttpRequest request) {
-        // Set all globals first
+        // Set current request - lazy Suppliers and matcher functions read from this field
+        this.currentRequest = request;
+
+        // Set all globals
         for (Map.Entry<String, Object> entry : globals.entrySet()) {
             engine.put(entry.getKey(), entry.getValue());
         }
 
-        // Store HttpRequest for matcher functions and karate.proceed()
-        engine.put(HTTP_REQUEST_KEY, request);
-
-        // Set request variables as per MOCKS.md specification
-        engine.put("request", request.getBodyConverted());
-        engine.put("requestBytes", request.getBody());
-        engine.put("requestPath", request.getPath());
-        engine.put("requestUri", request.getPathRaw());
-        engine.put("requestUrlBase", request.jsGet("urlBase"));
-        engine.put("requestMethod", request.getMethod());
-        engine.put("requestHeaders", request.getHeaders());
-        engine.put("requestParams", request.getParams());  // Keep as Map<String, List<String>> like v1
-        engine.put("requestParts", request.getMultiParts());
-
-        // Initialize response variables with defaults
+        // Initialize response variables with defaults (must be reset per request)
         engine.put("response", null);
         engine.put("responseStatus", 200);
         engine.put("responseHeaders", new HashMap<>());
