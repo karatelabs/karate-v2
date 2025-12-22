@@ -284,7 +284,13 @@ public class HttpRequestBuilder implements SimpleObject {
         }
         List<String> notNullValues = values.stream().filter(Objects::nonNull).collect(Collectors.toList());
         if (!notNullValues.isEmpty()) {
-            params.put(name, notNullValues);
+            // Accumulate values for the same param name (like v1)
+            List<String> existing = params.get(name);
+            if (existing == null) {
+                params.put(name, new ArrayList<>(notNullValues));
+            } else {
+                existing.addAll(notNullValues);
+            }
         }
         return this;
     }

@@ -204,6 +204,22 @@ class MockE2eTest {
             Scenario: pathMatches('/noheaders')
               * def responseStatus = 404
               * def response = ''
+
+            # ===== Query param scenarios =====
+
+            Scenario: pathMatches('/greeting') && paramExists('name')
+              * def content = 'Hello ' + paramValue('name') + '!'
+              * def response = { message: content }
+
+            Scenario: pathMatches('/greeting')
+              * def response = { message: 'Hello stranger!' }
+
+            Scenario: pathMatches('/search') && paramExists('q') && paramExists('limit')
+              * def response = { query: paramValue('q'), limit: paramValue('limit'), hasQuery: paramExists('q'), hasLimit: paramExists('limit') }
+
+            Scenario: pathMatches('/multi-param')
+              * def vals = requestParams['tags']
+              * def response = { tags: vals, count: vals ? vals.length : 0 }
             """)
             .port(0)
             .start();
@@ -698,6 +714,98 @@ class MockE2eTest {
             * method get
             * status 404
             * match response == ''
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    // ===== Query Param Tests =====
+
+    @Test
+    void testParamExistsAndParamValue() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test paramExists and paramValue
+
+            Scenario: Greeting with name parameter
+            * url 'http://localhost:%d'
+            * path '/greeting'
+            * param name = 'World'
+            * method get
+            * status 200
+            * match response.message == 'Hello World!'
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testParamExistsFallback() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test paramExists fallback
+
+            Scenario: Greeting without name parameter should use fallback
+            * url 'http://localhost:%d'
+            * path '/greeting'
+            * method get
+            * status 200
+            * match response.message == 'Hello stranger!'
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMultipleParamExistsConditions() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test multiple paramExists
+
+            Scenario: Search with multiple required params
+            * url 'http://localhost:%d'
+            * path '/search'
+            * param q = 'karate'
+            * param limit = '10'
+            * method get
+            * status 200
+            * match response.query == 'karate'
+            * match response.limit == '10'
+            * match response.hasQuery == true
+            * match response.hasLimit == true
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMultiValueParamWithArray() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test multi-value param with array
+
+            Scenario: param with array value
+            * url 'http://localhost:%d'
+            * path '/multi-param'
+            * param tags = ['java', 'karate', 'api']
+            * method get
+            * status 200
+            * match response.count == 3
+            * match response.tags == ['java', 'karate', 'api']
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testParamsWithMixedValues() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test params with mixed values
+
+            Scenario: params with string and array values
+            * url 'http://localhost:%d'
+            * path '/multi-param'
+            * params { tags: ['java', 'karate', 'api'] }
+            * method get
+            * status 200
+            * match response.count == 3
+            * match response.tags == ['java', 'karate', 'api']
             """.formatted(port));
 
         assertPassed(sr);
