@@ -1,19 +1,6 @@
 # Karate v2 Runtime Design
 
-This document describes the runtime architecture for Karate v2.
-
-> See also: [CLI.md](./CLI.md) | [PARSER.md](./PARSER.md) | [JS_ENGINE.md](./JS_ENGINE.md) | [HTML_REPORTS.md](./HTML_REPORTS.md) | [PRINCIPLES.md](./PRINCIPLES.md) | [ROADMAP.md](./ROADMAP.md)
-
----
-
-## Implementation Guidance
-
-**Referencing v1 code:** While v2 is a fresh implementation, the Karate v1 source (`/karate/karate-core`) should be referenced to ensure format compatibility and preserve capabilities. Key areas:
-- Report JSON schemas (preserve field names for tooling compatibility)
-- Cucumber JSON format (must match spec for Allure, ReportPortal, etc.)
-- CLI options (maintain familiar interface)
-
-**v1 source location:** `/Users/peter/dev/zcode/karate/karate-core/src/main/java/com/intuit/karate/`
+> See also: [CLI.md](./CLI.md) | [PARSER.md](./PARSER.md) | [JS_ENGINE.md](./JS_ENGINE.md) | [HTML_REPORTS.md](./HTML_REPORTS.md) | [PRINCIPLES.md](./PRINCIPLES.md)
 
 ---
 
@@ -27,562 +14,209 @@ Suite → FeatureRuntime → ScenarioRuntime → StepExecutor
                          Match Engine    Http Client    Other Actions
 ```
 
-**Key design principle:** AST-based keyword dispatch (no regex). The GherkinParser extracts `step.keyword` and `step.text`, and StepExecutor uses a clean `switch` statement.
+**V1 Reference:** `/Users/peter/dev/zcode/karate/karate-core/src/main/java/com/intuit/karate/`
+
+---
+
+## Core Classes
+
+| Class | Description |
+|-------|-------------|
+| `Suite` | Top-level orchestrator, config loading, parallel execution |
+| `FeatureRuntime` | Feature execution, scenario iteration, caching |
+| `ScenarioRuntime` | Scenario execution, variable scope |
+| `StepExecutor` | Keyword-based step dispatch |
+| `KarateJs` | JS engine bridge, `karate.*` methods |
+| `KarateJsApi` | Stateless utility methods for `karate.*` API |
+| `Runner` | Fluent API for test execution |
+
+**Reports:** `HtmlReportListener`, `JunitXmlWriter`, `CucumberJsonWriter`, `NdjsonReportListener`
+
+**Results:** `StepResult`, `ScenarioResult`, `FeatureResult`, `SuiteResult`
 
 ---
 
 ## Implemented Features
 
-### Core Runtime Classes
+### Step Keywords
+- **Variables:** `def`, `set`, `remove`, `text`, `json`, `xml`, `csv`, `yaml`, `string`, `xmlstring`, `copy`, `table`, `replace`
+- **Assertions:** `match` (all operators), `assert`, `print`
+- **HTTP:** `url`, `path`, `param`, `params`, `header`, `headers`, `cookie`, `cookies`, `form field`, `form fields`, `request`, `method`, `status`, `multipart file/field/fields/files/entity`
+- **Control:** `call`, `callonce`, `eval`, `doc`
+- **Config:** `configure` (see [Configure Keys](#configure-keys))
 
-| Class | Location | Description |
-|-------|----------|-------------|
-| `Suite` | `io.karatelabs.core.Suite` | Top-level orchestrator, config loading, parallel execution |
-| `FeatureRuntime` | `io.karatelabs.core.FeatureRuntime` | Feature execution, scenario iteration, caching |
-| `ScenarioRuntime` | `io.karatelabs.core.ScenarioRuntime` | Scenario execution, wraps KarateJs, variable scope |
-| `StepExecutor` | `io.karatelabs.core.StepExecutor` | Keyword-based step dispatch |
-| `KarateJs` | `io.karatelabs.core.KarateJs` | JS engine, HTTP client, karate.* bridge |
-| `JunitXmlWriter` | `io.karatelabs.core.JunitXmlWriter` | JUnit XML report generation for CI/CD |
-| `CucumberJsonWriter` | `io.karatelabs.core.CucumberJsonWriter` | Cucumber JSON report for third-party tools |
-| `HtmlReportListener` | `io.karatelabs.core.HtmlReportListener` | Async HTML report generation (default). See [HTML_REPORTS.md](./HTML_REPORTS.md) |
-| `HtmlReportWriter` | `io.karatelabs.core.HtmlReportWriter` | HTML report generation with inlined JSON |
-| `NdjsonReportListener` | `io.karatelabs.core.NdjsonReportListener` | NDJSON streaming (opt-in) |
-| `HtmlReport` | `io.karatelabs.core.HtmlReport` | Report aggregation API |
-| `ResultListener` | `io.karatelabs.core.ResultListener` | Interface for streaming test results |
-
-### Step Keywords (All Implemented)
-
-**Variable Assignment:** `def`, `set`, `remove`, `text`, `json`, `xml`, `csv`, `yaml`, `string`, `xmlstring`, `copy`, `table`, `replace`
-
-**Assertions:** `match` (all operators including `each`), `assert`, `print`
-
-**HTTP:** `url`, `path`, `param`, `params`, `header`, `headers`, `cookie`, `cookies`, `form field`, `form fields`, `request`, `method`, `status`, `multipart file`, `multipart field`, `multipart fields`, `multipart files`, `multipart entity`
-
-**Control Flow:** `call`, `callonce`, `eval`, `doc`
-
-**Config:** `configure` (see [Configure Keys](#configure-keys) for status)
-
-#### doc Keyword
-
-The `doc` keyword renders HTML templates and embeds the output in test reports. Uses the templating infrastructure from [TEMPLATING.md](./TEMPLATING.md).
-
-```cucumber
-# String path syntax
-* doc 'users.html'
-
-# Map syntax with read key
-* doc { read: 'report-template.html' }
-```
-
-**Path resolution:**
-- Relative paths resolve from the feature file's parent directory
-- `/path` → strips leading `/`, resolves relative to feature's parent (NOT filesystem root)
-- `classpath:path` → classpath lookup (for templates in JARs)
-
-**Behavior:**
-- Template is rendered using the Karate templating engine (Thymeleaf-style syntax with JavaScript expressions)
-- All scenario variables are available in the template
-- Rendered HTML is embedded in the step result for reports
-- If `karate.setOnDoc(consumer)` is set, the HTML is also sent to that consumer
-
-#### Data Conversion Keywords
-
-| Keyword | Description | Example |
-|---------|-------------|---------|
-| `csv` | Parse CSV to List<Map> | `* csv data = """name,age\nJohn,30"""` |
-| `yaml` | Parse YAML to object | `* yaml config = """server: localhost"""` |
-| `string` | Convert to JSON string | `* string s = response` |
-| `xmlstring` | Convert to XML string | `* xmlstring s = xmlVar` |
-| `replace` | Token replacement | `* replace text.name = 'World'` |
-
-### Result Classes
-
-| Class | Description |
-|-------|-------------|
-| `StepResult` | Pass/fail/skip with timing and error |
-| `ScenarioResult` | Aggregated step results |
-| `FeatureResult` | Aggregated scenario results with `printSummary()` |
-| `SuiteResult` | Full suite metrics with `printSummary()` |
+### Built-in Tags
+| Tag | Description |
+|-----|-------------|
+| `@ignore` | Skip execution |
+| `@env=<name>` | Run only when `karate.env` matches |
+| `@envnot=<name>` | Skip when `karate.env` matches |
+| `@setup` | Data provider for dynamic outlines |
+| `@fail` | Expect failure (invert result) |
 
 ### Runner API
-
 ```java
 SuiteResult result = Runner.path("src/test/resources")
     .tags("@smoke", "~@slow")
     .karateEnv("dev")
-    .outputJunitXml(true)       // generate JUnit XML for CI
-    .outputCucumberJson(true)   // generate Cucumber JSON for Allure, etc.
+    .outputJunitXml(true)
+    .outputCucumberJson(true)
     .parallel(5);
 ```
-
-**Runner.Builder Options:**
-
-| Method | Default | Description |
-|--------|---------|-------------|
-| `path(String...)` | - | Feature file paths or directories |
-| `tags(String...)` | - | Tag expressions (e.g., `@smoke`, `~@slow`) |
-| `karateEnv(String)` | - | Environment name for config-{env}.js |
-| `outputDir(String)` | `target/karate-reports` | Output directory for reports |
-| `outputHtmlReport(boolean)` | `true` | Generate HTML reports |
-| `outputNdjson(boolean)` | `false` | Generate NDJSON for aggregation |
-| `outputJunitXml(boolean)` | `false` | Generate JUnit XML for CI |
-| `outputCucumberJson(boolean)` | `false` | Generate Cucumber JSON |
-| `outputConsoleSummary(boolean)` | `true` | Print summary to console |
-| `backupReportDir(boolean)` | `false` | Backup existing report dir with timestamp |
-| `workingDir(String)` | current dir | Working directory for relative paths |
-| `configPath(String)` | `classpath:karate-config.js` | Config file path |
-
-See `io.karatelabs.core.Runner` for full API.
 
 ### System Properties
-
-Runner.Builder checks these system properties as fallback when values aren't set via API (V1 parity):
-
-| System Property | Description |
-|-----------------|-------------|
-| `karate.env` | Environment name (e.g., `dev`, `staging`) |
-| `karate.config.dir` | Directory containing karate-config.js |
-| `karate.output.dir` | Output directory for reports |
-| `karate.working.dir` | Working directory for relative paths (V2 new) |
-
-**Priority:** API > System Property > Default
-
-```bash
-# Maven example
-mvn test -Dkarate.env=dev -Dkarate.working.dir=${project.basedir}
-```
-
-### CLI
-
-```bash
-java -jar karate.jar -t @smoke -e dev -T 5 src/test/resources
-```
-
-See `io.karatelabs.Main` (PicoCLI-based).
-
-### Parallel Execution
-
-Uses Java 21+ virtual threads. Basic parallel execution is implemented in `Suite.runParallel()`.
-
-### Configuration Loading
-
-- `karate-config.js` from configDir
-- `karate-config-{env}.js` for environment-specific config
-- Config values available as variables in scenarios
-
-**V2 Enhancement - Working Directory Fallback:**
-
-In V1, config files had to be on the Java classpath. V2 adds a fallback that searches the working directory when `classpath:karate-config.js` is not found. This makes Karate friendlier for users running from the file system without Java project structure:
-
-```bash
-# No classpath setup needed - just run from project directory
-./my-project/
-├── karate-config.js       # Found via working directory fallback
-├── karate-config-dev.js   # Env-specific also found
-└── tests/
-    └── users.feature
-```
-
-**Config Evaluation Per-Scenario:**
-
-Config is evaluated fresh for each scenario (not once per Suite). This enables:
-- `karate.callSingle()` in config for one-time initialization
-- `karate.env` access during config evaluation
-- Per-scenario isolation with shared caches
-
-### karate.callSingle()
-
-`karate.callSingle(path)` executes a feature or JS file **once per Suite** with thread-safe caching. This is commonly used in `karate-config.js` for expensive bootstrap operations (authentication, database setup, etc.).
-
-```javascript
-// karate-config.js
-function fn() {
-    var auth = karate.callSingle('classpath:auth.feature');
-    return {
-        authToken: auth.token,
-        baseUrl: 'http://localhost:8080'
-    };
-}
-```
-
-**Key features:**
-- **Suite-level caching** - Result cached and shared across all scenarios
-- **Thread-safe** - Uses `ReentrantLock` with double-checked locking pattern
-- **Exception caching** - Failed callSingle cached and re-thrown on subsequent calls
-- **Deep copy** - Cached results deep-copied to prevent cross-thread mutation
-- **Works in config** - Available in `karate-config.js` because config is evaluated per-scenario after providers are wired
-
-**Supported file types:**
-- `.feature` files - Returns map of all defined variables
-- `.js` files - Function is invoked, return value cached
-
-**With arguments:**
-```javascript
-var result = karate.callSingle('setup.feature', { name: 'World' });
-```
-
-**Implementation:**
-- `Suite` holds `CALLSINGLE_CACHE` (ConcurrentHashMap) and `callSingleLock` (ReentrantLock)
-- `ScenarioRuntime.executeCallSingle()` implements double-checked locking
-- `KarateJs.callSingle()` bridges to runtime via provider pattern
-
-See `io.karatelabs.core.callsingle.CallSingleTest` for comprehensive test coverage including parallel execution.
-
-### Reports
-
-- Karate JSON report (`karate-summary.json`)
-- JUnit XML report (`karate-junit.xml`) for CI/CD integration
-- Cucumber JSON report (`cucumber.json`) for third-party tools (Allure, ReportPortal, etc.)
-- Console output with ANSI colors (`io.karatelabs.core.Console`)
-
-#### Report Architecture
-
-See [HTML_REPORTS.md](./HTML_REPORTS.md) for detailed HTML report architecture, JSON schema, and NDJSON streaming documentation.
-
-**Summary:**
-- `HtmlReportListener` writes feature HTML files asynchronously as features complete
-- Only small summary data kept in memory
-- JSON data inlined in HTML, rendered client-side with Alpine.js
-- NDJSON streaming opt-in via `.outputNdjson(true)`
-- Report aggregation via `HtmlReport.aggregate()`
-
-### Logging Architecture
-
-Karate v2 separates logging into two distinct systems:
-
-#### Test Logs (LogContext)
-
-`io.karatelabs.log.LogContext` is a thread-local log collector that captures all test output:
-- `* print` statements
-- `karate.log()` / `console.log()` calls
-- HTTP request/response summaries
-
-Logs are captured per-step and stored in `StepResult`, appearing in HTML reports.
-
-**Key methods:**
-
-| Method | Description |
-|--------|-------------|
-| `LogContext.get()` | Get current thread's log context |
-| `log(Object message)` | Log a message |
-| `log(String format, Object... args)` | Log with `{}` placeholders |
-| `collect()` | Get accumulated log and clear buffer |
-| `peek()` | Get accumulated log without clearing |
-| `setCascade(Consumer<String>)` | Forward logs to external logger |
-
-**Cascade to SLF4J:**
-
-Test logs are captured for HTML reports by default. To additionally forward them to SLF4J:
-
-```java
-import io.karatelabs.log.LogContext;
-import io.karatelabs.log.Slf4jCascade;
-
-// In test setup or @BeforeClass
-LogContext.setCascade(Slf4jCascade.create());
-```
-
-This forwards all test output to the `karate.run` SLF4J category at INFO level. Configure in your `logback.xml`:
-
-```xml
-<logger name="karate.run" level="INFO">
-    <appender-ref ref="FILE" />
-</logger>
-```
-
-For custom category or level:
-```java
-LogContext.setCascade(Slf4jCascade.create("my.category", LogLevel.DEBUG));
-```
-
-#### Framework Logs (JvmLogger)
-
-`io.karatelabs.log.JvmLogger` is a static logger for Karate framework/infrastructure code:
-- Config loading
-- Hook execution
-- Report generation
-- callSingle/callOnce execution
-
-**Configuration:**
-```java
-import io.karatelabs.log.JvmLogger;
-import io.karatelabs.log.LogLevel;
-
-// Set log level (default: INFO)
-JvmLogger.setLevel(LogLevel.DEBUG);
-
-// Custom appender (default: System.err)
-JvmLogger.setAppender((level, format, args) -> {
-    // custom implementation
-});
-```
-
-**Log Levels:** `TRACE` < `DEBUG` < `INFO` < `WARN` < `ERROR`
-
-### Console Output
-
-The `io.karatelabs.core.Console` class provides ANSI color support for terminal output.
-
-**Auto-Detection:**
-
-Colors are automatically enabled based on environment:
-- Respects `NO_COLOR` environment variable (https://no-color.org/)
-- Respects `FORCE_COLOR` environment variable
-- Detects terminal capability via `TERM`, `COLORTERM`
-- Windows: detects Windows Terminal via `WT_SESSION`
-
-**Programmatic Control:**
-```java
-import io.karatelabs.core.Console;
-
-Console.setColorsEnabled(false);  // Disable colors
-```
-
-**Console Summary:**
-
-Control whether suite/feature summaries are printed to console:
-
-```java
-Runner.path("features/")
-    .outputConsoleSummary(false)  // suppress console output
-    .parallel(5);
-```
-
-Default: `true`. When disabled, results are still available in `SuiteResult`.
-
-### Result Streaming (ResultListener)
-
-Foundation for HTML reports and external integrations.
-
-```java
-public interface ResultListener {
-    default void onSuiteStart(Suite suite) {}
-    default void onSuiteEnd(SuiteResult result) {}
-    default void onFeatureStart(Feature feature) {}
-    default void onFeatureEnd(FeatureResult result) {}
-    default void onScenarioStart(Scenario scenario) {}
-    default void onScenarioEnd(ScenarioResult result) {}
-}
-
-// Usage
-Runner.path("features/")
-    .resultListener(new HtmlReportListener())
-    .resultListener(new AllureListener())
-    .parallel(10);
-```
-
-**Design notes:**
-- Scenario is the smallest unit of granularity (no step-level events)
-- Unlike `RuntimeHook`, `ResultListener` is purely observational and cannot abort execution
-- Multiple listeners can be registered via `Runner.Builder.resultListener()`
-
-**Planned built-in listeners:**
-- `HtmlReportListener` - generates HTML reports (see Priority 1)
-- `TelemetryListener` - sends daily ping (see Future Phase)
+| Property | Description |
+|----------|-------------|
+| `karate.env` | Environment name |
+| `karate.config.dir` | Config directory |
+| `karate.output.dir` | Output directory |
+| `karate.working.dir` | Working directory |
+
+---
+
+## karate.* API
+
+### Implemented
+
+| Method | Location | Description |
+|--------|----------|-------------|
+| `abort()` | KarateJs | Abort scenario execution |
+| `append(list, items...)` | KarateJsApi | Append items to list (returns new list) |
+| `appendTo(list, items...)` | KarateJsApi | Append items to list (mutates) |
+| `call(path, arg?)` | KarateJs | Call feature file |
+| `callonce(path, arg?)` | KarateJs | Call feature once per feature |
+| `callSingle(path, arg?)` | KarateJs | Call once per suite (cached) |
+| `config` | KarateJs | Get config object |
+| `configure(key, value)` | KarateJs | Set configuration |
+| `distinct(list)` | KarateJsApi | Remove duplicates |
+| `doc(template)` | KarateJs | Render HTML template |
+| `env` | KarateJs | Get karate.env value |
+| `eval(expression)` | KarateJs | Evaluate JS expression |
+| `exec(command)` | KarateJs | Execute system command |
+| `extract(text, regex, group)` | KarateJsApi | Extract regex match |
+| `extractAll(text, regex, group)` | KarateJsApi | Extract all regex matches |
+| `fail(message)` | KarateJs | Fail scenario with message |
+| `filter(list, fn)` | KarateJsApi | Filter list by predicate |
+| `filterKeys(map, keys)` | KarateJsApi | Filter map by keys |
+| `forEach(collection, fn)` | KarateJsApi | Iterate collection |
+| `fork(options)` | KarateJs | Fork background process |
+| `fromJson(string)` | KarateJsApi | Parse JSON string |
+| `fromString(text)` | KarateJs | Parse as JSON/XML or return string |
+| `get(name, path?)` | KarateJs | Get variable value |
+| `http(url)` | KarateJs | Create HTTP client |
+| `info` | KarateJs | Get scenario info |
+| `jsonPath(obj, path)` | KarateJsApi | Apply JSONPath expression |
+| `keysOf(map)` | KarateJsApi | Get map keys |
+| `log(args...)` | KarateJs | Log message |
+| `lowerCase(value)` | KarateJsApi | Lowercase string/JSON/XML |
+| `map(list, fn)` | KarateJsApi | Transform list |
+| `mapWithKey(list, key)` | KarateJsApi | Wrap list items in maps |
+| `match(actual, expected)` | KarateJs | Match assertion |
+| `merge(maps...)` | KarateJsApi | Merge maps |
+| `os` | KarateJs | Get OS info |
+| `pause(ms)` | KarateJsApi | Sleep for milliseconds |
+| `pretty(value)` | KarateJsApi | Format as pretty JSON/XML |
+| `prettyXml(value)` | KarateJsApi | Format as pretty XML |
+| `proceed()` | KarateJs | Proceed in mock (passthrough) |
+| `properties` | KarateJs | Get system properties |
+| `range(start, end, step?)` | KarateJsApi | Generate number range |
+| `read(path)` | KarateJs | Read file content |
+| `readAsBytes(path)` | KarateJs | Read file as bytes |
+| `readAsString(path)` | KarateJs | Read file as string |
+| `remove(name, path)` | KarateJs | Remove from variable |
+| `repeat(count, fn)` | KarateJsApi | Generate list by repeating function |
+| `scenario` | KarateJs | Get scenario info |
+| `set(name, path?, value)` | KarateJs | Set variable value |
+| `setup()` | KarateJs | Get setup scenario result |
+| `setupOnce()` | KarateJs | Get cached setup result |
+| `setXml(name, path, value)` | KarateJs | Set XML value |
+| `signal(value)` | KarateJs | Signal to listener |
+| `sizeOf(value)` | KarateJsApi | Get size of list/map/string |
+| `sort(list, fn)` | KarateJsApi | Sort list by key function |
+| `start(options)` | KarateJs | Start mock server |
+| `toBean(obj, className)` | KarateJsApi | Convert to Java bean |
+| `toBytes(list)` | KarateJsApi | Convert number list to byte[] |
+| `toCsv(list)` | KarateJsApi | Convert list of maps to CSV |
+| `toJava(value)` | KarateJs | No-op (V1 compat) |
+| `toJson(value, removeNulls?)` | KarateJsApi | Convert to JSON |
+| `toString(value)` | KarateJsApi | Convert to string (JSON/XML aware) |
+| `toStringPretty(value)` | KarateJs | Pretty format value |
+| `typeOf(value)` | KarateJsApi | Get Karate type name |
+| `urlDecode(string)` | KarateJsApi | URL decode |
+| `urlEncode(string)` | KarateJsApi | URL encode |
+| `valuesOf(map)` | KarateJsApi | Get map values |
+| `xmlPath(xml, path)` | KarateJs | Apply XPath expression |
+
+### Pending (Non-UI/Extension)
+
+| Method | Description | Notes |
+|--------|-------------|-------|
+| `embed(content, type)` | Embed in report | Needs report consumer |
+| `feature` | Get feature info | Property |
+| `logger` | Log facade (debug/info/warn/error) | Needs LogContext |
+| `prevRequest` | Get previous HTTP request | Needs HTTP state |
+| `request` | Get current request (mock) | Mock context only |
+| `response` | Get current response | Mock context only |
+| `scenarioOutline` | Get outline info | Property |
+| `tags` | Get tags list | Property |
+| `tagValues` | Get tag values map | Property |
+| `readAsStream(path)` | Read as InputStream | Needs root |
+| `render(template)` | Render HTML template | Similar to doc |
+| `stop(port)` | Wait for port to close | Polling |
+| `toAbsolutePath(path)` | Convert to absolute | Needs root |
+| `waitForHttp(url, options)` | Poll HTTP endpoint | Polling |
+| `waitForPort(host, port)` | Wait for port available | Polling |
+| `write(path, content)` | Write to file | Needs root |
+
+### Out of Scope (UI/Extensions)
+
+| Method | Reason |
+|--------|--------|
+| `driver`, `robot` | Browser/UI not in V2 |
+| `channel()`, `consume()` | Kafka extension |
+| `webSocket()`, `webSocketBinary()` | WebSocket not yet |
+| `compareImage()` | UI testing |
+
+### Pending V1 Parity (Advanced)
+
+| Feature | V1 Pattern | Notes |
+|---------|-----------|-------|
+| Java Function as callable | `Hello.sayHelloFactory()` returns `Function<String,String>` | JS engine needs to wrap `java.util.function.Function`, `Callable`, `Runnable`, `Predicate` as `JsCallable` |
+| callSingle returning Java fn | `karate.callSingle('file.js')` where JS returns Java Function | Depends on above |
+
+---
+
+## Configure Keys
+
+### Implemented
+`ssl`, `proxy`, `readTimeout`, `connectTimeout`, `followRedirects`, `headers`, `cookies`, `charset`
+
+### TODO
+| Key | Priority |
+|-----|----------|
+| `url` | High |
+| `lowerCaseResponseHeaders` | Medium |
+| `logPrettyRequest/Response` | Medium |
+| `printEnabled` | Medium |
+| `retry` | Medium |
+| `report` | Medium |
+| `httpRetryEnabled` | Low |
+| `localAddress` | Low |
+| `ntlmAuth` | Low |
+| `callSingleCache` | Low |
+| `continueOnStepFailure` | Low |
+
+### Out of Scope
+`driver`, `robot`, `driverTarget`, `kafka`, `grpc`, `websocket`, `webhook`, `responseHeaders`, `responseDelay`, `cors`
 
 ---
 
 ## Not Yet Implemented
 
-### ~~Priority 1: HTML Reports~~ ✅ IMPLEMENTED
-
-HTML report generation is now available with async feature HTML writing:
-
-```java
-// Default: HTML reports generated automatically
-Runner.path("features/")
-    .parallel(5);
-
-// Opt-in NDJSON for aggregation/streaming
-Runner.path("features/")
-    .outputNdjson(true)
-    .parallel(5);
-
-// Disable HTML reports
-Runner.path("features/")
-    .outputHtmlReport(false)
-    .parallel(5);
-```
-
-**Key features:**
-- **Async HTML generation** - Feature HTML written as features complete, doesn't block execution
-- **Memory efficient** - Only small summary data kept in memory
-- **Inlined JSON + Alpine.js** - No server-side template rendering; JSON inlined in HTML, rendered client-side
-- **NDJSON opt-in** - For report aggregation and live progress streaming
-- **Report aggregation** - Merge NDJSON files from multiple test runs:
-
-```java
-HtmlReport.aggregate()
-    .json("target/run1/karate-results.ndjson")
-    .json("target/run2/karate-results.ndjson")
-    .outputDir("target/combined")
-    .generate();
-```
-
-See `io.karatelabs.core.HtmlReportListener`, `io.karatelabs.core.HtmlReportWriter`, `io.karatelabs.core.NdjsonReportListener`, and `io.karatelabs.core.HtmlReport` for implementation.
-
----
-
-### ~~Priority 2: Cucumber JSON Format~~ ✅ IMPLEMENTED
-
-Cucumber JSON report generation is now available via:
-```java
-Runner.path("features/")
-    .outputCucumberJson(true)     // generates cucumber.json
-    .parallel(5);
-```
-
-See `io.karatelabs.core.CucumberJsonWriter` for implementation.
-
----
-
-### ~~Priority 3: Feature File Discovery~~ ✅ IMPLEMENTED
-
-Feature file discovery now supports:
-- File system directory scanning ✓
-- Single feature file loading ✓
-- Classpath directory scanning ✓
-- JAR resource scanning ✓
-
-```java
-// File system paths
-Runner.path("src/test/resources/features/")
-
-// Classpath directory - scans for all .feature files
-Runner.path("classpath:features/")
-
-// Classpath single file
-Runner.path("classpath:features/users.feature")
-
-// Mixed paths
-Runner.path("src/test/local/", "classpath:features/")
-```
-
-**Implementation details:**
-- Uses `ClassLoader.getResources()` to locate classpath directories
-- NIO FileSystem API for walking directories (handles both file system and JAR entries)
-- Fallback to manual JAR scanning when NIO FileSystem provider unavailable
-- See `Resource.scanClasspath()` in `io.karatelabs.common.Resource`
-
----
-
-### ~~Priority 4: CLI JSON Configuration~~ ✅ IMPLEMENTED
-
-Run Karate tests using a JSON configuration file (`karate-pom.json`):
-
-```bash
-karate run                           # auto-loads karate-pom.json
-karate run -p custom-pom.json        # explicit pom file
-karate run -e prod -T 10 features/   # CLI args override pom values
-```
-
-> **Note:** `karate-pom.json` is designed for **non-Java teams** using the standalone CLI without Maven/Gradle. Java teams should use `Runner.Builder` directly with system properties for CI/CD overrides.
-
-**JSON Schema:**
-```json
-{
-  "paths": ["src/test/features/", "classpath:features/"],
-  "tags": ["@smoke", "~@slow"],
-  "env": "dev",
-  "threads": 5,
-  "scenarioName": ".*login.*",
-  "configDir": "src/test/resources",
-  "workingDir": "/home/user/project",
-  "dryRun": false,
-  "clean": false,
-  "output": {
-    "dir": "target/karate-reports",
-    "html": true,
-    "junitXml": false,
-    "cucumberJson": false,
-    "ndjson": false
-  }
-}
-```
-
-**Precedence:** CLI arguments override config file values.
-
-See `io.karatelabs.core.KaratePom` for implementation.
-
----
-
-### ~~Priority 5: Working Directory (`-w, --workdir`)~~ ✅ IMPLEMENTED
-
-Working directory CLI option is now available to control relative path resolution:
-
-```bash
-# Run from project root, features in subdir
-karate -w /home/user/project src/test/features
-
-# JSON config
-{
-  "workingDir": "/home/user/project",
-  "paths": ["src/test/features"]
-}
-```
-
-**Programmatic API:**
-```java
-Runner.path("src/test/features")
-    .workingDir("/home/user/project")
-    .parallel(5);
-```
-
-**Implementation details:**
-- `Main.java` - Added `-w, --workdir` CLI option
-- `KaratePom.java` - Added `workingDir` JSON field
-- `Runner.Builder` - Added `workingDir(String/Path)` methods
-- `Suite` - Stores and propagates working directory for resource creation
-- `Resource.scanClasspath()` - Accepts optional root parameter for relative path computation
-
----
-
-### ~~Priority 6: Dynamic Scenario Outline - Generator Function Support~~ ✅ IMPLEMENTED
-
-Generator functions are now supported for dynamic scenario outlines. The expression can return either a `List<?>` or a function that generates rows.
-
-**Usage:**
-```gherkin
-@setup
-Scenario: Define generator
-  * def generator = function(i){ if (i == 5) return null; return { name: 'item' + i, index: i } }
-
-Scenario Outline: Test generated data
-  * match __num == <index>
-  * match __row.name == 'item' + <index>
-
-Examples:
-| karate.setup().generator |
-```
-
-**How it works:**
-- If the expression returns a `List`, it's used directly
-- If the expression returns a function (JS callable), it's called repeatedly with an incrementing index (0, 1, 2, ...)
-- The function should return a `Map` for each row of data
-- Return `null` or a non-Map value to signal end of iteration
-
-**Built-in variables for outline scenarios:**
-- `__num` - The example row index (0-based)
-- `__row` - The full example data map
-
-**Implementation:**
-- `FeatureRuntime.evaluateDynamicExpression()` - Detects functions and delegates to generator evaluation
-- `FeatureRuntime.evaluateGeneratorFunction()` - Calls function repeatedly via `JsCallable.call(null, index)` until termination
-- `ScenarioRuntime.initEngine()` - Sets `__num` and `__row` variables
-
-See `io.karatelabs.core.OutlineTest` for comprehensive test coverage.
-
----
-
 ### Priority 7: JavaScript Script Execution (`*.karate.js`)
 
-> **Status:** TODO
+Pure JavaScript files with the `*.karate.js` naming convention can be executed directly:
 
-Pure JavaScript files with the `*.karate.js` naming convention can be executed directly, with full access to the `karate.*` API. This is ideal for complex async operations, process management, and custom test orchestration.
-
-**File naming:** `*.karate.js` (e.g., `setup.karate.js`, `server-test.karate.js`)
-
-**Example script:**
 ```javascript
 // server-test.karate.js
 var proc = karate.fork({
@@ -594,63 +228,29 @@ var proc = karate.fork({
   }
 })
 
-// Wait for server to start
 var result = karate.listen(5000)
-if (!result.ready) {
-  throw 'Server did not start in time'
-}
+if (!result.ready) throw 'Server did not start'
 
-// Run tests against server
 var http = karate.http('http://localhost:8080')
 var response = http.path('health').get()
 match(response.body).equals({ status: 'ok' })
 
-// Cleanup
 proc.close()
-karate.log('Server test completed successfully')
 ```
 
-**Execution model:**
-- Each `.karate.js` file is treated as a single test (like a one-scenario Feature)
-- The script has access to all `karate.*` functions, `match()`, `read()`, etc.
-- Pass/fail is determined by whether an exception is thrown
-- Results appear in reports alongside Feature results
-
-**Discovery:**
-- `Runner.path("tests/")` discovers both `.feature` and `.karate.js` files
-- CLI: `karate run tests/` scans for both file types
-
-**Use cases:**
-- Process management with `karate.fork()` and `karate.exec()`
-- Complex async workflows with callbacks
-- Custom test orchestration (e.g., start server, run tests, cleanup)
-- Scenarios requiring native JS control flow (loops, conditionals)
-
-**Implementation:**
-- `JsScriptRuntime` - Executes a `.karate.js` file with KarateJs context
-- Results mapped to `ScenarioResult` (script name as scenario name)
-- Integrated into `Suite` and `Runner` discovery
-
-See `io.karatelabs.core.JsScriptRuntime` and `io.karatelabs.core.ProcessTest` for implementation and tests.
+**Implementation:** `JsScriptRuntime` - executes `.karate.js` with KarateJs context, results mapped to `ScenarioResult`.
 
 ---
 
 ### Priority 8: Configure Report
 
-> **Status:** TODO
-
-Support for `configure report` to control report verbosity and content:
-
 ```cucumber
 * configure report = { showJsLineNumbers: true }
 ```
 
-Key features:
-- JS line-level execution capture (like Gherkin steps)
-- Control HTTP detail verbosity
-- Payload size limits
+Controls report verbosity, JS line-level capture, HTTP detail, payload size limits.
 
-See [HTML_REPORTS.md](./HTML_REPORTS.md) for detailed specification and [LOGGING.md](./LOGGING.md) for JS line logging.
+See [HTML_REPORTS.md](./HTML_REPORTS.md) for specification.
 
 ---
 
@@ -668,268 +268,41 @@ karate-config-dev.js (env-specific)
 
 ---
 
-### HTML Reports
-
-See [HTML_REPORTS.md](./HTML_REPORTS.md) for comprehensive HTML report documentation including:
-- Report architecture and memory-efficient generation
-- JSON schema for summary and feature data
-- NDJSON streaming for aggregation
-- Template customization
-- UX patterns and execution sequence display
-
----
-
-### Cucumber JSON Format ✅
-
-> **Status:** Implemented in `io.karatelabs.core.CucumberJsonWriter`
-
-Standard Cucumber JSON for third-party tool integration (Allure, ReportPortal, etc.).
-
-```java
-Runner.path("features/")
-    .outputCucumberJson(true)     // generates cucumber.json
-    .parallel(5);
-```
-
-**Output:** `target/karate-reports/cucumber.json`
-
-**Schema (per Cucumber spec):**
-```json
-[
-  {
-    "id": "users-feature",
-    "uri": "classpath:features/users.feature",
-    "name": "User Management",
-    "description": "Feature description",
-    "keyword": "Feature",
-    "line": 1,
-    "tags": [{"name": "@smoke", "line": 1}],
-    "elements": [
-      {
-        "id": "users-feature;create-user",
-        "name": "Create user",
-        "description": "",
-        "keyword": "Scenario",
-        "line": 5,
-        "type": "scenario",
-        "tags": [{"name": "@smoke", "line": 4}],
-        "steps": [
-          {
-            "keyword": "Given ",
-            "name": "url 'http://localhost:8080'",
-            "line": 6,
-            "result": {
-              "status": "passed",
-              "duration": 1234567
-            },
-            "embeddings": [
-              {
-                "mime_type": "text/plain",
-                "data": "base64-encoded-data"
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  }
-]
-```
-
-**Key mappings:**
-| Karate Concept | Cucumber JSON Field |
-|---------------|---------------------|
-| Feature | Top-level array element |
-| Scenario | `elements[]` with `type: "scenario"` |
-| Scenario Outline row | `elements[]` with `type: "scenario"` |
-| Background | `elements[]` with `type: "background"` (repeated per scenario) |
-| Step | `steps[]` within element |
-| Step keyword | `keyword` (includes trailing space: `"Given "`) |
-| Step text | `name` |
-| Step result | `result.status`: `"passed"`, `"failed"`, `"skipped"`, `"pending"` |
-| Duration | `result.duration` in nanoseconds |
-| Error | `result.error_message` |
-| Logs/embeds | `embeddings[]` with `mime_type` and base64 `data` |
-
-**Implementation class:** `io.karatelabs.core.CucumberJsonWriter`
-
----
-
-## Built-in Tags
-
-Karate supports several built-in tags that modify scenario execution behavior.
-
-| Tag | Scope | Description |
-|-----|-------|-------------|
-| `@ignore` | Scenario/Feature | Skip execution entirely |
-| `@env=<name>` | Scenario/Feature | Run only when `karate.env` matches |
-| `@envnot=<name>` | Scenario/Feature | Skip when `karate.env` matches |
-| `@setup` | Scenario | Mark as setup for dynamic outlines via `karate.setup()` |
-| `@fail` | Scenario | Invert pass/fail result (expect failure) |
-
-### @ignore
-
-Skip a scenario or entire feature from execution:
-
-```gherkin
-@ignore
-Scenario: Work in progress
-  * print 'this will not run'
-```
-
-### @env / @envnot
-
-Control execution based on environment:
-
-```gherkin
-@env=dev
-Scenario: Only runs in dev
-  * print 'dev-only test'
-
-@envnot=prod
-Scenario: Skip in production
-  * print 'not in prod'
-```
-
-### @setup
-
-Mark a scenario as a data provider for dynamic scenario outlines:
-
-```gherkin
-@setup
-Scenario: Provide test data
-  * def data = [{name: 'Alice'}, {name: 'Bob'}]
-
-Scenario Outline: Test each user
-  * match '<name>' == __row.name
-
-Examples:
-| karate.setup().data |
-```
-
-### @fail
-
-Expect a scenario to fail - useful for testing error conditions:
-
-```gherkin
-@fail
-Scenario: This should fail
-  * def a = 1
-  * match a == 2
-```
-
-With `@fail`:
-- If the scenario fails → test passes (expected behavior)
-- If the scenario passes → test fails (unexpected - should have failed)
-
----
-
-## Configure Keys
-
-The `configure` keyword only accepts specific keys (like V1). Unknown keys throw an error.
-
-### Implemented
-
-| Key | Description |
-|-----|-------------|
-| `ssl` | SSL/TLS configuration |
-| `proxy` | HTTP proxy settings |
-| `readTimeout` | HTTP read timeout (ms) |
-| `connectTimeout` | HTTP connect timeout (ms) |
-| `followRedirects` | Follow HTTP redirects |
-| `headers` | Default HTTP headers |
-| `charset` | Default charset for requests |
-
-### TODO - Recognized but Not Yet Implemented
-
-| Key | V1 Description | Priority |
-|-----|----------------|----------|
-| `url` | Base URL for HTTP requests | High |
-| `cookies` | Default cookies | High |
-| `lowerCaseResponseHeaders` | Normalize response header names | Medium |
-| `logPrettyRequest` | Pretty-print request logs | Medium |
-| `logPrettyResponse` | Pretty-print response logs | Medium |
-| `printEnabled` | Enable/disable print output | Medium |
-| `retry` | Retry configuration `{ count, interval }` | Medium |
-| `report` | Report verbosity `{ showLog, showAllSteps }` | Medium |
-| `httpRetryEnabled` | Auto-retry failed HTTP requests | Low |
-| `localAddress` | Bind to specific local address | Low |
-| `ntlmAuth` | NTLM authentication | Low |
-| `callSingleCache` | File-based callSingle cache | Low |
-| `continueOnStepFailure` | Continue after match failures | Low |
-| `abortedStepsShouldPass` | Aborted steps count as passed | Low |
-| `abortSuiteOnFailure` | Stop suite on first failure | Low |
-
-### Out of Scope (V2 not implementing)
-
-| Key | Reason |
-|-----|--------|
-| `driver`, `robot` | Browser/UI automation not in V2 |
-| `driverTarget` | Browser/UI automation not in V2 |
-| `kafka`, `grpc`, `websocket`, `webhook` | Specialized protocols |
-| `responseHeaders`, `responseDelay`, `cors` | Mock server features |
-
----
-
 ## Future Phase
-
-Lower priority features for later implementation.
 
 ### Lock System (`@lock=<name>`)
 
-For mutual exclusion when scenarios cannot run in parallel due to shared resources.
+For mutual exclusion when scenarios cannot run in parallel:
 
 ```gherkin
 @lock=database
 Feature: User tests
   Scenario: Create user      # holds "database" lock
-  Scenario: Delete user      # waits for "database" lock
 
 @lock=*
-Scenario: Restart server     # runs exclusively (waits for all, blocks all)
+Scenario: Restart server     # runs exclusively
 ```
 
 **Implementation:**
-
 ```java
 public class LockRegistry {
     private final Map<String, ReentrantLock> locks = new ConcurrentHashMap<>();
     private final ReentrantReadWriteLock globalLock = new ReentrantReadWriteLock();
-    private final AtomicInteger activeScenarios = new AtomicInteger(0);
 
     public void acquireLock(String lockName) {
         if ("*".equals(lockName)) {
-            acquireExclusive();  // Write lock, wait for all active to complete
+            acquireExclusive();
         } else {
             globalLock.readLock().lock();
             locks.computeIfAbsent(lockName, k -> new ReentrantLock()).lock();
-        }
-        activeScenarios.incrementAndGet();
-    }
-
-    public void releaseLock(String lockName) {
-        activeScenarios.decrementAndGet();
-        if ("*".equals(lockName)) {
-            globalLock.writeLock().unlock();
-        } else {
-            locks.get(lockName).unlock();
-            globalLock.readLock().unlock();
         }
     }
 }
 ```
 
-| Tag | Scope | Behavior |
-|-----|-------|----------|
-| `@lock=foo` | Cross-feature | Mutual exclusion with other `@lock=foo` |
-| `@lock=*` | Global | Waits for all, runs exclusively |
-| `@parallel=false` | Intra-feature | Sequential within feature |
-
 ---
 
 ### Retry System (`@retry`)
-
-Failed scenarios can be automatically retried at end of suite.
 
 ```gherkin
 @retry
@@ -940,21 +313,12 @@ Scenario: Flaky test
 ```
 
 **Flow:**
-1. Suite executes all scenarios in parallel
-2. Collect failed scenarios with `@retry` tag
-3. Re-run failures (fresh execution from scratch)
-4. Final results use best outcome (pass > fail)
+1. Suite executes all scenarios
+2. Collect failed `@retry` scenarios
+3. Re-run failures (fresh execution)
+4. Final results use best outcome
 
-**Failed scenarios file (`rerun.txt`):**
-```
-src/test/features/users.feature:25
-src/test/features/orders.feature:42
-```
-
-**CLI usage:**
-```bash
-karate --rerun target/karate-reports/rerun.txt
-```
+**CLI:** `karate --rerun target/karate-reports/rerun.txt`
 
 ---
 
@@ -964,40 +328,16 @@ karate --rerun target/karate-reports/rerun.txt
 List<SuiteResult> results = Runner.suites()
     .add(Runner.path("src/test/api/").parallel(10))
     .add(Runner.path("src/test/ui/").parallel(2))
-    .parallel(2)  // 2 suites in parallel
+    .parallel(2)
     .run();
 ```
-
-**Environment isolation:** Each suite gets its own snapshot of `System.getenv()` at creation time to prevent race conditions.
 
 ---
 
 ### Telemetry
 
-Anonymous usage telemetry to understand adoption. Integrated into core runtime (not HTML reports) for visibility into CI/CD and headless usage.
+Anonymous daily usage ping from `Suite.run()`:
 
-**Design:**
-- Sent from `Suite.run()` completion, not from report viewing
-- **Once per day max** - prevents excessive pings from frequent test runs
-- Non-blocking - async HTTP POST, failures silently ignored
-- Minimal payload - no PII, no test content
-
-**Storage (`~/.karate/`):**
-```
-~/.karate/
-├── uuid.txt           # Persistent user UUID (existing v1 approach)
-└── telemetry.json     # Last ping timestamp + daily state
-```
-
-**telemetry.json:**
-```json
-{
-  "lastPing": "2025-12-16T10:30:00Z",
-  "dailySent": true
-}
-```
-
-**Payload (minimal):**
 ```json
 {
   "uuid": "abc-123-...",
@@ -1007,87 +347,29 @@ Anonymous usage telemetry to understand adoption. Integrated into core runtime (
   "features": 15,
   "scenarios": 42,
   "passed": true,
-  "ci": true,
-  "meta": "..."
+  "ci": true
 }
 ```
 
-**CI Detection:**
-- Check common env vars: `CI`, `JENKINS_URL`, `GITHUB_ACTIONS`, `GITLAB_CI`, `TRAVIS`, etc.
+**Storage:** `~/.karate/uuid.txt`, `~/.karate/telemetry.json`
 
-**Opt-out:**
-```bash
-export KARATE_TELEMETRY=false
-```
-
-**Implementation:**
-```java
-public class Telemetry {
-    private static final Path KARATE_DIR = Path.of(System.getProperty("user.home"), ".karate");
-    private static final Path UUID_FILE = KARATE_DIR.resolve("uuid.txt");
-    private static final Path STATE_FILE = KARATE_DIR.resolve("telemetry.json");
-
-    public static void ping(SuiteResult result) {
-        if (!isEnabled()) return;
-        if (alreadySentToday()) return;
-
-        // Async non-blocking POST
-        CompletableFuture.runAsync(() -> {
-            try {
-                sendPing(buildPayload(result));
-                updateLastPing();
-            } catch (Exception ignored) { }
-        });
-    }
-
-    private static boolean isEnabled() {
-        String env = System.getenv("KARATE_TELEMETRY");
-        return env == null || !"false".equalsIgnoreCase(env.trim());
-    }
-
-    private static boolean alreadySentToday() {
-        // Check STATE_FILE for today's date
-    }
-}
-```
-
-**Called from Suite:**
-```java
-public SuiteResult run() {
-    // ... execution ...
-    Telemetry.ping(result);  // async, non-blocking
-    return result;
-}
-```
+**Opt-out:** `export KARATE_TELEMETRY=false`
 
 ---
 
-## Test Coverage
+## Test Classes
 
-Tests are in `karate-core/src/test/java/io/karatelabs/core/`:
-
-| Test Class | Coverage |
-|------------|----------|
-| `step/DefStepTest` | Variable assignment |
-| `step/MatchStepTest` | Match assertions |
-| `step/HttpStepTest` | HTTP operations |
-| `step/MultipartStepTest` | Multipart uploads |
-| `StepPrintTest` | Print statements |
-| `StepAssertTest` | Assert statements |
-| `OutlineTest` | Scenario outline expansion and dynamic scenarios |
-| `BackgroundTest` | Background steps |
-| `StepCallTest` | Feature calling |
-| `ScenarioConfigTest` | Config loading, working directory fallback |
-| `callsingle/CallSingleTest` | `karate.callSingle()`, thread-safe caching, parallel execution |
-| `log/Slf4jCascadeTest` | SLF4J cascade for test logs |
-| `RuntimeHookTest` | Hooks |
-| `ResultListenerTest` | Result streaming |
-| `RunnerTest` | Runner API, classpath directory scanning |
-| `KaratePomTest` | JSON pom file parsing and loading |
-| `JunitXmlWriterTest` | JUnit XML report generation |
-| `CucumberJsonWriterTest` | Cucumber JSON report generation |
-| `HtmlReportListenerTest` | Async HTML report generation. See [HTML_REPORTS.md](./HTML_REPORTS.md) |
-| `NdjsonReportListenerTest` | NDJSON streaming (opt-in) |
-| `HtmlReportWriterTest` | HTML report generation and aggregation |
-
-Test utilities in `TestUtils.java` and `InMemoryHttpClient.java`.
+| Class | Coverage |
+|-------|----------|
+| `StepDefTest` | def, set, copy, table, replace, csv, yaml |
+| `StepMatchTest` | match assertions |
+| `StepHttpTest` | HTTP keywords |
+| `StepMultipartTest` | multipart |
+| `StepJsTest` | JS functions, karate.* API |
+| `StepXmlTest` | XML operations |
+| `StepCallTest` | call/callonce |
+| `StepAbortTest` | karate.abort() |
+| `StepEvalTest` | eval keyword |
+| `OutlineTest` | Scenario outline, dynamic |
+| `CallSingleTest` | karate.callSingle() |
+| `DataUtilsTest` | CSV/YAML parsing |

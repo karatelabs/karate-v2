@@ -824,4 +824,185 @@ class StepJsTest {
         assertPassed(sr);
     }
 
+    // ========== karate.distinct() ==========
+
+    @Test
+    void testDistinctPrimitives() {
+        ScenarioRuntime sr = run("""
+            * def list = [1, 2, 2, 3, 1, 4]
+            * def result = karate.distinct(list)
+            * match result == [1, 2, 3, 4]
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testDistinctStrings() {
+        ScenarioRuntime sr = run("""
+            * def list = ['a', 'b', 'a', 'c', 'b']
+            * def result = karate.distinct(list)
+            * match result == ['a', 'b', 'c']
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testDistinctEmpty() {
+        ScenarioRuntime sr = run("""
+            * def list = []
+            * def result = karate.distinct(list)
+            * match result == []
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testDistinctNull() {
+        ScenarioRuntime sr = run("""
+            * def result = karate.distinct(null)
+            * match result == []
+            """);
+        assertPassed(sr);
+    }
+
+    // ========== karate.range() ==========
+
+    @Test
+    void testRangeBasic() {
+        ScenarioRuntime sr = run("""
+            * def result = karate.range(0, 5)
+            * match result == [0, 1, 2, 3, 4]
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testRangeWithStep() {
+        ScenarioRuntime sr = run("""
+            * def result = karate.range(0, 10, 2)
+            * match result == [0, 2, 4, 6, 8]
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testRangeNegativeStep() {
+        ScenarioRuntime sr = run("""
+            * def result = karate.range(5, 0, -1)
+            * match result == [5, 4, 3, 2, 1]
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testRangeEmpty() {
+        ScenarioRuntime sr = run("""
+            * def result = karate.range(5, 5)
+            * match result == []
+            """);
+        assertPassed(sr);
+    }
+
+    // ========== karate.toCsv() ==========
+
+    @Test
+    void testToCsv() {
+        ScenarioRuntime sr = run("""
+            * def list = [{name:'John',age:30},{name:'Jane',age:25}]
+            * def csv = karate.toCsv(list)
+            * match csv contains 'name,age'
+            * match csv contains 'John,30'
+            * match csv contains 'Jane,25'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testToCsvEmpty() {
+        ScenarioRuntime sr = run("""
+            * def csv = karate.toCsv([])
+            * match csv == ''
+            """);
+        assertPassed(sr);
+    }
+
+    // ========== karate.toString() ==========
+
+    @Test
+    void testToStringJson() {
+        ScenarioRuntime sr = run("""
+            * def json = { name: 'John', age: 30 }
+            * def str = karate.toString(json)
+            * match str == '{"name":"John","age":30}'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testToStringList() {
+        ScenarioRuntime sr = run("""
+            * def list = [1, 2, 3]
+            * def str = karate.toString(list)
+            * match str == '[1,2,3]'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testToStringPrimitive() {
+        ScenarioRuntime sr = run("""
+            * def num = 42
+            * def str = karate.toString(num)
+            * match str == '42'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testToStringNull() {
+        ScenarioRuntime sr = run("""
+            * def str = karate.toString(null)
+            * match str == null
+            """);
+        assertPassed(sr);
+    }
+
+    // ========== karate.urlEncode() / karate.urlDecode() ==========
+
+    @Test
+    void testUrlEncode() {
+        ScenarioRuntime sr = run("""
+            * def encoded = karate.urlEncode('hello world')
+            * match encoded == 'hello+world'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testUrlEncodeSpecialChars() {
+        ScenarioRuntime sr = run("""
+            * def encoded = karate.urlEncode('a=1&b=2')
+            * match encoded == 'a%3D1%26b%3D2'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testUrlDecode() {
+        ScenarioRuntime sr = run("""
+            * def decoded = karate.urlDecode('hello+world')
+            * match decoded == 'hello world'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testUrlDecodeSpecialChars() {
+        ScenarioRuntime sr = run("""
+            * def decoded = karate.urlDecode('a%3D1%26b%3D2')
+            * match decoded == 'a=1&b=2'
+            """);
+        assertPassed(sr);
+    }
+
 }

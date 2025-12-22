@@ -64,8 +64,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -99,6 +97,7 @@ public class KarateJs implements SimpleObject {
     private String env;
     private MockHandler mockHandler; // non-null only in mock context
 
+    private final KarateJsApi api = new KarateJsApi();
     private final JsCallable read;
 
     public KarateJs(Resource root) {
@@ -707,316 +706,12 @@ public class KarateJs implements SimpleObject {
         };
     }
 
-    // ========== Collection Utilities ==========
-
-    private Invokable jsonPath() {
-        return args -> {
-            if (args.length < 2) {
-                throw new RuntimeException("jsonPath() needs two arguments: object and path");
-            }
-            Object json = args[0];
-            String path = args[1].toString();
-            return JsonPath.read(json, path);
-        };
-    }
-
-    @SuppressWarnings("unchecked")
-    private Invokable forEach() {
-        return args -> {
-            if (args.length < 2) {
-                throw new RuntimeException("forEach() needs two arguments: collection and function");
-            }
-            Object collection = args[0];
-            JsCallable fn = (JsCallable) args[1];
-            if (collection instanceof List) {
-                List<?> list = (List<?>) collection;
-                for (int i = 0; i < list.size(); i++) {
-                    fn.call(null, new Object[]{list.get(i), i});
-                }
-            } else if (collection instanceof Map) {
-                Map<String, Object> map = (Map<String, Object>) collection;
-                int i = 0;
-                for (Map.Entry<String, Object> entry : map.entrySet()) {
-                    fn.call(null, new Object[]{entry.getKey(), entry.getValue(), i++});
-                }
-            }
-            return null;
-        };
-    }
-
-    @SuppressWarnings("unchecked")
-    private Invokable map() {
-        return args -> {
-            if (args.length < 2) {
-                throw new RuntimeException("map() needs two arguments: list and function");
-            }
-            List<?> list = (List<?>) args[0];
-            JsCallable fn = (JsCallable) args[1];
-            List<Object> result = new ArrayList<>();
-            for (int i = 0; i < list.size(); i++) {
-                result.add(fn.call(null, new Object[]{list.get(i), i}));
-            }
-            return result;
-        };
-    }
-
-    @SuppressWarnings("unchecked")
-    private Invokable filter() {
-        return args -> {
-            if (args.length < 2) {
-                throw new RuntimeException("filter() needs two arguments: list and function");
-            }
-            List<?> list = (List<?>) args[0];
-            JsCallable fn = (JsCallable) args[1];
-            List<Object> result = new ArrayList<>();
-            for (int i = 0; i < list.size(); i++) {
-                Object item = list.get(i);
-                Object keep = fn.call(null, new Object[]{item, i});
-                if (Boolean.TRUE.equals(keep)) {
-                    result.add(item);
-                }
-            }
-            return result;
-        };
-    }
-
-    @SuppressWarnings("unchecked")
-    private Invokable merge() {
-        return args -> {
-            Map<String, Object> result = new LinkedHashMap<>();
-            for (Object arg : args) {
-                if (arg instanceof Map) {
-                    result.putAll((Map<String, Object>) arg);
-                }
-            }
-            return result;
-        };
-    }
-
-    @SuppressWarnings("unchecked")
-    private Invokable append() {
-        return args -> {
-            if (args.length < 2) {
-                throw new RuntimeException("append() needs at least two arguments");
-            }
-            List<Object> result = new ArrayList<>();
-            Object first = args[0];
-            if (first instanceof List) {
-                result.addAll((List<?>) first);
-            } else {
-                result.add(first);
-            }
-            for (int i = 1; i < args.length; i++) {
-                Object item = args[i];
-                if (item instanceof List) {
-                    result.addAll((List<?>) item);
-                } else {
-                    result.add(item);
-                }
-            }
-            return result;
-        };
-    }
-
-    @SuppressWarnings("unchecked")
-    private Invokable appendTo() {
-        return args -> {
-            if (args.length < 2) {
-                throw new RuntimeException("appendTo() needs at least two arguments: list and item(s)");
-            }
-            List<Object> list = (List<Object>) args[0];
-            for (int i = 1; i < args.length; i++) {
-                Object item = args[i];
-                if (item instanceof List) {
-                    list.addAll((List<?>) item);
-                } else {
-                    list.add(item);
-                }
-            }
-            return list;
-        };
-    }
-
-    @SuppressWarnings("unchecked")
-    private Invokable sort() {
-        return args -> {
-            if (args.length < 2) {
-                throw new RuntimeException("sort() needs two arguments: list and key function");
-            }
-            List<?> list = (List<?>) args[0];
-            JsCallable fn = (JsCallable) args[1];
-            List<Object> result = new ArrayList<>(list);
-            result.sort((a, b) -> {
-                Object keyA = fn.call(null, new Object[]{a});
-                Object keyB = fn.call(null, new Object[]{b});
-                if (keyA instanceof Comparable && keyB instanceof Comparable) {
-                    return ((Comparable<Object>) keyA).compareTo(keyB);
-                }
-                return 0;
-            });
-            return result;
-        };
-    }
-
-    private Invokable mapWithKey() {
-        return args -> {
-            if (args.length < 2) {
-                throw new RuntimeException("mapWithKey() needs two arguments: list and key name");
-            }
-            Object listArg = args[0];
-            if (listArg == null) {
-                return new ArrayList<>();
-            }
-            List<?> list = (List<?>) listArg;
-            String key = args[1].toString();
-            List<Map<String, Object>> result = new ArrayList<>();
-            for (Object item : list) {
-                Map<String, Object> map = new LinkedHashMap<>();
-                map.put(key, item);
-                result.add(map);
-            }
-            return result;
-        };
-    }
-
-    @SuppressWarnings("unchecked")
-    private Invokable filterKeys() {
-        return args -> {
-            if (args.length < 2) {
-                throw new RuntimeException("filterKeys() needs at least two arguments");
-            }
-            Map<String, Object> source = (Map<String, Object>) args[0];
-            Map<String, Object> result = new LinkedHashMap<>();
-
-            if (args[1] instanceof Map) {
-                // filterKeys(source, keysFromMap) - filter by keys present in the map
-                Map<String, Object> keysMap = (Map<String, Object>) args[1];
-                for (String key : keysMap.keySet()) {
-                    if (source.containsKey(key)) {
-                        result.put(key, source.get(key));
-                    }
-                }
-            } else if (args[1] instanceof List) {
-                // filterKeys(source, [key1, key2, ...])
-                List<String> keys = (List<String>) args[1];
-                for (String key : keys) {
-                    if (source.containsKey(key)) {
-                        result.put(key, source.get(key));
-                    }
-                }
-            } else {
-                // filterKeys(source, key1, key2, ...)
-                for (int i = 1; i < args.length; i++) {
-                    String key = args[i].toString();
-                    if (source.containsKey(key)) {
-                        result.put(key, source.get(key));
-                    }
-                }
-            }
-            return result;
-        };
-    }
-
-    private Invokable sizeOf() {
-        return args -> {
-            if (args.length == 0) {
-                throw new RuntimeException("sizeOf() needs one argument");
-            }
-            Object obj = args[0];
-            if (obj instanceof List) {
-                return ((List<?>) obj).size();
-            } else if (obj instanceof Map) {
-                return ((Map<?, ?>) obj).size();
-            } else if (obj instanceof String) {
-                return ((String) obj).length();
-            }
-            return 0;
-        };
-    }
-
-    @SuppressWarnings("unchecked")
-    private Invokable keysOf() {
-        return args -> {
-            if (args.length == 0) {
-                throw new RuntimeException("keysOf() needs one argument");
-            }
-            Map<String, Object> map = (Map<String, Object>) args[0];
-            return new ArrayList<>(map.keySet());
-        };
-    }
-
-    @SuppressWarnings("unchecked")
-    private Invokable valuesOf() {
-        return args -> {
-            if (args.length == 0) {
-                throw new RuntimeException("valuesOf() needs one argument");
-            }
-            Object obj = args[0];
-            if (obj instanceof Map) {
-                return new ArrayList<>(((Map<String, Object>) obj).values());
-            } else if (obj instanceof List) {
-                return new ArrayList<>((List<?>) obj);
-            }
-            return new ArrayList<>();
-        };
-    }
-
-    private Invokable repeat() {
-        return args -> {
-            if (args.length < 2) {
-                throw new RuntimeException("repeat() needs two arguments: count and function");
-            }
-            int count = ((Number) args[0]).intValue();
-            JsCallable fn = (JsCallable) args[1];
-            List<Object> result = new ArrayList<>();
-            for (int i = 0; i < count; i++) {
-                result.add(fn.call(null, new Object[]{i}));
-            }
-            return result;
-        };
-    }
-
     private Invokable eval() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("eval() needs one argument");
             }
             return engine.eval(args[0].toString());
-        };
-    }
-
-    private Invokable extract() {
-        return args -> {
-            if (args.length < 3) {
-                throw new RuntimeException("extract() needs three arguments: text, regex, group");
-            }
-            String text = args[0].toString();
-            String regex = args[1].toString();
-            int group = ((Number) args[2]).intValue();
-            Pattern pattern = Pattern.compile(regex);
-            Matcher matcher = pattern.matcher(text);
-            if (!matcher.find()) {
-                return null;
-            }
-            return matcher.group(group);
-        };
-    }
-
-    private Invokable extractAll() {
-        return args -> {
-            if (args.length < 3) {
-                throw new RuntimeException("extractAll() needs three arguments: text, regex, group");
-            }
-            String text = args[0].toString();
-            String regex = args[1].toString();
-            int group = ((Number) args[2]).intValue();
-            Pattern pattern = Pattern.compile(regex);
-            Matcher matcher = pattern.matcher(text);
-            List<String> list = new ArrayList<>();
-            while (matcher.find()) {
-                list.add(matcher.group(group));
-            }
-            return list;
         };
     }
 
@@ -1087,59 +782,6 @@ public class KarateJs implements SimpleObject {
         };
     }
 
-    /**
-     * Returns the Karate type of a value:
-     * - 'null' for null
-     * - 'boolean' for Boolean
-     * - 'number' for Number
-     * - 'string' for String
-     * - 'bytes' for byte[]
-     * - 'list' for List
-     * - 'map' for Map
-     * - 'xml' for Node
-     * - 'function' for JsCallable/Invokable
-     * - 'object' for other types
-     */
-    private Invokable typeOf() {
-        return args -> {
-            if (args.length == 0 || args[0] == null) {
-                return "null";
-            }
-            Object value = args[0];
-            if (value instanceof Boolean) {
-                return "boolean";
-            } else if (value instanceof Number) {
-                return "number";
-            } else if (value instanceof String) {
-                return "string";
-            } else if (value instanceof byte[]) {
-                return "bytes";
-            } else if (value instanceof List) {
-                return "list";
-            } else if (value instanceof Map) {
-                return "map";
-            } else if (value instanceof Node) {
-                return "xml";
-            } else if (value instanceof JsCallable || value instanceof Invokable) {
-                return "function";
-            }
-            return "object";
-        };
-    }
-
-    private Invokable toBean() {
-        return args -> {
-            if (args.length < 2) {
-                throw new RuntimeException("toBean() needs two arguments: object and class name");
-            }
-            Object obj = args[0];
-            String className = args[1].toString();
-            // Convert to JSON string and deserialize to the target class
-            String jsonString = Json.of(obj).toString();
-            return Json.fromJson(jsonString, className);
-        };
-    }
-
     private Invokable toJava() {
         return args -> {
             logger.warn("karate.toJava() is deprecated and a no-op in V2 - JavaScript arrays work directly with Java");
@@ -1147,81 +789,6 @@ public class KarateJs implements SimpleObject {
                 return null;
             }
             return args[0]; // no-op, just return the input
-        };
-    }
-
-    /**
-     * Convert a list/array of numbers to a byte[] array.
-     * Useful for binary data handling.
-     * <pre>
-     * * def bytes = karate.toBytes([15, 98, -45, 0, 127])
-     * </pre>
-     */
-    @SuppressWarnings("unchecked")
-    private Invokable toBytes() {
-        return args -> {
-            if (args.length < 1) {
-                throw new RuntimeException("toBytes() needs one argument: a list of numbers");
-            }
-            Object arg = args[0];
-            if (arg instanceof byte[]) {
-                return arg; // already bytes
-            }
-            if (!(arg instanceof List)) {
-                throw new RuntimeException("toBytes() argument must be a list of numbers, got: " + arg.getClass().getName());
-            }
-            List<Object> list = (List<Object>) arg;
-            byte[] bytes = new byte[list.size()];
-            for (int i = 0; i < list.size(); i++) {
-                Object item = list.get(i);
-                if (item instanceof Number num) {
-                    bytes[i] = num.byteValue();
-                } else {
-                    throw new RuntimeException("toBytes() list must contain only numbers, got: " + item.getClass().getName() + " at index " + i);
-                }
-            }
-            return bytes;
-        };
-    }
-
-    private Invokable toJson() {
-        return args -> {
-            if (args.length < 1) {
-                throw new RuntimeException("toJson() needs at least one argument");
-            }
-            Object obj = args[0];
-            boolean removeNulls = args.length > 1 && Boolean.TRUE.equals(args[1]);
-            Object result = Json.of(obj).value();
-            if (removeNulls) {
-                removeNullValues(result);
-            }
-            return result;
-        };
-    }
-
-    @SuppressWarnings("unchecked")
-    private void removeNullValues(Object obj) {
-        if (obj instanceof Map) {
-            Map<String, Object> map = (Map<String, Object>) obj;
-            map.entrySet().removeIf(e -> e.getValue() == null);
-            map.values().forEach(this::removeNullValues);
-        } else if (obj instanceof List) {
-            ((List<?>) obj).forEach(this::removeNullValues);
-        }
-    }
-
-    private Invokable fromJson() {
-        return args -> {
-            if (args.length < 1) {
-                throw new RuntimeException("fromJson() needs one argument: a JSON string");
-            }
-            Object arg = args[0];
-            if (arg instanceof String str) {
-                return Json.of(str).value();
-            } else {
-                // Already parsed, just return it
-                return arg;
-            }
         };
     }
 
@@ -1263,61 +830,6 @@ public class KarateJs implements SimpleObject {
             }
             LogContext.get().log(sb.toString());
             return null;
-        };
-    }
-
-    private Invokable lowerCase() {
-        return args -> {
-            if (args.length == 0) {
-                throw new RuntimeException("lowerCase() needs one argument");
-            }
-            Object obj = args[0];
-            if (obj instanceof String) {
-                return ((String) obj).toLowerCase();
-            } else if (obj instanceof Map) {
-                // Convert to JSON string, lowercase, parse back
-                String json = Json.stringifyStrict(obj).toLowerCase();
-                return Json.of(json).value();
-            } else if (obj instanceof List) {
-                String json = Json.stringifyStrict(obj).toLowerCase();
-                return Json.of(json).value();
-            } else if (obj instanceof Node) {
-                String xml = Xml.toString((Node) obj, false).toLowerCase();
-                return Xml.toXmlDoc(xml);
-            }
-            return obj;
-        };
-    }
-
-    private Invokable pretty() {
-        return args -> {
-            if (args.length == 0) {
-                throw new RuntimeException("pretty() needs one argument");
-            }
-            Object obj = args[0];
-            if (obj instanceof Map || obj instanceof List) {
-                return StringUtils.formatJson(obj);
-            } else if (obj instanceof Node) {
-                return Xml.toString((Node) obj, true);
-            } else {
-                return obj != null ? obj.toString() : "null";
-            }
-        };
-    }
-
-    private Invokable prettyXml() {
-        return args -> {
-            if (args.length == 0) {
-                throw new RuntimeException("prettyXml() needs one argument");
-            }
-            Object obj = args[0];
-            if (obj instanceof Node) {
-                return Xml.toString((Node) obj, true);
-            } else if (obj instanceof String) {
-                return Xml.toString(Xml.toXmlDoc((String) obj), true);
-            } else {
-                throw new RuntimeException("prettyXml() argument must be XML node or string");
-            }
         };
     }
 
@@ -1854,65 +1366,47 @@ public class KarateJs implements SimpleObject {
 
     @Override
     public Object jsGet(String key) {
+        // Delegate to stateless API first
+        Object result = api.jsGet(key);
+        if (result != null) {
+            return result;
+        }
+        // Stateful methods that need engine/providers
         return switch (key) {
             case "abort" -> abort();
-            case "append" -> append();
-            case "fail" -> fail();
-            case "appendTo" -> appendTo();
             case "call" -> call();
             case "callonce" -> callonce();
             case "callSingle" -> callSingle();
-            case "configure" -> configure();
             case "config" -> getConfig();
+            case "configure" -> configure();
             case "doc" -> doc();
             case "env" -> env;
             case "eval" -> eval();
             case "exec" -> exec();
-            case "extract" -> extract();
-            case "extractAll" -> extractAll();
+            case "fail" -> fail();
             case "fork" -> fork();
-            case "filter" -> filter();
-            case "filterKeys" -> filterKeys();
-            case "forEach" -> forEach();
-            case "fromJson" -> fromJson();
             case "fromString" -> fromString();
             case "get" -> get();
             case "http" -> http();
             case "info" -> getInfo();
-            case "jsonPath" -> jsonPath();
-            case "keysOf" -> keysOf();
             case "log" -> log();
-            case "lowerCase" -> lowerCase();
-            case "map" -> map();
-            case "mapWithKey" -> mapWithKey();
             case "match" -> karateMatch();
-            case "merge" -> merge();
             case "os" -> getOsInfo();
-            case "pretty" -> pretty();
-            case "prettyXml" -> prettyXml();
-            case "properties" -> getProperties();
             case "proceed" -> proceed();
+            case "properties" -> getProperties();
             case "read" -> read;
             case "readAsBytes" -> readAsBytes();
             case "readAsString" -> readAsString();
             case "remove" -> remove();
-            case "repeat" -> repeat();
             case "scenario" -> getScenario();
             case "set" -> set();
             case "setup" -> setup();
-            case "signal" -> signal();
-            case "start" -> start();
             case "setupOnce" -> setupOnce();
             case "setXml" -> setXml();
-            case "sizeOf" -> sizeOf();
-            case "sort" -> sort();
-            case "toBean" -> toBean();
-            case "toBytes" -> toBytes();
+            case "signal" -> signal();
+            case "start" -> start();
             case "toJava" -> toJava();
-            case "toJson" -> toJson();
             case "toStringPretty" -> toStringPretty();
-            case "typeOf" -> typeOf();
-            case "valuesOf" -> valuesOf();
             case "xmlPath" -> xmlPath();
             default -> null;
         };

@@ -71,17 +71,20 @@ public class DataUtils {
 
     public static String toCsv(List<Map<String, Object>> list) {
         StringWriter sw = new StringWriter();
-        CsvWriter writer = CsvWriter.builder().build(sw);
-        // header row
-        if (!list.isEmpty()) {
-            writer.writeRecord(list.get(0).keySet());
-        }
-        for (Map<String, Object> map : list) {
-            List<String> row = new ArrayList<>(map.size());
-            for (Object value : map.values()) {
-                row.add(value == null ? null : value.toString());
+        try (CsvWriter writer = CsvWriter.builder().build(sw)) {
+            // header row
+            if (!list.isEmpty()) {
+                writer.writeRecord(list.get(0).keySet());
             }
-            writer.writeRecord(row);
+            for (Map<String, Object> map : list) {
+                List<String> row = new ArrayList<>(map.size());
+                for (Object value : map.values()) {
+                    row.add(value == null ? null : value.toString());
+                }
+                writer.writeRecord(row);
+            }
+        } catch (java.io.IOException e) {
+            throw new RuntimeException(e);
         }
         return sw.toString();
     }
