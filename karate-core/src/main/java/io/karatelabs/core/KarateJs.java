@@ -356,6 +356,31 @@ public class KarateJs implements SimpleObject {
         };
     }
 
+    /**
+     * Read a file as raw bytes. Useful for binary content handling.
+     * Usage: karate.readAsBytes('path/to/file')
+     */
+    private Invokable readAsBytes() {
+        return args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("readAsBytes() needs at least one argument");
+            }
+            String path = args[0] + "";
+            // Support currentResource-relative paths via provider
+            Resource resource;
+            if (currentResourceProvider != null && currentResourceProvider.get() != null) {
+                resource = currentResourceProvider.get().resolve(path);
+            } else {
+                resource = root.resolve(path);
+            }
+            try (java.io.InputStream is = resource.getStream()) {
+                return is.readAllBytes();
+            } catch (java.io.IOException e) {
+                throw new RuntimeException("Failed to read bytes from: " + path, e);
+            }
+        };
+    }
+
     private Invokable get() {
         return args -> {
             if (args.length == 0) {
@@ -1100,6 +1125,40 @@ public class KarateJs implements SimpleObject {
         };
     }
 
+    /**
+     * Convert a list/array of numbers to a byte[] array.
+     * Useful for binary data handling.
+     * <pre>
+     * * def bytes = karate.toBytes([15, 98, -45, 0, 127])
+     * </pre>
+     */
+    @SuppressWarnings("unchecked")
+    private Invokable toBytes() {
+        return args -> {
+            if (args.length < 1) {
+                throw new RuntimeException("toBytes() needs one argument: a list of numbers");
+            }
+            Object arg = args[0];
+            if (arg instanceof byte[]) {
+                return arg; // already bytes
+            }
+            if (!(arg instanceof List)) {
+                throw new RuntimeException("toBytes() argument must be a list of numbers, got: " + arg.getClass().getName());
+            }
+            List<Object> list = (List<Object>) arg;
+            byte[] bytes = new byte[list.size()];
+            for (int i = 0; i < list.size(); i++) {
+                Object item = list.get(i);
+                if (item instanceof Number num) {
+                    bytes[i] = num.byteValue();
+                } else {
+                    throw new RuntimeException("toBytes() list must contain only numbers, got: " + item.getClass().getName() + " at index " + i);
+                }
+            }
+            return bytes;
+        };
+    }
+
     private Invokable toJson() {
         return args -> {
             if (args.length < 1) {
@@ -1124,6 +1183,21 @@ public class KarateJs implements SimpleObject {
         } else if (obj instanceof List) {
             ((List<?>) obj).forEach(this::removeNullValues);
         }
+    }
+
+    private Invokable fromJson() {
+        return args -> {
+            if (args.length < 1) {
+                throw new RuntimeException("fromJson() needs one argument: a JSON string");
+            }
+            Object arg = args[0];
+            if (arg instanceof String str) {
+                return Json.of(str).value();
+            } else {
+                // Already parsed, just return it
+                return arg;
+            }
+        };
     }
 
     private Invokable remove() {
@@ -1775,6 +1849,7 @@ public class KarateJs implements SimpleObject {
             case "filter" -> filter();
             case "filterKeys" -> filterKeys();
             case "forEach" -> forEach();
+            case "fromJson" -> fromJson();
             case "fromString" -> fromString();
             case "get" -> get();
             case "http" -> http();
@@ -1792,6 +1867,7 @@ public class KarateJs implements SimpleObject {
             case "prettyXml" -> prettyXml();
             case "proceed" -> proceed();
             case "read" -> read;
+            case "readAsBytes" -> readAsBytes();
             case "readAsString" -> readAsString();
             case "remove" -> remove();
             case "repeat" -> repeat();
@@ -1805,6 +1881,7 @@ public class KarateJs implements SimpleObject {
             case "sizeOf" -> sizeOf();
             case "sort" -> sort();
             case "toBean" -> toBean();
+            case "toBytes" -> toBytes();
             case "toJava" -> toJava();
             case "toJson" -> toJson();
             case "toStringPretty" -> toStringPretty();

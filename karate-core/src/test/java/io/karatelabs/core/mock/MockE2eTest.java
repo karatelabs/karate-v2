@@ -157,6 +157,53 @@ class MockE2eTest {
 
             Scenario: pathMatches('/stable')
               * def response = { status: 'ok' }
+
+            # ===== Binary scenarios =====
+
+            Scenario: pathMatches('/binary/download')
+              * def responseHeaders = { 'Content-Type': 'application/octet-stream' }
+              * def response = karate.toBytes([15, 98, -45, 0, 0, 7, -124, 75, 12, 26, 0, 9])
+
+            Scenario: pathMatches('/binary/upload')
+              * def success = requestBytes.length == 12
+              * def response = { success: success, size: requestBytes.length }
+
+            # ===== Encoding scenarios =====
+
+            Scenario: pathMatches('/german')
+              * def response = '<name>Müller</name>'
+
+            Scenario: pathMatches('/encoding/{raw}')
+              * def response = { success: true, path: pathParams.raw }
+
+            # ===== Whitespace scenarios =====
+
+            # Response with leading linefeed - should still parse as JSON
+            Scenario: pathMatches('/linefeed')
+              * def lf = String.fromCharCode(10)
+              * def response = lf + '{ "success": true }'
+
+            Scenario: pathMatches('/spaces')
+              * def lf = String.fromCharCode(10)
+              * def response = lf + '    ' + lf
+
+            # ===== Form and multipart scenarios =====
+
+            Scenario: pathMatches('/form')
+              * def response = { success: true }
+
+            Scenario: pathMatches('/multipart/upload')
+              * def filePart = requestParts['myFile'][0]
+              * def response = filePart
+
+            Scenario: pathMatches('/multipart/fields')
+              * def response = { success: true }
+
+            # ===== Empty/no-headers scenarios =====
+
+            Scenario: pathMatches('/noheaders')
+              * def responseStatus = 404
+              * def response = ''
             """)
             .port(0)
             .start();
@@ -488,6 +535,169 @@ class MockE2eTest {
             * path '/hello'
             * method get
             * status 200
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    // ===== Binary Tests =====
+
+    @Test
+    void testBinaryDownload() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Binary Download
+
+            Scenario: Download binary content and verify integrity
+            * url 'http://localhost:%d'
+            * path '/binary/download'
+            * method get
+            * status 200
+            * match responseBytes == '#notnull'
+            * def size = responseBytes.length
+            * match size == 12
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testBinaryUpload() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Binary Upload
+
+            Scenario: Upload binary content
+            * url 'http://localhost:%d'
+            * path '/binary/upload'
+            * def body = karate.toBytes([15, 98, -45, 0, 0, 7, -124, 75, 12, 26, 0, 9])
+            * request body
+            * method post
+            * status 200
+            * match response.success == true
+            * match response.size == 12
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    // ===== Encoding Tests =====
+
+    @Test
+    void testGermanUmlauts() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test German Encoding
+
+            Scenario: Response with umlauts should be handled correctly
+            * url 'http://localhost:%d'
+            * path '/german'
+            * method get
+            * status 200
+            * match response == '<name>Müller</name>'
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testUrlEncodingSpecialChars() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test URL Encoding
+
+            Scenario: Special characters in path should be handled
+            * url 'http://localhost:%d'
+            * path '/encoding/test-value'
+            * method get
+            * status 200
+            * match response.success == true
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    // ===== Whitespace Edge Cases =====
+
+    @Test
+    void testJsonWithLeadingLinefeed() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Whitespace
+
+            Scenario: JSON with leading linefeed should parse correctly
+            * url 'http://localhost:%d'
+            * path '/linefeed'
+            * method get
+            * status 200
+            * match response == { success: true }
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testPureWhitespaceResponse() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Pure Whitespace
+
+            Scenario: Response that is pure whitespace
+            * url 'http://localhost:%d'
+            * path '/spaces'
+            * method get
+            * status 200
+            * match response == '\\n    \\n'
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    // ===== Form Field Tests =====
+
+    @Test
+    void testFormFieldPost() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Form Field
+
+            Scenario: POST with form fields
+            * url 'http://localhost:%d'
+            * path '/form'
+            * form field foo = 'bar'
+            * method post
+            * status 200
+            * match response == { success: true }
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    // ===== Multipart Tests =====
+
+    @Test
+    void testMultipartFileUpload() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Multipart Upload
+
+            Scenario: Upload file with multipart
+            * url 'http://localhost:%d'
+            * path '/multipart/fields'
+            * multipart field message = 'test message'
+            * method post
+            * status 200
+            * match response == { success: true }
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    // ===== Empty Response Tests =====
+
+    @Test
+    void testNoHeadersEmptyResponse() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Empty Response
+
+            Scenario: 404 with empty response body
+            * url 'http://localhost:%d'
+            * path '/noheaders'
+            * method get
+            * status 404
+            * match response == ''
             """.formatted(port));
 
         assertPassed(sr);

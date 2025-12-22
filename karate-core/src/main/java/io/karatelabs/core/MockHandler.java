@@ -33,7 +33,6 @@ import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.FeatureSection;
 import io.karatelabs.gherkin.Scenario;
 import io.karatelabs.gherkin.Step;
-import io.karatelabs.gherkin.Tag;
 import io.karatelabs.io.http.HttpRequest;
 import io.karatelabs.io.http.HttpResponse;
 import io.karatelabs.js.Engine;
@@ -55,6 +54,9 @@ import java.util.function.Function;
 /**
  * Mock server request handler that routes requests to matching scenarios.
  * Implements Function&lt;HttpRequest, HttpResponse&gt; for use with HttpServer.
+ *
+ * Uses ScenarioRuntime and StepExecutor for proper step execution,
+ * ensuring all keywords (def, xml, json, call, etc.) work correctly.
  */
 public class MockHandler implements Function<HttpRequest, HttpResponse> {
 
@@ -77,9 +79,10 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
     private final Map<String, Object> globals = new LinkedHashMap<>();
     private final MockConfig config = new MockConfig();
     private final ReentrantLock requestLock = new ReentrantLock();
-    private final KarateJs karateJs;
-    private final Engine engine;
     private final String pathPrefix;
+
+    // Runtime per feature (like V1's scenarioRuntimes map)
+    private final Map<Feature, ScenarioRuntime> runtimes = new LinkedHashMap<>();
 
     // Constructed from feature file path
     public MockHandler(String featurePath) {
@@ -97,48 +100,100 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
     public MockHandler(List<Feature> features, Map<String, Object> args, String pathPrefix) {
         this.pathPrefix = pathPrefix;
 
-        // Use KarateJs to get access to karate.* functions (including proceed())
-        Resource root = features.isEmpty() ? Resource.path(".") : features.get(0).getResource();
-        this.karateJs = new KarateJs(root);
-        this.engine = karateJs.engine;
-
-        // Register matcher functions
-        registerMatcherFunctions();
-
-        // Initialize each feature
+        // Initialize each feature with its own runtime
         for (Feature feature : features) {
             this.features.add(feature);
-            initFeature(feature, args);
+            ScenarioRuntime runtime = initRuntime(feature, args);
+            runtimes.put(feature, runtime);
         }
 
         logger.info("mock handler initialized with {} feature(s), cors: {}", features.size(), config.isCorsEnabled());
     }
 
-    private void registerMatcherFunctions() {
-        engine.put("pathMatches", (Invokable) args -> pathMatches(args[0] + ""));
-        engine.put("methodIs", (Invokable) args -> methodIs(args[0] + ""));
-        engine.put("typeContains", (Invokable) args -> typeContains(args[0] + ""));
-        engine.put("acceptContains", (Invokable) args -> acceptContains(args[0] + ""));
-        engine.put("headerContains", (Invokable) args -> headerContains(args[0] + "", args[1] + ""));
-        engine.put("paramValue", (Invokable) args -> paramValue(args[0] + ""));
-        engine.put("paramExists", (Invokable) args -> paramExists(args[0] + ""));
-        engine.put("bodyPath", (Invokable) args -> bodyPath(args[0] + ""));
-    }
+    /**
+     * Initialize a runtime for a mock feature.
+     * Creates a proper FeatureRuntime and ScenarioRuntime like V1 does.
+     */
+    private ScenarioRuntime initRuntime(Feature feature, Map<String, Object> args) {
+        // Create FeatureRuntime (without Suite to skip karate-config.js loading)
+        FeatureRuntime featureRuntime = new FeatureRuntime(null, feature);
 
-    private void initFeature(Feature feature, Map<String, Object> args) {
+        // Get first scenario for the runtime, or create a dummy one
+        Scenario scenario = getFirstScenario(feature);
+
+        // Create ScenarioRuntime with the FeatureRuntime (enables proper resource resolution)
+        ScenarioRuntime runtime = new ScenarioRuntime(featureRuntime, scenario);
+
+        // Register matcher functions in the engine
+        Engine engine = runtime.getEngine();
+        engine.put("pathMatches", (Invokable) a -> pathMatches(a[0] + ""));
+        engine.put("methodIs", (Invokable) a -> methodIs(a[0] + ""));
+        engine.put("typeContains", (Invokable) a -> typeContains(a[0] + ""));
+        engine.put("acceptContains", (Invokable) a -> acceptContains(a[0] + ""));
+        engine.put("headerContains", (Invokable) a -> headerContains(a[0] + "", a[1] + ""));
+        engine.put("paramValue", (Invokable) a -> paramValue(a[0] + ""));
+        engine.put("paramExists", (Invokable) a -> paramExists(a[0] + ""));
+        engine.put("bodyPath", (Invokable) a -> bodyPath(a[0] + ""));
+
         // Put args into globals if provided
         if (args != null) {
             globals.putAll(args);
-        }
-
-        // Execute background once on initialization
-        if (feature.isBackgroundPresent()) {
-            for (Step step : feature.getBackground().getSteps()) {
-                executeStep(step);
+            for (var entry : args.entrySet()) {
+                engine.put(entry.getKey(), entry.getValue());
             }
         }
 
+        // Execute background once on initialization using StepExecutor
+        StepExecutor executor = new StepExecutor(runtime);
+        if (feature.isBackgroundPresent()) {
+            for (Step step : feature.getBackground().getSteps()) {
+                StepResult result = executor.execute(step);
+                if (result.isFailed()) {
+                    throw new RuntimeException("mock background failed at line " + step.getLine() + ": " +
+                        result.getError().getMessage(), result.getError());
+                }
+            }
+            // Save background variables to globals
+            saveGlobals(engine);
+        }
+
         logger.debug("initialized feature: {}", feature);
+        return runtime;
+    }
+
+    private Scenario getFirstScenario(Feature feature) {
+        for (FeatureSection section : feature.getSections()) {
+            if (section.getScenario() != null) {
+                return section.getScenario();
+            }
+        }
+        // Fallback - create minimal feature with scenario
+        Feature minimalFeature = Feature.read(Resource.text("Feature: Mock\nScenario: dummy\n* def x = 1"));
+        return minimalFeature.getSections().getFirst().getScenario();
+    }
+
+    /**
+     * Save current engine variables to globals for persistence across requests.
+     */
+    private void saveGlobals(Engine engine) {
+        Map<String, Object> bindings = engine.getBindings();
+        for (var entry : bindings.entrySet()) {
+            String key = entry.getKey();
+            // Skip built-in variables and request-specific variables
+            if (!isBuiltInVariable(key)) {
+                globals.put(key, entry.getValue());
+            }
+        }
+    }
+
+    private boolean isBuiltInVariable(String name) {
+        return name.equals("karate") || name.equals("read") || name.equals("match") ||
+               name.startsWith("request") || name.startsWith("response") ||
+               name.equals("pathParams") || name.equals("pathMatches") ||
+               name.equals("methodIs") || name.equals("typeContains") ||
+               name.equals("acceptContains") || name.equals("headerContains") ||
+               name.equals("paramValue") || name.equals("paramExists") ||
+               name.equals("bodyPath");
     }
 
     @Override
@@ -169,11 +224,14 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
         LOCAL_REQUEST.set(request);
 
         try {
-            // Set up request variables in engine
-            setupRequestVariables(request);
-
             // Find matching scenario and execute
             for (Feature feature : features) {
+                ScenarioRuntime runtime = runtimes.get(feature);
+                Engine engine = runtime.getEngine();
+
+                // Set up request variables
+                setupRequestVariables(engine, request);
+
                 for (FeatureSection section : feature.getSections()) {
                     if (section.isOutline()) {
                         logger.warn("skipping scenario outline in mock - {}:{}", feature, section.getScenarioOutline().getLine());
@@ -181,8 +239,8 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
                     }
 
                     Scenario scenario = section.getScenario();
-                    if (isMatchingScenario(scenario)) {
-                        return executeScenario(scenario, request);
+                    if (isMatchingScenario(scenario, engine)) {
+                        return executeScenario(runtime, scenario, request);
                     }
                 }
             }
@@ -209,7 +267,7 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
         return response;
     }
 
-    private void setupRequestVariables(HttpRequest request) {
+    private void setupRequestVariables(Engine engine, HttpRequest request) {
         // Set all globals first
         for (Map.Entry<String, Object> entry : globals.entrySet()) {
             engine.put(entry.getKey(), entry.getValue());
@@ -234,7 +292,7 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
         engine.put("pathParams", new HashMap<>());
     }
 
-    private boolean isMatchingScenario(Scenario scenario) {
+    private boolean isMatchingScenario(Scenario scenario, Engine engine) {
         String expression = StringUtils.trimToNull(scenario.getNameAndDescription());
 
         // Empty/null expression means catch-all (always matches)
@@ -258,20 +316,25 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
         }
     }
 
-    private HttpResponse executeScenario(Scenario scenario, HttpRequest request) {
-        // Execute all steps in the scenario
+    private HttpResponse executeScenario(ScenarioRuntime runtime, Scenario scenario, HttpRequest request) {
+        Engine engine = runtime.getEngine();
+        StepExecutor executor = new StepExecutor(runtime);
+
+        // Execute all steps in the scenario using StepExecutor
         for (Step step : scenario.getSteps()) {
-            try {
-                executeStep(step);
-            } catch (Exception e) {
-                logger.error("step execution failed at line {}: {}", step.getLine(), e.getMessage());
+            StepResult result = executor.execute(step);
+            if (result.isFailed()) {
+                logger.error("step execution failed at line {}: {}", step.getLine(), result.getError().getMessage());
                 // Return 500 error on step failure
                 HttpResponse response = new HttpResponse();
                 response.setStatus(500);
-                response.setBody(Map.of("error", e.getMessage()));
+                response.setBody(Map.of("error", result.getError().getMessage()));
                 return response;
             }
         }
+
+        // Save any new variables to globals
+        saveGlobals(engine);
 
         // Execute afterScenario hook if configured
         Invokable afterScenario = config.getAfterScenario();
@@ -284,89 +347,11 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
         }
 
         // Build response from variables
-        return buildResponse(request);
-    }
-
-    private void executeStep(Step step) {
-        String keyword = step.getKeyword();
-        String text = step.getText();
-
-        if (keyword == null) {
-            // Plain expression
-            String expr = text;
-            if (step.getDocString() != null) {
-                expr = expr + step.getDocString();
-            }
-            engine.eval(expr);
-        } else if ("def".equals(keyword)) {
-            executeDef(step);
-        } else if ("configure".equals(keyword)) {
-            executeConfigure(step);
-        } else if ("print".equals(keyword)) {
-            Object value = engine.eval(text);
-            logger.info("[print] {}", value);
-        } else {
-            // Treat as expression (e.g., "* response = { foo: 'bar' }")
-            String fullExpr = keyword + " " + text;
-            if (step.getDocString() != null) {
-                fullExpr = fullExpr + step.getDocString();
-            }
-            engine.eval(fullExpr);
-        }
-    }
-
-    private void executeDef(Step step) {
-        String text = step.getText().trim();
-        int eqPos = text.indexOf('=');
-        if (eqPos == -1) {
-            throw new RuntimeException("def requires '=' assignment: " + text);
-        }
-        String name = text.substring(0, eqPos).trim();
-        String expr = text.substring(eqPos + 1).trim();
-
-        // Handle doc string
-        if (step.getDocString() != null) {
-            expr = expr + step.getDocString();
-        }
-
-        Object value = engine.eval(expr);
-        engine.put(name, value);
-        globals.put(name, value);
-    }
-
-    private void executeConfigure(Step step) {
-        String text = step.getText().trim();
-        int eqPos = text.indexOf('=');
-        if (eqPos == -1) {
-            throw new RuntimeException("configure requires '=' assignment: " + text);
-        }
-        String key = text.substring(0, eqPos).trim();
-        String expr = text.substring(eqPos + 1).trim();
-        Object value = engine.eval(expr);
-
-        switch (key) {
-            case "cors":
-                config.setCorsEnabled(Boolean.TRUE.equals(value));
-                break;
-            case "responseHeaders":
-                if (value instanceof Map) {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> headers = (Map<String, Object>) value;
-                    config.setResponseHeaders(headers);
-                }
-                break;
-            case "afterScenario":
-                if (value instanceof Invokable) {
-                    config.setAfterScenario((Invokable) value);
-                }
-                break;
-            default:
-                logger.warn("unknown configure key: {}", key);
-        }
+        return buildResponse(engine, request);
     }
 
     @SuppressWarnings("unchecked")
-    private HttpResponse buildResponse(HttpRequest request) {
+    private HttpResponse buildResponse(Engine engine, HttpRequest request) {
         HttpResponse response = new HttpResponse();
 
         // Get response variables from engine
@@ -455,8 +440,13 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
         }
         boolean matched = request.pathMatches(pattern);
         if (matched) {
-            // Store path params in engine for scenario access
-            engine.put("pathParams", request.getPathParams());
+            // Store path params in the matching feature's engine
+            for (Feature feature : features) {
+                ScenarioRuntime runtime = runtimes.get(feature);
+                if (runtime != null) {
+                    runtime.getEngine().put("pathParams", request.getPathParams());
+                }
+            }
         }
         return matched;
     }

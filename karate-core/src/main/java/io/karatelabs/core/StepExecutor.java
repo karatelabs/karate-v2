@@ -77,9 +77,10 @@ public class StepExecutor {
         try {
             String keyword = step.getKeyword();
 
-            // Check if keyword contains punctuation (except underscore) - means it's a JS expression
-            // Examples: foo.bar, foo(), foo['bar'].baz('blah')
             String text = step.getText();
+            // Check if keyword contains punctuation - means it's a JS expression
+            // Examples: foo.bar, foo(), foo['bar'].baz('blah')
+            // Note: cases like foo[x] are handled by the lexer (rewinds to GS_RHS mode)
             if (keyword != null && hasPunctuation(keyword)) {
                 String fullExpr = keyword + text;
                 if (step.getDocString() != null) {
@@ -1684,11 +1685,25 @@ public class StepExecutor {
         HttpResponse response = http().invoke(method);
 
         // Set response variables
-        runtime.setVariable("response", response.getBodyConverted());
+        Object body = response.getBodyConverted();
+        runtime.setVariable("response", body);
         runtime.setVariable("responseStatus", response.getStatus());
         runtime.setVariable("responseHeaders", response.getHeaders());
         runtime.setVariable("responseTime", response.getResponseTime());
         runtime.setVariable("responseBytes", response.getBodyBytes());
+
+        // Determine response type for V1 compatibility
+        String responseType;
+        if (body instanceof byte[]) {
+            responseType = "binary";
+        } else if (body instanceof Map || body instanceof List) {
+            responseType = "json";
+        } else if (body instanceof org.w3c.dom.Node) {
+            responseType = "xml";
+        } else {
+            responseType = "string";
+        }
+        runtime.setVariable("responseType", responseType);
 
         // Log HTTP request/response to context
         LogContext ctx = LogContext.get();

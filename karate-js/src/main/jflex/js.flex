@@ -64,7 +64,6 @@ REGEX = "/" [^*/\n] ([^/\\\n]|\\{NOT_LF})* "/" [:jletter:]*
 %state TEMPLATE PLACEHOLDER
 
 // gherkin macros (gm)
-GM_IDENT = [[:jletterdigit:]\-\.]+
 GM_HEADER = "Scenario:"|"Scenario Outline:"|"Examples:"|"Background:"
 GM_PREFIX = "*"|"Given"|"When"|"Then"|"And"|"But"
 GM_TYPE_KEYWORD = "def"|"json"|"xml"|"xmlstring"|"yaml"|"csv"|"string"|"bytes"|"copy"
@@ -241,9 +240,10 @@ GM_TAG = "@" {NOT_WSLF}+
   "match"                       { yybegin(GS_STEP_MATCH); return G_KEYWORD; }
   {GM_TYPE_KEYWORD} | {GM_ASSIGN_KEYWORD} { return G_KEYWORD; }
   {GM_SPACED_KEYWORD}           { yybegin(GS_RHS); return G_KEYWORD; }
-  {GM_IDENT} / {WS_ONE_LF}      { yybegin(GHERKIN); return G_KEYWORD; } // docstring or table
+  {IDENT} / {WS_ONE_LF}         { yybegin(GHERKIN); return G_KEYWORD; } // docstring or table
   "=" / {WS_ONE_LF}             { yybegin(GHERKIN); return EQ; } // docstring or table
-  {GM_IDENT}                    { return G_KEYWORD; }
+  {IDENT} / [\[(.]              { rewind(GS_RHS); } // js expression like foo[x] or foo.bar()
+  {IDENT}                       { return G_KEYWORD; }
   "="                           { yybegin(GS_RHS); return EQ; }
   {NOT_WSLF}                    { rewind(GS_RHS); } // js
   {WS_ONE_LF}                   { yybegin(GHERKIN); return WS_LF; }
@@ -255,7 +255,7 @@ GM_TAG = "@" {NOT_WSLF}+
   {GM_MATCH_TYPE}               { yybegin(GS_RHS); return G_KEYWORD; }
   {S_STRING}                    { return G_EXPR; } // quoted strings as JS expressions
   {D_STRING}                    { return G_EXPR; } // quoted strings as JS expressions
-  {GM_IDENT}                    { return IDENT; }
+  {IDENT}                       { return IDENT; }
   ("$"|"@") {IDENT}?            { return IDENT; } // xpath
   "?" "(" [^)]+ ")"             { return IDENT; } // json path
   ".." | ":"                    { return DOT; } // json path

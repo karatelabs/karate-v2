@@ -66,6 +66,11 @@
             <artifactId>picocli</artifactId>
             <version>4.7.7</version>
         </dependency>
+        <dependency>
+            <groupId>org.brotli</groupId>
+            <artifactId>dec</artifactId>
+            <version>0.1.2</version>
+        </dependency>
     </dependencies>
 
     <build>

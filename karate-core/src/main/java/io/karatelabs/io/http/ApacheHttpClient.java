@@ -55,6 +55,7 @@ import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
 import org.apache.hc.core5.ssl.SSLContextBuilder;
 import org.apache.hc.core5.ssl.SSLContexts;
+import org.brotli.dec.BrotliInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -441,7 +442,17 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
             HttpEntity entity = classicHttpResponse.getEntity();
             if (entity != null) {
                 try {
-                    byte[] bytes = EntityUtils.toByteArray(entity);
+                    byte[] bytes;
+                    // Check for brotli encoding
+                    Header contentEncoding = httpResponse.getFirstHeader("Content-Encoding");
+                    if (contentEncoding != null && "br".equalsIgnoreCase(contentEncoding.getValue())) {
+                        try (InputStream is = entity.getContent();
+                             BrotliInputStream brotliIs = new BrotliInputStream(is)) {
+                            bytes = brotliIs.readAllBytes();
+                        }
+                    } else {
+                        bytes = EntityUtils.toByteArray(entity);
+                    }
                     response.setBody(bytes, null);
                     response.setContentLength(bytes.length);
                 } catch (Exception e) {
