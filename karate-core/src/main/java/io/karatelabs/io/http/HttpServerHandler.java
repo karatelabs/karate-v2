@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class HttpServerHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
@@ -53,7 +54,13 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<FullHttpReque
         try {
             HttpResponse response = server.handler.apply(request);
             FullHttpResponse res = toResponse(response);
-            ctx.writeAndFlush(res);
+            int delay = response.getDelay();
+            if (delay > 0) {
+                // Use Netty's non-blocking scheduler for delay
+                ctx.executor().schedule(() -> ctx.writeAndFlush(res), delay, TimeUnit.MILLISECONDS);
+            } else {
+                ctx.writeAndFlush(res);
+            }
         } catch (Exception e) {
             String message = e.getMessage();
             logger.error("http server error: {}", message);

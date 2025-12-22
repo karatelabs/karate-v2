@@ -49,6 +49,7 @@ public class HttpResponse implements SimpleObject {
     private long responseTime;
     private int contentLength;
     private HttpRequest request;
+    private int delay;
 
     public ResourceType getResourceType() {
         if (resourceType == null) {
@@ -204,6 +205,14 @@ public class HttpResponse implements SimpleObject {
 
     public void setResourceType(ResourceType resourceType) {
         this.resourceType = resourceType;
+    }
+
+    public int getDelay() {
+        return delay;
+    }
+
+    public void setDelay(int delay) {
+        this.delay = delay;
     }
 
     @Override

@@ -80,7 +80,7 @@ public class KarateConfig implements SimpleObject {
             // NTLM Auth
             "ntlmUsername", "ntlmPassword", "ntlmDomain", "ntlmWorkstation",
             // Mock settings
-            "corsEnabled", "responseHeaders"
+            "corsEnabled", "responseHeaders", "afterScenario"
     );
 
     // ===== HTTP Client (requires rebuild when changed) =====
@@ -145,6 +145,7 @@ public class KarateConfig implements SimpleObject {
     // Mock settings
     private boolean corsEnabled;
     private Object responseHeaders;  // Map<String,Object> or JS function
+    private Object afterScenario;    // Invokable - hook called after each scenario
 
     /**
      * Create a deep copy of this configuration.
@@ -206,6 +207,7 @@ public class KarateConfig implements SimpleObject {
         // Mock settings
         copy.corsEnabled = this.corsEnabled;
         copy.responseHeaders = this.responseHeaders;
+        copy.afterScenario = this.afterScenario;
         return copy;
     }
 
@@ -319,6 +321,10 @@ public class KarateConfig implements SimpleObject {
             }
             case "responseHeaders" -> {
                 this.responseHeaders = value;
+                yield false;
+            }
+            case "afterScenario" -> {
+                this.afterScenario = value;
                 yield false;
             }
 
@@ -697,6 +703,10 @@ public class KarateConfig implements SimpleObject {
 
     public Object getResponseHeaders() {
         return responseHeaders;
+    }
+
+    public Object getAfterScenario() {
+        return afterScenario;
     }
 
 }

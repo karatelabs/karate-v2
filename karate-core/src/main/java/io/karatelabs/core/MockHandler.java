@@ -165,6 +165,10 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
             if (responseHeaders instanceof Map) {
                 config.setResponseHeaders((Map<String, Object>) responseHeaders);
             }
+            Object afterScenario = karateConfig.getAfterScenario();
+            if (afterScenario instanceof Invokable) {
+                config.setAfterScenario((Invokable) afterScenario);
+            }
         }
 
         logger.debug("initialized feature: {}", feature);
@@ -419,15 +423,11 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
             }
         }
 
-        // Handle response delay
+        // Set response delay (handled by HttpServerHandler using Netty scheduler)
         if (responseDelay instanceof Number) {
             int delay = ((Number) responseDelay).intValue();
             if (delay > 0) {
-                try {
-                    Thread.sleep(delay);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
+                response.setDelay(delay);
             }
         }
 
