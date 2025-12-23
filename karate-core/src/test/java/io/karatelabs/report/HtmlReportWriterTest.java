@@ -253,4 +253,169 @@ class HtmlReportWriterTest {
         assertEquals(2, featureCount, "Combined report should have 2 features");
     }
 
+    // ========== Scenario Name Substitution Tests ==========
+
+    @Test
+    void testOutlinePlaceholderSubstitutionInScenarioName(@TempDir Path tempDir) throws Exception {
+        Path feature = tempDir.resolve("outline-name.feature");
+        Files.writeString(feature, """
+            Feature: Outline Name Substitution
+
+            Scenario Outline: Testing <name> with value <value>
+            * def result = '<name>'
+            * match result == name
+
+            Examples:
+            | name  | value |
+            | foo   | 1     |
+            | bar   | 2     |
+            """);
+
+        Path reportDir = tempDir.resolve("reports");
+
+        SuiteResult result = Runner.path(feature.toString())
+                .workingDir(tempDir)
+                .outputDir(reportDir)
+                .outputHtmlReport(true)
+                .outputNdjson(true)
+                .parallel(1);
+
+        assertTrue(result.isPassed(), "All scenarios should pass");
+        assertEquals(2, result.getScenarioPassedCount());
+
+        // Verify NDJSON contains the substituted scenario names
+        String ndjson = Files.readString(reportDir.resolve("karate-results.ndjson"));
+        assertTrue(ndjson.contains("Testing foo with value 1"),
+            "Should contain substituted scenario name for first example");
+        assertTrue(ndjson.contains("Testing bar with value 2"),
+            "Should contain substituted scenario name for second example");
+    }
+
+    @Test
+    void testBacktickScenarioNameInterpolation(@TempDir Path tempDir) throws Exception {
+        Path feature = tempDir.resolve("backtick-name.feature");
+        Files.writeString(feature, """
+            Feature: Backtick Name Interpolation
+
+            Scenario: `result is ${1+1}`
+            * def a = 2
+            * match a == 2
+            """);
+
+        Path reportDir = tempDir.resolve("reports");
+
+        SuiteResult result = Runner.path(feature.toString())
+                .workingDir(tempDir)
+                .outputDir(reportDir)
+                .outputHtmlReport(true)
+                .outputNdjson(true)
+                .parallel(1);
+
+        assertTrue(result.isPassed());
+        assertEquals(1, result.getScenarioPassedCount());
+
+        // Verify NDJSON contains the evaluated scenario name
+        String ndjson = Files.readString(reportDir.resolve("karate-results.ndjson"));
+        assertTrue(ndjson.contains("result is 2"),
+            "Should contain evaluated scenario name 'result is 2'");
+        assertFalse(ndjson.contains("result is ${1+1}"),
+            "Should not contain unevaluated template literal");
+    }
+
+    @Test
+    void testBacktickScenarioNameWithVariable(@TempDir Path tempDir) throws Exception {
+        Path feature = tempDir.resolve("backtick-var.feature");
+        Files.writeString(feature, """
+            Feature: Backtick With Variable
+
+            Scenario: `status is ${status}`
+            * def status = 'active'
+            * match status == 'active'
+            """);
+
+        Path reportDir = tempDir.resolve("reports");
+
+        SuiteResult result = Runner.path(feature.toString())
+                .workingDir(tempDir)
+                .outputDir(reportDir)
+                .outputHtmlReport(true)
+                .outputNdjson(true)
+                .parallel(1);
+
+        assertTrue(result.isPassed());
+
+        // Verify NDJSON contains the evaluated scenario name with variable value
+        String ndjson = Files.readString(reportDir.resolve("karate-results.ndjson"));
+        assertTrue(ndjson.contains("status is active"),
+            "Should contain evaluated scenario name with variable value");
+    }
+
+    @Test
+    void testBacktickScenarioNameInOutline(@TempDir Path tempDir) throws Exception {
+        Path feature = tempDir.resolve("backtick-outline.feature");
+        Files.writeString(feature, """
+            Feature: Backtick In Outline
+
+            Scenario Outline: `testing ${name} = ${value * 2}`
+            * def result = value * 2
+            * match result == value * 2
+
+            Examples:
+            | name  | value |
+            | foo   | 5     |
+            | bar   | 10    |
+            """);
+
+        Path reportDir = tempDir.resolve("reports");
+
+        SuiteResult result = Runner.path(feature.toString())
+                .workingDir(tempDir)
+                .outputDir(reportDir)
+                .outputHtmlReport(true)
+                .outputNdjson(true)
+                .parallel(1);
+
+        assertTrue(result.isPassed());
+        assertEquals(2, result.getScenarioPassedCount());
+
+        // Verify NDJSON contains the evaluated scenario names with outline variables
+        String ndjson = Files.readString(reportDir.resolve("karate-results.ndjson"));
+        assertTrue(ndjson.contains("testing foo = 10"),
+            "Should contain evaluated name for first example (5 * 2 = 10)");
+        assertTrue(ndjson.contains("testing bar = 20"),
+            "Should contain evaluated name for second example (10 * 2 = 20)");
+    }
+
+    @Test
+    void testBacktickEvalFailureWarningInReport(@TempDir Path tempDir) throws Exception {
+        Path feature = tempDir.resolve("backtick-fail.feature");
+        Files.writeString(feature, """
+            Feature: Backtick Eval Failure
+
+            Scenario: `result is ${undefinedVariable}`
+            * def a = 1
+            * match a == 1
+            """);
+
+        Path reportDir = tempDir.resolve("reports");
+
+        SuiteResult result = Runner.path(feature.toString())
+                .workingDir(tempDir)
+                .outputDir(reportDir)
+                .outputHtmlReport(true)
+                .outputNdjson(true)
+                .parallel(1);
+
+        // Scenario should still pass (eval failure doesn't fail the test)
+        assertTrue(result.isPassed());
+
+        // Original name should be preserved (with backticks) in the report
+        String ndjson = Files.readString(reportDir.resolve("karate-results.ndjson"));
+        assertTrue(ndjson.contains("`result is ${undefinedVariable}`"),
+            "Original name should be preserved when eval fails");
+        // Warning should appear in the step log
+        assertTrue(ndjson.contains("Failed to evaluate scenario name"),
+            "Warning should appear in report log");
+    }
+
 }

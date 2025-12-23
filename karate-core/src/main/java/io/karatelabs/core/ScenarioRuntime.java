@@ -755,6 +755,10 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
             stopped = true;
         } finally {
             afterScenario();
+            // Evaluate backtick scenario name for reports (e.g., `result is ${1+1}`)
+            // Must happen before LogContext.clear() so warnings are captured in report
+            evaluateScenarioName();
+
             // Handle @fail tag - invert pass/fail result
             if (scenario.isFail()) {
                 result.applyFailTag();
@@ -782,6 +786,38 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         if (featureRuntime != null && featureRuntime.getSuite() != null) {
             for (RuntimeHook hook : featureRuntime.getSuite().getHooks()) {
                 hook.afterScenario(this);
+            }
+        }
+    }
+
+    /**
+     * Evaluate scenario name if it starts with a backtick (JS template literal).
+     * This allows dynamic scenario names in reports, e.g., `result is ${1+1}`.
+     * If evaluation fails, the original name is kept and a warning is logged
+     * to both the console and the test report (appended to last step's log).
+     */
+    private void evaluateScenarioName() {
+        String name = scenario.getName();
+        if (name == null) {
+            return;
+        }
+        String trimmed = name.trim();
+        if (!trimmed.startsWith("`")) {
+            return;
+        }
+        try {
+            Object evaluated = karate.engine.eval(trimmed);
+            if (evaluated != null) {
+                scenario.setName(evaluated.toString());
+            }
+        } catch (Exception e) {
+            String warning = "[WARN] Failed to evaluate scenario name '" + trimmed + "': " + e.getMessage();
+            JvmLogger.warn(warning);
+            // Append to last step's log for report visibility
+            List<StepResult> steps = result.getStepResults();
+            if (!steps.isEmpty()) {
+                StepResult lastStep = steps.get(steps.size() - 1);
+                lastStep.appendLog(warning);
             }
         }
     }

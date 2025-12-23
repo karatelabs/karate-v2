@@ -299,6 +299,89 @@ class OutlineTest {
     }
 
     @Test
+    void testOutlineScenarioNameSubstituted() throws Exception {
+        // Verify karate.scenario.name and karate.info.scenarioName reflect substituted values
+        Path feature = tempDir.resolve("outline-name.feature");
+        Files.writeString(feature, """
+            Feature: Outline Name Substitution
+
+            Scenario Outline: name is <name> and age is <age>
+            * def expected = 'name is ' + name + ' and age is ' + age
+            * match karate.scenario.name == expected
+            * match karate.info.scenarioName == expected
+
+            Examples:
+            | name | age! |
+            | Bob  | 5    |
+            | Nyan | 6    |
+            """);
+
+        Suite suite = Suite.of(tempDir, feature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), getFailureMessage(result));
+        assertEquals(2, result.getScenarioPassedCount());
+    }
+
+    @Test
+    void testOutlinePlaceholderInDocString() throws Exception {
+        // Verify placeholders are substituted in docstrings
+        Path feature = tempDir.resolve("outline-docstring.feature");
+        Files.writeString(feature, """
+            Feature: Outline DocString
+
+            Scenario Outline: Test docstring with <name>
+            * text expected =
+            \"\"\"
+            Hello <name>!
+            \"\"\"
+            * match expected contains name
+
+            Examples:
+            | name   |
+            | World  |
+            | Karate |
+            """);
+
+        Suite suite = Suite.of(tempDir, feature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), getFailureMessage(result));
+        assertEquals(2, result.getScenarioPassedCount());
+    }
+
+    @Test
+    void testOutlinePlaceholderInStepTable() throws Exception {
+        // Verify placeholders are substituted in step tables
+        // Note: table keyword evaluates cells as expressions, so use quoted values
+        Path feature = tempDir.resolve("outline-table.feature");
+        Files.writeString(feature, """
+            Feature: Outline Step Table
+
+            Scenario Outline: Test table with <name>
+            * table data
+            | name   | value |
+            | '<name>' | '<value>' |
+            * match data[0].name == name
+            * match data[0].value == value
+
+            Examples:
+            | name | value |
+            | foo  | one   |
+            | bar  | two   |
+            """);
+
+        Suite suite = Suite.of(tempDir, feature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), getFailureMessage(result));
+        assertEquals(2, result.getScenarioPassedCount());
+    }
+
+    @Test
     void testMixedScenarioAndOutline() throws Exception {
         Path feature = tempDir.resolve("mixed.feature");
         Files.writeString(feature, """

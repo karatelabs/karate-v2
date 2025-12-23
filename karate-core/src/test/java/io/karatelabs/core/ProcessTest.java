@@ -239,7 +239,6 @@ class ProcessTest {
 
     @Test
     @DisabledOnOs(OS.WINDOWS)
-    @Disabled("Flaky test - see TODO in docs/PROCESS_BUILDER.md")
     void testExecWithOptionsViaJs() {
         KarateJs karate = new KarateJs(Resource.path(""));
         String js = """

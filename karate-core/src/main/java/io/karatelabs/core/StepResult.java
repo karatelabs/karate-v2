@@ -114,6 +114,14 @@ public class StepResult {
         this.log = log;
     }
 
+    public void appendLog(String message) {
+        if (log == null || log.isEmpty()) {
+            log = message + "\n";
+        } else {
+            log = log + message + "\n";
+        }
+    }
+
     public List<Embed> getEmbeds() {
         return embeds;
     }

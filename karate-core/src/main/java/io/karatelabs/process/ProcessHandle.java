@@ -76,6 +76,10 @@ public class ProcessHandle implements SimpleObject {
     private ExecutorService executor;
     private volatile int exitCode = -1;
 
+    // Track stream reader completion
+    private CompletableFuture<Void> stdoutReaderDone;
+    private CompletableFuture<Void> stderrReaderDone;
+
     private ProcessHandle(ProcessConfig config) {
         this.config = config;
         this.exitFuture = new CompletableFuture<>();
@@ -145,6 +149,7 @@ public class ProcessHandle implements SimpleObject {
 
     private void startStreamReaders() {
         // Stdout reader
+        stdoutReaderDone = new CompletableFuture<>();
         executor.submit(() -> {
             Thread.currentThread().setName("process-stdout-reader");
             try (BufferedReader reader = new BufferedReader(
@@ -157,11 +162,14 @@ public class ProcessHandle implements SimpleObject {
                 if (!closed.get()) {
                     JvmLogger.warn("stdout reader error: {}", e.getMessage());
                 }
+            } finally {
+                stdoutReaderDone.complete(null);
             }
         });
 
         // Stderr reader (only if not redirecting)
         if (!config.redirectErrorStream()) {
+            stderrReaderDone = new CompletableFuture<>();
             executor.submit(() -> {
                 Thread.currentThread().setName("process-stderr-reader");
                 try (BufferedReader reader = new BufferedReader(
@@ -174,6 +182,8 @@ public class ProcessHandle implements SimpleObject {
                     if (!closed.get()) {
                         JvmLogger.warn("stderr reader error: {}", e.getMessage());
                     }
+                } finally {
+                    stderrReaderDone.complete(null);
                 }
             });
         }
@@ -189,9 +199,9 @@ public class ProcessHandle implements SimpleObject {
                 JvmLogger.debug("process exited with code: {}", code);
             } catch (Exception e) {
                 exitFuture.completeExceptionally(e);
-            } finally {
-                executor.shutdown();
             }
+            // Note: Don't shutdown executor here - let stream readers complete naturally.
+            // Executor will be shutdown when close() is called or all tasks complete.
         });
     }
 
@@ -273,7 +283,10 @@ public class ProcessHandle implements SimpleObject {
 
     public int waitSync() {
         try {
-            return exitFuture.get();
+            int code = exitFuture.get();
+            // Wait for stream readers to complete so all output is captured
+            waitForStreamReaders();
+            return code;
         } catch (Exception e) {
             throw new RuntimeException("error waiting for process", e);
         }
@@ -281,11 +294,38 @@ public class ProcessHandle implements SimpleObject {
 
     public int waitSync(long timeoutMillis) {
         try {
-            return exitFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            int code = exitFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            // Wait for stream readers to complete so all output is captured
+            waitForStreamReaders();
+            return code;
         } catch (TimeoutException e) {
             throw new RuntimeException("process timed out after " + timeoutMillis + "ms");
         } catch (Exception e) {
             throw new RuntimeException("error waiting for process", e);
+        }
+    }
+
+    /**
+     * Wait for all stream reader threads to complete.
+     * This ensures all output is captured before getStdOut()/getStdErr() is called.
+     * <p>
+     * After process exit, stream readers complete almost instantly since the OS
+     * closes the pipes. We use a short timeout as a safety net.
+     */
+    private void waitForStreamReaders() {
+        try {
+            // Streams close immediately after process exit, so this should be near-instant.
+            // Use 500ms timeout as safety net (never hit in practice).
+            if (stdoutReaderDone != null && !stdoutReaderDone.isDone()) {
+                stdoutReaderDone.get(500, TimeUnit.MILLISECONDS);
+            }
+            if (stderrReaderDone != null && !stderrReaderDone.isDone()) {
+                stderrReaderDone.get(500, TimeUnit.MILLISECONDS);
+            }
+        } catch (TimeoutException e) {
+            JvmLogger.warn("timeout waiting for stream readers - this should not happen");
+        } catch (Exception e) {
+            JvmLogger.debug("error waiting for stream readers: {}", e.getMessage());
         }
     }
 
