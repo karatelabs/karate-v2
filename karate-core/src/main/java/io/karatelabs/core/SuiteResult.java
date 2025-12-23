@@ -155,7 +155,7 @@ public class SuiteResult {
         Console.println(Console.line());
 
         // Header with version and env
-        String header = "Karate v2";
+        String header = "Karate " + Globals.KARATE_VERSION;
         if (env != null && !env.isEmpty()) {
             header += " | env: " + Console.cyan(env);
         }
