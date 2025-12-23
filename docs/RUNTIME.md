@@ -151,22 +151,17 @@ SuiteResult result = Runner.path("src/test/resources")
 | `urlEncode(string)` | KarateJsApi | URL encode |
 | `valuesOf(map)` | KarateJsApi | Get map values |
 | `xmlPath(xml, path)` | KarateJs | Apply XPath expression |
-
-### Pending (Non-UI/Extension)
-
-| Method | Description | Notes |
-|--------|-------------|-------|
-| `logger` | Log facade (debug/info/warn/error) | Needs LogContext |
-| `prevRequest` | Get previous HTTP request | Needs HTTP state |
-| `request` | Get current request (mock) | Mock context only |
-| `response` | Get current response | Mock context only |
-| `readAsStream(path)` | Read as InputStream | Needs root |
-| `render(template)` | Render HTML template | Similar to doc |
-| `stop(port)` | Wait for port to close | Polling |
-| `toAbsolutePath(path)` | Convert to absolute | Needs root |
-| `waitForHttp(url, options)` | Poll HTTP endpoint | Polling |
-| `waitForPort(host, port)` | Wait for port available | Polling |
-| `write(path, content)` | Write to file | Needs root |
+| `logger` | KarateJs | Log facade (debug/info/warn/error via LogContext) |
+| `prevRequest` | KarateJs | Get previous HTTP request (method, url, headers, body) |
+| `request` | KarateJs | Get current request body (mock context only) |
+| `response` | KarateJs | Get current response (mock context only) |
+| `readAsStream(path)` | KarateJs | Read file as InputStream |
+| `render(template)` | KarateJs | Render HTML template (returns string) |
+| `stop(port)` | KarateJs | Debug breakpoint - pauses until connection received |
+| `toAbsolutePath(path)` | KarateJs | Convert relative path to absolute |
+| `waitForHttp(url, options)` | KarateJs | Poll HTTP endpoint until available |
+| `waitForPort(host, port)` | KarateJs | Wait for TCP port to become available |
+| `write(value, path)` | KarateJs | Write content to file in output directory |
 
 ### Out of Scope (UI/Extensions)
 

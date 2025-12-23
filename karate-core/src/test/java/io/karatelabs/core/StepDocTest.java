@@ -171,4 +171,73 @@ class StepDocTest {
         assertTrue(content.contains("Embedded Content"));
     }
 
+    // ========== karate.render() tests ==========
+
+    @Test
+    void testRenderWithStringPath() throws Exception {
+        Path template = tempDir.resolve("render-test.html");
+        Files.writeString(template, "<html><body>Rendered Content</body></html>");
+
+        Path featurePath = tempDir.resolve("test.feature");
+        Files.writeString(featurePath, """
+            Feature:
+            Scenario:
+            * def result = karate.render('render-test.html')
+            * match result contains 'Rendered Content'
+            """);
+
+        Feature feature = Feature.read(Resource.from(featurePath));
+        Scenario scenario = feature.getSections().get(0).getScenario();
+        KarateJs karate = new KarateJs(Resource.from(featurePath.getParent()), new InMemoryHttpClient());
+        ScenarioRuntime sr = new ScenarioRuntime(karate, scenario);
+        ScenarioResult result = sr.call();
+
+        assertTrue(result.isPassed(), "Scenario should pass: " + result.getFailureMessage());
+    }
+
+    @Test
+    void testRenderWithMapSyntax() throws Exception {
+        Path template = tempDir.resolve("render-map.html");
+        Files.writeString(template, "<html><body>Map Syntax Test</body></html>");
+
+        Path featurePath = tempDir.resolve("test.feature");
+        Files.writeString(featurePath, """
+            Feature:
+            Scenario:
+            * def result = karate.render({ read: 'render-map.html' })
+            * match result contains 'Map Syntax Test'
+            """);
+
+        Feature feature = Feature.read(Resource.from(featurePath));
+        Scenario scenario = feature.getSections().get(0).getScenario();
+        KarateJs karate = new KarateJs(Resource.from(featurePath.getParent()), new InMemoryHttpClient());
+        ScenarioRuntime sr = new ScenarioRuntime(karate, scenario);
+        ScenarioResult result = sr.call();
+
+        assertTrue(result.isPassed(), "Scenario should pass: " + result.getFailureMessage());
+    }
+
+    @Test
+    void testRenderWithVariableSubstitution() throws Exception {
+        Path template = tempDir.resolve("render-vars.html");
+        Files.writeString(template, "<html><body><h1 th:text=\"name\">Name</h1></body></html>");
+
+        Path featurePath = tempDir.resolve("test.feature");
+        Files.writeString(featurePath, """
+            Feature:
+            Scenario:
+            * def name = 'John Doe'
+            * def result = karate.render('render-vars.html')
+            * match result contains 'John Doe'
+            """);
+
+        Feature feature = Feature.read(Resource.from(featurePath));
+        Scenario scenario = feature.getSections().get(0).getScenario();
+        KarateJs karate = new KarateJs(Resource.from(featurePath.getParent()), new InMemoryHttpClient());
+        ScenarioRuntime sr = new ScenarioRuntime(karate, scenario);
+        ScenarioResult result = sr.call();
+
+        assertTrue(result.isPassed(), "Scenario should pass: " + result.getFailureMessage());
+    }
+
 }

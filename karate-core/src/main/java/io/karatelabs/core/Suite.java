@@ -521,6 +521,10 @@ public class Suite {
         return workingDir;
     }
 
+    public String getOutputDir() {
+        return outputDir.toString();
+    }
+
     public List<Feature> getFeatures() {
         return features;
     }

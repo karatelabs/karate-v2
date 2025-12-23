@@ -126,6 +126,8 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
             karate.setEnv(featureRuntime.getSuite().getEnv());
             // Set karate.properties provider
             karate.setPropertiesProvider(() -> featureRuntime.getSuite().getSystemProperties());
+            // Set output directory provider for karate.write()
+            karate.setOutputDirProvider(() -> featureRuntime.getSuite().getOutputDir());
         }
 
         // Evaluate config (only for top-level scenarios, not called features)

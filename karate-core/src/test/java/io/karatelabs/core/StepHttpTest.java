@@ -269,4 +269,42 @@ class StepHttpTest {
         assertPassed(sr);
     }
 
+    @Test
+    void testPrevRequest() {
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> json("{ \"ok\": true }"));
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test/users'
+            * request { name: 'John' }
+            * method post
+            * status 200
+            * def prev = karate.prevRequest
+            * match prev.method == 'POST'
+            * match prev.url contains '/users'
+            * match prev.body == { name: 'John' }
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testPrevRequestUpdatesAfterEachCall() {
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> json("{ \"ok\": true }"));
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test/first'
+            * method get
+            * status 200
+            * match karate.prevRequest.method == 'GET'
+            * match karate.prevRequest.url contains '/first'
+
+            * url 'http://test/second'
+            * request { data: 123 }
+            * method post
+            * status 200
+            * match karate.prevRequest.method == 'POST'
+            * match karate.prevRequest.url contains '/second'
+            """);
+        assertPassed(sr);
+    }
+
 }

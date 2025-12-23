@@ -1706,6 +1706,11 @@ public class StepExecutor {
 
         HttpResponse response = http().invoke(method);
 
+        // Track previous request for karate.prevRequest
+        if (response.getRequest() != null) {
+            runtime.getKarate().setPrevRequest(response.getRequest());
+        }
+
         // Set response variables
         Object body = response.getBodyConverted();
         runtime.setVariable("response", body);
