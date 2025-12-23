@@ -551,6 +551,18 @@ public final class HtmlReportWriter {
             data.put("embeds", embedList);
         }
 
+        // Nested scenarios (from call steps)
+        boolean hasNestedScenarios = step.hasNestedResults();
+        data.put("hasNestedScenarios", hasNestedScenarios);
+
+        if (hasNestedScenarios) {
+            List<Map<String, Object>> nestedList = new ArrayList<>();
+            for (ScenarioResult sr : step.getNestedResults()) {
+                nestedList.add(buildScenarioData(sr));
+            }
+            data.put("nestedScenarios", nestedList);
+        }
+
         return data;
     }
 

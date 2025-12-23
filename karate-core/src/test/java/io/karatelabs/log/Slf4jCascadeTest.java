@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -40,6 +40,7 @@ class Slf4jCascadeTest {
     @AfterEach
     void cleanup() {
         LogContext.setCascade(null);
+        LogContext.setLogLevel(LogLevel.INFO);
         LogContext.clear();
     }
 
@@ -49,26 +50,26 @@ class Slf4jCascadeTest {
     }
 
     @Test
-    void testCreateReturnsConsumer() {
-        Consumer<String> consumer = Slf4jCascade.create();
+    void testCreateReturnsBiConsumer() {
+        BiConsumer<LogLevel, String> consumer = Slf4jCascade.create();
         assertNotNull(consumer);
         // Should not throw when called
-        consumer.accept("test message");
+        consumer.accept(LogLevel.INFO, "test message");
     }
 
     @Test
     void testCreateWithCustomCategory() {
-        Consumer<String> consumer = Slf4jCascade.create("custom.category");
+        BiConsumer<LogLevel, String> consumer = Slf4jCascade.create("custom.category");
         assertNotNull(consumer);
-        consumer.accept("test message");
+        consumer.accept(LogLevel.INFO, "test message");
     }
 
     @Test
-    void testCreateWithLogLevel() {
+    void testCascadeMapsLevelsCorrectly() {
+        BiConsumer<LogLevel, String> consumer = Slf4jCascade.create("test.category");
+        assertNotNull(consumer);
         for (LogLevel level : LogLevel.values()) {
-            Consumer<String> consumer = Slf4jCascade.create("test.category", level);
-            assertNotNull(consumer);
-            consumer.accept("test at " + level);
+            consumer.accept(level, "test at " + level);
         }
     }
 
@@ -76,12 +77,14 @@ class Slf4jCascadeTest {
     void testIntegrationWithLogContext() {
         // Track messages via a simple list
         List<String> captured = new ArrayList<>();
+        List<LogLevel> capturedLevels = new ArrayList<>();
 
         // Set up cascade that captures to our list AND forwards to SLF4J
-        Consumer<String> slf4jCascade = Slf4jCascade.create();
-        LogContext.setCascade(msg -> {
+        BiConsumer<LogLevel, String> slf4jCascade = Slf4jCascade.create();
+        LogContext.setCascade((level, msg) -> {
+            capturedLevels.add(level);
             captured.add(msg);
-            slf4jCascade.accept(msg);
+            slf4jCascade.accept(level, msg);
         });
 
         // Log some messages
@@ -93,6 +96,8 @@ class Slf4jCascadeTest {
         assertEquals(2, captured.size());
         assertEquals("Hello from test", captured.get(0));
         assertEquals("Value: 42", captured.get(1));
+        assertEquals(LogLevel.INFO, capturedLevels.get(0));  // Default level is INFO
+        assertEquals(LogLevel.INFO, capturedLevels.get(1));
 
         // Verify LogContext still has the buffer
         String collected = ctx.collect();
@@ -101,9 +106,49 @@ class Slf4jCascadeTest {
     }
 
     @Test
+    void testCascadeWithExplicitLevel() {
+        List<String> captured = new ArrayList<>();
+        List<LogLevel> capturedLevels = new ArrayList<>();
+
+        LogContext.setLogLevel(LogLevel.TRACE);  // Allow all levels
+        LogContext.setCascade((level, msg) -> {
+            capturedLevels.add(level);
+            captured.add(msg);
+        });
+
+        LogContext ctx = LogContext.get();
+        ctx.log(LogLevel.DEBUG, "Debug message");
+        ctx.log(LogLevel.WARN, "Warning message");
+        ctx.log(LogLevel.ERROR, "Error message");
+
+        assertEquals(3, captured.size());
+        assertEquals(LogLevel.DEBUG, capturedLevels.get(0));
+        assertEquals(LogLevel.WARN, capturedLevels.get(1));
+        assertEquals(LogLevel.ERROR, capturedLevels.get(2));
+    }
+
+    @Test
+    void testLogLevelFiltering() {
+        List<String> captured = new ArrayList<>();
+
+        LogContext.setCascade((level, msg) -> captured.add(msg));
+        LogContext.setLogLevel(LogLevel.WARN);  // Only WARN and above
+
+        LogContext ctx = LogContext.get();
+        ctx.log(LogLevel.DEBUG, "Should be filtered");
+        ctx.log(LogLevel.INFO, "Should be filtered");
+        ctx.log(LogLevel.WARN, "Should appear");
+        ctx.log(LogLevel.ERROR, "Should appear");
+
+        assertEquals(2, captured.size());
+        assertEquals("Should appear", captured.get(0));
+        assertEquals("Should appear", captured.get(1));
+    }
+
+    @Test
     void testCascadeWorksAcrossMultipleLogs() {
         List<String> captured = new ArrayList<>();
-        LogContext.setCascade(captured::add);
+        LogContext.setCascade((level, msg) -> captured.add(msg));
 
         LogContext ctx = LogContext.get();
         ctx.log("First");

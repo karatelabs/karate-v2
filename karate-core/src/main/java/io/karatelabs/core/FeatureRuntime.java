@@ -109,8 +109,8 @@ public class FeatureRuntime implements Callable<FeatureResult> {
             beforeFeature();
 
             for (Scenario scenario : selectedScenarios()) {
-                // Notify listeners of scenario start
-                if (suite != null) {
+                // Notify listeners of scenario start (only for top-level features)
+                if (suite != null && caller == null) {
                     for (ResultListener listener : suite.getResultListeners()) {
                         listener.onScenarioStart(scenario);
                     }
@@ -121,8 +121,8 @@ public class FeatureRuntime implements Callable<FeatureResult> {
                 result.addScenarioResult(scenarioResult);
                 lastExecuted = sr;
 
-                // Notify listeners of scenario completion
-                if (suite != null) {
+                // Notify listeners of scenario completion (only for top-level features)
+                if (suite != null && caller == null) {
                     for (ResultListener listener : suite.getResultListeners()) {
                         listener.onScenarioEnd(scenarioResult);
                     }
@@ -133,8 +133,8 @@ public class FeatureRuntime implements Callable<FeatureResult> {
         } finally {
             result.setEndTime(System.currentTimeMillis());
 
-            // Notify listeners of feature end
-            if (suite != null) {
+            // Notify listeners of feature end (only for top-level features, not nested calls)
+            if (suite != null && caller == null) {
                 for (ResultListener listener : suite.getResultListeners()) {
                     listener.onFeatureEnd(result);
                 }
@@ -411,19 +411,21 @@ public class FeatureRuntime implements Callable<FeatureResult> {
         }
 
         private boolean shouldSelect(Scenario scenario) {
-            // Check for @ignore tag (unless callTagSelector explicitly requests it)
-            List<Tag> tags = scenario.getTags();
-            if (tags != null && callTagSelector == null) {
-                for (Tag tag : tags) {
-                    if (Tag.IGNORE.equals(tag.getName())) {
-                        return false;
-                    }
-                }
-            }
-
             // Apply call-level tag filter if specified (takes precedence)
+            // This allows calling specific @ignore scenarios by tag
             if (callTagSelector != null) {
                 return matchesTags(scenario, callTagSelector);
+            }
+
+            // For called features (caller != null), don't filter by @ignore
+            // @ignore only excludes scenarios from top-level runner selection
+            if (caller != null) {
+                return true;
+            }
+
+            // Check for @ignore tag on scenario OR feature (top-level only)
+            if (scenario.isIgnore()) {
+                return false;
             }
 
             // Apply suite tag filter if configured
@@ -437,8 +439,9 @@ public class FeatureRuntime implements Callable<FeatureResult> {
         private boolean matchesTags(Scenario scenario, String tagSelector) {
             // Tag matching for call-by-tag syntax
             // Supports: @tagname, @name=value
-            List<Tag> tags = scenario.getTags();
-            if (tags == null || tags.isEmpty()) {
+            // Uses effective tags (feature + scenario merged)
+            List<Tag> tags = scenario.getTagsEffective();
+            if (tags.isEmpty()) {
                 // Scenario has no tags - doesn't match if selector requires tags
                 return !tagSelector.startsWith("@");
             }

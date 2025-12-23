@@ -43,6 +43,7 @@ public class StepResult {
     private final Throwable error;
     private String log;
     private List<Embed> embeds;
+    private List<ScenarioResult> nestedResults;  // For call steps - nested feature results
 
     private StepResult(Step step, Status status, long startTime, long durationNanos, Throwable error) {
         this.step = step;
@@ -133,6 +134,18 @@ public class StepResult {
         embeds.add(embed);
     }
 
+    public List<ScenarioResult> getNestedResults() {
+        return nestedResults;
+    }
+
+    public void setNestedResults(List<ScenarioResult> nestedResults) {
+        this.nestedResults = nestedResults;
+    }
+
+    public boolean hasNestedResults() {
+        return nestedResults != null && !nestedResults.isEmpty();
+    }
+
     public boolean isPassed() {
         return status == Status.PASSED;
     }
@@ -191,6 +204,17 @@ public class StepResult {
                 embedList.add(embed.toMap());
             }
             data.put("embeds", embedList);
+        }
+
+        // Nested scenarios (for call steps)
+        boolean hasNestedScenarios = nestedResults != null && !nestedResults.isEmpty();
+        data.put("hasNestedScenarios", hasNestedScenarios);
+        if (hasNestedScenarios) {
+            List<Map<String, Object>> nestedList = new ArrayList<>();
+            for (ScenarioResult sr : nestedResults) {
+                nestedList.add(sr.toMap());
+            }
+            data.put("nestedScenarios", nestedList);
         }
 
         return data;

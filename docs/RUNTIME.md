@@ -48,11 +48,52 @@ Suite → FeatureRuntime → ScenarioRuntime → StepExecutor
 ### Built-in Tags
 | Tag | Description |
 |-----|-------------|
-| `@ignore` | Skip execution |
+| `@ignore` | Skip execution (feature or scenario level) |
 | `@env=<name>` | Run only when `karate.env` matches |
 | `@envnot=<name>` | Skip when `karate.env` matches |
 | `@setup` | Data provider for dynamic outlines |
 | `@fail` | Expect failure (invert result) |
+
+### Tag Inheritance
+
+Feature-level tags are inherited by all scenarios in that feature. When checking tags, the effective tags are the **merge of feature + scenario tags**.
+
+```gherkin
+@api @ignore
+Feature: Helper for tests
+  # All scenarios inherit @api and @ignore
+
+Scenario: Setup data
+  # Effective tags: @api, @ignore
+  * def data = { }
+```
+
+### @ignore Behavior
+
+The `@ignore` tag skips scenarios/features from execution:
+
+- **Feature-level `@ignore`**: The entire feature is skipped by the runner (does not appear in reports)
+- **Scenario-level `@ignore`**: That specific scenario is skipped
+- **Called features**: `@ignore` does NOT prevent a feature from being called via `call read('...')`
+
+This allows creating helper features that are only executed when explicitly called:
+
+```gherkin
+@ignore
+Feature: Helper utilities
+  # Not executed by runner, but can be called
+
+Scenario: Generate test data
+  * def result = { id: 1 }
+```
+
+```gherkin
+Feature: Main tests
+
+Scenario: Use helper
+  * def data = call read('helper.feature')  # Works despite @ignore
+  * match data.result.id == 1
+```
 
 ### Runner API
 ```java

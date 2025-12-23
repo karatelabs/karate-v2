@@ -93,11 +93,12 @@ The Gherkin parser lives in `karate-js` (reuses the JS lexer). The ScenarioEngin
 - [x] JUnit XML report format (`karate-junit.xml`)
 - [x] Summary statistics (pass/fail counts, durations)
 - [x] Console output with ANSI colors
-- [ ] HTML report (interactive dashboard)
+- [x] HTML report (interactive dashboard with Alpine.js)
+- [x] Timeline view (Gantt-style parallel execution)
+- [x] Result embedding in reports (images, HTML, etc.)
+- [x] Nested feature call display in HTML reports
 - [ ] Cucumber JSON report format
-- [ ] Timeline view
-- [ ] Tag-based analytics
-- [ ] Result embedding in reports
+- [ ] Tag-based analytics page
 
 ### CLI Compatibility
 
@@ -347,6 +348,41 @@ Beyond being LLM-friendly, Karate can be a tool for testing AI systems:
 
 - **Streaming responses:** Memory-efficient handling of large file downloads
 - **Operations on huge data:** Match/sort operations without loading everything into memory
+
+---
+
+## Reporting & Logging TODOs
+
+> Items identified during Dec 2023 logging/reporting session.
+
+### Code Organization
+- [ ] Move all reporting and logging related code to an "output" folder (not "reports")
+- [ ] Consolidate `HtmlReportListener`, `NdjsonReportListener`, `HtmlReportWriter` into unified output package
+
+### Report Format & Compatibility
+- [ ] Verify v2 karate-json format matches v1 format for external tool compatibility
+- [ ] Verify report events (NDJSON) are sufficient for external aggregation services
+- [ ] Implement report merging from multiple runs (`HtmlReport.aggregate()`)
+- [ ] Cucumber JSON format support
+
+### Logging Configuration
+- [ ] Clarify LogContext vs SLF4J relationship for `logLevel` setting
+  - Does CLI `--log-level` affect both LogContext buffer AND SLF4J cascade?
+  - Does `karate.configure('report', { logLevel: '...' })` affect one or both?
+- [ ] Document log level precedence: CLI > config > default
+
+### Tag Features
+- [ ] Implement `@report=false` tag (exclude scenario from reports but still execute)
+- [ ] Tag expression evaluation (v1-style: `anyOf()`, `allOf()`, `not()`, `valuesFor()`)
+
+### Testing Gaps
+- [ ] Add tests for log masking combined with reports
+- [ ] Add tests for tag inheritance edge cases
+
+### Performance & Consistency
+- [ ] Cache `Scenario.getTagsEffective()` result (currently creates new merged list each call)
+- [ ] Align `karate-summary.json` structure with HTML embedded JSON (currently differ slightly)
+- [ ] Consider porting v1 `Tags` wrapper class for rich tag evaluation (v2 uses raw `List<Tag>`)
 
 ---
 

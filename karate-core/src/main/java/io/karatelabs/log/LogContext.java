@@ -23,11 +23,12 @@
  */
 package io.karatelabs.log;
 
+import io.karatelabs.core.ScenarioResult;
 import io.karatelabs.core.StepResult;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 /**
  * Thread-local log collector for scenario execution.
@@ -39,10 +40,12 @@ public class LogContext {
 
     private static final ThreadLocal<LogContext> CURRENT = new ThreadLocal<>();
 
-    private static Consumer<String> cascade;
+    private static BiConsumer<LogLevel, String> cascade;
+    private static LogLevel threshold = LogLevel.INFO;
 
     private final StringBuilder buffer = new StringBuilder();
     private List<StepResult.Embed> embeds;
+    private List<ScenarioResult> nestedResults;
 
     // ========== Thread-Local Access ==========
 
@@ -67,27 +70,70 @@ public class LogContext {
      * Set a cascade consumer to forward log messages to an external logger (e.g., SLF4J).
      * This is optional and allows test logs to be visible in console/files while
      * still being captured for reports.
+     * The consumer receives (LogLevel, message) for level-aware forwarding.
      */
-    public static void setCascade(Consumer<String> logger) {
+    public static void setCascade(BiConsumer<LogLevel, String> logger) {
         cascade = logger;
+    }
+
+    /**
+     * Set the minimum log level for report capture.
+     * Logs below this level will be filtered out.
+     */
+    public static void setLogLevel(LogLevel level) {
+        threshold = level;
+    }
+
+    /**
+     * Get the current log level threshold.
+     */
+    public static LogLevel getLogLevel() {
+        return threshold;
     }
 
     // ========== Logging ==========
 
-    public void log(Object message) {
-        String msg = String.valueOf(message);
-        buffer.append(msg).append('\n');
+    /**
+     * Log a message at the specified level.
+     * Message is filtered if level is below threshold.
+     */
+    public void log(LogLevel level, String message) {
+        if (!level.isEnabled(threshold)) {
+            return; // Filtered
+        }
+        buffer.append(message).append('\n');
         if (cascade != null) {
-            cascade.accept(msg);
+            cascade.accept(level, message);
         }
     }
 
-    public void log(String format, Object... args) {
+    /**
+     * Log a message at the specified level with format arguments.
+     */
+    public void log(LogLevel level, String format, Object... args) {
+        if (!level.isEnabled(threshold)) {
+            return; // Filtered
+        }
         String message = format(format, args);
         buffer.append(message).append('\n');
         if (cascade != null) {
-            cascade.accept(message);
+            cascade.accept(level, message);
         }
+    }
+
+    /**
+     * Log a message at INFO level.
+     * Used by karate.log() and print statements.
+     */
+    public void log(Object message) {
+        log(LogLevel.INFO, String.valueOf(message));
+    }
+
+    /**
+     * Log a message at INFO level with format arguments.
+     */
+    public void log(String format, Object... args) {
+        log(LogLevel.INFO, format, args);
     }
 
     // ========== Embeds ==========
@@ -115,6 +161,28 @@ public class LogContext {
     public List<StepResult.Embed> collectEmbeds() {
         List<StepResult.Embed> result = embeds;
         embeds = null;
+        return result;
+    }
+
+    // ========== Nested Results (for call steps) ==========
+
+    /**
+     * Add a nested scenario result from a called feature.
+     * Used to capture feature call results for HTML report display.
+     */
+    public void addNestedResult(ScenarioResult result) {
+        if (nestedResults == null) {
+            nestedResults = new ArrayList<>();
+        }
+        nestedResults.add(result);
+    }
+
+    /**
+     * Collect and clear nested results.
+     */
+    public List<ScenarioResult> collectNestedResults() {
+        List<ScenarioResult> result = nestedResults;
+        nestedResults = null;
         return result;
     }
 

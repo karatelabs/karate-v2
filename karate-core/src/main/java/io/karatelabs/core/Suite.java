@@ -27,6 +27,7 @@ import io.karatelabs.common.FileUtils;
 import io.karatelabs.common.Resource;
 import io.karatelabs.common.ResourceNotFoundException;
 import io.karatelabs.gherkin.Feature;
+import io.karatelabs.gherkin.Tag;
 import io.karatelabs.js.Engine;
 import io.karatelabs.log.JvmLogger;
 
@@ -414,6 +415,10 @@ public class Suite {
 
     private void runSequential() {
         for (Feature feature : features) {
+            // Skip features with @ignore tag at feature level
+            if (isFeatureIgnored(feature)) {
+                continue;
+            }
             FeatureRuntime fr = new FeatureRuntime(this, feature);
             FeatureResult featureResult = fr.call();
             result.addFeatureResult(featureResult);
@@ -430,6 +435,10 @@ public class Suite {
             List<Future<FeatureResult>> futures = new ArrayList<>();
 
             for (Feature feature : features) {
+                // Skip features with @ignore tag at feature level
+                if (isFeatureIgnored(feature)) {
+                    continue;
+                }
                 Future<FeatureResult> future = executor.submit(() -> {
                     semaphore.acquire();
                     try {
@@ -457,6 +466,18 @@ public class Suite {
                 }
             }
         }
+    }
+
+    /**
+     * Check if a feature has @ignore tag at the feature level.
+     */
+    private boolean isFeatureIgnored(Feature feature) {
+        for (Tag tag : feature.getTags()) {
+            if (Tag.IGNORE.equals(tag.getName())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void beforeSuite() {

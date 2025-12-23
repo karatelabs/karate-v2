@@ -39,3 +39,25 @@ Scenario: Embedded content showcase
 * karate.embed('Test completed at ' + java.time.LocalDateTime.now(), 'text/plain', 'Timestamp')
 * karate.embed('<div style="padding:10px;background:#e8f5e9;border-radius:4px"><h3>Test Result</h3><p>All assertions passed!</p></div>', 'text/html', 'Result Summary')
 * match apiResponse.status == 'ok'
+
+@call @nested
+Scenario: Single nested call example
+* print 'about to call helper feature'
+* def result = call read('helper.feature')
+* print 'helper call completed'
+* match result.user.name == 'Test User'
+
+@call @nested
+Scenario: Multiple nested calls
+* print 'starting multi-call test'
+* call read('data-setup.feature')
+* def helperResult = call read('helper.feature')
+* print 'both calls completed'
+* match helperResult.valid == true
+
+@call @nested @loop
+Scenario: Loop call with array data
+* def testCases = [{name: 'Case A', value: 1}, {name: 'Case B', value: 2}, {name: 'Case C', value: 3}]
+* print 'running', testCases.length, 'test cases'
+* def results = call read('data-setup.feature') testCases
+* print 'loop call completed'

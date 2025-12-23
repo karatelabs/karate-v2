@@ -57,6 +57,63 @@ Scenario: Logging example
   # All output captured in LogContext
 ```
 
+### karate.logger API
+
+Use `karate.logger` for level-aware logging in your tests:
+
+```gherkin
+Scenario: Level-aware logging
+  * karate.logger.debug('Detailed debug info:', data)
+  * karate.logger.info('Processing item:', itemId)
+  * karate.logger.warn('Rate limit approaching')
+  * karate.logger.error('Failed to connect:', error)
+```
+
+The `karate.log()` method is equivalent to `karate.logger.info()`.
+
+### Log Level Filtering
+
+Control which log levels appear in reports:
+
+**In karate-config.js:**
+```javascript
+function fn() {
+  karate.configure('report', { logLevel: 'warn' });  // Only WARN and ERROR
+  return { };
+}
+```
+
+**CLI:**
+```bash
+karate run --log-level debug features/   # Include DEBUG and above
+karate run -L warn features/              # Only WARN and ERROR
+```
+
+**Runner API:**
+```java
+Runner.path("features/")
+    .logLevel("info")     // INFO, WARN, ERROR
+    .parallel(5);
+```
+
+**karate-pom.json:**
+```json
+{
+  "paths": ["features/"],
+  "output": {
+    "logLevel": "debug"
+  }
+}
+```
+
+| Level | Shows |
+|-------|-------|
+| `trace` | All logs |
+| `debug` | DEBUG, INFO, WARN, ERROR |
+| `info` | INFO, WARN, ERROR (default) |
+| `warn` | WARN, ERROR only |
+| `error` | ERROR only |
+
 ### Accessing Logs Programmatically
 
 ```java
@@ -105,14 +162,13 @@ LogContext.setCascade(Slf4jCascade.create());
 
 // Custom category
 LogContext.setCascade(Slf4jCascade.create("myapp.tests"));
-
-// Custom level
-LogContext.setCascade(Slf4jCascade.create("myapp.tests", LogLevel.DEBUG));
 ```
+
+The cascade is level-aware: logs from `karate.logger.debug()` go to SLF4J at DEBUG level, `karate.logger.warn()` at WARN level, etc.
 
 Configure in logback.xml:
 ```xml
-<logger name="karate.run" level="INFO">
+<logger name="karate.run" level="DEBUG">
     <appender-ref ref="FILE" />
 </logger>
 ```

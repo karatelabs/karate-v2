@@ -25,6 +25,8 @@ package io.karatelabs.core;
 
 import io.karatelabs.js.SimpleObject;
 import io.karatelabs.log.JvmLogger;
+import io.karatelabs.log.LogContext;
+import io.karatelabs.log.LogLevel;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -453,6 +455,11 @@ public class KarateConfig implements SimpleObject {
             }
             if (map.containsKey("showAllSteps")) {
                 this.showAllSteps = toBoolean(map.get("showAllSteps"));
+            }
+            if (map.containsKey("logLevel")) {
+                String levelStr = toString(map.get("logLevel"));
+                LogLevel level = LogLevel.valueOf(levelStr.toUpperCase());
+                LogContext.setLogLevel(level);
             }
         }
     }

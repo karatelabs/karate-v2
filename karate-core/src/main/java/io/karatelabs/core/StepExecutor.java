@@ -200,6 +200,11 @@ public class StepExecutor {
                 result.addEmbed(embed);
             }
         }
+        // Collect nested results from call steps
+        java.util.List<ScenarioResult> nestedResults = ctx.collectNestedResults();
+        if (nestedResults != null && !nestedResults.isEmpty()) {
+            result.setNestedResults(nestedResults);
+        }
     }
 
     // ========== Expression Execution ==========
@@ -315,6 +320,11 @@ public class StepExecutor {
         // Execute the called feature
         FeatureResult featureResult = nestedFr.call();
 
+        // Capture nested scenario results for HTML report display
+        for (ScenarioResult sr : featureResult.getScenarioResults()) {
+            LogContext.get().addNestedResult(sr);
+        }
+
         // Capture result variables from the last executed scenario (isolated scope)
         if (nestedFr.getLastExecuted() != null) {
             Map<String, Object> resultVars = nestedFr.getLastExecuted().getAllVariables();
@@ -391,6 +401,11 @@ public class StepExecutor {
 
         // Execute the called feature
         FeatureResult featureResult = nestedFr.call();
+
+        // Capture nested scenario results for HTML report display
+        for (ScenarioResult sr : featureResult.getScenarioResults()) {
+            LogContext.get().addNestedResult(sr);
+        }
 
         // Capture result variables from the last executed scenario (isolated scope)
         if (nestedFr.getLastExecuted() != null) {
@@ -2040,6 +2055,11 @@ public class StepExecutor {
         // Execute the called feature
         FeatureResult result = nestedFr.call();
 
+        // Capture nested scenario results for HTML report display
+        for (ScenarioResult sr : result.getScenarioResults()) {
+            LogContext.get().addNestedResult(sr);
+        }
+
         // Capture result variables from the last executed scenario
         if (nestedFr.getLastExecuted() != null) {
             Map<String, Object> resultVars = nestedFr.getLastExecuted().getAllVariables();
@@ -2112,7 +2132,12 @@ public class StepExecutor {
                         tagSelector
                 );
 
-                nestedFr.call();
+                FeatureResult featureResult = nestedFr.call();
+
+                // Capture nested scenario results for HTML report display
+                for (ScenarioResult sr : featureResult.getScenarioResults()) {
+                    LogContext.get().addNestedResult(sr);
+                }
 
                 if (nestedFr.getLastExecuted() != null) {
                     results.add(nestedFr.getLastExecuted().getAllVariables());
@@ -2146,7 +2171,12 @@ public class StepExecutor {
         );
 
         // Execute the called feature
-        nestedFr.call();
+        FeatureResult featureResult = nestedFr.call();
+
+        // Capture nested scenario results for HTML report display
+        for (ScenarioResult sr : featureResult.getScenarioResults()) {
+            LogContext.get().addNestedResult(sr);
+        }
 
         // Capture result variables
         if (nestedFr.getLastExecuted() != null) {

@@ -149,6 +149,12 @@ public class RunCommand implements Callable<Integer> {
     )
     boolean noPom;
 
+    @Option(
+            names = {"-L", "--log-level"},
+            description = "Minimum log level for reports: trace, debug, info, warn, error (default: info)"
+    )
+    String logLevel;
+
     // Loaded pom config
     private KaratePom pom;
 
@@ -233,6 +239,12 @@ public class RunCommand implements Callable<Integer> {
             }
 
             builder.backupReportDir(effectiveBackup);
+
+            // Log level
+            String effectiveLogLevel = resolveLogLevel();
+            if (effectiveLogLevel != null) {
+                builder.logLevel(effectiveLogLevel);
+            }
 
             // Run tests
             SuiteResult result = builder.parallel(effectiveThreads);
@@ -335,6 +347,16 @@ public class RunCommand implements Callable<Integer> {
         // Note: KaratePom doesn't support backup yet
         // Default is true (matches v1 behavior)
         return true;
+    }
+
+    private String resolveLogLevel() {
+        if (logLevel != null) {
+            return logLevel;
+        }
+        if (pom != null && pom.getOutput().getLogLevel() != null) {
+            return pom.getOutput().getLogLevel();
+        }
+        return null; // Use default (INFO)
     }
 
     /**

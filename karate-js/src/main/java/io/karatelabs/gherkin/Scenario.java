@@ -279,4 +279,31 @@ public class Scenario {
                 .anyMatch((t) -> t.equals(Tag.FAIL));
     }
 
+    /**
+     * Returns the effective tags for this scenario, including inherited feature-level tags.
+     * Feature tags are merged with scenario-level tags.
+     */
+    public List<Tag> getTagsEffective() {
+        List<Tag> featureTags = feature != null ? feature.getTags() : null;
+        if (featureTags == null || featureTags.isEmpty()) {
+            return tags != null ? tags : java.util.Collections.emptyList();
+        }
+        if (tags == null || tags.isEmpty()) {
+            return featureTags;
+        }
+        // Merge feature + scenario tags
+        List<Tag> merged = new java.util.ArrayList<>(featureTags);
+        merged.addAll(tags);
+        return merged;
+    }
+
+    /**
+     * Returns true if this scenario (or its feature) has the @ignore tag.
+     */
+    public boolean isIgnore() {
+        return getTagsEffective().stream()
+                .map(Tag::getName)
+                .anyMatch(Tag.IGNORE::equals);
+    }
+
 }

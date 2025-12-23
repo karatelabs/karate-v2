@@ -26,7 +26,7 @@ package io.karatelabs.log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 /**
  * SLF4J cascade for forwarding test output to a dedicated log category.
@@ -37,7 +37,7 @@ import java.util.function.Consumer;
  * </pre>
  * <p>
  * This forwards all test logs (print, karate.log, HTTP) to the
- * "karate.run" SLF4J category at INFO level.
+ * "karate.run" SLF4J category, mapping Karate log levels to SLF4J levels.
  * <p>
  * Configure in your logback.xml:
  * <pre>
@@ -57,31 +57,27 @@ public final class Slf4jCascade {
     }
 
     /**
-     * Create a cascade consumer using the default category "karate.run" at INFO level.
+     * Create a level-aware cascade consumer using the default category "karate.run".
+     * Each log message is forwarded to SLF4J at its original level.
      */
-    public static Consumer<String> create() {
+    public static BiConsumer<LogLevel, String> create() {
         return create(DEFAULT_CATEGORY);
     }
 
     /**
-     * Create a cascade consumer using a custom category name at INFO level.
+     * Create a level-aware cascade consumer using a custom category name.
+     * Each log message is forwarded to SLF4J at its original level.
      */
-    public static Consumer<String> create(String categoryName) {
+    public static BiConsumer<LogLevel, String> create(String categoryName) {
         Logger logger = LoggerFactory.getLogger(categoryName);
-        return logger::info;
-    }
-
-    /**
-     * Create a cascade consumer with custom category and log level.
-     */
-    public static Consumer<String> create(String categoryName, LogLevel level) {
-        Logger logger = LoggerFactory.getLogger(categoryName);
-        return switch (level) {
-            case TRACE -> logger::trace;
-            case DEBUG -> logger::debug;
-            case INFO -> logger::info;
-            case WARN -> logger::warn;
-            case ERROR -> logger::error;
+        return (level, message) -> {
+            switch (level) {
+                case TRACE -> logger.trace(message);
+                case DEBUG -> logger.debug(message);
+                case INFO -> logger.info(message);
+                case WARN -> logger.warn(message);
+                case ERROR -> logger.error(message);
+            }
         };
     }
 

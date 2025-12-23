@@ -26,6 +26,7 @@ package io.karatelabs.core;
 import io.karatelabs.common.FileUtils;
 import io.karatelabs.common.Resource;
 import io.karatelabs.gherkin.Feature;
+import io.karatelabs.log.LogLevel;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -104,6 +105,7 @@ public final class Runner {
         private boolean backupReportDir;
         private boolean outputConsoleSummary = true;
         private Map<String, String> systemProperties;
+        private LogLevel logLevel = LogLevel.INFO;
 
         Builder() {
         }
@@ -191,6 +193,28 @@ public final class Runner {
                 systemProperties = new HashMap<>();
             }
             systemProperties.put(key, value);
+            return this;
+        }
+
+        /**
+         * Set the minimum log level for report capture.
+         * Logs below this level will be filtered from reports.
+         */
+        public Builder logLevel(LogLevel level) {
+            if (level != null) {
+                this.logLevel = level;
+            }
+            return this;
+        }
+
+        /**
+         * Set the minimum log level by name (case-insensitive).
+         * Valid values: trace, debug, info, warn, error
+         */
+        public Builder logLevel(String level) {
+            if (level != null) {
+                this.logLevel = LogLevel.valueOf(level.toUpperCase());
+            }
             return this;
         }
 
@@ -408,6 +432,9 @@ public final class Runner {
             for (ResultListener listener : resultListeners) {
                 suite.resultListener(listener);
             }
+
+            // Apply log level (this is a global setting)
+            io.karatelabs.log.LogContext.setLogLevel(logLevel);
 
             return suite;
         }

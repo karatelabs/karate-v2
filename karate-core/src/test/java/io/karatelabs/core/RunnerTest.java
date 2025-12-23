@@ -160,18 +160,19 @@ class RunnerTest {
 
     @Test
     void testRunnerWithClasspathDirectory() {
-        // This directory contains 2 feature files in test resources
+        // This directory contains feature files in test resources
         // One has an intentionally failing scenario for report testing
+        // @ignore features (helper, data-setup) are completely skipped
         SuiteResult result = Runner.path("classpath:io/karatelabs/report")
                 .outputDir(tempDir.resolve("reports"))
                 .outputHtmlReport(false)
                 .outputConsoleSummary(false)
                 .parallel(1);
 
-        // Should find all feature files: test-report, second-feature, third-feature
+        // Should find only non-@ignore features: test-report, second-feature, third-feature
         assertEquals(3, result.getFeatureCount());
-        // Total scenarios: 6 + 4 + 4 = 14
-        assertEquals(14, result.getScenarioCount());
+        // Total scenarios: 9 + 4 + 4 = 17
+        assertEquals(17, result.getScenarioCount());
     }
 
     @Test
@@ -184,6 +185,7 @@ class RunnerTest {
                 .outputConsoleSummary(false)
                 .parallel(1);
 
+        // @ignore features are skipped
         assertEquals(3, result.getFeatureCount());
     }
 

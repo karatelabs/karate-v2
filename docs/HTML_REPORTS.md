@@ -270,6 +270,8 @@ The v2 JSON uses **step-level source** - each step carries its own text with ind
 | `steps[].logs` | Log entries (HTTP, print, etc.) |
 | `steps[].error` | Error message if failed |
 | `steps[].embeds` | Array of embedded content (HTML from `doc`, images, etc.) |
+| `steps[].hasNestedScenarios` | True if step has nested call results |
+| `steps[].nestedScenarios` | Array of scenario results from called features |
 | `embeds[].mime_type` | MIME type (e.g., `text/html`, `image/png`) |
 | `embeds[].data` | Base64-encoded content |
 | `embeds[].name` | Optional name/label |
@@ -416,8 +418,40 @@ Reports show the **execution sequence** - steps in the order they ran, with sour
 
 The following features are planned for future implementation:
 
-- **Called feature nesting** - Show steps from called features with indentation (currently flat)
 - **Tags page** - Separate page for tag analysis (currently integrated into summary)
+
+### Nested Feature Calls (Implemented)
+
+Call steps now display nested scenario results from called features. When a step calls another feature:
+
+```gherkin
+* call read('helper.feature')
+```
+
+The step in the HTML report shows:
+- A "call" badge indicating nested execution
+- Expandable section showing nested scenario names, pass/fail status, and steps
+- Step-level detail within each nested scenario
+
+In the JSON schema, call steps include:
+
+```json
+{
+  "keyword": "call",
+  "text": "read('helper.feature')",
+  "status": "passed",
+  "hasNestedScenarios": true,
+  "nestedScenarios": [
+    {
+      "name": "Helper scenario",
+      "refId": "[1:5]",
+      "passed": true,
+      "ms": 25,
+      "steps": [...]
+    }
+  ]
+}
+```
 
 ### ✅ Timeline Page (Implemented)
 
@@ -612,13 +646,28 @@ Disable with `-B=false` or `--backup-reportdir=false`.
 
 ---
 
-## TODO: Configure Report
+## Configure Report
 
-> **Status:** Not yet implemented
+Control report verbosity and content via `configure report`:
 
-Support for `configure report` to control report verbosity and content, similar to Karate v1.
+### Implemented Options
 
-**Planned options:**
+| Option | Default | Description |
+|--------|---------|-------------|
+| `logLevel` | `info` | Min log level for reports: `trace`, `debug`, `info`, `warn`, `error` |
+
+**Usage:**
+```javascript
+// In karate-config.js
+karate.configure('report', { logLevel: 'debug' });
+
+// In a feature file
+* configure report = { logLevel: 'warn' }
+```
+
+See [LOGGING.md](./LOGGING.md) for more details on log level filtering.
+
+### Planned Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -628,7 +677,7 @@ Support for `configure report` to control report verbosity and content, similar 
 | `showHttpDetails` | `true` | Show HTTP request/response details |
 | `maxPayloadSize` | `4096` | Max size for embedded payloads |
 
-**Usage (planned):**
+**Example (planned):**
 ```cucumber
 * configure report = { showJsLineNumbers: true }
 ```

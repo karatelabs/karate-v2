@@ -41,6 +41,7 @@ import io.karatelabs.js.Invokable;
 import io.karatelabs.js.JsCallable;
 import io.karatelabs.js.SimpleObject;
 import io.karatelabs.log.LogContext;
+import io.karatelabs.log.LogLevel;
 import io.karatelabs.markup.Markup;
 import io.karatelabs.markup.ResourceResolver;
 import io.karatelabs.match.Match;
@@ -1806,28 +1807,35 @@ public class KarateJs implements SimpleObject {
     }
 
     /**
-     * LogFacade - Provides karate.logger.debug/info/warn/error methods.
+     * LogFacade - Provides karate.logger.trace/debug/info/warn/error methods.
      * Implements SimpleObject for clean JS interop: karate.logger.debug('msg')
-     * Logs go to LogContext for report capture.
+     * Logs go to LogContext with level filtering for report capture.
      */
     public static class LogFacade implements SimpleObject {
 
         @Override
         public Object jsGet(String key) {
             return switch (key) {
-                case "trace" -> logMethod("TRACE");
-                case "debug" -> logMethod("DEBUG");
-                case "info" -> logMethod("INFO");
-                case "warn" -> logMethod("WARN");
-                case "error" -> logMethod("ERROR");
+                case "trace" -> logMethod(LogLevel.TRACE);
+                case "debug" -> logMethod(LogLevel.DEBUG);
+                case "info" -> logMethod(LogLevel.INFO);
+                case "warn" -> logMethod(LogLevel.WARN);
+                case "error" -> logMethod(LogLevel.ERROR);
                 default -> null;
             };
         }
 
-        private Invokable logMethod(String level) {
+        private Invokable logMethod(LogLevel level) {
             return args -> {
+                // Check if level is enabled before formatting
+                if (!level.isEnabled(LogContext.getLogLevel())) {
+                    return null; // Filtered
+                }
                 StringBuilder sb = new StringBuilder();
-                sb.append("[").append(level).append("] ");
+                // Add level prefix for TRACE/DEBUG/WARN/ERROR (distinguish from INFO)
+                if (level != LogLevel.INFO) {
+                    sb.append("[").append(level).append("] ");
+                }
                 for (int i = 0; i < args.length; i++) {
                     if (i > 0) sb.append(" ");
                     Object val = args[i];
@@ -1839,7 +1847,7 @@ public class KarateJs implements SimpleObject {
                         sb.append(val);
                     }
                 }
-                LogContext.get().log(sb.toString());
+                LogContext.get().log(level, sb.toString());
                 return null;
             };
         }
