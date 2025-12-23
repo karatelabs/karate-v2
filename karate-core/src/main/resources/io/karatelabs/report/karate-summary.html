@@ -18,7 +18,7 @@
         [data-bs-theme="dark"] tr.highlight-match > td { background-color: rgba(255, 193, 7, 0.45) !important; }
     </style>
 </head>
-<body x-data="reportData()">
+<body x-data="KarateReport.summaryData()">
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="karate-summary.html">
@@ -193,121 +193,6 @@
 
     <script src="res/bootstrap.bundle.min.js"></script>
     <script src="res/karate-report.js"></script>
-
     <script id="karate-data" type="application/json">/* KARATE_DATA */</script>
-    <script>
-        function reportData() {
-            const jsonElement = document.getElementById('karate-data');
-            const data = JSON.parse(jsonElement.textContent);
-
-            // Initialize feature expanded state
-            if (data.features) {
-                data.features.forEach(f => {
-                    f.expanded = false;
-                });
-            }
-
-            // Collect all unique tags from scenarios
-            const tagSet = new Set();
-            if (data.features) {
-                data.features.forEach(f => {
-                    if (f.scenarios) {
-                        f.scenarios.forEach(s => {
-                            if (s.tags) {
-                                s.tags.forEach(t => tagSet.add(t));
-                            }
-                        });
-                    }
-                });
-            }
-
-            // Theme state
-            const savedTheme = localStorage.getItem('karate-theme') || 'light';
-            document.documentElement.setAttribute('data-bs-theme', savedTheme);
-
-            return {
-                data,
-                allTags: Array.from(tagSet).sort(),
-                selectedTags: [],
-                highlightMode: false,
-                sortField: 'name',
-                sortDir: 'asc',
-                theme: savedTheme,
-
-                toggleTheme() {
-                    this.theme = this.theme === 'light' ? 'dark' : 'light';
-                    document.documentElement.setAttribute('data-bs-theme', this.theme);
-                    localStorage.setItem('karate-theme', this.theme);
-                },
-
-                toggleTag(tag) {
-                    const idx = this.selectedTags.indexOf(tag);
-                    if (idx > -1) {
-                        this.selectedTags.splice(idx, 1);
-                    } else {
-                        this.selectedTags.push(tag);
-                    }
-                },
-
-                sortBy(field) {
-                    if (this.sortField === field) {
-                        this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
-                    } else {
-                        this.sortField = field;
-                        this.sortDir = 'asc';
-                    }
-                },
-
-                get filteredFeatures() {
-                    let features = [...(this.data.features || [])];
-
-                    // Sort
-                    features.sort((a, b) => {
-                        let aVal = a[this.sortField];
-                        let bVal = b[this.sortField];
-
-                        // Handle null/undefined
-                        if (aVal == null) aVal = '';
-                        if (bVal == null) bVal = '';
-
-                        let cmp = 0;
-                        if (typeof aVal === 'string') {
-                            cmp = aVal.localeCompare(bVal);
-                        } else {
-                            cmp = aVal - bVal;
-                        }
-                        return this.sortDir === 'asc' ? cmp : -cmp;
-                    });
-
-                    return features;
-                },
-
-                featureMatchesTags(feature) {
-                    if (!this.selectedTags.length) return true;
-                    if (!feature.scenarios) return false;
-                    return feature.scenarios.some(s =>
-                        s.tags && s.tags.some(t => this.selectedTags.includes(t))
-                    );
-                },
-
-                getMatchingScenarios(feature) {
-                    if (!this.selectedTags.length) return feature.scenarios || [];
-                    return (feature.scenarios || []).filter(s =>
-                        s.tags && s.tags.some(t => this.selectedTags.includes(t))
-                    );
-                },
-
-                getFeatureTagCounts(feature) {
-                    const counts = {};
-                    (feature.scenarios || []).forEach(s => {
-                        (s.tags || []).forEach(t => {
-                            counts[t] = (counts[t] || 0) + 1;
-                        });
-                    });
-                    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
-                }
-            };
-        }
-    </script>
 </body>
 </html>

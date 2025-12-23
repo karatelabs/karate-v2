@@ -43,15 +43,15 @@ Runner.path("features/")
 
 ### Memory-Efficient Generation
 
-The `HtmlReportListener` writes feature HTML files asynchronously as each feature completes, using a single-thread executor. Only small summary data is kept in memory. At suite end, summary pages are generated from the in-memory summaries.
+The `HtmlReportListener` writes feature HTML files asynchronously as each feature completes, using a single-thread executor. Feature data is collected in memory using the canonical `toMap()` format. At suite end, summary pages are generated from the in-memory feature maps.
 
 ```
 Test Execution
     │
 HtmlReportListener (default)
     ├── onFeatureEnd() → Queue feature HTML to executor (async)
-    │                  → Collect small summary info in memory
-    └── onSuiteEnd()   → Write karate-summary.html
+    │                  → Collect feature data using toMap()
+    └── onSuiteEnd()   → Write karate-summary.html + karate-timeline.html
                        → Wait for executor to finish
                        → Copy static resources
 ```
@@ -61,17 +61,35 @@ HtmlReportListener (default)
 @Override
 public void onFeatureEnd(FeatureResult result) {
     result.sortScenarioResults();  // deterministic ordering
-    summaries.add(new FeatureSummary(result));  // small in-memory data
+    featureMaps.add(result.toMap());  // canonical Map format
     executor.submit(() -> writeFeatureHtml(result));  // async
 }
 
 @Override
 public void onSuiteEnd(SuiteResult result) {
-    writeSummaryPages(summaries, result);
+    writeSummaryPages(featureMaps, result);
+    writeTimelineHtml(featureMaps, result);
     executor.shutdown();
     executor.awaitTermination(60, TimeUnit.SECONDS);
 }
 ```
+
+### Canonical Data Format
+
+All report generation uses a single canonical Map format via `toMap()` methods on result classes:
+
+```java
+// Single canonical format for all report types
+FeatureResult.toMap()    // → Map with path, name, passed, ms, startTime, scenarios
+ScenarioResult.toMap()   // → Map with name, line, passed, ms, refId, tags, steps, etc.
+StepResult.toMap()       // → Map with prefix, keyword, text, status, ms, logs, embeds, etc.
+```
+
+This same format is used by:
+- **NDJSON streaming** - `NdjsonReportListener` writes `result.toMap()` directly
+- **HTML summary** - `HtmlReportWriter.writeSummaryPages()` builds from feature maps
+- **HTML timeline** - `HtmlReportWriter.writeTimelineHtml()` uses scenario timing from maps
+- **HTML features** - `HtmlReportWriter.writeFeatureHtml()` renders full step details
 
 ### Single-File HTML Architecture
 

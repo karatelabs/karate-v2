@@ -163,6 +163,57 @@ public class ScenarioResult implements Comparable<ScenarioResult> {
         return failTagApplied;
     }
 
+    /**
+     * Convert to canonical Map format for NDJSON and HTML reports.
+     * This is the single internal format used for all report generation.
+     */
+    public Map<String, Object> toMap() {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("name", scenario.getName());
+        data.put("line", scenario.getLine());
+        data.put("passed", isPassed());
+        data.put("ms", getDurationMillis());
+
+        // RefId and outline info for UI
+        data.put("refId", scenario.getRefId());
+        data.put("sectionIndex", scenario.getSection().getIndex() + 1);
+        data.put("exampleIndex", scenario.getExampleIndex());
+        data.put("isOutlineExample", scenario.isOutlineExample());
+
+        // Thread info (for timeline)
+        if (threadName != null) {
+            data.put("thread", threadName);
+        }
+
+        // Timing info (for timeline)
+        data.put("startTime", startTime);
+        data.put("endTime", endTime);
+
+        // Tags
+        var tags = scenario.getTags();
+        if (tags != null && !tags.isEmpty()) {
+            List<String> tagNames = new ArrayList<>();
+            for (var tag : tags) {
+                tagNames.add(tag.toString());
+            }
+            data.put("tags", tagNames);
+        }
+
+        // Steps
+        List<Map<String, Object>> steps = new ArrayList<>();
+        for (StepResult step : stepResults) {
+            steps.add(step.toMap());
+        }
+        data.put("steps", steps);
+
+        // Error info if failed
+        if (isFailed() && getFailureMessage() != null) {
+            data.put("error", getFailureMessage());
+        }
+
+        return data;
+    }
+
     public Map<String, Object> toKarateJson() {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("line", scenario.getLine());

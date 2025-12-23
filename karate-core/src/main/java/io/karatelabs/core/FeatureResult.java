@@ -148,6 +148,42 @@ public class FeatureResult {
                 .orElse(null);
     }
 
+    // ========== Canonical Map Format ==========
+
+    /**
+     * Convert to canonical Map format for NDJSON and HTML reports.
+     * This is the single internal format used for all report generation.
+     * <p>
+     * Format:
+     * <pre>
+     * {
+     *   "path": "target/test-classes/features/users.feature",
+     *   "name": "User Management",
+     *   "passed": true,
+     *   "ms": 1234,
+     *   "startTime": 1703347200000,
+     *   "scenarios": [...]
+     * }
+     * </pre>
+     */
+    public Map<String, Object> toMap() {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("path", getDisplayName());
+        data.put("name", feature.getName());
+        data.put("passed", isPassed());
+        data.put("ms", getDurationMillis());
+        data.put("startTime", startTime);
+
+        // Scenarios
+        List<Map<String, Object>> scenarioList = new ArrayList<>();
+        for (ScenarioResult sr : scenarioResults) {
+            scenarioList.add(sr.toMap());
+        }
+        data.put("scenarios", scenarioList);
+
+        return data;
+    }
+
     // ========== Console Output ==========
 
     /**

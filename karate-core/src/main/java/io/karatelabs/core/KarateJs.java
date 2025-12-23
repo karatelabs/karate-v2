@@ -832,6 +832,75 @@ public class KarateJs implements SimpleObject {
         };
     }
 
+    /**
+     * Embed content in the report. Auto-detects MIME type if not provided.
+     * Usage: karate.embed(data), karate.embed(data, mimeType), karate.embed(data, mimeType, name)
+     */
+    private Invokable embed() {
+        return args -> {
+            if (args.length < 1) {
+                throw new RuntimeException("embed() needs at least one argument: data");
+            }
+            Object dataArg = args[0];
+            String mimeType = args.length > 1 && args[1] != null ? args[1].toString() : detectMimeType(dataArg);
+            String name = args.length > 2 ? args[2].toString() : null;
+
+            byte[] data = convertToBytes(dataArg);
+            LogContext.get().embed(data, mimeType, name);
+            return null;
+        };
+    }
+
+    /**
+     * Auto-detect MIME type from data object (like v1's ResourceType.fromObject).
+     */
+    private String detectMimeType(Object obj) {
+        if (obj instanceof Map || obj instanceof List) {
+            return "application/json";
+        } else if (obj instanceof Node) {
+            return "application/xml";
+        } else if (obj instanceof byte[]) {
+            return "application/octet-stream";
+        } else {
+            return "text/plain";
+        }
+    }
+
+    /**
+     * Convert various data types to bytes for embedding.
+     */
+    private byte[] convertToBytes(Object obj) {
+        if (obj == null) {
+            return new byte[0];
+        }
+        if (obj instanceof byte[]) {
+            return (byte[]) obj;
+        }
+        if (obj instanceof String str) {
+            return str.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+        if (obj instanceof List<?> list) {
+            // Check if it's a list of numbers (byte array representation)
+            if (!list.isEmpty() && list.get(0) instanceof Number) {
+                byte[] bytes = new byte[list.size()];
+                for (int i = 0; i < list.size(); i++) {
+                    bytes[i] = ((Number) list.get(i)).byteValue();
+                }
+                return bytes;
+            }
+            // Otherwise serialize as JSON
+            return StringUtils.formatJson(list).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+        if (obj instanceof Map) {
+            return StringUtils.formatJson(obj).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+        if (obj instanceof Node) {
+            return Xml.toString((Node) obj, true).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+        // Fallback: convert to string
+        return obj.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
     private Invokable xmlPath() {
         return args -> {
             if (args.length < 2) {
@@ -1406,6 +1475,7 @@ public class KarateJs implements SimpleObject {
             case "config" -> getConfig();
             case "configure" -> configure();
             case "doc" -> doc();
+            case "embed" -> embed();
             case "env" -> env;
             case "eval" -> eval();
             case "exec" -> exec();

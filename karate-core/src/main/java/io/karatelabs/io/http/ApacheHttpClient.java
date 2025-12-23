@@ -509,8 +509,8 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
                 if (c.getPath() != null) {
                     map.put(Cookies.PATH, c.getPath());
                 }
-                if (c.getExpiryDate() != null) {
-                    map.put(Cookies.MAX_AGE, c.getExpiryDate().getTime());
+                if (c.getExpiryInstant() != null) {
+                    map.put(Cookies.MAX_AGE, c.getExpiryInstant().toEpochMilli());
                 }
                 map.put(Cookies.SECURE, c.isSecure());
                 io.netty.handler.codec.http.cookie.Cookie nettyCookie = Cookies.fromMap(map);

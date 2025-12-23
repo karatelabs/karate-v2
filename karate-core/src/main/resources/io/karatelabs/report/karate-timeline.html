@@ -59,7 +59,7 @@
         }
     </style>
 </head>
-<body x-data="timelineData()">
+<body x-data="KarateReport.timelineData()">
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="karate-summary.html">
@@ -96,51 +96,7 @@
     </div>
 
     <script src="res/bootstrap.bundle.min.js"></script>
-
+    <script src="res/karate-report.js"></script>
     <script id="karate-data" type="application/json">/* KARATE_DATA */</script>
-    <script>
-        function timelineData() {
-            const jsonElement = document.getElementById('karate-data');
-            const data = JSON.parse(jsonElement.textContent);
-
-            // Theme state
-            const savedTheme = localStorage.getItem('karate-theme') || 'light';
-            document.documentElement.setAttribute('data-bs-theme', savedTheme);
-
-            // Initialize timeline after Alpine mounts
-            setTimeout(() => initTimeline(data), 0);
-
-            return {
-                data,
-                theme: savedTheme,
-
-                toggleTheme() {
-                    this.theme = this.theme === 'light' ? 'dark' : 'light';
-                    document.documentElement.setAttribute('data-bs-theme', this.theme);
-                    localStorage.setItem('karate-theme', this.theme);
-                }
-            };
-        }
-
-        function initTimeline(data) {
-            const container = document.getElementById('timeline');
-            if (!container || !data.groups || !data.items) return;
-
-            // Create datasets
-            const groups = new vis.DataSet(data.groups);
-            const items = new vis.DataSet(data.items);
-
-            // Configuration - keep minimal like v1
-            const options = {
-                groupOrder: 'content'
-            };
-
-            // Create timeline
-            const timeline = new vis.Timeline(container, items, groups, options);
-
-            // Fit all items in view
-            timeline.fit();
-        }
-    </script>
 </body>
 </html>

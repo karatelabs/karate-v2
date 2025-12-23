@@ -34,9 +34,7 @@ import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -51,7 +49,7 @@ import java.util.Map;
  * <p>
  * NDJSON format:
  * <pre>
- * {"t":"suite","time":"2025-12-16T10:30:00Z","threads":5,"env":"dev","version":"2.0.0"}
+ * {"t":"suite","time":"2025-12-16T10:30:00Z","threads":5,"env":"dev","version":"..."}
  * {"t":"feature","path":"features/users.feature","name":"User Management","scenarios":[...],"passed":true,"ms":1234}
  * {"t":"suite_end","featuresPassed":10,"featuresFailed":2,"scenariosPassed":42,"scenariosFailed":3,"ms":12345}
  * </pre>
@@ -105,7 +103,7 @@ public class NdjsonReportListener implements ResultListener {
             if (env != null && !env.isEmpty()) {
                 suiteHeader.put("env", env);
             }
-            suiteHeader.put("version", "2.0.0");
+            suiteHeader.put("version", Globals.KARATE_VERSION);
 
             writeLine(Json.stringifyStrict(suiteHeader));
 
@@ -123,7 +121,10 @@ public class NdjsonReportListener implements ResultListener {
         }
 
         try {
-            Map<String, Object> featureLine = buildFeatureLine(result);
+            // Use canonical toMap() format with NDJSON type prefix
+            Map<String, Object> featureLine = new LinkedHashMap<>();
+            featureLine.put("t", "feature");
+            featureLine.putAll(result.toMap());
             writeLine(Json.stringifyStrict(featureLine));
         } catch (Exception e) {
             JvmLogger.warn("Failed to write feature to NDJSON: {}", e.getMessage());
@@ -154,116 +155,13 @@ public class NdjsonReportListener implements ResultListener {
 
             JvmLogger.info("NDJSON report written to: {}", ndjsonPath);
 
-            // Generate HTML reports from NDJSON
-            HtmlReportWriter.writeFromNdjson(ndjsonPath, outputDir);
+            // Note: We do NOT regenerate HTML from NDJSON here.
+            // HtmlReportListener handles HTML generation (with embeds).
+            // NDJSON is for data exchange/aggregation via HtmlReport.aggregate().
 
         } catch (IOException e) {
             JvmLogger.warn("Failed to complete NDJSON report: {}", e.getMessage());
         }
-    }
-
-    /**
-     * Build the NDJSON line for a feature result.
-     */
-    private Map<String, Object> buildFeatureLine(FeatureResult result) {
-        Map<String, Object> line = new LinkedHashMap<>();
-        line.put("t", "feature");
-        line.put("path", result.getDisplayName());
-        line.put("name", result.getFeature().getName());
-
-        // Build scenarios array
-        List<Map<String, Object>> scenarios = new ArrayList<>();
-        for (ScenarioResult sr : result.getScenarioResults()) {
-            scenarios.add(buildScenarioData(sr));
-        }
-        line.put("scenarios", scenarios);
-
-        line.put("passed", result.isPassed());
-        line.put("ms", result.getDurationMillis());
-
-        return line;
-    }
-
-    /**
-     * Build scenario data for NDJSON.
-     */
-    private Map<String, Object> buildScenarioData(ScenarioResult sr) {
-        Map<String, Object> scenario = new LinkedHashMap<>();
-        scenario.put("name", sr.getScenario().getName());
-        scenario.put("line", sr.getScenario().getLine());
-        scenario.put("passed", sr.isPassed());
-        scenario.put("ms", sr.getDurationMillis());
-
-        // RefId and outline info for UI
-        scenario.put("refId", sr.getScenario().getRefId());
-        scenario.put("sectionIndex", sr.getScenario().getSection().getIndex() + 1);
-        scenario.put("exampleIndex", sr.getScenario().getExampleIndex());
-        scenario.put("isOutlineExample", sr.getScenario().isOutlineExample());
-
-        // Tags
-        var tags = sr.getScenario().getTags();
-        if (tags != null && !tags.isEmpty()) {
-            List<String> tagNames = new ArrayList<>();
-            for (var tag : tags) {
-                tagNames.add(tag.toString());
-            }
-            scenario.put("tags", tagNames);
-        }
-
-        if (sr.getThreadName() != null) {
-            scenario.put("thread", sr.getThreadName());
-        }
-
-        // Steps
-        List<Map<String, Object>> steps = new ArrayList<>();
-        for (StepResult step : sr.getStepResults()) {
-            steps.add(buildStepData(step));
-        }
-        scenario.put("steps", steps);
-
-        // Error info if failed
-        if (sr.isFailed() && sr.getFailureMessage() != null) {
-            scenario.put("error", sr.getFailureMessage());
-        }
-
-        return scenario;
-    }
-
-    /**
-     * Build step data for NDJSON.
-     */
-    private Map<String, Object> buildStepData(StepResult step) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        if (step.getStep() != null) {
-            data.put("prefix", step.getStep().getPrefix());
-            data.put("keyword", step.getStep().getKeyword());
-            data.put("text", step.getStep().getText());
-            data.put("line", step.getStep().getLine());
-        } else {
-            // Fake step (e.g., for @fail tag)
-            data.put("prefix", "*");
-            data.put("keyword", "*");
-            data.put("text", step.getLog() != null ? step.getLog() : "");
-            data.put("line", 0);
-        }
-        data.put("status", step.getStatus().name().toLowerCase());
-        data.put("ms", step.getDurationNanos() / 1_000_000);
-
-        // Log indicator for UI
-        boolean hasLogs = step.getLog() != null && !step.getLog().isEmpty();
-        data.put("hasLogs", hasLogs);
-
-        // Include log if present
-        if (hasLogs) {
-            data.put("logs", step.getLog());
-        }
-
-        // Include error if present
-        if (step.getError() != null) {
-            data.put("error", step.getError().getMessage());
-        }
-
-        return data;
     }
 
     /**

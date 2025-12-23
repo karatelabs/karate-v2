@@ -104,7 +104,7 @@ class NdjsonReportListenerTest {
 
         assertEquals("suite", suiteHeader.get("t"));
         assertEquals("dev", suiteHeader.get("env"));
-        assertEquals("2.0.0", suiteHeader.get("version"));
+        assertEquals(Globals.KARATE_VERSION, suiteHeader.get("version"));
         assertTrue(suiteHeader.containsKey("time"));
         assertTrue(suiteHeader.containsKey("threads"));
     }

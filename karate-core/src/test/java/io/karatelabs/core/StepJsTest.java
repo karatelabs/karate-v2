@@ -26,6 +26,7 @@ package io.karatelabs.core;
 import org.junit.jupiter.api.Test;
 
 import static io.karatelabs.core.TestUtils.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for JavaScript integration with Gherkin steps.
@@ -1003,6 +1004,25 @@ class StepJsTest {
             * match decoded == 'a=1&b=2'
             """);
         assertPassed(sr);
+    }
+
+    @Test
+    void testKarateEmbed() {
+        ScenarioRuntime sr = run("""
+            * def data = { foo: 'bar' }
+            * karate.embed(data, 'application/json', 'TestEmbed')
+            * match data.foo == 'bar'
+            """);
+        assertPassed(sr);
+        // Check that embed was collected
+        var stepResults = sr.getResult().getStepResults();
+        // The embed should be in the second step (the karate.embed call)
+        var embedStep = stepResults.get(1);
+        assertNotNull(embedStep.getEmbeds(), "embed step should have embeds");
+        assertEquals(1, embedStep.getEmbeds().size());
+        var embed = embedStep.getEmbeds().get(0);
+        assertEquals("application/json", embed.getMimeType());
+        assertEquals("TestEmbed", embed.getName());
     }
 
 }

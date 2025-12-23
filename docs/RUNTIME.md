@@ -90,6 +90,7 @@ SuiteResult result = Runner.path("src/test/resources")
 | `configure(key, value)` | KarateJs | Set configuration |
 | `distinct(list)` | KarateJsApi | Remove duplicates |
 | `doc(template)` | KarateJs | Render HTML template |
+| `embed(data, [mimeType], [name])` | KarateJs | Embed content in report (auto-detects type) |
 | `env` | KarateJs | Get karate.env value |
 | `eval(expression)` | KarateJs | Evaluate JS expression |
 | `exec(command)` | KarateJs | Execute system command |
@@ -151,7 +152,6 @@ SuiteResult result = Runner.path("src/test/resources")
 
 | Method | Description | Notes |
 |--------|-------------|-------|
-| `embed(content, type)` | Embed in report | Needs report consumer |
 | `feature` | Get feature info | Property |
 | `logger` | Log facade (debug/info/warn/error) | Needs LogContext |
 | `prevRequest` | Get previous HTTP request | Needs HTTP state |

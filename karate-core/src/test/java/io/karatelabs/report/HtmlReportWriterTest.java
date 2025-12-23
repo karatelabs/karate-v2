@@ -24,6 +24,7 @@
 package io.karatelabs.report;
 
 import io.karatelabs.core.Console;
+import io.karatelabs.core.Globals;
 import io.karatelabs.core.HtmlReport;
 import io.karatelabs.core.Runner;
 import io.karatelabs.core.SuiteResult;
@@ -72,10 +73,10 @@ class HtmlReportWriterTest {
                 .outputNdjson(true)
                 .parallel(3);  // parallel for timeline testing
 
-        // Verify the run
-        assertEquals(2, result.getFeatureCount());
-        assertTrue(result.getScenarioPassedCount() >= 6);
-        assertEquals(1, result.getScenarioFailedCount()); // "This one fails" scenario
+        // Verify the run (3 features: test-report, second-feature, third-feature)
+        assertEquals(3, result.getFeatureCount());
+        assertTrue(result.getScenarioPassedCount() >= 12);  // 14 total - 1 failing
+        assertEquals(1, result.getScenarioFailedCount()); // @wip scenario "This test is still in progress"
 
         // Verify HTML reports were generated
         assertTrue(Files.exists(OUTPUT_DIR.resolve("karate-summary.html")));
@@ -134,7 +135,7 @@ class HtmlReportWriterTest {
         String summaryHtml = Files.readString(reportDir.resolve("karate-summary.html"));
         assertTrue(summaryHtml.contains("<script id=\"karate-data\" type=\"application/json\">"));
         assertTrue(summaryHtml.contains("\"feature_count\""));
-        assertTrue(summaryHtml.contains("x-data=\"reportData()\""));
+        assertTrue(summaryHtml.contains("x-data=\"KarateReport.summaryData()\""));
 
         // Verify feature page also has inlined JSON
         Path featuresDir = reportDir.resolve("features");
@@ -145,7 +146,7 @@ class HtmlReportWriterTest {
 
         String featureHtml = Files.readString(featuresDir.resolve(featureFiles[0]));
         assertTrue(featureHtml.contains("<script id=\"karate-data\" type=\"application/json\">"));
-        assertTrue(featureHtml.contains("x-data=\"featureData()\""));
+        assertTrue(featureHtml.contains("x-data=\"KarateReport.featureData()\""));
     }
 
     @Test
@@ -177,7 +178,7 @@ class HtmlReportWriterTest {
 
         // First line should be suite header
         assertTrue(lines[0].contains("\"t\":\"suite\""));
-        assertTrue(lines[0].contains("\"version\":\"2.0.0\""));
+        assertTrue(lines[0].contains("\"version\":\"" + Globals.KARATE_VERSION + "\""));
 
         // Second line should be feature
         assertTrue(lines[1].contains("\"t\":\"feature\""));

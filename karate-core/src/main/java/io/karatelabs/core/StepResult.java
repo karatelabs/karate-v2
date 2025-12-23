@@ -141,6 +141,53 @@ public class StepResult {
         return error != null ? error.getMessage() : null;
     }
 
+    /**
+     * Convert to canonical Map format for NDJSON and HTML reports.
+     * This is the single internal format used for all report generation.
+     */
+    public Map<String, Object> toMap() {
+        Map<String, Object> data = new LinkedHashMap<>();
+        if (step != null) {
+            data.put("prefix", step.getPrefix());
+            data.put("keyword", step.getKeyword());
+            data.put("text", step.getText());
+            data.put("line", step.getLine());
+        } else {
+            // Fake step (e.g., for @fail tag)
+            data.put("prefix", "*");
+            data.put("keyword", "*");
+            data.put("text", log != null ? log : "");
+            data.put("line", 0);
+        }
+        data.put("status", status.name().toLowerCase());
+        data.put("ms", durationNanos / 1_000_000);
+
+        // Log indicator for UI
+        boolean hasLogs = log != null && !log.isEmpty();
+        data.put("hasLogs", hasLogs);
+        if (hasLogs) {
+            data.put("logs", log);
+        }
+
+        // Error
+        if (error != null) {
+            data.put("error", error.getMessage());
+        }
+
+        // Embeds (images, HTML, etc.)
+        boolean hasEmbeds = embeds != null && !embeds.isEmpty();
+        data.put("hasEmbeds", hasEmbeds);
+        if (hasEmbeds) {
+            List<Map<String, Object>> embedList = new ArrayList<>();
+            for (Embed embed : embeds) {
+                embedList.add(embed.toMap());
+            }
+            data.put("embeds", embedList);
+        }
+
+        return data;
+    }
+
     public Map<String, Object> toKarateJson() {
         Map<String, Object> map = new LinkedHashMap<>();
         if (step != null) {
@@ -187,6 +234,7 @@ public class StepResult {
         private final byte[] data;
         private final String mimeType;
         private final String name;
+        private String fileName;  // Set by HtmlReportWriter when writing to file
 
         public Embed(byte[] data, String mimeType, String name) {
             this.data = data;
@@ -206,10 +254,22 @@ public class StepResult {
             return name;
         }
 
+        public void setFileName(String fileName) {
+            this.fileName = fileName;
+        }
+
+        public String getFileName() {
+            return fileName;
+        }
+
         public Map<String, Object> toMap() {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("mime_type", mimeType);
-            map.put("data", java.util.Base64.getEncoder().encodeToString(data));
+            if (fileName != null) {
+                map.put("file", fileName);  // File reference for HTML reports
+            } else {
+                map.put("data", java.util.Base64.getEncoder().encodeToString(data));  // Inline for other formats
+            }
             if (name != null) {
                 map.put("name", name);
             }

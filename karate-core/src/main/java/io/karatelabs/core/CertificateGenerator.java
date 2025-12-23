@@ -50,7 +50,8 @@ public class CertificateGenerator {
      */
     public static SSLContext generateSelfSigned() {
         try {
-            SelfSignedCertificate ssc = new SelfSignedCertificate("localhost");
+            @SuppressWarnings("deprecation")
+            SelfSignedCertificate ssc = SelfSignedCertificate.builder().fqdn("localhost").build();
 
             // Create KeyStore from the self-signed certificate
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
@@ -86,7 +87,8 @@ public class CertificateGenerator {
      */
     public static SslContext generateNettySslContext() {
         try {
-            SelfSignedCertificate ssc = new SelfSignedCertificate("localhost");
+            @SuppressWarnings("deprecation")
+            SelfSignedCertificate ssc = SelfSignedCertificate.builder().fqdn("localhost").build();
             return SslContextBuilder.forServer(ssc.certificate(), ssc.privateKey()).build();
         } catch (Exception e) {
             throw new RuntimeException("failed to generate Netty SSL context: " + e.getMessage(), e);

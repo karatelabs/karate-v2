@@ -65,7 +65,7 @@
         }
     </style>
 </head>
-<body x-data="featureData()">
+<body x-data="KarateReport.featureData()">
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
         <div class="container-fluid">
             <a class="navbar-brand" href="../karate-summary.html">
@@ -138,8 +138,8 @@
                     <template x-for="(step, idx) in scenario.steps" :key="idx">
                         <div>
                             <div class="step-row d-flex align-items-start px-2"
-                                 :class="{'clickable': step.hasLogs}"
-                                 @click="step.hasLogs && (step.expanded = !step.expanded)">
+                                 :class="{'clickable': step.hasLogs || step.hasEmbeds}"
+                                 @click="(step.hasLogs || step.hasEmbeds) && (step.expanded = !step.expanded)">
                                 <div class="text-muted me-2" style="width: 40px; text-align: right;">
                                     <small x-text="'[' + step.line + ']'"></small>
                                 </div>
@@ -152,9 +152,14 @@
                                     <span class="text-muted" x-text="step.prefix"></span>
                                     <span class="fw-bold" x-text="step.keyword"></span>
                                     <span x-text="step.text"></span>
+                                    <!-- Collapsed indicators -->
                                     <span x-show="step.hasLogs && !step.expanded"
-                                          class="badge bg-secondary log-indicator ms-1"
-                                          title="Has logs - click to expand">...</span>
+                                          class="badge bg-secondary ms-1"
+                                          title="Has logs - click to expand">log</span>
+                                    <span x-show="step.hasEmbeds && !step.expanded"
+                                          class="badge bg-info ms-1"
+                                          :title="step.embeds.length + ' embed(s) - click to expand'"
+                                          x-text="step.embeds.length + ' embed' + (step.embeds.length > 1 ? 's' : '')"></span>
                                 </div>
                                 <div class="text-muted ms-2" style="width: 70px; text-align: right;">
                                     <small x-text="step.ms + ' ms'"></small>
@@ -165,6 +170,53 @@
                                  x-transition
                                  class="step-logs">
                                 <pre class="mb-0 text-body" x-text="step.logs"></pre>
+                            </div>
+                            <!-- Expandable Embeds -->
+                            <div x-show="step.expanded && step.embeds && step.embeds.length > 0"
+                                 x-transition
+                                 class="step-embeds mx-2 my-2">
+                                <template x-for="(embed, embedIdx) in step.embeds" :key="embedIdx">
+                                    <div class="embed-item border rounded p-2 mb-2 bg-body-secondary">
+                                        <template x-if="embed.name">
+                                            <div class="small text-muted mb-1" x-text="embed.name"></div>
+                                        </template>
+                                        <!-- Image -->
+                                        <template x-if="embed.mime_type && embed.mime_type.startsWith('image/')">
+                                            <img :src="'../embeds/' + embed.file" class="img-fluid" style="max-height: 400px;" :alt="embed.name || 'embedded image'">
+                                        </template>
+                                        <!-- HTML (iframe) -->
+                                        <template x-if="embed.mime_type === 'text/html'">
+                                            <iframe :src="'../embeds/' + embed.file" class="w-100 border-0" style="height: 300px;"></iframe>
+                                        </template>
+                                        <!-- Video -->
+                                        <template x-if="embed.mime_type && embed.mime_type.startsWith('video/')">
+                                            <video controls class="w-100" style="max-height: 400px;">
+                                                <source :src="'../embeds/' + embed.file" :type="embed.mime_type">
+                                            </video>
+                                        </template>
+                                        <!-- PDF -->
+                                        <template x-if="embed.mime_type === 'application/pdf'">
+                                            <embed :src="'../embeds/' + embed.file" type="application/pdf" class="w-100" style="height: 400px;">
+                                        </template>
+                                        <!-- Text/JSON/XML (preformatted) -->
+                                        <template x-if="embed.mime_type === 'text/plain' || embed.mime_type === 'application/json' || embed.mime_type === 'application/xml'">
+                                            <div>
+                                                <template x-if="embed.file">
+                                                    <a :href="'../embeds/' + embed.file" class="small" target="_blank">Open file</a>
+                                                </template>
+                                                <template x-if="embed.data">
+                                                    <pre class="bg-dark text-light p-2 rounded mb-0 small" style="max-height: 300px; overflow: auto;" x-text="atob(embed.data)"></pre>
+                                                </template>
+                                            </div>
+                                        </template>
+                                        <!-- Binary/Other (download link) -->
+                                        <template x-if="embed.file && !embed.mime_type?.startsWith('image/') && !embed.mime_type?.startsWith('video/') && embed.mime_type !== 'text/html' && embed.mime_type !== 'application/pdf' && embed.mime_type !== 'text/plain' && embed.mime_type !== 'application/json' && embed.mime_type !== 'application/xml'">
+                                            <a :href="'../embeds/' + embed.file" class="btn btn-sm btn-outline-secondary" download>
+                                                Download (<span x-text="embed.mime_type"></span>)
+                                            </a>
+                                        </template>
+                                    </div>
+                                </template>
                             </div>
                             <!-- Step Error -->
                             <template x-if="step.error">
@@ -187,44 +239,6 @@
 
     <script src="../res/bootstrap.bundle.min.js"></script>
     <script src="../res/karate-report.js"></script>
-
     <script id="karate-data" type="application/json">/* KARATE_DATA */</script>
-    <script>
-        function featureData() {
-            const jsonElement = document.getElementById('karate-data');
-            const data = JSON.parse(jsonElement.textContent);
-
-            // Initialize step expand state
-            if (data.scenarios) {
-                data.scenarios.forEach(s => {
-                    if (s.steps) {
-                        s.steps.forEach(step => {
-                            step.expanded = false;
-                        });
-                    }
-                });
-            }
-
-            // Theme state
-            const savedTheme = localStorage.getItem('karate-theme') || 'light';
-            document.documentElement.setAttribute('data-bs-theme', savedTheme);
-
-            return {
-                data,
-                theme: savedTheme,
-
-                toggleTheme() {
-                    this.theme = this.theme === 'light' ? 'dark' : 'light';
-                    document.documentElement.setAttribute('data-bs-theme', this.theme);
-                    localStorage.setItem('karate-theme', this.theme);
-                },
-
-                truncate(str, len) {
-                    if (!str) return '';
-                    return str.length > len ? str.substring(0, len) + '...' : str;
-                }
-            };
-        }
-    </script>
 </body>
 </html>

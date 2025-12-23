@@ -24,6 +24,7 @@
 package io.karatelabs.core;
 
 import io.karatelabs.common.Json;
+import io.karatelabs.common.ResourceType;
 import io.karatelabs.log.JvmLogger;
 
 import java.io.BufferedReader;
@@ -83,6 +84,9 @@ public final class HtmlReportWriter {
     };
 
     private static final String DATA_PLACEHOLDER = "/* KARATE_DATA */";
+
+    private static final java.util.concurrent.atomic.AtomicInteger embedCounter =
+            new java.util.concurrent.atomic.AtomicInteger(0);
 
     private HtmlReportWriter() {
     }
@@ -148,7 +152,11 @@ public final class HtmlReportWriter {
      */
     public static void writeFeatureHtml(FeatureResult result, Path outputDir) throws IOException {
         Path featuresDir = outputDir.resolve("features");
+        Path embedsDir = outputDir.resolve("embeds");
         Files.createDirectories(featuresDir);
+
+        // Write embed files first (sets fileName on each Embed)
+        writeEmbedFiles(result, embedsDir);
 
         Map<String, Object> featureData = buildFeatureData(result);
         String template = loadTemplate("karate-feature.html");
@@ -159,18 +167,85 @@ public final class HtmlReportWriter {
     }
 
     /**
-     * Write summary pages (summary, index) from feature summaries.
+     * Write embed files to the embeds/ directory.
+     * Sets the fileName on each Embed for JSON serialization.
+     */
+    private static void writeEmbedFiles(FeatureResult result, Path embedsDir) throws IOException {
+        boolean hasEmbeds = false;
+        for (ScenarioResult sr : result.getScenarioResults()) {
+            for (StepResult step : sr.getStepResults()) {
+                if (step.getEmbeds() != null && !step.getEmbeds().isEmpty()) {
+                    hasEmbeds = true;
+                    break;
+                }
+            }
+            if (hasEmbeds) break;
+        }
+        if (!hasEmbeds) {
+            return;  // No embeds to write
+        }
+
+        Files.createDirectories(embedsDir);
+        for (ScenarioResult sr : result.getScenarioResults()) {
+            for (StepResult step : sr.getStepResults()) {
+                if (step.getEmbeds() == null) continue;
+                for (StepResult.Embed embed : step.getEmbeds()) {
+                    String ext = getExtensionForMimeType(embed.getMimeType());
+                    String baseName = embed.getName() != null
+                            ? embed.getName().replaceAll("[^a-zA-Z0-9_-]", "_")
+                            : "embed";
+                    String fileName = String.format("%03d_%s.%s",
+                            embedCounter.incrementAndGet(), baseName, ext);
+                    Path filePath = embedsDir.resolve(fileName);
+                    Files.write(filePath, embed.getData());
+                    embed.setFileName(fileName);
+                }
+            }
+        }
+    }
+
+    /**
+     * Get file extension for a MIME type using ResourceType.
+     */
+    private static String getExtensionForMimeType(String mimeType) {
+        ResourceType rt = ResourceType.fromContentType(mimeType);
+        if (rt != null && rt.getExtension() != null) {
+            return rt.getExtension();
+        }
+        // Fallback for unknown types
+        return "bin";
+    }
+
+    /**
+     * Write summary pages (summary, index) from feature maps.
      * Used by {@link HtmlReportListener} at suite end.
      *
-     * @param summaries the collected feature summaries
+     * @param features  the collected feature maps (from FeatureResult.toMap())
      * @param result    the suite result
      * @param outputDir the root output directory
      * @param env       the karate environment (may be null)
      */
-    public static void writeSummaryPages(List<HtmlReportListener.FeatureSummary> summaries,
+    public static void writeSummaryPages(List<Map<String, Object>> features,
                                          SuiteResult result, Path outputDir, String env) throws IOException {
-        Map<String, Object> suiteData = buildSuiteDataFromSummaries(summaries, result, env);
-        List<Map<String, Object>> featureSummaryList = buildFeatureSummaryListFromSummaries(summaries);
+        // Build suite data from SuiteResult
+        Map<String, Object> suiteData = new LinkedHashMap<>();
+        suiteData.put("env", env);
+        suiteData.put("reportDate", DATE_FORMAT.format(Instant.ofEpochMilli(result.getStartTime())));
+        suiteData.put("karateVersion", Globals.KARATE_VERSION);
+
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("feature_count", result.getFeatureCount());
+        summary.put("feature_passed", result.getFeaturePassedCount());
+        summary.put("feature_failed", result.getFeatureFailedCount());
+        summary.put("scenario_count", result.getScenarioCount());
+        summary.put("scenario_passed", result.getScenarioPassedCount());
+        summary.put("scenario_failed", result.getScenarioFailedCount());
+        summary.put("duration_millis", result.getDurationMillis());
+        summary.put("status", result.isFailed() ? "failed" : "passed");
+        suiteData.put("summary", summary);
+
+        // Build feature summary list for display
+        List<Map<String, Object>> featureSummaryList = buildFeatureSummaryList(features);
 
         // Write summary page
         Map<String, Object> summaryPageData = new LinkedHashMap<>(suiteData);
@@ -351,7 +426,7 @@ public final class HtmlReportWriter {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("env", env);
         data.put("reportDate", DATE_FORMAT.format(Instant.ofEpochMilli(result.getStartTime())));
-        data.put("karateVersion", "2.0");
+        data.put("karateVersion", Globals.KARATE_VERSION);
 
         // Summary
         Map<String, Object> summary = new LinkedHashMap<>();
@@ -464,6 +539,18 @@ public final class HtmlReportWriter {
             data.put("error", step.getError().getMessage());
         }
 
+        // Embeds (images, HTML, etc.)
+        boolean hasEmbeds = step.getEmbeds() != null && !step.getEmbeds().isEmpty();
+        data.put("hasEmbeds", hasEmbeds);
+
+        if (hasEmbeds) {
+            List<Map<String, Object>> embedList = new ArrayList<>();
+            for (StepResult.Embed embed : step.getEmbeds()) {
+                embedList.add(embed.toMap());
+            }
+            data.put("embeds", embedList);
+        }
+
         return data;
     }
 
@@ -544,66 +631,6 @@ public final class HtmlReportWriter {
         List<Map<String, Object>> features = new ArrayList<>();
     }
 
-    // ========== Data Building from FeatureSummary (for HtmlReportListener) ==========
-
-    private static Map<String, Object> buildSuiteDataFromSummaries(List<HtmlReportListener.FeatureSummary> summaries,
-                                                                    SuiteResult result, String env) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("env", env);
-        data.put("reportDate", DATE_FORMAT.format(Instant.ofEpochMilli(result.getStartTime())));
-        data.put("karateVersion", "2.0");
-
-        // Summary counts
-        Map<String, Object> summary = new LinkedHashMap<>();
-        summary.put("feature_count", summaries.size());
-
-        int featurePassed = 0;
-        int featureFailed = 0;
-        int scenarioPassed = 0;
-        int scenarioFailed = 0;
-        int scenarioCount = 0;
-
-        for (HtmlReportListener.FeatureSummary fs : summaries) {
-            if (fs.isPassed()) {
-                featurePassed++;
-            } else {
-                featureFailed++;
-            }
-            scenarioPassed += fs.getPassedCount();
-            scenarioFailed += fs.getFailedCount();
-            scenarioCount += fs.getScenarioCount();
-        }
-
-        summary.put("feature_passed", featurePassed);
-        summary.put("feature_failed", featureFailed);
-        summary.put("scenario_count", scenarioCount);
-        summary.put("scenario_passed", scenarioPassed);
-        summary.put("scenario_failed", scenarioFailed);
-        summary.put("duration_millis", result.getDurationMillis());
-        summary.put("status", featureFailed > 0 ? "failed" : "passed");
-        data.put("summary", summary);
-
-        return data;
-    }
-
-    private static List<Map<String, Object>> buildFeatureSummaryListFromSummaries(List<HtmlReportListener.FeatureSummary> summaries) {
-        List<Map<String, Object>> list = new ArrayList<>();
-        for (HtmlReportListener.FeatureSummary fs : summaries) {
-            Map<String, Object> map = new LinkedHashMap<>();
-            map.put("name", fs.getName());
-            map.put("relativePath", fs.getRelativePath());
-            map.put("fileName", fs.getFileName());
-            map.put("passed", fs.isPassed());
-            map.put("failed", !fs.isPassed());
-            map.put("durationMillis", fs.getDurationMillis());
-            map.put("scenarioCount", fs.getScenarioCount());
-            map.put("passedCount", fs.getPassedCount());
-            map.put("failedCount", fs.getFailedCount());
-            list.add(map);
-        }
-        return list;
-    }
-
     // ========== Timeline Generation ==========
 
     private static final DateTimeFormatter TIME_FORMAT =
@@ -613,16 +640,16 @@ public final class HtmlReportWriter {
      * Write the timeline HTML page showing scenario execution across threads.
      * Used by {@link HtmlReportListener} at suite end.
      *
-     * @param summaries   the collected feature summaries (containing scenario timing data)
+     * @param features    the collected feature maps (from FeatureResult.toMap())
      * @param result      the suite result
      * @param outputDir   the root output directory
      * @param env         the karate environment (may be null)
      * @param threadCount the number of threads used for parallel execution
      */
-    public static void writeTimelineHtml(List<HtmlReportListener.FeatureSummary> summaries,
+    public static void writeTimelineHtml(List<Map<String, Object>> features,
                                          SuiteResult result, Path outputDir, String env,
                                          int threadCount) throws IOException {
-        Map<String, Object> timelineData = buildTimelineData(summaries, result, env, threadCount);
+        Map<String, Object> timelineData = buildTimelineData(features, result, env, threadCount);
         String template = loadTemplate("karate-timeline.html");
         String html = inlineJson(template, timelineData);
         Files.writeString(outputDir.resolve("karate-timeline.html"), html);
@@ -630,15 +657,17 @@ public final class HtmlReportWriter {
 
     /**
      * Build the timeline data structure for vis.js Timeline.
+     * Uses canonical feature/scenario Maps from toMap() methods.
      */
-    private static Map<String, Object> buildTimelineData(List<HtmlReportListener.FeatureSummary> summaries,
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> buildTimelineData(List<Map<String, Object>> features,
                                                           SuiteResult result, String env,
                                                           int threadCount) {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("env", env);
         data.put("reportDate", DATE_FORMAT.format(Instant.ofEpochMilli(result.getStartTime())));
         data.put("threads", threadCount);
-        data.put("karateVersion", "2.0");
+        data.put("karateVersion", Globals.KARATE_VERSION);
 
         // Build groups (one per thread) and items (one per scenario)
         Map<String, Integer> threadToGroupId = new LinkedHashMap<>();
@@ -646,9 +675,16 @@ public final class HtmlReportWriter {
         List<Map<String, Object>> items = new ArrayList<>();
         int itemId = 0;
 
-        for (HtmlReportListener.FeatureSummary fs : summaries) {
-            for (HtmlReportListener.ScenarioSummary ss : fs.getScenarios()) {
-                String threadName = ss.getThreadName();
+        for (Map<String, Object> feature : features) {
+            // Extract feature filename for timeline display
+            String path = (String) feature.get("path");
+            String featureFileName = extractFileName(path);
+
+            List<Map<String, Object>> scenarios = (List<Map<String, Object>>) feature.get("scenarios");
+            if (scenarios == null) continue;
+
+            for (Map<String, Object> scenario : scenarios) {
+                String threadName = (String) scenario.get("thread");
                 if (threadName == null || threadName.isEmpty()) {
                     threadName = "main";
                 }
@@ -670,11 +706,12 @@ public final class HtmlReportWriter {
                 item.put("id", ++itemId);
                 item.put("group", groupId);
 
-                String content = ss.getFeatureName() + ss.getRefId();
+                String refId = (String) scenario.get("refId");
+                String content = featureFileName + refId;
                 item.put("content", content);
 
-                long startTime = ss.getStartTime();
-                long endTime = ss.getEndTime() - 1; // -1 to avoid overlap in vis.js
+                long startTime = ((Number) scenario.get("startTime")).longValue();
+                long endTime = ((Number) scenario.get("endTime")).longValue() - 1; // -1 to avoid overlap in vis.js
                 if (endTime < startTime) {
                     endTime = startTime; // Handle zero-duration scenarios
                 }
@@ -685,14 +722,15 @@ public final class HtmlReportWriter {
                 String startTimeStr = TIME_FORMAT.format(Instant.ofEpochMilli(startTime));
                 String endTimeStr = TIME_FORMAT.format(Instant.ofEpochMilli(endTime));
                 String title = content + " " + startTimeStr + "-" + endTimeStr;
-                String scenarioName = ss.getName();
+                String scenarioName = (String) scenario.get("name");
                 if (scenarioName != null && !scenarioName.isEmpty()) {
                     title = title + " " + scenarioName;
                 }
                 item.put("title", title);
 
                 // CSS class for pass/fail styling
-                item.put("className", ss.isPassed() ? "passed" : "failed");
+                boolean passed = Boolean.TRUE.equals(scenario.get("passed"));
+                item.put("className", passed ? "passed" : "failed");
 
                 items.add(item);
             }
@@ -702,6 +740,30 @@ public final class HtmlReportWriter {
         data.put("items", items);
 
         return data;
+    }
+
+    /**
+     * Extract filename without extension from a path.
+     * Example: "target/test-classes/features/users.feature" → "users"
+     */
+    private static String extractFileName(String path) {
+        if (path == null || path.isEmpty()) {
+            return "unknown";
+        }
+        // Remove directory path
+        int lastSlash = path.lastIndexOf('/');
+        if (lastSlash >= 0) {
+            path = path.substring(lastSlash + 1);
+        }
+        lastSlash = path.lastIndexOf('\\');
+        if (lastSlash >= 0) {
+            path = path.substring(lastSlash + 1);
+        }
+        // Remove .feature extension
+        if (path.endsWith(".feature")) {
+            path = path.substring(0, path.length() - 8);
+        }
+        return path;
     }
 
 }

@@ -168,10 +168,10 @@ class RunnerTest {
                 .outputConsoleSummary(false)
                 .parallel(1);
 
-        // Should find both test-report.feature and second-feature.feature
-        assertEquals(2, result.getFeatureCount());
-        // Total scenarios: 5 from test-report.feature + 2 from second-feature.feature = 7
-        assertEquals(7, result.getScenarioCount());
+        // Should find all feature files: test-report, second-feature, third-feature
+        assertEquals(3, result.getFeatureCount());
+        // Total scenarios: 6 + 4 + 4 = 14
+        assertEquals(14, result.getScenarioCount());
     }
 
     @Test
@@ -184,7 +184,7 @@ class RunnerTest {
                 .outputConsoleSummary(false)
                 .parallel(1);
 
-        assertEquals(2, result.getFeatureCount());
+        assertEquals(3, result.getFeatureCount());
     }
 
     @Test
@@ -196,7 +196,7 @@ class RunnerTest {
                 .parallel(1);
 
         assertEquals(1, result.getFeatureCount());
-        assertEquals(2, result.getScenarioPassedCount());
+        assertEquals(4, result.getScenarioPassedCount());  // Payment Processing has 4 scenarios
     }
 
     @Test
