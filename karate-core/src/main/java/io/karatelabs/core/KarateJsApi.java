@@ -29,7 +29,6 @@ import io.karatelabs.common.StringUtils;
 import io.karatelabs.common.Xml;
 import io.karatelabs.js.Invokable;
 import io.karatelabs.js.JsCallable;
-import io.karatelabs.js.SimpleObject;
 import org.w3c.dom.Node;
 
 import com.jayway.jsonpath.JsonPath;
@@ -50,50 +49,16 @@ import java.util.regex.Pattern;
  * Stateless utility methods for the karate.* API.
  * These methods don't require engine state or providers.
  */
-public class KarateJsApi implements SimpleObject {
+public class KarateJsApi {
 
-    @Override
-    public Object jsGet(String key) {
-        return switch (key) {
-            case "append" -> append();
-            case "appendTo" -> appendTo();
-            case "distinct" -> distinct();
-            case "extract" -> extract();
-            case "extractAll" -> extractAll();
-            case "filter" -> filter();
-            case "filterKeys" -> filterKeys();
-            case "forEach" -> forEach();
-            case "fromJson" -> fromJson();
-            case "jsonPath" -> jsonPath();
-            case "keysOf" -> keysOf();
-            case "lowerCase" -> lowerCase();
-            case "map" -> map();
-            case "mapWithKey" -> mapWithKey();
-            case "merge" -> merge();
-            case "pretty" -> pretty();
-            case "pause" -> pause();
-            case "prettyXml" -> prettyXml();
-            case "range" -> range();
-            case "repeat" -> repeat();
-            case "sizeOf" -> sizeOf();
-            case "sort" -> sort();
-            case "toBean" -> toBean();
-            case "toBytes" -> toBytes();
-            case "toCsv" -> toCsv();
-            case "toJson" -> toJson();
-            case "toString" -> toStringValue();
-            case "typeOf" -> typeOf();
-            case "urlDecode" -> urlDecode();
-            case "urlEncode" -> urlEncode();
-            case "valuesOf" -> valuesOf();
-            default -> null;
-        };
+    private KarateJsApi() {
+        // utility class
     }
 
     // ========== Collection Utilities ==========
 
     @SuppressWarnings("unchecked")
-    private Invokable append() {
+    static Invokable append() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("append() needs at least two arguments");
@@ -118,7 +83,7 @@ public class KarateJsApi implements SimpleObject {
     }
 
     @SuppressWarnings("unchecked")
-    private Invokable appendTo() {
+    static Invokable appendTo() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("appendTo() needs at least two arguments: list and item(s)");
@@ -140,7 +105,7 @@ public class KarateJsApi implements SimpleObject {
      * Remove duplicates from a list while preserving order.
      * Usage: karate.distinct([1, 2, 2, 3, 1]) => [1, 2, 3]
      */
-    private Invokable distinct() {
+    static Invokable distinct() {
         return args -> {
             if (args.length == 0 || args[0] == null) {
                 return new ArrayList<>();
@@ -154,7 +119,7 @@ public class KarateJsApi implements SimpleObject {
         };
     }
 
-    private Invokable extract() {
+    static Invokable extract() {
         return args -> {
             if (args.length < 3) {
                 throw new RuntimeException("extract() needs three arguments: text, regex, group");
@@ -171,7 +136,7 @@ public class KarateJsApi implements SimpleObject {
         };
     }
 
-    private Invokable extractAll() {
+    static Invokable extractAll() {
         return args -> {
             if (args.length < 3) {
                 throw new RuntimeException("extractAll() needs three arguments: text, regex, group");
@@ -190,7 +155,7 @@ public class KarateJsApi implements SimpleObject {
     }
 
     @SuppressWarnings("unchecked")
-    private Invokable filter() {
+    static Invokable filter() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("filter() needs two arguments: list and function");
@@ -210,7 +175,7 @@ public class KarateJsApi implements SimpleObject {
     }
 
     @SuppressWarnings("unchecked")
-    private Invokable filterKeys() {
+    static Invokable filterKeys() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("filterKeys() needs at least two arguments");
@@ -248,7 +213,7 @@ public class KarateJsApi implements SimpleObject {
     }
 
     @SuppressWarnings("unchecked")
-    private Invokable forEach() {
+    static Invokable forEach() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("forEach() needs two arguments: collection and function");
@@ -271,7 +236,7 @@ public class KarateJsApi implements SimpleObject {
         };
     }
 
-    private Invokable fromJson() {
+    static Invokable fromJson() {
         return args -> {
             if (args.length < 1) {
                 throw new RuntimeException("fromJson() needs one argument: a JSON string");
@@ -286,7 +251,7 @@ public class KarateJsApi implements SimpleObject {
         };
     }
 
-    private Invokable jsonPath() {
+    static Invokable jsonPath() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("jsonPath() needs two arguments: object and path");
@@ -298,7 +263,7 @@ public class KarateJsApi implements SimpleObject {
     }
 
     @SuppressWarnings("unchecked")
-    private Invokable keysOf() {
+    static Invokable keysOf() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("keysOf() needs one argument");
@@ -308,7 +273,7 @@ public class KarateJsApi implements SimpleObject {
         };
     }
 
-    private Invokable lowerCase() {
+    static Invokable lowerCase() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("lowerCase() needs one argument");
@@ -332,7 +297,7 @@ public class KarateJsApi implements SimpleObject {
     }
 
     @SuppressWarnings("unchecked")
-    private Invokable map() {
+    static Invokable map() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("map() needs two arguments: list and function");
@@ -347,7 +312,7 @@ public class KarateJsApi implements SimpleObject {
         };
     }
 
-    private Invokable mapWithKey() {
+    static Invokable mapWithKey() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("mapWithKey() needs two arguments: list and key name");
@@ -369,7 +334,7 @@ public class KarateJsApi implements SimpleObject {
     }
 
     @SuppressWarnings("unchecked")
-    private Invokable merge() {
+    static Invokable merge() {
         return args -> {
             Map<String, Object> result = new LinkedHashMap<>();
             for (Object arg : args) {
@@ -381,7 +346,7 @@ public class KarateJsApi implements SimpleObject {
         };
     }
 
-    private Invokable pause() {
+    static Invokable pause() {
         return args -> {
             if (args.length == 0 || args[0] == null) {
                 return null;
@@ -396,7 +361,7 @@ public class KarateJsApi implements SimpleObject {
         };
     }
 
-    private Invokable pretty() {
+    static Invokable pretty() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("pretty() needs one argument");
@@ -418,7 +383,7 @@ public class KarateJsApi implements SimpleObject {
      *        karate.range(0, 10, 2) => [0, 2, 4, 6, 8]
      *        karate.range(5, 0, -1) => [5, 4, 3, 2, 1]
      */
-    private Invokable range() {
+    static Invokable range() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("range() needs at least two arguments: start and end");
@@ -440,7 +405,7 @@ public class KarateJsApi implements SimpleObject {
         };
     }
 
-    private Invokable prettyXml() {
+    static Invokable prettyXml() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("prettyXml() needs one argument");
@@ -456,7 +421,7 @@ public class KarateJsApi implements SimpleObject {
         };
     }
 
-    private Invokable repeat() {
+    static Invokable repeat() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("repeat() needs two arguments: count and function");
@@ -471,7 +436,7 @@ public class KarateJsApi implements SimpleObject {
         };
     }
 
-    private Invokable sizeOf() {
+    static Invokable sizeOf() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("sizeOf() needs one argument");
@@ -489,7 +454,7 @@ public class KarateJsApi implements SimpleObject {
     }
 
     @SuppressWarnings("unchecked")
-    private Invokable sort() {
+    static Invokable sort() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("sort() needs two arguments: list and key function");
@@ -509,7 +474,7 @@ public class KarateJsApi implements SimpleObject {
         };
     }
 
-    private Invokable toBean() {
+    static Invokable toBean() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("toBean() needs two arguments: object and class name");
@@ -527,7 +492,7 @@ public class KarateJsApi implements SimpleObject {
      * Usage: karate.toCsv([{a:1,b:2},{a:3,b:4}]) => "a,b\n1,2\n3,4\n"
      */
     @SuppressWarnings("unchecked")
-    private Invokable toCsv() {
+    static Invokable toCsv() {
         return args -> {
             if (args.length == 0 || args[0] == null) {
                 return "";
@@ -543,7 +508,7 @@ public class KarateJsApi implements SimpleObject {
         };
     }
 
-    private Invokable toBytes() {
+    static Invokable toBytes() {
         return args -> {
             if (args.length < 1) {
                 throw new RuntimeException("toBytes() needs one argument: a list of numbers");
@@ -569,7 +534,7 @@ public class KarateJsApi implements SimpleObject {
         };
     }
 
-    private Invokable toJson() {
+    static Invokable toJson() {
         return args -> {
             if (args.length < 1) {
                 throw new RuntimeException("toJson() needs at least one argument");
@@ -585,13 +550,13 @@ public class KarateJsApi implements SimpleObject {
     }
 
     @SuppressWarnings("unchecked")
-    private void removeNullValues(Object obj) {
+    private static void removeNullValues(Object obj) {
         if (obj instanceof Map) {
             Map<String, Object> map = (Map<String, Object>) obj;
             map.entrySet().removeIf(e -> e.getValue() == null);
-            map.values().forEach(this::removeNullValues);
+            map.values().forEach(KarateJsApi::removeNullValues);
         } else if (obj instanceof List) {
-            ((List<?>) obj).forEach(this::removeNullValues);
+            ((List<?>) obj).forEach(KarateJsApi::removeNullValues);
         }
     }
 
@@ -602,7 +567,7 @@ public class KarateJsApi implements SimpleObject {
      * - byte[] -> string from bytes
      * - Others -> toString()
      */
-    private JsCallable toStringValue() {
+    static JsCallable toStringValue() {
         return (thisRef, args) -> {
             if (args.length == 0 || args[0] == null) {
                 return null;
@@ -622,7 +587,7 @@ public class KarateJsApi implements SimpleObject {
     /**
      * Returns the Karate type of a value.
      */
-    private Invokable typeOf() {
+    static Invokable typeOf() {
         return args -> {
             if (args.length == 0 || args[0] == null) {
                 return "null";
@@ -649,7 +614,7 @@ public class KarateJsApi implements SimpleObject {
         };
     }
 
-    private Invokable urlEncode() {
+    static Invokable urlEncode() {
         return args -> {
             if (args.length == 0 || args[0] == null) {
                 return "";
@@ -658,7 +623,7 @@ public class KarateJsApi implements SimpleObject {
         };
     }
 
-    private Invokable urlDecode() {
+    static Invokable urlDecode() {
         return args -> {
             if (args.length == 0 || args[0] == null) {
                 return "";
@@ -668,7 +633,7 @@ public class KarateJsApi implements SimpleObject {
     }
 
     @SuppressWarnings("unchecked")
-    private Invokable valuesOf() {
+    static Invokable valuesOf() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("valuesOf() needs one argument");

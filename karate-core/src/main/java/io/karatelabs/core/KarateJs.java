@@ -97,7 +97,6 @@ public class KarateJs implements SimpleObject {
     private String env;
     private MockHandler mockHandler; // non-null only in mock context
 
-    private final KarateJsApi api = new KarateJsApi();
     private final JsCallable read;
 
     public KarateJs(Resource root) {
@@ -1366,13 +1365,40 @@ public class KarateJs implements SimpleObject {
 
     @Override
     public Object jsGet(String key) {
-        // Delegate to stateless API first
-        Object result = api.jsGet(key);
-        if (result != null) {
-            return result;
-        }
-        // Stateful methods that need engine/providers
         return switch (key) {
+            // Stateless utility methods (KarateJsApi)
+            case "append" -> KarateJsApi.append();
+            case "appendTo" -> KarateJsApi.appendTo();
+            case "distinct" -> KarateJsApi.distinct();
+            case "extract" -> KarateJsApi.extract();
+            case "extractAll" -> KarateJsApi.extractAll();
+            case "filter" -> KarateJsApi.filter();
+            case "filterKeys" -> KarateJsApi.filterKeys();
+            case "forEach" -> KarateJsApi.forEach();
+            case "fromJson" -> KarateJsApi.fromJson();
+            case "jsonPath" -> KarateJsApi.jsonPath();
+            case "keysOf" -> KarateJsApi.keysOf();
+            case "lowerCase" -> KarateJsApi.lowerCase();
+            case "map" -> KarateJsApi.map();
+            case "mapWithKey" -> KarateJsApi.mapWithKey();
+            case "merge" -> KarateJsApi.merge();
+            case "pause" -> KarateJsApi.pause();
+            case "pretty" -> KarateJsApi.pretty();
+            case "prettyXml" -> KarateJsApi.prettyXml();
+            case "range" -> KarateJsApi.range();
+            case "repeat" -> KarateJsApi.repeat();
+            case "sizeOf" -> KarateJsApi.sizeOf();
+            case "sort" -> KarateJsApi.sort();
+            case "toBean" -> KarateJsApi.toBean();
+            case "toBytes" -> KarateJsApi.toBytes();
+            case "toCsv" -> KarateJsApi.toCsv();
+            case "toJson" -> KarateJsApi.toJson();
+            case "toString" -> KarateJsApi.toStringValue();
+            case "typeOf" -> KarateJsApi.typeOf();
+            case "urlDecode" -> KarateJsApi.urlDecode();
+            case "urlEncode" -> KarateJsApi.urlEncode();
+            case "valuesOf" -> KarateJsApi.valuesOf();
+            // Stateful methods that need engine/providers
             case "abort" -> abort();
             case "call" -> call();
             case "callonce" -> callonce();
