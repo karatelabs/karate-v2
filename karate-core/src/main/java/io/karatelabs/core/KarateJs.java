@@ -89,6 +89,10 @@ public class KarateJs implements SimpleObject {
     private BiFunction<String, Object, Object> callSingleProvider;
     private Supplier<Map<String, Object>> infoProvider;
     private Supplier<Map<String, Object>> scenarioProvider;
+    private Supplier<Map<String, Object>> featureProvider;
+    private Supplier<List<String>> tagsProvider;
+    private Supplier<Map<String, List<String>>> tagValuesProvider;
+    private Supplier<Map<String, Object>> scenarioOutlineProvider;
     private Consumer<Object> signalConsumer;
     private BiConsumer<String, Object> configureHandler;
     private Supplier<KarateConfig> configProvider;
@@ -221,6 +225,22 @@ public class KarateJs implements SimpleObject {
         this.scenarioProvider = provider;
     }
 
+    public void setFeatureProvider(Supplier<Map<String, Object>> provider) {
+        this.featureProvider = provider;
+    }
+
+    public void setTagsProvider(Supplier<List<String>> provider) {
+        this.tagsProvider = provider;
+    }
+
+    public void setTagValuesProvider(Supplier<Map<String, List<String>>> provider) {
+        this.tagValuesProvider = provider;
+    }
+
+    public void setScenarioOutlineProvider(Supplier<Map<String, Object>> provider) {
+        this.scenarioOutlineProvider = provider;
+    }
+
     public void setEnv(String env) {
         this.env = env;
     }
@@ -261,6 +281,34 @@ public class KarateJs implements SimpleObject {
             return scenarioProvider.get();
         }
         return Map.of();
+    }
+
+    private Map<String, Object> getFeature() {
+        if (featureProvider != null) {
+            return featureProvider.get();
+        }
+        return Map.of();
+    }
+
+    private List<String> getTags() {
+        if (tagsProvider != null) {
+            return tagsProvider.get();
+        }
+        return List.of();
+    }
+
+    private Map<String, List<String>> getTagValues() {
+        if (tagValuesProvider != null) {
+            return tagValuesProvider.get();
+        }
+        return Map.of();
+    }
+
+    private Map<String, Object> getScenarioOutline() {
+        if (scenarioOutlineProvider != null) {
+            return scenarioOutlineProvider.get();
+        }
+        return null;  // V1 returns null when not in an outline
     }
 
     /**
@@ -1480,6 +1528,7 @@ public class KarateJs implements SimpleObject {
             case "eval" -> eval();
             case "exec" -> exec();
             case "fail" -> fail();
+            case "feature" -> getFeature();
             case "fork" -> fork();
             case "fromString" -> fromString();
             case "get" -> get();
@@ -1495,12 +1544,15 @@ public class KarateJs implements SimpleObject {
             case "readAsString" -> readAsString();
             case "remove" -> remove();
             case "scenario" -> getScenario();
+            case "scenarioOutline" -> getScenarioOutline();
             case "set" -> set();
             case "setup" -> setup();
             case "setupOnce" -> setupOnce();
             case "setXml" -> setXml();
             case "signal" -> signal();
             case "start" -> start();
+            case "tags" -> getTags();
+            case "tagValues" -> getTagValues();
             case "toJava" -> toJava();
             case "toStringPretty" -> toStringPretty();
             case "xmlPath" -> xmlPath();

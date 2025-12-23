@@ -93,6 +93,7 @@ SuiteResult result = Runner.path("src/test/resources")
 | `embed(data, [mimeType], [name])` | KarateJs | Embed content in report (auto-detects type) |
 | `env` | KarateJs | Get karate.env value |
 | `eval(expression)` | KarateJs | Evaluate JS expression |
+| `feature` | KarateJs | Get feature info (name, description, prefixedPath, fileName, parentDir) |
 | `exec(command)` | KarateJs | Execute system command |
 | `extract(text, regex, group)` | KarateJsApi | Extract regex match |
 | `extractAll(text, regex, group)` | KarateJsApi | Extract all regex matches |
@@ -126,7 +127,8 @@ SuiteResult result = Runner.path("src/test/resources")
 | `readAsString(path)` | KarateJs | Read file as string |
 | `remove(name, path)` | KarateJs | Remove from variable |
 | `repeat(count, fn)` | KarateJsApi | Generate list by repeating function |
-| `scenario` | KarateJs | Get scenario info |
+| `scenario` | KarateJs | Get scenario info (name, description, line, sectionIndex, exampleIndex, exampleData) |
+| `scenarioOutline` | KarateJs | Get scenario outline info (null if not in outline) |
 | `set(name, path?, value)` | KarateJs | Set variable value |
 | `setup()` | KarateJs | Get setup scenario result |
 | `setupOnce()` | KarateJs | Get cached setup result |
@@ -135,6 +137,8 @@ SuiteResult result = Runner.path("src/test/resources")
 | `sizeOf(value)` | KarateJsApi | Get size of list/map/string |
 | `sort(list, fn)` | KarateJsApi | Sort list by key function |
 | `start(options)` | KarateJs | Start mock server |
+| `tags` | KarateJs | Get effective tags list (feature + scenario) |
+| `tagValues` | KarateJs | Get tag values map (tag name → list of values) |
 | `toBean(obj, className)` | KarateJsApi | Convert to Java bean |
 | `toBytes(list)` | KarateJsApi | Convert number list to byte[] |
 | `toCsv(list)` | KarateJsApi | Convert list of maps to CSV |
@@ -152,14 +156,10 @@ SuiteResult result = Runner.path("src/test/resources")
 
 | Method | Description | Notes |
 |--------|-------------|-------|
-| `feature` | Get feature info | Property |
 | `logger` | Log facade (debug/info/warn/error) | Needs LogContext |
 | `prevRequest` | Get previous HTTP request | Needs HTTP state |
 | `request` | Get current request (mock) | Mock context only |
 | `response` | Get current response | Mock context only |
-| `scenarioOutline` | Get outline info | Property |
-| `tags` | Get tags list | Property |
-| `tagValues` | Get tag values map | Property |
 | `readAsStream(path)` | Read as InputStream | Needs root |
 | `render(template)` | Render HTML template | Similar to doc |
 | `stop(port)` | Wait for port to close | Polling |
@@ -370,6 +370,7 @@ Anonymous daily usage ping from `Suite.run()`:
 | `StepCallTest` | call/callonce |
 | `StepAbortTest` | karate.abort() |
 | `StepEvalTest` | eval keyword |
+| `StepInfoTest` | karate.info, scenario, feature, tags, tagValues, scenarioOutline |
 | `OutlineTest` | Scenario outline, dynamic |
 | `CallSingleTest` | karate.callSingle() |
 | `DataUtilsTest` | CSV/YAML parsing |

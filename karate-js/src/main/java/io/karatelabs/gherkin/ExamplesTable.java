@@ -89,7 +89,9 @@ public class ExamplesTable {
     public Map<String, Object> toKarateJson() {
         Map<String, Object> map = new HashMap<>();
         List<String> tagStrings = new ArrayList<>();
-        tags.forEach(tag -> tagStrings.add(tag.toString()));
+        if (tags != null) {
+            tags.forEach(tag -> tagStrings.add(tag.toString()));
+        }
         map.put("tags", tagStrings);
         map.put("data", table.getRowsAsMapsConverted());
         return map;

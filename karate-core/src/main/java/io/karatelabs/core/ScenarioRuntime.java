@@ -25,8 +25,11 @@ package io.karatelabs.core;
 
 import io.karatelabs.common.Resource;
 import io.karatelabs.gherkin.Feature;
+import io.karatelabs.gherkin.FeatureSection;
 import io.karatelabs.gherkin.Scenario;
+import io.karatelabs.gherkin.ScenarioOutline;
 import io.karatelabs.gherkin.Step;
+import io.karatelabs.gherkin.Tag;
 import io.karatelabs.io.http.HttpRequestBuilder;
 import io.karatelabs.log.JvmLogger;
 import io.karatelabs.log.LogContext;
@@ -90,6 +93,13 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         karate.setAbortHandler(this::abort);
         karate.setConfigureHandler(this::configure);
         karate.setConfigProvider(() -> config);
+        // Wire up info providers (these just read from scenario, don't need FeatureRuntime)
+        karate.setInfoProvider(this::getScenarioInfo);
+        karate.setScenarioProvider(this::getScenarioData);
+        karate.setFeatureProvider(this::getFeatureData);
+        karate.setTagsProvider(this::getTagsList);
+        karate.setTagValuesProvider(this::getTagValuesMap);
+        karate.setScenarioOutlineProvider(this::getScenarioOutlineData);
     }
 
     private void initEngine() {
@@ -102,6 +112,10 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         karate.setCallSingleProvider(this::executeCallSingle);
         karate.setInfoProvider(this::getScenarioInfo);
         karate.setScenarioProvider(this::getScenarioData);
+        karate.setFeatureProvider(this::getFeatureData);
+        karate.setTagsProvider(this::getTagsList);
+        karate.setTagValuesProvider(this::getTagValuesMap);
+        karate.setScenarioOutlineProvider(this::getScenarioOutlineData);
         karate.setSignalConsumer(this::setListenResult);
         karate.setConfigureHandler(this::configure);
         karate.setConfigProvider(() -> config);
@@ -254,6 +268,97 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         if (exampleData != null) {
             data.put("exampleData", exampleData);
         }
+        return data;
+    }
+
+    /**
+     * Returns feature data map for karate.feature.
+     * V1 compatible fields: name, description, prefixedPath, fileName, parentDir
+     */
+    private Map<String, Object> getFeatureData() {
+        Map<String, Object> data = new LinkedHashMap<>();
+        Feature feature = scenario.getFeature();
+        data.put("name", feature.getName());
+        data.put("description", feature.getDescription());
+        Resource resource = feature.getResource();
+        data.put("prefixedPath", resource.getPrefixedPath());
+        if (resource.isFile() && resource.getPath() != null) {
+            data.put("fileName", resource.getPath().getFileName().toString());
+            data.put("parentDir", resource.getPath().getParent().toString());
+        }
+        return data;
+    }
+
+    /**
+     * Returns the effective tags (scenario + feature) as a List of tag names.
+     * V1 compatible: returns tag text without '@' prefix.
+     */
+    private List<String> getTagsList() {
+        List<String> result = new ArrayList<>();
+        // Feature-level tags first
+        List<Tag> featureTags = scenario.getFeature().getTags();
+        if (featureTags != null) {
+            for (Tag tag : featureTags) {
+                result.add(tag.getText());
+            }
+        }
+        // Scenario-level tags
+        List<Tag> scenarioTags = scenario.getTags();
+        if (scenarioTags != null) {
+            for (Tag tag : scenarioTags) {
+                if (!result.contains(tag.getText())) {
+                    result.add(tag.getText());
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Returns tag values map for karate.tagValues.
+     * V1 compatible: Map<String, List<String>> where key is tag name, value is list of comma-separated values.
+     */
+    private Map<String, List<String>> getTagValuesMap() {
+        Map<String, List<String>> result = new LinkedHashMap<>();
+        // Feature-level tags first
+        List<Tag> featureTags = scenario.getFeature().getTags();
+        if (featureTags != null) {
+            for (Tag tag : featureTags) {
+                result.put(tag.getName(), tag.getValues());
+            }
+        }
+        // Scenario-level tags (override feature-level)
+        List<Tag> scenarioTags = scenario.getTags();
+        if (scenarioTags != null) {
+            for (Tag tag : scenarioTags) {
+                result.put(tag.getName(), tag.getValues());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Returns scenario outline data for karate.scenarioOutline.
+     * Returns null if not in a scenario outline.
+     * V1 compatible fields: name, description, line, sectionIndex, exampleTableCount, exampleTables, numScenariosToExecute
+     */
+    private Map<String, Object> getScenarioOutlineData() {
+        if (!scenario.isOutlineExample()) {
+            return null;
+        }
+        FeatureSection section = scenario.getSection();
+        if (!section.isOutline()) {
+            return null;
+        }
+        ScenarioOutline outline = section.getScenarioOutline();
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("name", outline.getName());
+        data.put("description", outline.getDescription());
+        data.put("line", outline.getLine());
+        data.put("sectionIndex", section.getIndex());
+        data.put("exampleTableCount", outline.getNumExampleTables());
+        data.put("exampleTables", outline.getAllExampleData());
+        data.put("numScenariosToExecute", outline.getNumScenarios());
         return data;
     }
 
