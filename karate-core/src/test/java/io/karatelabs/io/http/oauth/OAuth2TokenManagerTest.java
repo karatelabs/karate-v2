@@ -300,12 +300,12 @@ class OAuth2TokenManagerTest {
 
     @Test
     void testMultipleRefreshes() {
+        java.util.concurrent.atomic.AtomicInteger counter = new java.util.concurrent.atomic.AtomicInteger();
         HttpServer server = HttpServer.start(0, request -> {
             HttpResponse response = new HttpResponse();
             if (request.pathMatches("/token")) {
                 // Return token with incrementing values
-                String refreshToken = request.getBodyString();
-                String newAccessToken = "token-" + System.currentTimeMillis();
+                String newAccessToken = "token-" + counter.incrementAndGet();
 
                 response.setBody(Json.of(String.format("""
                     {
