@@ -32,7 +32,8 @@ import io.karatelabs.js.Engine;
 import io.karatelabs.output.CucumberJsonWriter;
 import io.karatelabs.output.HtmlReportListener;
 import io.karatelabs.output.JunitXmlWriter;
-import io.karatelabs.output.JvmLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import io.karatelabs.output.JsonLinesReportListener;
 import io.karatelabs.output.ResultListener;
 
@@ -54,6 +55,8 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Suite {
+
+    private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
 
     // Features to run
     private final List<Feature> features = new ArrayList<>();
@@ -270,13 +273,13 @@ public class Suite {
         // Load karate-base.js (shared functions, evaluated before config)
         baseContent = tryLoadConfig(basePath);
         if (baseContent != null) {
-            JvmLogger.debug("Loaded karate-base.js from {}", basePath);
+            logger.debug("Loaded karate-base.js from {}", basePath);
         }
 
         // Load main config content
         configContent = tryLoadConfig(configPath);
         if (configContent != null) {
-            JvmLogger.debug("Loaded config content from {}", configPath);
+            logger.debug("Loaded config content from {}", configPath);
         }
 
         // Load env-specific config content (e.g., karate-config-dev.js)
@@ -284,7 +287,7 @@ public class Suite {
             String envConfigPath = configPath.replace(".js", "-" + env + ".js");
             configEnvContent = tryLoadConfig(envConfigPath);
             if (configEnvContent != null) {
-                JvmLogger.debug("Loaded env config content from {}", envConfigPath);
+                logger.debug("Loaded env config content from {}", envConfigPath);
             }
         }
     }
@@ -297,7 +300,7 @@ public class Suite {
         } catch (ResourceNotFoundException e) {
             // Not found at explicit path - continue to fallbacks
         } catch (Exception e) {
-            JvmLogger.warn("Error loading config {}: {}", path, e.getMessage());
+            logger.warn("Error loading config {}: {}", path, e.getMessage());
             return null;
         }
 
@@ -314,15 +317,15 @@ public class Suite {
                 Path workingDirConfig = workingDir.resolve(fileName);
                 if (java.nio.file.Files.exists(workingDirConfig)) {
                     String content = java.nio.file.Files.readString(workingDirConfig);
-                    JvmLogger.debug("Loaded config from working directory: {}", workingDirConfig);
+                    logger.debug("Loaded config from working directory: {}", workingDirConfig);
                     return content;
                 }
             } catch (Exception e) {
-                JvmLogger.debug("Could not load config from working dir: {}", e.getMessage());
+                logger.debug("Could not load config from working dir: {}", e.getMessage());
             }
         }
 
-        JvmLogger.debug("Config not found: {}", path);
+        logger.debug("Config not found: {}", path);
         return null;
     }
 
@@ -399,7 +402,7 @@ public class Suite {
             Path summaryPath = outputDir.resolve("karate-summary.json");
             String json = result.toJsonPretty();
             java.nio.file.Files.writeString(summaryPath, json);
-            JvmLogger.info("Report written to: {}", summaryPath);
+            logger.info("Report written to: {}", summaryPath);
 
             // Write individual feature results
             for (FeatureResult fr : result.getFeatureResults()) {
@@ -414,7 +417,7 @@ public class Suite {
                 java.nio.file.Files.writeString(featurePath, featureJson);
             }
         } catch (Exception e) {
-            JvmLogger.warn("Failed to write karate report: {}", e.getMessage());
+            logger.warn("Failed to write karate report: {}", e.getMessage());
         }
     }
 
@@ -515,9 +518,9 @@ public class Suite {
         }
         try {
             Files.move(outputDir, backupPath);
-            JvmLogger.info("Backed up existing '{}' to: {}", outputDir.getFileName(), backupPath);
+            logger.info("Backed up existing '{}' to: {}", outputDir.getFileName(), backupPath);
         } catch (Exception e) {
-            JvmLogger.warn("Failed to backup existing dir '{}': {}", outputDir, e.getMessage());
+            logger.warn("Failed to backup existing dir '{}': {}", outputDir, e.getMessage());
         }
     }
 

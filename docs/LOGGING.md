@@ -8,30 +8,44 @@ This document describes the logging architecture in Karate v2.
 
 ## Overview
 
-Karate v2 has two distinct logging systems:
+Karate v2 uses a unified logging architecture based on SLF4J with category-based filtering:
 
-| System | Purpose | Output |
-|--------|---------|--------|
-| **LogContext** | Test logs (`print`, `karate.log`, HTTP) | Reports, cascade to SLF4J |
-| **JvmLogger** | Framework/infrastructure logs | JUL or custom appender |
+| Category | Purpose | Usage |
+|----------|---------|-------|
+| `karate.runtime` | Core framework logs | Suite, Runner, StepExecutor, reports, config |
+| `karate.http` | HTTP request/response logs | Request/response bodies, headers |
+| `karate.scenario` | Test logs | `print`, `karate.log()`, `karate.logger.*` |
+| `karate.console` | Console output | Test summary (TRACE level to avoid duplication) |
+
+**Hierarchy benefit:** `<logger name="karate" level="DEBUG"/>` controls all subcategories.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Test Execution                                              │
 │                                                              │
 │  print "hello"  ──┐                                          │
-│  karate.log()   ──┼──► LogContext ──► Report Buffer          │
-│  HTTP logs      ──┘         │                                │
-│                             └──► Cascade (optional)          │
-│                                      │                       │
-│                                      ▼                       │
-│                               Slf4jCascade ──► SLF4J         │
+│  karate.log()   ──┼──► LogContext.with(SCENARIO_LOGGER)      │
+│                   │           │                              │
+│                   │           ├──► Report Buffer (HTML)      │
+│                   │           └──► SLF4J (karate.scenario)   │
+│                   │                                          │
+│  HTTP logs      ──┴──► LogContext.with(HTTP_LOGGER)          │
+│                               │                              │
+│                               ├──► Report Buffer (HTML)      │
+│                               └──► SLF4J (karate.http)       │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
 │  Framework Infrastructure                                    │
 │                                                              │
-│  JvmLogger.info() ──► LogAppender ──► JUL / STDERR / Custom │
+│  logger.info() ──► SLF4J (karate.runtime)                   │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│  Console Output                                              │
+│                                                              │
+│  Console.println() ──► System.out (colored)                 │
+│                    └──► SLF4J TRACE (karate.console)        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -85,8 +99,8 @@ function fn() {
 
 **CLI:**
 ```bash
-karate run --log-level debug features/   # Include DEBUG and above
-karate run -L warn features/              # Only WARN and ERROR
+karate run --report-log-level debug features/   # Include DEBUG and above in reports
+karate run --report-log-level warn features/    # Only WARN and ERROR in reports
 ```
 
 **Runner API:**
@@ -124,6 +138,28 @@ ctx.log("Value: {}", someValue);  // SLF4J-style formatting
 String allLogs = ctx.collect();  // Get captured logs
 ```
 
+### LogContext.with(Logger) API
+
+For category-aware logging that both captures to reports AND cascades to SLF4J:
+
+```java
+import io.karatelabs.output.LogContext;
+
+// Use predefined category loggers
+private static final LogContext.LogWriter log = LogContext.with(LogContext.HTTP_LOGGER);
+
+// Log at various levels - writes to both report buffer and SLF4J
+log.info("Request: {}", request);
+log.debug("Headers: {}", headers);
+log.warn("Rate limit exceeded");
+```
+
+Built-in category loggers:
+- `LogContext.RUNTIME_LOGGER` - `karate.runtime`
+- `LogContext.HTTP_LOGGER` - `karate.http`
+- `LogContext.SCENARIO_LOGGER` - `karate.scenario`
+- `LogContext.CONSOLE_LOGGER` - `karate.console`
+
 ### Embedding Content
 
 `LogContext` also collects embedded content (HTML, images, etc.) for inclusion in reports:
@@ -149,68 +185,65 @@ The `doc` keyword uses this system to embed rendered templates:
 
 Embeds appear in HTML reports and are included in the JSON output as Base64-encoded data.
 
-### Forwarding to SLF4J (Cascade)
+---
 
-By default, test logs only go to reports. To also forward to SLF4J:
+## Framework Logs
+
+Framework code uses standard SLF4J logging with the `karate.runtime` category:
 
 ```java
-import io.karatelabs.output.Slf4jCascade;
-import io.karatelabs.output.LogContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-// Forward test logs to SLF4J category "karate.run"
-LogContext.setCascade(Slf4jCascade.create());
+private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
 
-// Custom category
-LogContext.setCascade(Slf4jCascade.create("myapp.tests"));
+logger.info("Starting suite");
+logger.debug("Loading config from {}", path);
+logger.warn("Config not found: {}", path);
+logger.error("Execution failed", exception);
 ```
 
-The cascade is level-aware: logs from `karate.logger.debug()` go to SLF4J at DEBUG level, `karate.logger.warn()` at WARN level, etc.
+Or use the constant from LogContext:
 
-Configure in logback.xml:
+```java
+private static final Logger logger = LogContext.RUNTIME_LOGGER;
+```
+
+### Configuring Framework Log Levels
+
+Use standard SLF4J/logback configuration:
+
 ```xml
-<logger name="karate.run" level="DEBUG">
-    <appender-ref ref="FILE" />
-</logger>
+<!-- logback.xml -->
+<configuration>
+    <!-- Control all karate logs -->
+    <logger name="karate" level="INFO"/>
+
+    <!-- Or fine-grained control -->
+    <logger name="karate.runtime" level="INFO"/>
+    <logger name="karate.http" level="WARN"/>
+    <logger name="karate.scenario" level="DEBUG"/>
+</configuration>
 ```
 
 ---
 
-## Framework Logs (JvmLogger)
+## CLI Flags
 
-`JvmLogger` handles framework/infrastructure logging (not test output):
+| Flag | Purpose | Controls |
+|------|---------|----------|
+| `--report-log-level <level>` | Report filtering | What goes in HTML reports |
+| `--runtime-log-level <level>` | Console/JVM verbosity | SLF4J root logger level (future) |
 
-```java
-import io.karatelabs.output.JvmLogger;
+**Values:** `trace`, `debug`, `info` (default), `warn`, `error`
 
-JvmLogger.info("Starting suite");
-JvmLogger.debug("Loading config from {}", path);
-JvmLogger.warn("Config not found: {}", path);
-JvmLogger.error("Execution failed", exception);
+**Examples:**
+```bash
+karate run --report-log-level debug features/     # Capture DEBUG+ in reports
+karate run --report-log-level warn features/      # Only WARN+ in reports
 ```
 
-### Log Levels
-
-```java
-public enum LogLevel {
-    TRACE,  // Finest detail
-    DEBUG,  // Debugging info
-    INFO,   // Normal operation
-    WARN,   // Potential issues
-    ERROR   // Failures
-}
-```
-
-### Custom Appender
-
-```java
-import io.karatelabs.output.LogAppender;
-import io.karatelabs.output.JvmLogger;
-
-// Route to custom logging system
-JvmLogger.setAppender((level, format, args) -> {
-    MyLogger.log(level.name(), String.format(format, args));
-});
-```
+> **Note:** The `-L, --log-level` flag is deprecated. Use `--report-log-level` instead.
 
 ---
 
@@ -312,6 +345,15 @@ Or programmatically:
 Console.setColorsEnabled(false);
 ```
 
+### Console to Logger
+
+Console output is also sent to `karate.console` at TRACE level (with ANSI codes stripped). This allows capturing console output in logs without duplication:
+
+```xml
+<!-- To capture console output in logs -->
+<logger name="karate.console" level="TRACE"/>
+```
+
 ---
 
 ## Configuration Priority
@@ -358,25 +400,15 @@ Runner.path("features/")
     .parallel(5);
 ```
 
-### SLF4J Dependency
-
-V1 included SLF4J. V2 uses JUL (java.util.logging) by default.
-
-To use logback with V2:
-1. Add `jul-to-slf4j` bridge to your classpath
-2. Configure in your logging setup
-
 ---
 
 ## Implementation Classes
 
 | Class | Purpose |
 |-------|---------|
-| `io.karatelabs.output.LogContext` | Thread-local test log collector |
-| `io.karatelabs.output.JvmLogger` | Framework logger |
-| `io.karatelabs.output.LogAppender` | Pluggable log output |
+| `io.karatelabs.output.LogContext` | Thread-local test log collector with category support |
+| `io.karatelabs.output.LogContext.LogWriter` | Category-aware logger that writes to buffer + SLF4J |
 | `io.karatelabs.output.LogLevel` | Log level enum |
-| `io.karatelabs.output.Slf4jCascade` | Forward test logs to SLF4J |
 | `io.karatelabs.output.LogMask` | Log masking (future) |
 | `io.karatelabs.output.LogMaskPreset` | Built-in masking patterns (future) |
 

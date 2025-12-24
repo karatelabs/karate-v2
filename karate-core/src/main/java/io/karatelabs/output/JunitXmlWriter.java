@@ -27,6 +27,9 @@ import io.karatelabs.core.FeatureResult;
 import io.karatelabs.core.ScenarioResult;
 import io.karatelabs.core.SuiteResult;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
@@ -51,6 +54,8 @@ import java.time.format.DateTimeFormatter;
  */
 public final class JunitXmlWriter {
 
+    private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
+
     private static final DateTimeFormatter TIMESTAMP_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss").withZone(ZoneId.systemDefault());
 
@@ -72,9 +77,9 @@ public final class JunitXmlWriter {
             Path xmlPath = outputDir.resolve("karate-junit.xml");
             String xml = toXml(result);
             Files.writeString(xmlPath, xml);
-            JvmLogger.info("JUnit XML report written to: {}", xmlPath);
+            logger.info("JUnit XML report written to: {}", xmlPath);
         } catch (Exception e) {
-            JvmLogger.warn("Failed to write JUnit XML report: {}", e.getMessage());
+            logger.warn("Failed to write JUnit XML report: {}", e.getMessage());
         }
     }
 

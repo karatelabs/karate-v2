@@ -38,8 +38,9 @@ import io.karatelabs.http.HttpRequestBuilder;
 import io.karatelabs.http.HttpResponse;
 import io.karatelabs.js.GherkinParser;
 import io.karatelabs.js.JsCallable;
-import io.karatelabs.output.JvmLogger;
 import io.karatelabs.output.LogContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import io.karatelabs.match.Match;
 import io.karatelabs.match.Result;
 
@@ -56,6 +57,8 @@ import java.util.List;
 import java.util.Map;
 
 public class StepExecutor {
+
+    private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
 
     private final ScenarioRuntime runtime;
 

@@ -23,7 +23,8 @@
  */
 package io.karatelabs.process;
 
-import io.karatelabs.output.JvmLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -39,6 +40,8 @@ import java.util.function.BooleanSupplier;
  * Utilities for waiting on ports and HTTP endpoints.
  */
 public final class PortUtils {
+
+    private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
 
     private PortUtils() {
     }
@@ -56,19 +59,19 @@ public final class PortUtils {
     public static boolean waitForPort(String host, int port, int attempts, int intervalMs, BooleanSupplier stillAlive) {
         for (int i = 0; i < attempts; i++) {
             if (stillAlive != null && !stillAlive.getAsBoolean()) {
-                JvmLogger.warn("process died while waiting for port {}:{}", host, port);
+                logger.warn("process died while waiting for port {}:{}", host, port);
                 return false;
             }
             try (Socket socket = new Socket()) {
                 socket.connect(new InetSocketAddress(host, port), 1000);
-                JvmLogger.debug("port {}:{} is available after {} attempts", host, port, i + 1);
+                logger.debug("port {}:{} is available after {} attempts", host, port, i + 1);
                 return true;
             } catch (Exception e) {
-                JvmLogger.trace("port {}:{} not yet available (attempt {})", host, port, i + 1);
+                logger.trace("port {}:{} not yet available (attempt {})", host, port, i + 1);
                 sleep(intervalMs);
             }
         }
-        JvmLogger.warn("port {}:{} not available after {} attempts", host, port, attempts);
+        logger.warn("port {}:{} not available after {} attempts", host, port, attempts);
         return false;
     }
 
@@ -81,7 +84,7 @@ public final class PortUtils {
                 .build();
         for (int i = 0; i < attempts; i++) {
             if (stillAlive != null && !stillAlive.getAsBoolean()) {
-                JvmLogger.warn("process died while waiting for HTTP {}", url);
+                logger.warn("process died while waiting for HTTP {}", url);
                 return false;
             }
             try {
@@ -92,16 +95,16 @@ public final class PortUtils {
                         .build();
                 HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
                 if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                    JvmLogger.debug("HTTP {} is available after {} attempts", url, i + 1);
+                    logger.debug("HTTP {} is available after {} attempts", url, i + 1);
                     return true;
                 }
-                JvmLogger.trace("HTTP {} returned {} (attempt {})", url, response.statusCode(), i + 1);
+                logger.trace("HTTP {} returned {} (attempt {})", url, response.statusCode(), i + 1);
             } catch (Exception e) {
-                JvmLogger.trace("HTTP {} not available (attempt {}): {}", url, i + 1, e.getMessage());
+                logger.trace("HTTP {} not available (attempt {}): {}", url, i + 1, e.getMessage());
             }
             sleep(intervalMs);
         }
-        JvmLogger.warn("HTTP {} not available after {} attempts", url, attempts);
+        logger.warn("HTTP {} not available after {} attempts", url, attempts);
         return false;
     }
 

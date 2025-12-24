@@ -27,6 +27,9 @@ import io.karatelabs.core.FeatureResult;
 import io.karatelabs.core.Suite;
 import io.karatelabs.core.SuiteResult;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -48,6 +51,8 @@ import java.util.concurrent.TimeUnit;
  * </ul>
  */
 public class HtmlReportListener implements ResultListener {
+
+    private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
 
     private final Path outputDir;
     private final String env;
@@ -85,7 +90,7 @@ public class HtmlReportListener implements ResultListener {
             Files.createDirectories(outputDir.resolve("features"));
             Files.createDirectories(outputDir.resolve("res"));
         } catch (Exception e) {
-            JvmLogger.warn("Failed to create report directories: {}", e.getMessage());
+            logger.warn("Failed to create report directories: {}", e.getMessage());
         }
     }
 
@@ -103,7 +108,7 @@ public class HtmlReportListener implements ResultListener {
                 ensureResourcesCopied();
                 HtmlReportWriter.writeFeatureHtml(result, outputDir);
             } catch (Exception e) {
-                JvmLogger.warn("Failed to write feature HTML for {}: {}", result.getDisplayName(), e.getMessage());
+                logger.warn("Failed to write feature HTML for {}: {}", result.getDisplayName(), e.getMessage());
             }
         });
     }
@@ -120,16 +125,16 @@ public class HtmlReportListener implements ResultListener {
             // Write timeline page using canonical feature maps
             HtmlReportWriter.writeTimelineHtml(featureMaps, result, outputDir, env, threadCount);
 
-            JvmLogger.info("HTML report written to: {}", outputDir.resolve("karate-summary.html"));
+            logger.info("HTML report written to: {}", outputDir.resolve("karate-summary.html"));
 
         } catch (Exception e) {
-            JvmLogger.warn("Failed to write HTML summary: {}", e.getMessage());
+            logger.warn("Failed to write HTML summary: {}", e.getMessage());
         } finally {
             // Wait for all feature HTML writes to complete
             executor.shutdown();
             try {
                 if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
-                    JvmLogger.warn("HTML report executor did not complete in time");
+                    logger.warn("HTML report executor did not complete in time");
                     executor.shutdownNow();
                 }
             } catch (InterruptedException e) {
@@ -145,7 +150,7 @@ public class HtmlReportListener implements ResultListener {
                 HtmlReportWriter.copyStaticResources(outputDir.resolve("res"));
                 resourcesCopied = true;
             } catch (Exception e) {
-                JvmLogger.warn("Failed to copy static resources: {}", e.getMessage());
+                logger.warn("Failed to copy static resources: {}", e.getMessage());
             }
         }
     }

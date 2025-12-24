@@ -30,16 +30,12 @@ import io.karatelabs.http.HttpResponse;
 
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 
 public class HttpLogger {
 
-    private int requestCount;
-    private Consumer<String> logger = s -> LogContext.get().log(s);
+    private static final LogContext.LogWriter log = LogContext.with(LogContext.HTTP_LOGGER);
 
-    public void setLogger(Consumer<String> logger) {
-        this.logger = logger;
-    }
+    private int requestCount;
 
     public static void logHeaders(StringBuilder sb, int num, String prefix, Map<String, List<String>> headers) {
         if (headers == null || headers.isEmpty()) {
@@ -90,7 +86,7 @@ public class HttpLogger {
             }
             logBody(sb, body, rt);
         }
-        logger.accept(sb.toString());
+        log.info(sb.toString());
     }
 
     public void logResponse(HttpResponse response) {
@@ -107,7 +103,7 @@ public class HttpLogger {
         } else {
             logBody(sb, response.getBodyBytes(), rt);
         }
-        logger.accept(sb.toString());
+        log.info(sb.toString());
     }
 
 }

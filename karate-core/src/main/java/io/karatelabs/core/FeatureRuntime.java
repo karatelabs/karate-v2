@@ -31,8 +31,9 @@ import io.karatelabs.gherkin.ScenarioOutline;
 import io.karatelabs.gherkin.ExamplesTable;
 import io.karatelabs.gherkin.Tag;
 import io.karatelabs.js.JsCallable;
-import io.karatelabs.output.JvmLogger;
 import io.karatelabs.output.ResultListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,6 +44,8 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class FeatureRuntime implements Callable<FeatureResult> {
+
+    private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
 
     private final Suite suite;
     private final Feature feature;
@@ -388,7 +391,7 @@ public class FeatureRuntime implements Callable<FeatureResult> {
                     // JsCallable.call() works with null context (uses declared context internally)
                     rowValue = callable.call(null, index);
                 } catch (Exception e) {
-                    JvmLogger.warn("Generator function threw exception at index {}: {}", index, e.getMessage());
+                    logger.warn("Generator function threw exception at index {}: {}", index, e.getMessage());
                     break;
                 }
 
@@ -401,7 +404,7 @@ public class FeatureRuntime implements Callable<FeatureResult> {
                     results.add((Map<String, Object>) rowValue);
                 } else {
                     // Non-map value signals end of iteration
-                    JvmLogger.debug("Generator function returned non-map at index {}, stopping: {}", index, rowValue);
+                    logger.debug("Generator function returned non-map at index {}, stopping: {}", index, rowValue);
                     break;
                 }
 

@@ -30,6 +30,8 @@ import io.karatelabs.core.Globals;
 import io.karatelabs.core.ScenarioResult;
 import io.karatelabs.core.StepResult;
 import io.karatelabs.core.SuiteResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -72,6 +74,8 @@ import java.util.Map;
  */
 public final class HtmlReportWriter {
 
+    private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
+
     private static final DateTimeFormatter DATE_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
 
@@ -110,12 +114,12 @@ public final class HtmlReportWriter {
             // Generate reports
             writeReports(data.suiteData, data.features, outputDir);
 
-            JvmLogger.info("HTML report written to: {}", outputDir.resolve("karate-summary.html"));
+            logger.info("HTML report written to: {}", outputDir.resolve("karate-summary.html"));
 
         } catch (Exception e) {
-            JvmLogger.warn("Failed to write HTML report from JSON Lines: {}", e.getMessage());
-            if (JvmLogger.isDebugEnabled()) {
-                JvmLogger.debug("HTML report error details", e);
+            logger.warn("Failed to write HTML report from JSON Lines: {}", e.getMessage());
+            if (logger.isDebugEnabled()) {
+                logger.debug("HTML report error details", e);
             }
         }
     }
@@ -137,12 +141,12 @@ public final class HtmlReportWriter {
             // Generate reports
             writeReports(suiteData, features, outputDir);
 
-            JvmLogger.info("HTML report written to: {}", outputDir.resolve("karate-summary.html"));
+            logger.info("HTML report written to: {}", outputDir.resolve("karate-summary.html"));
 
         } catch (Exception e) {
-            JvmLogger.warn("Failed to write HTML report: {}", e.getMessage());
-            if (JvmLogger.isDebugEnabled()) {
-                JvmLogger.debug("HTML report error details", e);
+            logger.warn("Failed to write HTML report: {}", e.getMessage());
+            if (logger.isDebugEnabled()) {
+                logger.debug("HTML report error details", e);
             }
         }
     }
@@ -366,7 +370,7 @@ public final class HtmlReportWriter {
                 if (is != null) {
                     Files.copy(is, resDir.resolve(resourceName), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                 } else {
-                    JvmLogger.debug("Static resource not found: {}", resourcePath);
+                    logger.debug("Static resource not found: {}", resourcePath);
                 }
             }
         }

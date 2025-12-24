@@ -23,14 +23,31 @@
  */
 package io.karatelabs.output;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.PrintStream;
+import java.util.regex.Pattern;
 
 /**
  * Console output utilities with ANSI color support.
+ * Also sends a copy (stripped of ANSI codes) to the karate.console logger at TRACE level.
  */
 public final class Console {
 
+    private static final Logger logger = LoggerFactory.getLogger("karate.console");
+
+    // Pattern to strip ANSI escape codes for logger
+    private static final Pattern ANSI_PATTERN = Pattern.compile("\u001B\\[[;\\d]*m");
+
     private Console() {
+    }
+
+    /**
+     * Strip ANSI escape codes from text for logging.
+     */
+    private static String stripAnsi(String text) {
+        return ANSI_PATTERN.matcher(text).replaceAll("");
     }
 
     // ANSI escape codes
@@ -178,6 +195,10 @@ public final class Console {
 
     public static void println(String text) {
         out.println(text);
+        // Send stripped copy to logger at TRACE level (avoids double-logging)
+        if (logger.isTraceEnabled()) {
+            logger.trace(stripAnsi(text));
+        }
     }
 
     public static void println() {
@@ -186,6 +207,10 @@ public final class Console {
 
     public static void print(String text) {
         out.print(text);
+        // Send stripped copy to logger at TRACE level
+        if (logger.isTraceEnabled()) {
+            logger.trace(stripAnsi(text));
+        }
     }
 
     // ========== Utility ==========

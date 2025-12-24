@@ -150,16 +150,32 @@ public class RunCommand implements Callable<Integer> {
     boolean noPom;
 
     @Option(
+            names = {"--report-log-level"},
+            description = "Minimum log level for HTML reports: trace, debug, info, warn, error (default: info)"
+    )
+    String reportLogLevel;
+
+    @Deprecated
+    @Option(
             names = {"-L", "--log-level"},
-            description = "Minimum log level for reports: trace, debug, info, warn, error (default: info)"
+            hidden = true,
+            description = "Deprecated: use --report-log-level instead"
     )
     String logLevel;
+
+    @Option(
+            names = {"--runtime-log-level"},
+            description = "Runtime log level for console/JVM output: trace, debug, info, warn, error"
+    )
+    String runtimeLogLevel;
 
     // Loaded pom config
     private KaratePom pom;
 
     @Override
     public Integer call() {
+        // TODO: wire up runtimeLogLevel when JUL support is added
+
         // Print header
         Console.println();
         Console.println(Console.bold("Karate " + Globals.KARATE_VERSION));
@@ -350,6 +366,11 @@ public class RunCommand implements Callable<Integer> {
     }
 
     private String resolveLogLevel() {
+        // Check --report-log-level first
+        if (reportLogLevel != null) {
+            return reportLogLevel;
+        }
+        // Fall back to deprecated --log-level for backward compatibility
         if (logLevel != null) {
             return logLevel;
         }

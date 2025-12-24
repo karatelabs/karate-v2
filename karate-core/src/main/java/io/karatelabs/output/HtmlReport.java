@@ -25,6 +25,9 @@ package io.karatelabs.output;
 
 import io.karatelabs.common.Json;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -55,6 +58,8 @@ import java.util.Map;
  * </pre>
  */
 public final class HtmlReport {
+
+    private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
 
     private HtmlReport() {
     }
@@ -144,7 +149,7 @@ public final class HtmlReport {
 
                 for (Path jsonlFile : jsonlFiles) {
                     if (!Files.exists(jsonlFile)) {
-                        JvmLogger.warn("JSON Lines file not found, skipping: {}", jsonlFile);
+                        logger.warn("JSON Lines file not found, skipping: {}", jsonlFile);
                         continue;
                     }
 
@@ -204,7 +209,7 @@ public final class HtmlReport {
                 // Generate HTML from merged data
                 HtmlReportWriter.writeFromJsonLines(mergedJsonl, outputDir);
 
-                JvmLogger.info("Aggregated report generated at: {}", outputDir);
+                logger.info("Aggregated report generated at: {}", outputDir);
 
             } catch (IOException e) {
                 throw new RuntimeException("Failed to generate aggregated report: " + e.getMessage(), e);

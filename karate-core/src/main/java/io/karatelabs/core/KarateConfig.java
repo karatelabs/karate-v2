@@ -24,7 +24,8 @@
 package io.karatelabs.core;
 
 import io.karatelabs.js.SimpleObject;
-import io.karatelabs.output.JvmLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import io.karatelabs.output.LogContext;
 import io.karatelabs.output.LogLevel;
 
@@ -57,6 +58,8 @@ import java.util.Map;
  * via {@code karate.config}.
  */
 public class KarateConfig implements SimpleObject {
+
+    private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
 
     // Keys exposed via SimpleObject
     private static final List<String> KEYS = List.of(

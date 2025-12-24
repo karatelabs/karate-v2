@@ -1809,9 +1809,12 @@ public class KarateJs implements SimpleObject {
     /**
      * LogFacade - Provides karate.logger.trace/debug/info/warn/error methods.
      * Implements SimpleObject for clean JS interop: karate.logger.debug('msg')
-     * Logs go to LogContext with level filtering for report capture.
+     * Logs go to LogContext with level filtering for report capture,
+     * and cascade to SLF4J via karate.scenario category.
      */
     public static class LogFacade implements SimpleObject {
+
+        private static final LogContext.LogWriter log = LogContext.with(LogContext.SCENARIO_LOGGER);
 
         @Override
         public Object jsGet(String key) {
@@ -1847,7 +1850,14 @@ public class KarateJs implements SimpleObject {
                         sb.append(val);
                     }
                 }
-                LogContext.get().log(level, sb.toString());
+                // Log via LogWriter (captures to buffer AND cascades to SLF4J)
+                switch (level) {
+                    case TRACE -> log.trace(sb.toString());
+                    case DEBUG -> log.debug(sb.toString());
+                    case INFO -> log.info(sb.toString());
+                    case WARN -> log.warn(sb.toString());
+                    case ERROR -> log.error(sb.toString());
+                }
                 return null;
             };
         }

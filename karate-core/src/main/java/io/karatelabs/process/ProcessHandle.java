@@ -25,7 +25,8 @@ package io.karatelabs.process;
 
 import io.karatelabs.js.JsCallable;
 import io.karatelabs.js.SimpleObject;
-import io.karatelabs.output.JvmLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import io.karatelabs.output.LogContext;
 
 import java.io.BufferedReader;
@@ -46,6 +47,8 @@ import java.util.function.Predicate;
  * 2. Deferred start: ProcessHandle.create(config) then handle.start() - allows setup before start
  */
 public class ProcessHandle implements SimpleObject {
+
+    private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
 
     private static final List<String> KEYS = List.of(
             "stdOut", "stdErr", "exitCode", "alive", "pid",
@@ -118,7 +121,7 @@ public class ProcessHandle implements SimpleObject {
                 pb.environment().putAll(config.env());
             }
             pb.redirectErrorStream(config.redirectErrorStream());
-            JvmLogger.debug("starting process: {}", config.args());
+            logger.debug("starting process: {}", config.args());
             this.process = pb.start();
             this.executor = Executors.newVirtualThreadPerTaskExecutor();
             startStreamReaders();
@@ -160,7 +163,7 @@ public class ProcessHandle implements SimpleObject {
                 }
             } catch (Exception e) {
                 if (!closed.get()) {
-                    JvmLogger.warn("stdout reader error: {}", e.getMessage());
+                    logger.warn("stdout reader error: {}", e.getMessage());
                 }
             } finally {
                 stdoutReaderDone.complete(null);
@@ -180,7 +183,7 @@ public class ProcessHandle implements SimpleObject {
                     }
                 } catch (Exception e) {
                     if (!closed.get()) {
-                        JvmLogger.warn("stderr reader error: {}", e.getMessage());
+                        logger.warn("stderr reader error: {}", e.getMessage());
                     }
                 } finally {
                     stderrReaderDone.complete(null);
@@ -196,7 +199,7 @@ public class ProcessHandle implements SimpleObject {
                 int code = process.waitFor();
                 exitCode = code;
                 exitFuture.complete(code);
-                JvmLogger.debug("process exited with code: {}", code);
+                logger.debug("process exited with code: {}", code);
             } catch (Exception e) {
                 exitFuture.completeExceptionally(e);
             }
@@ -219,7 +222,7 @@ public class ProcessHandle implements SimpleObject {
             try {
                 config.listener().accept(line);
             } catch (Exception e) {
-                JvmLogger.warn("listener error: {}", e.getMessage());
+                logger.warn("listener error: {}", e.getMessage());
             }
         }
         // Dispatch to additional listeners
@@ -227,7 +230,7 @@ public class ProcessHandle implements SimpleObject {
             try {
                 listener.accept(line);
             } catch (Exception e) {
-                JvmLogger.warn("stdOut listener error: {}", e.getMessage());
+                logger.warn("stdOut listener error: {}", e.getMessage());
             }
         }
         // Check waitForOutput predicates
@@ -248,7 +251,7 @@ public class ProcessHandle implements SimpleObject {
             try {
                 config.errorListener().accept(line);
             } catch (Exception e) {
-                JvmLogger.warn("error listener error: {}", e.getMessage());
+                logger.warn("error listener error: {}", e.getMessage());
             }
         }
         // Dispatch to additional error listeners
@@ -256,7 +259,7 @@ public class ProcessHandle implements SimpleObject {
             try {
                 listener.accept(line);
             } catch (Exception e) {
-                JvmLogger.warn("stdErr listener error: {}", e.getMessage());
+                logger.warn("stdErr listener error: {}", e.getMessage());
             }
         }
         // Check waitForOutput predicates (stderr lines also checked)
@@ -274,7 +277,7 @@ public class ProcessHandle implements SimpleObject {
                     }
                 }
             } catch (Exception e) {
-                JvmLogger.warn("waitForOutput predicate error: {}", e.getMessage());
+                logger.warn("waitForOutput predicate error: {}", e.getMessage());
             }
         }
     }
@@ -323,9 +326,9 @@ public class ProcessHandle implements SimpleObject {
                 stderrReaderDone.get(500, TimeUnit.MILLISECONDS);
             }
         } catch (TimeoutException e) {
-            JvmLogger.warn("timeout waiting for stream readers - this should not happen");
+            logger.warn("timeout waiting for stream readers - this should not happen");
         } catch (Exception e) {
-            JvmLogger.debug("error waiting for stream readers: {}", e.getMessage());
+            logger.debug("error waiting for stream readers: {}", e.getMessage());
         }
     }
 
@@ -399,7 +402,7 @@ public class ProcessHandle implements SimpleObject {
                 process.destroy();
             }
             executor.shutdownNow();
-            JvmLogger.debug("process closed (force={})", force);
+            logger.debug("process closed (force={})", force);
         }
     }
 
@@ -461,7 +464,7 @@ public class ProcessHandle implements SimpleObject {
                     try {
                         listener.call(ctx, line);
                     } catch (Exception e) {
-                        JvmLogger.warn("onStdOut listener error: {}", e.getMessage());
+                        logger.warn("onStdOut listener error: {}", e.getMessage());
                     }
                 });
                 return this;
@@ -475,7 +478,7 @@ public class ProcessHandle implements SimpleObject {
                     try {
                         listener.call(ctx, line);
                     } catch (Exception e) {
-                        JvmLogger.warn("onStdErr listener error: {}", e.getMessage());
+                        logger.warn("onStdErr listener error: {}", e.getMessage());
                     }
                 });
                 return this;

@@ -31,8 +31,9 @@ import io.karatelabs.gherkin.ScenarioOutline;
 import io.karatelabs.gherkin.Step;
 import io.karatelabs.gherkin.Tag;
 import io.karatelabs.http.HttpRequestBuilder;
-import io.karatelabs.output.JvmLogger;
 import io.karatelabs.output.LogContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -45,6 +46,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class ScenarioRuntime implements Callable<ScenarioResult> {
+
+    private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
 
     private final FeatureRuntime featureRuntime;
     private final Scenario scenario;
@@ -225,12 +228,12 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
                 for (var entry : configVars.entrySet()) {
                     karate.engine.put(entry.getKey(), entry.getValue());
                 }
-                JvmLogger.debug("Evaluated {}: {} variables", displayName, configVars.size());
+                logger.debug("Evaluated {}: {} variables", displayName, configVars.size());
             } else if (result != null) {
-                JvmLogger.warn("{} did not return an object, got: {}", displayName, result.getClass().getSimpleName());
+                logger.warn("{} did not return an object, got: {}", displayName, result.getClass().getSimpleName());
             }
         } catch (Exception e) {
-            JvmLogger.warn("Failed to evaluate {}: {}", displayName, e.getMessage());
+            logger.warn("Failed to evaluate {}: {}", displayName, e.getMessage());
             throw new RuntimeException("Config evaluation failed: " + displayName + " - " + e.getMessage(), e);
         }
     }
@@ -542,24 +545,24 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
 
         // Fast path: check if already cached (no locking needed)
         if (cache.containsKey(path)) {
-            JvmLogger.trace("[callSingle] cache hit: {}", path);
+            logger.trace("[callSingle] cache hit: {}", path);
             return unwrapCachedResult(cache.get(path));
         }
 
         // Slow path: acquire lock and execute
         long startWait = System.currentTimeMillis();
-        JvmLogger.debug("[callSingle] waiting for lock: {}", path);
+        logger.debug("[callSingle] waiting for lock: {}", path);
         lock.lock();
         try {
             // Double-check: another thread may have cached while we waited
             if (cache.containsKey(path)) {
                 long waitTime = System.currentTimeMillis() - startWait;
-                JvmLogger.info("[callSingle] lock acquired after {}ms, cache hit: {}", waitTime, path);
+                logger.info("[callSingle] lock acquired after {}ms, cache hit: {}", waitTime, path);
                 return unwrapCachedResult(cache.get(path));
             }
 
             // This thread is the winner - execute the call
-            JvmLogger.info("[callSingle] >> executing: {}", path);
+            logger.info("[callSingle] >> executing: {}", path);
             long startExec = System.currentTimeMillis();
 
             Object result;
@@ -567,7 +570,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
                 result = executeCallSingleInternal(path, arg);
             } catch (Exception e) {
                 // Cache the exception so subsequent calls also fail fast
-                JvmLogger.warn("[callSingle] caching exception for: {} - {}", path, e.getMessage());
+                logger.warn("[callSingle] caching exception for: {} - {}", path, e.getMessage());
                 cache.put(path, new CallSingleException(e));
                 throw e;
             }
@@ -575,7 +578,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
             // Cache the result
             cache.put(path, result);
             long execTime = System.currentTimeMillis() - startExec;
-            JvmLogger.info("[callSingle] << cached in {}ms: {}", execTime, path);
+            logger.info("[callSingle] << cached in {}ms: {}", execTime, path);
 
             return deepCopy(result);
         } finally {
@@ -814,7 +817,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
             }
         } catch (Exception e) {
             String warning = "[WARN] Failed to evaluate scenario name '" + trimmed + "': " + e.getMessage();
-            JvmLogger.warn(warning);
+            logger.warn(warning);
             // Append to last step's log for report visibility
             List<StepResult> steps = result.getStepResults();
             if (!steps.isEmpty()) {

@@ -25,10 +25,11 @@ package io.karatelabs.output;
 
 import io.karatelabs.core.ScenarioResult;
 import io.karatelabs.core.StepResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiConsumer;
 
 /**
  * Thread-local log collector for scenario execution.
@@ -40,7 +41,21 @@ public class LogContext {
 
     private static final ThreadLocal<LogContext> CURRENT = new ThreadLocal<>();
 
-    private static BiConsumer<LogLevel, String> cascade;
+    // ========== Category Loggers ==========
+    // Use these for category-aware logging that cascades to SLF4J
+
+    /** Logger for core framework (Suite, Runner, StepExecutor, reports, config, process utils) */
+    public static final Logger RUNTIME_LOGGER = LoggerFactory.getLogger("karate.runtime");
+
+    /** Logger for HTTP request/response logs */
+    public static final Logger HTTP_LOGGER = LoggerFactory.getLogger("karate.http");
+
+    /** Logger for test logs (karate.log, karate.logger, print statements) */
+    public static final Logger SCENARIO_LOGGER = LoggerFactory.getLogger("karate.scenario");
+
+    /** Logger for console output (test summary) */
+    public static final Logger CONSOLE_LOGGER = LoggerFactory.getLogger("karate.console");
+
     private static LogLevel threshold = LogLevel.INFO;
 
     private final StringBuilder buffer = new StringBuilder();
@@ -67,13 +82,14 @@ public class LogContext {
     }
 
     /**
-     * Set a cascade consumer to forward log messages to an external logger (e.g., SLF4J).
-     * This is optional and allows test logs to be visible in console/files while
-     * still being captured for reports.
-     * The consumer receives (LogLevel, message) for level-aware forwarding.
+     * Create a LogWriter that captures to the thread-local LogContext AND cascades to SLF4J.
+     * Use this for category-aware logging.
+     *
+     * @param logger the SLF4J logger (determines the category)
+     * @return a LogWriter for fluent logging
      */
-    public static void setCascade(BiConsumer<LogLevel, String> logger) {
-        cascade = logger;
+    public static LogWriter with(Logger logger) {
+        return new LogWriter(logger);
     }
 
     /**
@@ -102,9 +118,6 @@ public class LogContext {
             return; // Filtered
         }
         buffer.append(message).append('\n');
-        if (cascade != null) {
-            cascade.accept(level, message);
-        }
     }
 
     /**
@@ -116,9 +129,6 @@ public class LogContext {
         }
         String message = format(format, args);
         buffer.append(message).append('\n');
-        if (cascade != null) {
-            cascade.accept(level, message);
-        }
     }
 
     /**
@@ -230,5 +240,119 @@ public class LogContext {
             }
         }
         return sb.toString();
+    }
+
+    // ========== LogWriter Inner Class ==========
+
+    /**
+     * Fluent log writer that captures to LogContext buffer AND cascades to SLF4J.
+     * Thread-safe: each call gets the current thread's LogContext.
+     */
+    public static class LogWriter {
+
+        private final Logger logger;
+
+        LogWriter(Logger logger) {
+            this.logger = logger;
+        }
+
+        public void trace(String message) {
+            log(LogLevel.TRACE, message);
+        }
+
+        public void trace(String format, Object... args) {
+            log(LogLevel.TRACE, format, args);
+        }
+
+        public void debug(String message) {
+            log(LogLevel.DEBUG, message);
+        }
+
+        public void debug(String format, Object... args) {
+            log(LogLevel.DEBUG, format, args);
+        }
+
+        public void info(String message) {
+            log(LogLevel.INFO, message);
+        }
+
+        public void info(String format, Object... args) {
+            log(LogLevel.INFO, format, args);
+        }
+
+        public void warn(String message) {
+            log(LogLevel.WARN, message);
+        }
+
+        public void warn(String format, Object... args) {
+            log(LogLevel.WARN, format, args);
+        }
+
+        public void error(String message) {
+            log(LogLevel.ERROR, message);
+        }
+
+        public void error(String format, Object... args) {
+            log(LogLevel.ERROR, format, args);
+        }
+
+        public void error(String message, Throwable t) {
+            if (LogLevel.ERROR.isEnabled(threshold)) {
+                get().buffer.append(message);
+                if (t != null) {
+                    get().buffer.append(": ").append(t.getMessage());
+                }
+                get().buffer.append('\n');
+                logger.error(message, t);
+            }
+        }
+
+        private void log(LogLevel level, String message) {
+            if (!level.isEnabled(threshold)) {
+                return;
+            }
+            get().buffer.append(message).append('\n');
+            cascadeToSlf4j(level, message);
+        }
+
+        private void log(LogLevel level, String format, Object... args) {
+            if (!level.isEnabled(threshold)) {
+                return;
+            }
+            String message = LogContext.format(format, args);
+            get().buffer.append(message).append('\n');
+            cascadeToSlf4j(level, message);
+        }
+
+        private void cascadeToSlf4j(LogLevel level, String message) {
+            switch (level) {
+                case TRACE -> logger.trace(message);
+                case DEBUG -> logger.debug(message);
+                case INFO -> logger.info(message);
+                case WARN -> logger.warn(message);
+                case ERROR -> logger.error(message);
+            }
+        }
+
+        // Level checks
+        public boolean isTraceEnabled() {
+            return LogLevel.TRACE.isEnabled(threshold) && logger.isTraceEnabled();
+        }
+
+        public boolean isDebugEnabled() {
+            return LogLevel.DEBUG.isEnabled(threshold) && logger.isDebugEnabled();
+        }
+
+        public boolean isInfoEnabled() {
+            return LogLevel.INFO.isEnabled(threshold) && logger.isInfoEnabled();
+        }
+
+        public boolean isWarnEnabled() {
+            return LogLevel.WARN.isEnabled(threshold) && logger.isWarnEnabled();
+        }
+
+        public boolean isErrorEnabled() {
+            return LogLevel.ERROR.isEnabled(threshold) && logger.isErrorEnabled();
+        }
     }
 }

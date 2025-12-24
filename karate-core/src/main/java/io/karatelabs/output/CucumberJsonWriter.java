@@ -32,6 +32,8 @@ import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.Scenario;
 import io.karatelabs.gherkin.Step;
 import io.karatelabs.gherkin.Tag;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -73,6 +75,8 @@ import java.util.Map;
  */
 public final class CucumberJsonWriter {
 
+    private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
+
     private CucumberJsonWriter() {
     }
 
@@ -91,9 +95,9 @@ public final class CucumberJsonWriter {
             Path jsonPath = outputDir.resolve("cucumber.json");
             String json = toJson(result);
             Files.writeString(jsonPath, json);
-            JvmLogger.info("Cucumber JSON report written to: {}", jsonPath);
+            logger.info("Cucumber JSON report written to: {}", jsonPath);
         } catch (Exception e) {
-            JvmLogger.warn("Failed to write Cucumber JSON report: {}", e.getMessage());
+            logger.warn("Failed to write Cucumber JSON report: {}", e.getMessage());
         }
     }
 

@@ -29,6 +29,9 @@ import io.karatelabs.core.Globals;
 import io.karatelabs.core.Suite;
 import io.karatelabs.core.SuiteResult;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -60,6 +63,8 @@ import java.util.Map;
  * At suite end, this listener generates HTML reports from the accumulated JSON Lines data.
  */
 public class JsonLinesReportListener implements ResultListener {
+
+    private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
 
     private static final DateTimeFormatter ISO_FORMAT = DateTimeFormatter.ISO_INSTANT;
 
@@ -110,10 +115,10 @@ public class JsonLinesReportListener implements ResultListener {
 
             writeLine(Json.stringifyStrict(suiteHeader));
 
-            JvmLogger.debug("JSON Lines report started: {}", jsonlPath);
+            logger.debug("JSON Lines report started: {}", jsonlPath);
 
         } catch (IOException e) {
-            JvmLogger.warn("Failed to start JSON Lines report: {}", e.getMessage());
+            logger.warn("Failed to start JSON Lines report: {}", e.getMessage());
         }
     }
 
@@ -130,7 +135,7 @@ public class JsonLinesReportListener implements ResultListener {
             featureLine.putAll(result.toMap());
             writeLine(Json.stringifyStrict(featureLine));
         } catch (Exception e) {
-            JvmLogger.warn("Failed to write feature to JSON Lines: {}", e.getMessage());
+            logger.warn("Failed to write feature to JSON Lines: {}", e.getMessage());
         }
     }
 
@@ -156,14 +161,14 @@ public class JsonLinesReportListener implements ResultListener {
             writer.close();
             writer = null;
 
-            JvmLogger.info("JSON Lines report written to: {}", jsonlPath);
+            logger.info("JSON Lines report written to: {}", jsonlPath);
 
             // Note: We do NOT regenerate HTML from JSON Lines here.
             // HtmlReportListener handles HTML generation (with embeds).
             // JSON Lines is for data exchange/aggregation via HtmlReport.aggregate().
 
         } catch (IOException e) {
-            JvmLogger.warn("Failed to complete JSON Lines report: {}", e.getMessage());
+            logger.warn("Failed to complete JSON Lines report: {}", e.getMessage());
         }
     }
 
