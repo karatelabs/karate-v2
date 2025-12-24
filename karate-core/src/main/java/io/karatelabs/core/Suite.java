@@ -266,33 +266,42 @@ public class Suite {
             basePath = "classpath:karate-base.js";
         }
 
-        // Load karate-base.js (shared functions, evaluated before config)
-        baseContent = tryLoadConfig(basePath);
+        // Load karate-base.js (optional - silent if not found)
+        baseContent = tryLoadConfig(basePath, false);
         if (baseContent != null) {
-            logger.debug("Loaded karate-base.js from {}", basePath);
+            logger.info("Loaded karate-base.js from {}", basePath);
         }
 
-        // Load main config content
-        configContent = tryLoadConfig(configPath);
+        // Load main config (warn if not found)
+        configContent = tryLoadConfig(configPath, true);
         if (configContent != null) {
-            logger.debug("Loaded config content from {}", configPath);
+            logger.info("Loaded karate-config.js from {}", configPath);
         }
 
-        // Load env-specific config content (e.g., karate-config-dev.js)
+        // Load env-specific config content (optional - silent if not found)
         if (env != null && !env.isEmpty()) {
             String envConfigPath = configPath.replace(".js", "-" + env + ".js");
-            configEnvContent = tryLoadConfig(envConfigPath);
+            configEnvContent = tryLoadConfig(envConfigPath, false);
             if (configEnvContent != null) {
-                logger.debug("Loaded env config content from {}", envConfigPath);
+                logger.info("Loaded {} config from {}", env, envConfigPath);
             }
         }
     }
 
-    private String tryLoadConfig(String path) {
+    /**
+     * Try to load a config file.
+     *
+     * @param path the config path
+     * @param warnIfMissing if true, log a warning when file is not found
+     * @return the file content, or null if not found
+     */
+    private String tryLoadConfig(String path, boolean warnIfMissing) {
         // Try the explicit path first
         try {
             Resource resource = Resource.path(path);
-            return resource.getText();
+            if (resource.exists()) {
+                return resource.getText();
+            }
         } catch (ResourceNotFoundException e) {
             // Not found at explicit path - continue to fallbacks
         } catch (Exception e) {
@@ -312,16 +321,16 @@ public class Suite {
             try {
                 Path workingDirConfig = workingDir.resolve(fileName);
                 if (java.nio.file.Files.exists(workingDirConfig)) {
-                    String content = java.nio.file.Files.readString(workingDirConfig);
-                    logger.debug("Loaded config from working directory: {}", workingDirConfig);
-                    return content;
+                    return java.nio.file.Files.readString(workingDirConfig);
                 }
             } catch (Exception e) {
                 logger.debug("Could not load config from working dir: {}", e.getMessage());
             }
         }
 
-        logger.debug("Config not found: {}", path);
+        if (warnIfMissing) {
+            logger.warn("Config not found: {}", path);
+        }
         return null;
     }
 

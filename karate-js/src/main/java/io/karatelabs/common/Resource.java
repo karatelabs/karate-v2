@@ -90,6 +90,13 @@ public interface Resource {
      */
     boolean isClassPath();
 
+    /**
+     * Returns true if this resource exists and can be read.
+     * For PathResource, checks if the file exists on disk.
+     * For UrlResource and MemoryResource, always returns true since content is already loaded.
+     */
+    boolean exists();
+
     URI getUri();
 
     /**

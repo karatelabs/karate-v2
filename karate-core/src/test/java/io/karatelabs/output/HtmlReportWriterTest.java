@@ -26,12 +26,17 @@ package io.karatelabs.output;
 import io.karatelabs.core.Globals;
 import io.karatelabs.core.Runner;
 import io.karatelabs.core.SuiteResult;
+import io.karatelabs.http.ServerTestHarness;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -50,6 +55,49 @@ class HtmlReportWriterTest {
 
     private static final Path OUTPUT_DIR = Path.of("target/karate-report-dev");
 
+    private static ServerTestHarness harness;
+
+    @BeforeAll
+    static void beforeAll() {
+        harness = new ServerTestHarness("classpath:io/karatelabs/report");
+        harness.start();
+        // Set up mock API endpoints for http-demo.feature
+        harness.setHandler(ctx -> {
+            String path = ctx.request().getPath();
+            var response = ctx.response();
+            response.setHeader("Content-Type", "application/json");
+
+            if (path.equals("/api/users") && ctx.request().getMethod().equals("GET")) {
+                response.setBody(Map.of(
+                    "users", List.of(
+                        Map.of("id", 1, "name", "Alice", "role", "admin"),
+                        Map.of("id", 2, "name", "Bob", "role", "user")
+                    ),
+                    "total", 2
+                ));
+            } else if (path.equals("/api/users") && ctx.request().getMethod().equals("POST")) {
+                response.setStatus(201);
+                response.setBody(Map.of("id", 3, "name", "Charlie", "created", true));
+            } else if (path.startsWith("/api/users/")) {
+                String id = path.substring("/api/users/".length());
+                response.setBody(Map.of("id", Integer.parseInt(id), "name", "User " + id, "active", true));
+            } else if (path.equals("/api/status")) {
+                response.setBody(Map.of("status", "healthy", "version", "2.0.0"));
+            } else {
+                response.setStatus(404);
+                response.setBody(Map.of("error", "Not found", "path", path));
+            }
+            return response;
+        });
+    }
+
+    @AfterAll
+    static void afterAll() {
+        if (harness != null) {
+            harness.stop();
+        }
+    }
+
     @BeforeEach
     void setup() {
         Console.setColorsEnabled(false);
@@ -67,13 +115,15 @@ class HtmlReportWriterTest {
         // Run features from test-classes directory with parallel for timeline
         String testResourcesDir = "target/test-classes/io/karatelabs/report";
         SuiteResult result = Runner.path(testResourcesDir)
+                .configDir(testResourcesDir)  // Load karate-config.js for baseUrl
+                .systemProperty("karate.server.port", String.valueOf(harness.getPort()))
                 .outputDir(OUTPUT_DIR)
                 .outputJsonLines(true)
                 .parallel(3);  // parallel for timeline testing
 
         // Verify the run completed (feature count may vary with @ignore features)
-        assertTrue(result.getFeatureCount() >= 3, "Should have at least 3 main features");
-        assertTrue(result.getScenarioPassedCount() >= 12, "Should have many passing scenarios");
+        assertTrue(result.getFeatureCount() >= 4, "Should have at least 4 features (including http-demo)");
+        assertTrue(result.getScenarioPassedCount() >= 17, "Should have many passing scenarios including HTTP tests");
         assertTrue(result.getScenarioFailedCount() >= 1, "Should have at least the @wip failing scenario");
 
         // Verify HTML reports were generated

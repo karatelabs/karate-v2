@@ -96,6 +96,11 @@ public class UrlResource implements Resource {
     }
 
     @Override
+    public boolean exists() {
+        return true; // Content already loaded in constructor
+    }
+
+    @Override
     public Path getPath() {
         return null;
     }

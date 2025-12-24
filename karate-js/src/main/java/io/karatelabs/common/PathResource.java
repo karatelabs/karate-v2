@@ -104,6 +104,11 @@ public class PathResource implements Resource {
     }
 
     @Override
+    public boolean exists() {
+        return Files.exists(path);
+    }
+
+    @Override
     public URI getUri() {
         return path.toUri();
     }

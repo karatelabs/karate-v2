@@ -93,6 +93,11 @@ public class MemoryResource implements Resource {
     }
 
     @Override
+    public boolean exists() {
+        return true; // Content already in memory
+    }
+
+    @Override
     public Path getPath() {
         return null;
     }
