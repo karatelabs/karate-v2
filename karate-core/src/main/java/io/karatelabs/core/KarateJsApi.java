@@ -57,7 +57,6 @@ public class KarateJsApi {
 
     // ========== Collection Utilities ==========
 
-    @SuppressWarnings("unchecked")
     static Invokable append() {
         return args -> {
             if (args.length < 2) {
@@ -110,10 +109,9 @@ public class KarateJsApi {
             if (args.length == 0 || args[0] == null) {
                 return new ArrayList<>();
             }
-            if (!(args[0] instanceof List)) {
+            if (!(args[0] instanceof List<?> list)) {
                 return new ArrayList<>();
             }
-            List<?> list = (List<?>) args[0];
             Set<Object> seen = new LinkedHashSet<>(list);
             return new ArrayList<>(seen);
         };
@@ -154,7 +152,6 @@ public class KarateJsApi {
         };
     }
 
-    @SuppressWarnings("unchecked")
     static Invokable filter() {
         return args -> {
             if (args.length < 2) {
@@ -220,8 +217,7 @@ public class KarateJsApi {
             }
             Object collection = args[0];
             JsCallable fn = (JsCallable) args[1];
-            if (collection instanceof List) {
-                List<?> list = (List<?>) collection;
+            if (collection instanceof List<?> list) {
                 for (int i = 0; i < list.size(); i++) {
                     fn.call(null, new Object[]{list.get(i), i});
                 }
@@ -296,7 +292,6 @@ public class KarateJsApi {
         };
     }
 
-    @SuppressWarnings("unchecked")
     static Invokable map() {
         return args -> {
             if (args.length < 2) {
@@ -508,6 +503,7 @@ public class KarateJsApi {
         };
     }
 
+    @SuppressWarnings("unchecked")
     static Invokable toBytes() {
         return args -> {
             if (args.length < 1) {

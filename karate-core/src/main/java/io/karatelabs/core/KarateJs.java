@@ -78,7 +78,7 @@ import java.util.function.Supplier;
 
 public class KarateJs implements SimpleObject {
 
-    private static final Logger logger = LoggerFactory.getLogger(KarateJs.class);
+    private static final Logger logger = LogContext.RUNTIME_LOGGER;
 
     public final Resource root;
     public final Engine engine;

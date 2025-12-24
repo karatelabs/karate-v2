@@ -50,6 +50,9 @@ public class LogContext {
     /** Logger for HTTP request/response logs */
     public static final Logger HTTP_LOGGER = LoggerFactory.getLogger("karate.http");
 
+    /** Logger for mock server logs */
+    public static final Logger MOCK_LOGGER = LoggerFactory.getLogger("karate.mock");
+
     /** Logger for test logs (karate.log, karate.logger, print statements) */
     public static final Logger SCENARIO_LOGGER = LoggerFactory.getLogger("karate.scenario");
 
@@ -258,101 +261,33 @@ public class LogContext {
 
         public void trace(String message) {
             log(LogLevel.TRACE, message);
-        }
-
-        public void trace(String format, Object... args) {
-            log(LogLevel.TRACE, format, args);
+            logger.trace(message);
         }
 
         public void debug(String message) {
             log(LogLevel.DEBUG, message);
-        }
-
-        public void debug(String format, Object... args) {
-            log(LogLevel.DEBUG, format, args);
+            logger.debug(message);
         }
 
         public void info(String message) {
             log(LogLevel.INFO, message);
-        }
-
-        public void info(String format, Object... args) {
-            log(LogLevel.INFO, format, args);
+            logger.info(message);
         }
 
         public void warn(String message) {
             log(LogLevel.WARN, message);
-        }
-
-        public void warn(String format, Object... args) {
-            log(LogLevel.WARN, format, args);
+            logger.warn(message);
         }
 
         public void error(String message) {
             log(LogLevel.ERROR, message);
-        }
-
-        public void error(String format, Object... args) {
-            log(LogLevel.ERROR, format, args);
-        }
-
-        public void error(String message, Throwable t) {
-            if (LogLevel.ERROR.isEnabled(threshold)) {
-                get().buffer.append(message);
-                if (t != null) {
-                    get().buffer.append(": ").append(t.getMessage());
-                }
-                get().buffer.append('\n');
-                logger.error(message, t);
-            }
+            logger.error(message);
         }
 
         private void log(LogLevel level, String message) {
-            if (!level.isEnabled(threshold)) {
-                return;
+            if (level.isEnabled(threshold)) {
+                get().buffer.append(message).append('\n');
             }
-            get().buffer.append(message).append('\n');
-            cascadeToSlf4j(level, message);
-        }
-
-        private void log(LogLevel level, String format, Object... args) {
-            if (!level.isEnabled(threshold)) {
-                return;
-            }
-            String message = LogContext.format(format, args);
-            get().buffer.append(message).append('\n');
-            cascadeToSlf4j(level, message);
-        }
-
-        private void cascadeToSlf4j(LogLevel level, String message) {
-            switch (level) {
-                case TRACE -> logger.trace(message);
-                case DEBUG -> logger.debug(message);
-                case INFO -> logger.info(message);
-                case WARN -> logger.warn(message);
-                case ERROR -> logger.error(message);
-            }
-        }
-
-        // Level checks
-        public boolean isTraceEnabled() {
-            return LogLevel.TRACE.isEnabled(threshold) && logger.isTraceEnabled();
-        }
-
-        public boolean isDebugEnabled() {
-            return LogLevel.DEBUG.isEnabled(threshold) && logger.isDebugEnabled();
-        }
-
-        public boolean isInfoEnabled() {
-            return LogLevel.INFO.isEnabled(threshold) && logger.isInfoEnabled();
-        }
-
-        public boolean isWarnEnabled() {
-            return LogLevel.WARN.isEnabled(threshold) && logger.isWarnEnabled();
-        }
-
-        public boolean isErrorEnabled() {
-            return LogLevel.ERROR.isEnabled(threshold) && logger.isErrorEnabled();
         }
     }
 }

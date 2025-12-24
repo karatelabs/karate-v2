@@ -14,7 +14,7 @@
         </encoder>
     </appender>    
    
-    <logger name="io.karatelabs" level="DEBUG"/>
+    <logger name="io.karatelabs" level="INFO"/>
    
     <root level="warn">
         <appender-ref ref="STDOUT" />

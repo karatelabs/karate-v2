@@ -86,7 +86,7 @@ public class ScenarioResult implements Comparable<ScenarioResult> {
         if (failTagApplied) {
             // When @fail tag is applied, check if the last (fake) step passed
             if (!stepResults.isEmpty()) {
-                return stepResults.get(stepResults.size() - 1).isPassed();
+                return stepResults.getLast().isPassed();
             }
         }
         return stepResults.stream().noneMatch(StepResult::isFailed);
@@ -96,7 +96,7 @@ public class ScenarioResult implements Comparable<ScenarioResult> {
         if (failTagApplied) {
             // When @fail tag is applied, check if the last (fake) step failed
             if (!stepResults.isEmpty()) {
-                return stepResults.get(stepResults.size() - 1).isFailed();
+                return stepResults.getLast().isFailed();
             }
         }
         return stepResults.stream().anyMatch(StepResult::isFailed);

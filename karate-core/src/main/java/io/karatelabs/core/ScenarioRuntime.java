@@ -47,7 +47,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class ScenarioRuntime implements Callable<ScenarioResult> {
 
-    private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
+    private static final Logger logger = LogContext.RUNTIME_LOGGER;
 
     private final FeatureRuntime featureRuntime;
     private final Scenario scenario;

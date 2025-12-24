@@ -151,18 +151,17 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
                 }
                 break;
             case "proxy":
-                if (value == null) {
-                    proxyUri = null;
-                } else if (value instanceof String s) {
-                    proxyUri = s;
-                } else if (value instanceof Map) {
-                    Map<String, Object> map = (Map<String, Object>) value;
-                    proxyUri = (String) map.get("uri");
-                    proxyUsername = (String) map.get("username");
-                    proxyPassword = (String) map.get("password");
-                    nonProxyHosts = (List<String>) map.get("nonProxyHosts");
-                } else {
-                    LOGGER.warn("string or object expected for: {}", key);
+                switch (value) {
+                    case null -> proxyUri = null;
+                    case String s -> proxyUri = s;
+                    case Map<?, ?> ignored -> {
+                        Map<String, Object> map = (Map<String, Object>) value;
+                        proxyUri = (String) map.get("uri");
+                        proxyUsername = (String) map.get("username");
+                        proxyPassword = (String) map.get("password");
+                        nonProxyHosts = (List<String>) map.get("nonProxyHosts");
+                    }
+                    default -> LOGGER.warn("string or object expected for: {}", key);
                 }
                 break;
             case "readTimeout":
@@ -322,7 +321,6 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
                 .setCookieSpec(StandardCookieSpec.STRICT);
         // Configure NTLM authentication (deprecated in HttpClient 5)
         if (ntlmUsername != null) {
-            @SuppressWarnings("deprecation")
             BasicCredentialsProvider credsProvider = new BasicCredentialsProvider();
             @SuppressWarnings("deprecation")
             NTCredentials ntCredentials = new NTCredentials(

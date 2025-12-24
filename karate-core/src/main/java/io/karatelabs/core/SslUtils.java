@@ -23,6 +23,7 @@
  */
 package io.karatelabs.core;
 
+import io.karatelabs.output.LogContext;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
@@ -41,7 +42,7 @@ import java.security.cert.Certificate;
  */
 public class SslUtils {
 
-    private static final Logger logger = LoggerFactory.getLogger(SslUtils.class);
+    private static final Logger logger = LogContext.RUNTIME_LOGGER;
 
     private static final int VALIDITY_DAYS = 365;
 

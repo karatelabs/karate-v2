@@ -29,13 +29,9 @@ import io.karatelabs.common.ResourceNotFoundException;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.Tag;
 import io.karatelabs.js.Engine;
-import io.karatelabs.output.CucumberJsonWriter;
-import io.karatelabs.output.HtmlReportListener;
-import io.karatelabs.output.JunitXmlWriter;
+import io.karatelabs.output.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import io.karatelabs.output.JsonLinesReportListener;
-import io.karatelabs.output.ResultListener;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -56,7 +52,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Suite {
 
-    private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
+    private static final Logger logger = LogContext.RUNTIME_LOGGER;
 
     // Features to run
     private final List<Feature> features = new ArrayList<>();

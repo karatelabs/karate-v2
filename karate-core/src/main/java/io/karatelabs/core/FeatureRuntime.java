@@ -31,6 +31,7 @@ import io.karatelabs.gherkin.ScenarioOutline;
 import io.karatelabs.gherkin.ExamplesTable;
 import io.karatelabs.gherkin.Tag;
 import io.karatelabs.js.JsCallable;
+import io.karatelabs.output.LogContext;
 import io.karatelabs.output.ResultListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +46,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class FeatureRuntime implements Callable<FeatureResult> {
 
-    private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
+    private static final Logger logger = LogContext.RUNTIME_LOGGER;
 
     private final Suite suite;
     private final Feature feature;

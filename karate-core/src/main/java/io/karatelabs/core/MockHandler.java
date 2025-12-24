@@ -28,6 +28,7 @@ import io.karatelabs.common.Resource;
 import io.karatelabs.common.ResourceType;
 import io.karatelabs.common.StringUtils;
 import io.karatelabs.common.Xml;
+import io.karatelabs.output.LogContext;
 import net.minidev.json.JSONValue;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.FeatureSection;
@@ -62,7 +63,7 @@ import java.util.function.Supplier;
  */
 public class MockHandler implements Function<HttpRequest, HttpResponse> {
 
-    private static final Logger logger = LoggerFactory.getLogger(MockHandler.class);
+    private static final Logger logger = LogContext.MOCK_LOGGER;
 
     private static final String ALLOWED_METHODS = "GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS";
 
@@ -112,6 +113,7 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
      * Initialize a runtime for a mock feature.
      * Creates a proper FeatureRuntime and ScenarioRuntime like V1 does.
      */
+    @SuppressWarnings("unchecked")
     private ScenarioRuntime initRuntime(Feature feature, Map<String, Object> args) {
         // Create FeatureRuntime (without Suite to skip karate-config.js loading)
         FeatureRuntime featureRuntime = new FeatureRuntime(null, feature);

@@ -58,7 +58,7 @@ import java.util.Map;
 
 public class StepExecutor {
 
-    private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
+    private static final Logger logger = LogContext.RUNTIME_LOGGER;
 
     private final ScenarioRuntime runtime;
 

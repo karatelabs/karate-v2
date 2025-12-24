@@ -35,7 +35,7 @@ import java.util.regex.Pattern;
  */
 public final class Console {
 
-    private static final Logger logger = LoggerFactory.getLogger("karate.console");
+    private static final Logger logger = LogContext.CONSOLE_LOGGER;
 
     // Pattern to strip ANSI escape codes for logger
     private static final Pattern ANSI_PATTERN = Pattern.compile("\u001B\\[[;\\d]*m");

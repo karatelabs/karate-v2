@@ -14,6 +14,7 @@ Karate v2 uses a unified logging architecture based on SLF4J with category-based
 |----------|---------|-------|
 | `karate.runtime` | Core framework logs | Suite, Runner, StepExecutor, reports, config |
 | `karate.http` | HTTP request/response logs | Request/response bodies, headers |
+| `karate.mock` | Mock server logs | MockServer, MockHandler |
 | `karate.scenario` | Test logs | `print`, `karate.log()`, `karate.logger.*` |
 | `karate.console` | Console output | Test summary (TRACE level to avoid duplication) |
 
@@ -157,6 +158,7 @@ log.warn("Rate limit exceeded");
 Built-in category loggers:
 - `LogContext.RUNTIME_LOGGER` - `karate.runtime`
 - `LogContext.HTTP_LOGGER` - `karate.http`
+- `LogContext.MOCK_LOGGER` - `karate.mock`
 - `LogContext.SCENARIO_LOGGER` - `karate.scenario`
 - `LogContext.CONSOLE_LOGGER` - `karate.console`
 
@@ -222,6 +224,7 @@ Use standard SLF4J/logback configuration:
     <!-- Or fine-grained control -->
     <logger name="karate.runtime" level="INFO"/>
     <logger name="karate.http" level="WARN"/>
+    <logger name="karate.mock" level="DEBUG"/>
     <logger name="karate.scenario" level="DEBUG"/>
 </configuration>
 ```

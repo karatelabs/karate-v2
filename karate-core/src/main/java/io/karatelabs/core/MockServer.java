@@ -29,6 +29,7 @@ import io.karatelabs.http.HttpRequest;
 import io.karatelabs.http.HttpResponse;
 import io.karatelabs.http.HttpServer;
 import io.karatelabs.js.SimpleObject;
+import io.karatelabs.output.LogContext;
 import io.netty.handler.ssl.SslContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,7 +58,7 @@ import java.util.function.Function;
  */
 public class MockServer implements SimpleObject {
 
-    private static final Logger logger = LoggerFactory.getLogger(MockServer.class);
+    private static final Logger logger = LogContext.MOCK_LOGGER;
 
     private final HttpServer httpServer;
     private final MockHandler handler;

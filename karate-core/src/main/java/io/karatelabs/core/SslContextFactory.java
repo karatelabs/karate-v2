@@ -25,6 +25,7 @@ package io.karatelabs.core;
 
 import io.karatelabs.common.FileUtils;
 import io.karatelabs.common.Resource;
+import io.karatelabs.output.LogContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +44,7 @@ import java.util.Base64;
  */
 public class SslContextFactory {
 
-    private static final Logger logger = LoggerFactory.getLogger(SslContextFactory.class);
+    private static final Logger logger = LogContext.RUNTIME_LOGGER;
 
     /**
      * Create an SSLContext for client use (connecting to HTTPS servers).

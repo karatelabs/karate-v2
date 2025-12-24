@@ -59,7 +59,7 @@ import java.util.Map;
  */
 public class KarateConfig implements SimpleObject {
 
-    private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
+    private static final Logger logger = LogContext.RUNTIME_LOGGER;
 
     // Keys exposed via SimpleObject
     private static final List<String> KEYS = List.of(
