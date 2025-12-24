@@ -72,7 +72,7 @@ public class SslContextFactory {
         try {
             if (config.getCertPath() == null) {
                 // Generate self-signed certificate
-                return CertificateGenerator.generateSelfSigned();
+                return SslUtils.generateSelfSigned();
             }
             return loadFromPem(config.getCertPath(), config.getKeyPath(), config.getAlgorithm());
         } catch (Exception e) {

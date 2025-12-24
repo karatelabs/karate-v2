@@ -467,7 +467,7 @@ karate-v2/
 │   ├── MockConfig.java          # Configuration
 │   ├── SslConfig.java           # SSL configuration
 │   ├── SslContextFactory.java   # SSLContext creation
-│   └── CertificateGenerator.java # Self-signed cert generation
+│   └── SslUtils.java             # SSL utilities
 ├── karate-core/src/main/java/io/karatelabs/cli/
 │   └── MockCommand.java         # CLI subcommand
 └── karate-core/src/test/java/io/karatelabs/core/mock/

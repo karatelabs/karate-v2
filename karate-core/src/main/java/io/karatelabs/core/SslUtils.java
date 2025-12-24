@@ -36,12 +36,12 @@ import java.security.KeyStore;
 import java.security.cert.Certificate;
 
 /**
- * Generator for self-signed certificates for development and testing.
+ * SSL utilities for creating SSL contexts and self-signed certificates.
  * Uses Netty's SelfSignedCertificate utility.
  */
-public class CertificateGenerator {
+public class SslUtils {
 
-    private static final Logger logger = LoggerFactory.getLogger(CertificateGenerator.class);
+    private static final Logger logger = LoggerFactory.getLogger(SslUtils.class);
 
     private static final int VALIDITY_DAYS = 365;
 

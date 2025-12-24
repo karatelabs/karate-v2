@@ -296,9 +296,9 @@ public class MockServer implements SimpleObject {
             SslContext sslContext = null;
             if (ssl) {
                 if (certPath != null && keyPath != null) {
-                    sslContext = CertificateGenerator.createNettySslContext(certPath, keyPath);
+                    sslContext = SslUtils.createNettySslContext(certPath, keyPath);
                 } else {
-                    sslContext = CertificateGenerator.generateNettySslContext();
+                    sslContext = SslUtils.generateNettySslContext();
                 }
             }
 
