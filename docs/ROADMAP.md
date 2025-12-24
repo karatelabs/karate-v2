@@ -195,6 +195,7 @@ Integration with [Karate CLI](https://github.com/karatelabs/karate-cli):
 - [x] Create karate-core/README.md
 - [x] Create CONTRIBUTING.md
 - [x] Create SECURITY.md
+- [ ] Document SLF4J binding requirement for library users (logback is `provided` scope, users must supply their own binding for Spring Boot, Quarkus, etc.)
 
 ### CI/CD Pipeline
 - [ ] Set up GitHub Actions workflow for CI
@@ -366,9 +367,10 @@ Beyond being LLM-friendly, Karate can be a tool for testing AI systems:
 - [ ] Cucumber JSON format support
 
 ### Logging Configuration
-- [ ] Clarify LogContext vs SLF4J relationship for `logLevel` setting
-  - Does CLI `--log-level` affect both LogContext buffer AND SLF4J cascade?
-  - Does `karate.configure('report', { logLevel: '...' })` affect one or both?
+- [x] Clarify LogContext vs SLF4J relationship for log level settings
+  - `--report-log-level` affects LogContext buffer (what goes in HTML reports)
+  - `--runtime-log-level` affects SLF4J logger level (console/JVM output)
+  - `karate.configure('report', { logLevel: '...' })` affects report filtering only
 - [ ] Document log level precedence: CLI > config > default
 
 ### Tag Features

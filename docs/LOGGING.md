@@ -236,7 +236,7 @@ Use standard SLF4J/logback configuration:
 | Flag | Purpose | Controls |
 |------|---------|----------|
 | `--report-log-level <level>` | Report filtering | What goes in HTML reports |
-| `--runtime-log-level <level>` | Console/JVM verbosity | SLF4J root logger level (future) |
+| `--runtime-log-level <level>` | Console/JVM verbosity | SLF4J logger level (karate.*) |
 
 **Values:** `trace`, `debug`, `info` (default), `warn`, `error`
 
@@ -244,9 +244,8 @@ Use standard SLF4J/logback configuration:
 ```bash
 karate run --report-log-level debug features/     # Capture DEBUG+ in reports
 karate run --report-log-level warn features/      # Only WARN+ in reports
+karate run --runtime-log-level debug features/    # Show DEBUG+ in console
 ```
-
-> **Note:** The `-L, --log-level` flag is deprecated. Use `--report-log-level` instead.
 
 ---
 
@@ -402,6 +401,47 @@ Runner.path("features/")
         .build())
     .parallel(5);
 ```
+
+---
+
+## SLF4J Binding
+
+Karate uses SLF4J for logging. The SLF4J binding (Logback, Log4j2, etc.) you need depends on how you use Karate:
+
+| Usage | SLF4J Binding |
+|-------|---------------|
+| **CLI / Fatjar** | Logback bundled automatically |
+| **Maven/Gradle dependency** | You must provide your own binding |
+
+### Library Usage (Maven/Gradle)
+
+When using `karate-core` as a dependency, Logback is declared with `provided` scope and is **not** included transitively. You must add an SLF4J binding to your project:
+
+**Spring Boot:** Already includes Logback - works automatically.
+
+**Quarkus:** Uses JBoss Logging - works automatically.
+
+**Plain Java project:** Add a binding explicitly:
+```xml
+<dependency>
+    <groupId>ch.qos.logback</groupId>
+    <artifactId>logback-classic</artifactId>
+    <version>1.5.22</version>
+    <scope>runtime</scope>
+</dependency>
+```
+
+Or use Log4j2:
+```xml
+<dependency>
+    <groupId>org.apache.logging.log4j</groupId>
+    <artifactId>log4j-slf4j2-impl</artifactId>
+    <version>2.24.3</version>
+    <scope>runtime</scope>
+</dependency>
+```
+
+Without an SLF4J binding, you'll see: `SLF4J: No SLF4J providers were found.`
 
 ---
 

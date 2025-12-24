@@ -24,6 +24,7 @@
 package io.karatelabs.cli;
 
 import io.karatelabs.output.Console;
+import io.karatelabs.output.LogContext;
 import io.karatelabs.core.Globals;
 import io.karatelabs.core.KaratePom;
 import io.karatelabs.core.Runner;
@@ -155,14 +156,6 @@ public class RunCommand implements Callable<Integer> {
     )
     String reportLogLevel;
 
-    @Deprecated
-    @Option(
-            names = {"-L", "--log-level"},
-            hidden = true,
-            description = "Deprecated: use --report-log-level instead"
-    )
-    String logLevel;
-
     @Option(
             names = {"--runtime-log-level"},
             description = "Runtime log level for console/JVM output: trace, debug, info, warn, error"
@@ -174,7 +167,10 @@ public class RunCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        // TODO: wire up runtimeLogLevel when JUL support is added
+        // Set runtime log level early (before any logging)
+        if (runtimeLogLevel != null) {
+            LogContext.setRuntimeLogLevel(runtimeLogLevel);
+        }
 
         // Print header
         Console.println();
@@ -366,13 +362,8 @@ public class RunCommand implements Callable<Integer> {
     }
 
     private String resolveLogLevel() {
-        // Check --report-log-level first
         if (reportLogLevel != null) {
             return reportLogLevel;
-        }
-        // Fall back to deprecated --log-level for backward compatibility
-        if (logLevel != null) {
-            return logLevel;
         }
         if (pom != null && pom.getOutput().getLogLevel() != null) {
             return pom.getOutput().getLogLevel();

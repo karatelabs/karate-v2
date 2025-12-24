@@ -48,7 +48,7 @@ import java.util.function.Predicate;
  */
 public class ProcessHandle implements SimpleObject {
 
-    private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
+    private static final Logger logger = LogContext.RUNTIME_LOGGER;
 
     private static final List<String> KEYS = List.of(
             "stdOut", "stdErr", "exitCode", "alive", "pid",
@@ -83,9 +83,15 @@ public class ProcessHandle implements SimpleObject {
     private CompletableFuture<Void> stdoutReaderDone;
     private CompletableFuture<Void> stderrReaderDone;
 
+    // Captured LogContext from the creating thread (scenario thread)
+    // Stream readers run in virtual threads which have their own ThreadLocal,
+    // so we capture the reference to log to the correct context.
+    private final LogContext capturedLogContext;
+
     private ProcessHandle(ProcessConfig config) {
         this.config = config;
         this.exitFuture = new CompletableFuture<>();
+        this.capturedLogContext = config.logToContext() ? LogContext.get() : null;
     }
 
     /**
@@ -213,9 +219,9 @@ public class ProcessHandle implements SimpleObject {
         synchronized (stdoutBuffer) {
             stdoutBuffer.append(line).append('\n');
         }
-        // Log to LogContext if enabled
-        if (config.logToContext()) {
-            LogContext.get().log(line);
+        // Log to captured LogContext (from scenario thread)
+        if (capturedLogContext != null) {
+            capturedLogContext.log(line);
         }
         // Dispatch to config listener
         if (config.listener() != null) {
@@ -242,9 +248,9 @@ public class ProcessHandle implements SimpleObject {
         synchronized (stderrBuffer) {
             stderrBuffer.append(line).append('\n');
         }
-        // Log to LogContext if enabled
-        if (config.logToContext()) {
-            LogContext.get().log(line);
+        // Log to captured LogContext (from scenario thread)
+        if (capturedLogContext != null) {
+            capturedLogContext.log(line);
         }
         // Dispatch to config errorListener
         if (config.errorListener() != null) {

@@ -122,6 +122,8 @@ karate run tests/
 | `-C, --clean` | Clean output directory before running |
 | `-D, --dryrun` | Parse but don't execute |
 | `--no-color` | Disable colored output |
+| `--report-log-level <level>` | Minimum log level for HTML reports (default: info) |
+| `--runtime-log-level <level>` | SLF4J logger level for console output |
 | `--log-mask <presets>` | Log masking presets (comma-separated) |
 
 ### Log Masking

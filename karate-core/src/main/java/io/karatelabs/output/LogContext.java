@@ -110,6 +110,53 @@ public class LogContext {
         return threshold;
     }
 
+    /**
+     * Set the runtime log level for SLF4J/Logback.
+     * Uses reflection to avoid compile-time dependency on Logback.
+     * Sets the level on the "karate" logger, which affects all subcategories
+     * (karate.runtime, karate.http, karate.mock, karate.scenario, karate.console).
+     *
+     * @param level the log level (trace, debug, info, warn, error)
+     * @return true if the level was set successfully, false if Logback is not available
+     */
+    public static boolean setRuntimeLogLevel(String level) {
+        if (level == null || level.isEmpty()) {
+            return false;
+        }
+        try {
+            // Get the ILoggerFactory
+            Object factory = LoggerFactory.getILoggerFactory();
+            if (!factory.getClass().getName().equals("ch.qos.logback.classic.LoggerContext")) {
+                RUNTIME_LOGGER.debug("Runtime log level not supported: not using Logback");
+                return false;
+            }
+
+            // Get the "karate" logger from the context
+            // LoggerContext.getLogger(String name) returns ch.qos.logback.classic.Logger
+            Object logger = factory.getClass()
+                    .getMethod("getLogger", String.class)
+                    .invoke(factory, "karate");
+
+            // Get the Level class and parse the level string
+            Class<?> levelClass = Class.forName("ch.qos.logback.classic.Level");
+            Object levelValue = levelClass
+                    .getMethod("toLevel", String.class)
+                    .invoke(null, level.toUpperCase());
+
+            // Set the level on the logger
+            logger.getClass()
+                    .getMethod("setLevel", levelClass)
+                    .invoke(logger, levelValue);
+
+            RUNTIME_LOGGER.debug("Set runtime log level to: {}", level);
+            return true;
+
+        } catch (Exception e) {
+            RUNTIME_LOGGER.debug("Failed to set runtime log level: {}", e.getMessage());
+            return false;
+        }
+    }
+
     // ========== Logging ==========
 
     /**
