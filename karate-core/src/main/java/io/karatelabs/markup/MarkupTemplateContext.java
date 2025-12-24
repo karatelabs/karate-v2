@@ -51,7 +51,7 @@ public class MarkupTemplateContext implements IEngineContext {
         Object existingContext = wrapped.getVariable("context");
         if (existingContext instanceof MarkupContext) {
             this.engine.put("context", existingContext);
-            if (existingContext instanceof io.karatelabs.io.http.ServerMarkupContext sc) {
+            if (existingContext instanceof io.karatelabs.http.ServerMarkupContext sc) {
                 sc.setOnSessionInit(session -> {
                     engine.put("session", session);
                 });

@@ -3,8 +3,8 @@ package io.karatelabs.core;
 import io.karatelabs.common.Resource;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.Scenario;
-import io.karatelabs.io.http.HttpResponse;
-import io.karatelabs.io.http.HttpServer;
+import io.karatelabs.http.HttpResponse;
+import io.karatelabs.http.HttpServer;
 import org.junit.jupiter.api.Test;
 
 import static io.karatelabs.core.TestUtils.*;

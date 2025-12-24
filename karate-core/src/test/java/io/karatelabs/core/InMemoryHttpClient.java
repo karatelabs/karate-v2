@@ -23,9 +23,9 @@
  */
 package io.karatelabs.core;
 
-import io.karatelabs.io.http.HttpClient;
-import io.karatelabs.io.http.HttpRequest;
-import io.karatelabs.io.http.HttpResponse;
+import io.karatelabs.http.HttpClient;
+import io.karatelabs.http.HttpRequest;
+import io.karatelabs.http.HttpResponse;
 
 import java.util.function.Function;
 

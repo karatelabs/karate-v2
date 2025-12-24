@@ -25,8 +25,8 @@ package io.karatelabs.output;
 
 import io.karatelabs.common.FileUtils;
 import io.karatelabs.common.ResourceType;
-import io.karatelabs.io.http.HttpRequest;
-import io.karatelabs.io.http.HttpResponse;
+import io.karatelabs.http.HttpRequest;
+import io.karatelabs.http.HttpResponse;
 
 import java.util.List;
 import java.util.Map;

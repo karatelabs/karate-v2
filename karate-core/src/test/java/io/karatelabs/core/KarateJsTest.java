@@ -2,7 +2,7 @@ package io.karatelabs.core;
 
 import io.karatelabs.common.Json;
 import io.karatelabs.common.Resource;
-import io.karatelabs.io.http.ErrorHttpClient;
+import io.karatelabs.http.ErrorHttpClient;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;

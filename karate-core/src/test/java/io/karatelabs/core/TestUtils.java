@@ -26,7 +26,7 @@ package io.karatelabs.core;
 import io.karatelabs.common.Resource;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.Scenario;
-import io.karatelabs.io.http.HttpClient;
+import io.karatelabs.http.HttpClient;
 import io.karatelabs.match.Match;
 import io.karatelabs.match.Result;
 

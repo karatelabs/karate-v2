@@ -1393,7 +1393,7 @@ This section covers how to configure and start the Karate HTTP server for servin
 ### Basic Server Setup
 
 ```java
-import io.karatelabs.io.http.*;
+import io.karatelabs.http.*;
 import io.karatelabs.markup.*;
 import io.karatelabs.markup.HtmxDialect;
 import io.karatelabs.js.Engine;

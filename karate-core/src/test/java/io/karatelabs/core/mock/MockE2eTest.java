@@ -25,7 +25,7 @@ package io.karatelabs.core.mock;
 
 import io.karatelabs.core.MockServer;
 import io.karatelabs.core.ScenarioRuntime;
-import io.karatelabs.io.http.ApacheHttpClient;
+import io.karatelabs.http.ApacheHttpClient;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;

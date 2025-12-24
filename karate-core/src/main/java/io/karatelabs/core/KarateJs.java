@@ -27,11 +27,11 @@ import io.karatelabs.common.Json;
 import io.karatelabs.common.Resource;
 import io.karatelabs.common.StringUtils;
 import io.karatelabs.common.Xml;
-import io.karatelabs.io.http.ApacheHttpClient;
-import io.karatelabs.io.http.HttpClient;
-import io.karatelabs.io.http.HttpRequest;
-import io.karatelabs.io.http.HttpRequestBuilder;
-import io.karatelabs.io.http.HttpResponse;
+import io.karatelabs.http.ApacheHttpClient;
+import io.karatelabs.http.HttpClient;
+import io.karatelabs.http.HttpRequest;
+import io.karatelabs.http.HttpRequestBuilder;
+import io.karatelabs.http.HttpResponse;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.MatchExpression;
 import io.karatelabs.js.Context;
@@ -109,7 +109,7 @@ public class KarateJs implements SimpleObject {
     private String env;
     private MockHandler mockHandler; // non-null only in mock context
     private Supplier<String> outputDirProvider; // for karate.write()
-    private io.karatelabs.io.http.HttpRequest prevRequest; // tracks previous HTTP request
+    private io.karatelabs.http.HttpRequest prevRequest; // tracks previous HTTP request
     private LogFacade logFacade; // lazy-initialized
 
     private final JsCallable read;
@@ -288,7 +288,7 @@ public class KarateJs implements SimpleObject {
      * Track the previous HTTP request for karate.prevRequest.
      * Called by HttpRequestBuilder after successful HTTP calls.
      */
-    public void setPrevRequest(io.karatelabs.io.http.HttpRequest request) {
+    public void setPrevRequest(io.karatelabs.http.HttpRequest request) {
         this.prevRequest = request;
     }
 
@@ -1541,7 +1541,7 @@ public class KarateJs implements SimpleObject {
             logger.warn("karate.request is only available in mock context");
             return null;
         }
-        io.karatelabs.io.http.HttpRequest request = mockHandler.getCurrentRequest();
+        io.karatelabs.http.HttpRequest request = mockHandler.getCurrentRequest();
         return request != null ? request.getBodyConverted() : null;
     }
 

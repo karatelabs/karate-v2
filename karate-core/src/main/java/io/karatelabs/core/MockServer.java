@@ -25,9 +25,9 @@ package io.karatelabs.core;
 
 import io.karatelabs.common.Resource;
 import io.karatelabs.gherkin.Feature;
-import io.karatelabs.io.http.HttpRequest;
-import io.karatelabs.io.http.HttpResponse;
-import io.karatelabs.io.http.HttpServer;
+import io.karatelabs.http.HttpRequest;
+import io.karatelabs.http.HttpResponse;
+import io.karatelabs.http.HttpServer;
 import io.karatelabs.js.SimpleObject;
 import io.netty.handler.ssl.SslContext;
 import org.slf4j.Logger;

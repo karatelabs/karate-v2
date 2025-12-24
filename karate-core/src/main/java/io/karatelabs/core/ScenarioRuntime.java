@@ -30,7 +30,7 @@ import io.karatelabs.gherkin.Scenario;
 import io.karatelabs.gherkin.ScenarioOutline;
 import io.karatelabs.gherkin.Step;
 import io.karatelabs.gherkin.Tag;
-import io.karatelabs.io.http.HttpRequestBuilder;
+import io.karatelabs.http.HttpRequestBuilder;
 import io.karatelabs.output.JvmLogger;
 import io.karatelabs.output.LogContext;
 

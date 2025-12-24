@@ -26,8 +26,8 @@ package io.karatelabs.core.mock;
 import io.karatelabs.common.Resource;
 import io.karatelabs.core.MockHandler;
 import io.karatelabs.gherkin.Feature;
-import io.karatelabs.io.http.HttpRequest;
-import io.karatelabs.io.http.HttpResponse;
+import io.karatelabs.http.HttpRequest;
+import io.karatelabs.http.HttpResponse;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
