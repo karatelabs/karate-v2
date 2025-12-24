@@ -1,4 +1,4 @@
-package io.karatelabs.markup.htmx;
+package io.karatelabs.markup;
 
 import io.karatelabs.js.Engine;
 import io.karatelabs.markup.Markup;

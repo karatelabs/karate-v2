@@ -30,7 +30,7 @@ import io.karatelabs.js.Engine;
 import io.karatelabs.markup.Markup;
 import io.karatelabs.markup.MarkupConfig;
 import io.karatelabs.markup.ResourceResolver;
-import io.karatelabs.markup.htmx.HtmxDialect;
+import io.karatelabs.markup.HtmxDialect;
 
 import java.util.HashMap;
 import java.util.Map;
