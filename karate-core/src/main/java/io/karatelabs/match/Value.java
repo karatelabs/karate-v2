@@ -29,13 +29,26 @@ import io.karatelabs.common.Xml;
 import io.karatelabs.js.Context;
 import io.karatelabs.js.JsCallable;
 import io.karatelabs.js.SimpleObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.w3c.dom.Node;
 
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.*;
 import java.util.function.BiConsumer;
 
 public class Value implements SimpleObject {
+
+    private static final Logger logger = LoggerFactory.getLogger(Value.class);
+
+    /**
+     * Memory threshold in bytes above which collections are stored on disk.
+     * Can be configured via system property "karate.match.memoryThreshold".
+     * Default is 10MB.
+     */
+    public static final long MEMORY_THRESHOLD = Long.parseLong(
+            System.getProperty("karate.match.memoryThreshold", String.valueOf(10 * 1024 * 1024)));
 
     public enum Type {
         NULL,
@@ -53,6 +66,7 @@ public class Value implements SimpleObject {
     final BiConsumer<Context, Result> onResult;
 
     private final Object value;
+    private LargeValueStore largeStore;
 
     private Context context;
 
@@ -61,6 +75,10 @@ public class Value implements SimpleObject {
     }
 
     Value(Object value, Context context, BiConsumer<Context, Result> onResult) {
+        this(value, context, onResult, true);
+    }
+
+    Value(Object value, Context context, BiConsumer<Context, Result> onResult, boolean checkLargeCollection) {
         this.context = context;
         if (value instanceof Set<?> set) {
             value = new ArrayList<Object>(set);
@@ -80,6 +98,9 @@ public class Value implements SimpleObject {
             type = Type.XML;
         } else if (value instanceof List) {
             type = Type.LIST;
+            if (checkLargeCollection) {
+                checkAndCreateLargeStore((List<?>) value);
+            }
         } else if (value instanceof Map) {
             type = Type.MAP;
         } else if (value instanceof String) {
@@ -92,6 +113,18 @@ public class Value implements SimpleObject {
             type = Type.BYTES;
         } else {
             type = Type.OTHER;
+        }
+    }
+
+    private void checkAndCreateLargeStore(List<?> list) {
+        long estimatedSize = DiskBackedList.estimateCollectionSize(list);
+        if (estimatedSize > MEMORY_THRESHOLD) {
+            try {
+                largeStore = DiskBackedList.create(list);
+                logger.debug("created disk-backed store for collection of estimated size {} bytes", estimatedSize);
+            } catch (IOException e) {
+                logger.warn("failed to create disk-backed store, keeping in memory: {}", e.getMessage());
+            }
         }
     }
 
@@ -147,6 +180,76 @@ public class Value implements SimpleObject {
                 return true;
             default:
                 return false;
+        }
+    }
+
+    /**
+     * Returns true if this value contains a large collection stored on disk.
+     */
+    public boolean isLargeCollection() {
+        return largeStore != null;
+    }
+
+    /**
+     * Returns the large value store for disk-backed collections, or null.
+     */
+    public LargeValueStore getLargeStore() {
+        return largeStore;
+    }
+
+    /**
+     * Returns the size of a list, working for both regular and large collections.
+     *
+     * @return the list size, or -1 if not a list
+     */
+    public int getListSize() {
+        if (type != Type.LIST) {
+            return -1;
+        }
+        if (largeStore != null) {
+            return largeStore.size();
+        }
+        return ((List<?>) value).size();
+    }
+
+    /**
+     * Returns an iterator over list elements, working for both regular and large collections.
+     *
+     * @return an iterator, or null if not a list
+     */
+    public Iterator<Object> listIterator() {
+        if (type != Type.LIST) {
+            return null;
+        }
+        if (largeStore != null) {
+            return largeStore.iterator();
+        }
+        return ((List<Object>) value).iterator();
+    }
+
+    /**
+     * Gets an element at the specified index, working for both regular and large collections.
+     *
+     * @param index the index
+     * @return the element at that index
+     */
+    public Object getListElement(int index) {
+        if (type != Type.LIST) {
+            throw new IllegalStateException("not a list");
+        }
+        if (largeStore != null) {
+            return largeStore.get(index);
+        }
+        return ((List<?>) value).get(index);
+    }
+
+    /**
+     * Closes any resources held by this value (e.g., disk-backed stores).
+     */
+    public void close() {
+        if (largeStore != null) {
+            largeStore.close();
+            largeStore = null;
         }
     }
 
@@ -213,12 +316,7 @@ public class Value implements SimpleObject {
     public Result is(Match.Type matchType, Object expected) {
         Operation op = new Operation(matchType, this, new Value(parseIfJsonOrXmlString(expected), context, onResult));
         op.execute();
-        Result result;
-        if (op.pass) {
-            result = Result.PASS;
-        } else {
-            result = Result.fail(op.getFailureReasons());
-        }
+        Result result = op.getResult();
         if (onResult != null) {
             onResult.accept(context, result);
         }
@@ -304,6 +402,14 @@ public class Value implements SimpleObject {
         return is(Match.Type.EACH_CONTAINS_ANY, expected);
     }
 
+    public Result within(Object expected) {
+        return is(Match.Type.WITHIN, expected);
+    }
+
+    public Result notWithin(Object expected) {
+        return is(Match.Type.NOT_WITHIN, expected);
+    }
+
     JsCallable call(Match.Type matchType) {
         return (context, args) -> {
             Value.this.context = context;
@@ -330,6 +436,8 @@ public class Value implements SimpleObject {
             case "eachContainsDeep" -> call(Match.Type.EACH_CONTAINS_DEEP);
             case "eachContainsOnly" -> call(Match.Type.EACH_CONTAINS_ONLY);
             case "eachContainsAny" -> call(Match.Type.EACH_CONTAINS_ANY);
+            case "within" -> call(Match.Type.WITHIN);
+            case "notWithin" -> call(Match.Type.NOT_WITHIN);
             default -> throw new RuntimeException("no such match api: " + name);
         };
     }

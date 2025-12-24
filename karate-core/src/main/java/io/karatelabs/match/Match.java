@@ -47,7 +47,9 @@ public class Match {
         EACH_NOT_CONTAINS,
         EACH_CONTAINS_ONLY,
         EACH_CONTAINS_ANY,
-        EACH_CONTAINS_DEEP
+        EACH_CONTAINS_DEEP,
+        WITHIN,
+        NOT_WITHIN
 
     }
 
@@ -68,11 +70,7 @@ public class Match {
         Value expectedValue = new Value(expected);
         Operation op = new Operation(engine, matchType, actualValue, expectedValue);
         op.execute();
-        if (op.pass) {
-            return Result.PASS;
-        } else {
-            return Result.fail(op.getFailureReasons());
-        }
+        return op.getResult();
     }
 
 }

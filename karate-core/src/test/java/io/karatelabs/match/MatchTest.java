@@ -268,10 +268,7 @@ class MatchTest {
                   $ | actual contains expected (LIST:STRING)
                   ["foo","bar"]
                   'bar'
-                
-                    $[0] | not equal (STRING:STRING)
-                    'foo'
-                    'bar'
+
                 """);
         match(
                 "[{ foo: 1 }, { foo: 2 }, { foo: 3 }]",
@@ -317,10 +314,14 @@ class MatchTest {
         match("[1, 2, 3]", EACH_EQUALS, "#number? _ < 2", FAILS);
         String expected = """
                 match failed: EACH_EQUALS
-                  $ | match each failed at index 1 (LIST:STRING)
+                  $ | match each failed at indices [1, 2] (LIST:STRING)
                   [1,2,3]
                   '#number? _ < 2'
-                
+
+                    $[2] | evaluated to 'false' (NUMBER:STRING)
+                    3
+                    '#number? _ < 2'
+
                     $[1] | evaluated to 'false' (NUMBER:STRING)
                     2
                     '#number? _ < 2'
@@ -384,10 +385,10 @@ class MatchTest {
         match("{ a: 1, b: 2, c: 3 }", CONTAINS, "{ z: 9, x: 2 }", FAILS);
         message("""
                 match failed: CONTAINS
-                  $ | actual does not contain expected | actual does not contain key - 'z' (MAP:MAP)
+                  $ | actual does not contain expected | actual does not contain keys - [z, x] (MAP:MAP)
                   {"a":1,"b":2,"c":3}
                   {"z":9,"x":2}
-                
+
                 """);
         match("{ a: 1, b: 2, c: 3 }", CONTAINS_ANY, "{ z: 9, x: 2 }", FAILS);
         message("""
@@ -395,14 +396,7 @@ class MatchTest {
                   $ | actual does not contain expected | no key-values matched (MAP:MAP)
                   {"a":1,"b":2,"c":3}
                   {"z":9,"x":2}
-                
-                    $.x | data types don't match (NULL:NUMBER)
-                    null
-                    2
-                
-                    $.z | data types don't match (NULL:NUMBER)
-                    null
-                    9
+
                 """);
         match("{ a: 1, b: 2, c: 3 }", NOT_CONTAINS, "{ a: 1 }", FAILS);
         message("""
@@ -652,6 +646,100 @@ class MatchTest {
         match("{ 'foo': 'test', 'bar' : [ { 'bar': 'bar' } ] }", matchType, "{ 'foo': '#string', 'bar': '##array' }");
         match("{ 'foo': null }", matchType, "{ 'foo': '##array' }");
         match("{ a: null}", matchType, " { a: '##notnull' }");
+    }
+
+    @Test
+    void testWithin() {
+        // WITHIN: actual is subset of expected (reverse of CONTAINS)
+        // String: expected contains actual
+        match("bar", WITHIN, "foobar");
+        match("baz", WITHIN, "foobar", FAILS);
+        message("""
+                match failed: WITHIN
+                  $ | actual is not within expected (STRING:STRING)
+                  'baz'
+                  'foobar'
+                """);
+
+        // List: all items in actual exist in expected
+        match("['a']", WITHIN, "['a', 'b', 'c']");
+        match("['a', 'b']", WITHIN, "['a', 'b', 'c']");
+        match("['a', 'b', 'c']", WITHIN, "['a', 'b', 'c']");
+        match("['a', 'd']", WITHIN, "['a', 'b', 'c']", FAILS);
+        message("""
+                match failed: WITHIN
+                  $ | actual is not within expected | expected does not contain actual item - d (LIST:LIST)
+                  ["a","d"]
+                  ["a","b","c"]
+
+                """);
+
+        // List: actual longer than expected
+        match("['a', 'b', 'c', 'd']", WITHIN, "['a', 'b', 'c']", FAILS);
+        message("""
+                match failed: WITHIN
+                  $ | actual is not within expected | actual array length is greater than expected - 4:3 (LIST:LIST)
+                  ["a","b","c","d"]
+                  ["a","b","c"]
+
+                """);
+
+        // Map: all keys in actual exist in expected
+        match("{ a: 1 }", WITHIN, "{ a: 1, b: 2, c: 3 }");
+        match("{ a: 1, b: 2 }", WITHIN, "{ a: 1, b: 2, c: 3 }");
+        match("{ a: 1, b: 2, c: 3 }", WITHIN, "{ a: 1, b: 2, c: 3 }");
+        match("{ a: 1, z: 9 }", WITHIN, "{ a: 1, b: 2, c: 3 }", FAILS);
+        message("""
+                match failed: WITHIN
+                  $ | actual is not within expected | expected does not contain key - 'z' (MAP:MAP)
+                  {"a":1,"z":9}
+                  {"a":1,"b":2,"c":3}
+
+                """);
+
+        // Map: value mismatch
+        match("{ a: 2 }", WITHIN, "{ a: 1, b: 2, c: 3 }", FAILS);
+        message("""
+                match failed: WITHIN
+                  $ | actual is not within expected | match failed for name: 'a' (MAP:MAP)
+                  {"a":2}
+                  {"a":1,"b":2,"c":3}
+
+                    $.a | not equal (NUMBER:NUMBER)
+                    2
+                    1
+                """);
+
+        // Primitive on LHS with array on RHS (auto-wrapped)
+        match("a", WITHIN, "['a', 'b', 'c']");
+        match(1, WITHIN, "[1, 2, 3]");
+        match("d", WITHIN, "['a', 'b', 'c']", FAILS);
+        message("""
+                match failed: WITHIN
+                  $ | actual is not within expected | expected does not contain actual item - d (STRING:LIST)
+                  'd'
+                  ["a","b","c"]
+
+                """);
+
+        // NOT_WITHIN: actual is not subset of expected
+        match("['d']", NOT_WITHIN, "['a', 'b', 'c']");
+        match("['a']", NOT_WITHIN, "['a', 'b', 'c']", FAILS);
+        message("""
+                match failed: NOT_WITHIN
+                  $ | actual is within expected (LIST:LIST)
+                  ["a"]
+                  ["a","b","c"]
+                """);
+
+        match("{ z: 9 }", NOT_WITHIN, "{ a: 1, b: 2, c: 3 }");
+        match("{ a: 1 }", NOT_WITHIN, "{ a: 1, b: 2, c: 3 }", FAILS);
+        message("""
+                match failed: NOT_WITHIN
+                  $ | actual is within expected (MAP:MAP)
+                  {"a":1}
+                  {"a":1,"b":2,"c":3}
+                """);
     }
 
 }

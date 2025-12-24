@@ -23,23 +23,60 @@
  */
 package io.karatelabs.match;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Result {
 
-    public static final Result PASS = new Result(true, null);
+    /**
+     * Represents a single failure in a match operation with structured data.
+     */
+    public record Failure(
+            String path,           // e.g., "$.foo[0].bar"
+            String reason,         // e.g., "not equal"
+            Value.Type actualType,
+            Value.Type expectedType,
+            Object actualValue,    // raw value
+            Object expectedValue,  // raw value
+            int depth
+    ) {
+        public Map<String, Object> toMap() {
+            Map<String, Object> map = new HashMap<>();
+            map.put("path", path);
+            map.put("reason", reason);
+            map.put("actualType", actualType != null ? actualType.name() : null);
+            map.put("expectedType", expectedType != null ? expectedType.name() : null);
+            map.put("actualValue", actualValue);
+            map.put("expectedValue", expectedValue);
+            map.put("depth", depth);
+            return map;
+        }
+    }
+
+    public static final Result PASS = new Result(true, null, List.of());
 
     public static Result fail(String message) {
-        return new Result(false, message);
+        return new Result(false, message, List.of());
+    }
+
+    public static Result fail(String message, List<Failure> failures) {
+        return new Result(false, message, failures);
     }
 
     public final String message;
     public final boolean pass;
+    public final List<Failure> failures;
 
     Result(boolean pass, String message) {
+        this(pass, message, List.of());
+    }
+
+    Result(boolean pass, String message, List<Failure> failures) {
         this.pass = pass;
         this.message = message;
+        this.failures = failures != null ? failures : List.of();
     }
 
     @Override
@@ -48,9 +85,16 @@ public class Result {
     }
 
     public Map<String, Object> toMap() {
-        Map<String, Object> map = new HashMap<>(2);
+        Map<String, Object> map = new HashMap<>(4);
         map.put("pass", pass);
         map.put("message", message);
+        if (!failures.isEmpty()) {
+            List<Map<String, Object>> failuresList = new ArrayList<>(failures.size());
+            for (Failure f : failures) {
+                failuresList.add(f.toMap());
+            }
+            map.put("failures", failuresList);
+        }
         return map;
     }
 
