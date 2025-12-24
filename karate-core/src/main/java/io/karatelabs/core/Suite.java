@@ -29,7 +29,12 @@ import io.karatelabs.common.ResourceNotFoundException;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.Tag;
 import io.karatelabs.js.Engine;
-import io.karatelabs.log.JvmLogger;
+import io.karatelabs.output.CucumberJsonWriter;
+import io.karatelabs.output.HtmlReportListener;
+import io.karatelabs.output.JunitXmlWriter;
+import io.karatelabs.output.JvmLogger;
+import io.karatelabs.output.NdjsonReportListener;
+import io.karatelabs.output.ResultListener;
 
 import java.io.File;
 import java.nio.file.Files;

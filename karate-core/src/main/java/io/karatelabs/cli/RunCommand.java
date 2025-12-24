@@ -23,7 +23,7 @@
  */
 package io.karatelabs.cli;
 
-import io.karatelabs.core.Console;
+import io.karatelabs.output.Console;
 import io.karatelabs.core.Globals;
 import io.karatelabs.core.KaratePom;
 import io.karatelabs.core.Runner;

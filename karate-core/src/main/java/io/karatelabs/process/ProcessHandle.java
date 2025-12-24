@@ -25,8 +25,8 @@ package io.karatelabs.process;
 
 import io.karatelabs.js.JsCallable;
 import io.karatelabs.js.SimpleObject;
-import io.karatelabs.log.JvmLogger;
-import io.karatelabs.log.LogContext;
+import io.karatelabs.output.JvmLogger;
+import io.karatelabs.output.LogContext;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;

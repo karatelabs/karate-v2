@@ -21,9 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.core;
+package io.karatelabs.output;
 
 import io.karatelabs.common.Json;
+import io.karatelabs.core.Runner;
+import io.karatelabs.core.SuiteResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

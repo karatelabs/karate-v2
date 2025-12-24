@@ -26,7 +26,7 @@ package io.karatelabs;
 import io.karatelabs.cli.CleanCommand;
 import io.karatelabs.cli.MockCommand;
 import io.karatelabs.cli.RunCommand;
-import io.karatelabs.core.Console;
+import io.karatelabs.output.Console;
 import io.karatelabs.core.Globals;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;

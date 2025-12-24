@@ -21,11 +21,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.core;
+package io.karatelabs.output;
 
 import io.karatelabs.common.Json;
 import io.karatelabs.common.ResourceType;
-import io.karatelabs.log.JvmLogger;
+import io.karatelabs.core.FeatureResult;
+import io.karatelabs.core.Globals;
+import io.karatelabs.core.ScenarioResult;
+import io.karatelabs.core.StepResult;
+import io.karatelabs.core.SuiteResult;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -71,7 +75,7 @@ public final class HtmlReportWriter {
     private static final DateTimeFormatter DATE_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
 
-    private static final String RESOURCE_ROOT = "io/karatelabs/report/";
+    private static final String RESOURCE_ROOT = "io/karatelabs/output/";
 
     private static final String[] STATIC_RESOURCES = {
             "bootstrap.min.css",

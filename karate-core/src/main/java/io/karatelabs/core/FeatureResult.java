@@ -24,6 +24,7 @@
 package io.karatelabs.core;
 
 import io.karatelabs.gherkin.Feature;
+import io.karatelabs.output.Console;
 import io.karatelabs.gherkin.Tag;
 
 import java.util.ArrayList;

@@ -21,14 +21,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.core;
+package io.karatelabs.output;
 
 import io.karatelabs.common.Json;
+import io.karatelabs.core.FeatureResult;
+import io.karatelabs.core.ScenarioResult;
+import io.karatelabs.core.StepResult;
+import io.karatelabs.core.SuiteResult;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.Scenario;
 import io.karatelabs.gherkin.Step;
 import io.karatelabs.gherkin.Tag;
-import io.karatelabs.log.JvmLogger;
 
 import java.nio.file.Files;
 import java.nio.file.Path;

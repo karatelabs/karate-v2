@@ -24,9 +24,9 @@
 package io.karatelabs.core;
 
 import io.karatelabs.js.SimpleObject;
-import io.karatelabs.log.JvmLogger;
-import io.karatelabs.log.LogContext;
-import io.karatelabs.log.LogLevel;
+import io.karatelabs.output.JvmLogger;
+import io.karatelabs.output.LogContext;
+import io.karatelabs.output.LogLevel;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;

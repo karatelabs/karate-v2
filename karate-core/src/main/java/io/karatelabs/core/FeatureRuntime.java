@@ -31,7 +31,8 @@ import io.karatelabs.gherkin.ScenarioOutline;
 import io.karatelabs.gherkin.ExamplesTable;
 import io.karatelabs.gherkin.Tag;
 import io.karatelabs.js.JsCallable;
-import io.karatelabs.log.JvmLogger;
+import io.karatelabs.output.JvmLogger;
+import io.karatelabs.output.ResultListener;
 
 import java.util.ArrayList;
 import java.util.HashMap;

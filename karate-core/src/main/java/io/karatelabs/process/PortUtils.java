@@ -23,7 +23,7 @@
  */
 package io.karatelabs.process;
 
-import io.karatelabs.log.JvmLogger;
+import io.karatelabs.output.JvmLogger;
 
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;

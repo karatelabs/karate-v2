@@ -21,10 +21,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.report;
+package io.karatelabs.output;
 
 import io.karatelabs.common.Json;
-import io.karatelabs.core.Console;
 import io.karatelabs.core.Globals;
 import io.karatelabs.core.Runner;
 import io.karatelabs.core.SuiteResult;

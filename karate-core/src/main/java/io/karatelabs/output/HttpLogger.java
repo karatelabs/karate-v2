@@ -21,11 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.io.http;
+package io.karatelabs.output;
 
 import io.karatelabs.common.FileUtils;
 import io.karatelabs.common.ResourceType;
-import io.karatelabs.log.LogContext;
+import io.karatelabs.io.http.HttpRequest;
+import io.karatelabs.io.http.HttpResponse;
 
 import java.util.List;
 import java.util.Map;

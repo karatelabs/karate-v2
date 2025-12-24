@@ -154,8 +154,8 @@ Embeds appear in HTML reports and are included in the JSON output as Base64-enco
 By default, test logs only go to reports. To also forward to SLF4J:
 
 ```java
-import io.karatelabs.log.Slf4jCascade;
-import io.karatelabs.log.LogContext;
+import io.karatelabs.output.Slf4jCascade;
+import io.karatelabs.output.LogContext;
 
 // Forward test logs to SLF4J category "karate.run"
 LogContext.setCascade(Slf4jCascade.create());
@@ -180,7 +180,7 @@ Configure in logback.xml:
 `JvmLogger` handles framework/infrastructure logging (not test output):
 
 ```java
-import io.karatelabs.log.JvmLogger;
+import io.karatelabs.output.JvmLogger;
 
 JvmLogger.info("Starting suite");
 JvmLogger.debug("Loading config from {}", path);
@@ -203,8 +203,8 @@ public enum LogLevel {
 ### Custom Appender
 
 ```java
-import io.karatelabs.log.LogAppender;
-import io.karatelabs.log.JvmLogger;
+import io.karatelabs.output.LogAppender;
+import io.karatelabs.output.JvmLogger;
 
 // Route to custom logging system
 JvmLogger.setAppender((level, format, args) -> {
@@ -249,8 +249,8 @@ karate run --log-mask ALL_SENSITIVE features/
 ### Runner.Builder API
 
 ```java
-import io.karatelabs.log.LogMask;
-import io.karatelabs.log.LogMaskPreset;
+import io.karatelabs.output.LogMask;
+import io.karatelabs.output.LogMaskPreset;
 
 Runner.path("features/")
     .logMask(LogMask.builder()
@@ -372,13 +372,13 @@ To use logback with V2:
 
 | Class | Purpose |
 |-------|---------|
-| `io.karatelabs.log.LogContext` | Thread-local test log collector |
-| `io.karatelabs.log.JvmLogger` | Framework logger |
-| `io.karatelabs.log.LogAppender` | Pluggable log output |
-| `io.karatelabs.log.LogLevel` | Log level enum |
-| `io.karatelabs.log.Slf4jCascade` | Forward test logs to SLF4J |
-| `io.karatelabs.log.LogMask` | Log masking (future) |
-| `io.karatelabs.log.LogMaskPreset` | Built-in masking patterns (future) |
+| `io.karatelabs.output.LogContext` | Thread-local test log collector |
+| `io.karatelabs.output.JvmLogger` | Framework logger |
+| `io.karatelabs.output.LogAppender` | Pluggable log output |
+| `io.karatelabs.output.LogLevel` | Log level enum |
+| `io.karatelabs.output.Slf4jCascade` | Forward test logs to SLF4J |
+| `io.karatelabs.output.LogMask` | Log masking (future) |
+| `io.karatelabs.output.LogMaskPreset` | Built-in masking patterns (future) |
 
 ---
 

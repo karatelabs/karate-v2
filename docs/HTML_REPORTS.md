@@ -355,7 +355,7 @@ user templates (--templates dir)
   ↓ fallback
 classpath:karate-report-templates/  (commercial JAR)
   ↓ fallback
-classpath:io/karatelabs/report/  (built-in)
+classpath:io/karatelabs/output/  (built-in)
 ```
 
 ### Custom Templates
@@ -564,23 +564,23 @@ cd target/karate-report-dev && python3 -m http.server 8000
 
 | File | Purpose |
 |------|---------|
-| `src/main/resources/io/karatelabs/report/karate-summary.html` | Summary page template |
-| `src/main/resources/io/karatelabs/report/karate-feature.html` | Feature page template |
-| `src/main/resources/io/karatelabs/report/karate-timeline.html` | Timeline page template |
-| `src/main/resources/io/karatelabs/report/res/` | Static resources (CSS, JS, images) |
-| `src/main/java/io/karatelabs/core/HtmlReportWriter.java` | Java code that builds JSON data |
-| `src/main/java/io/karatelabs/core/HtmlReportListener.java` | Async report generation listener |
+| `src/main/resources/io/karatelabs/output/karate-summary.html` | Summary page template |
+| `src/main/resources/io/karatelabs/output/karate-feature.html` | Feature page template |
+| `src/main/resources/io/karatelabs/output/karate-timeline.html` | Timeline page template |
+| `src/main/resources/io/karatelabs/output/res/` | Static resources (CSS, JS, images) |
+| `src/main/java/io/karatelabs/output/HtmlReportWriter.java` | Java code that builds JSON data |
+| `src/main/java/io/karatelabs/output/HtmlReportListener.java` | Async report generation listener |
 
 ### Development Workflow
 
-1. **Edit HTML templates** in `src/main/resources/io/karatelabs/report/`
+1. **Edit HTML templates** in `src/main/resources/io/karatelabs/output/`
 2. **Run `mvn compile`** to copy resources to target/classes
 3. **Generate reports** using the command above
 4. **Refresh browser** to see changes
 
 **Note:** If updating static resources (CSS, JS, SVG), you may need to delete the target file first if its timestamp is newer than the source:
 ```bash
-rm target/classes/io/karatelabs/report/res/karate-logo.svg
+rm target/classes/io/karatelabs/output/res/karate-logo.svg
 mvn compile
 ```
 

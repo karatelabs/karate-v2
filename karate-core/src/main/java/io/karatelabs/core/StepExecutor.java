@@ -38,8 +38,8 @@ import io.karatelabs.io.http.HttpRequestBuilder;
 import io.karatelabs.io.http.HttpResponse;
 import io.karatelabs.js.GherkinParser;
 import io.karatelabs.js.JsCallable;
-import io.karatelabs.log.JvmLogger;
-import io.karatelabs.log.LogContext;
+import io.karatelabs.output.JvmLogger;
+import io.karatelabs.output.LogContext;
 import io.karatelabs.match.Match;
 import io.karatelabs.match.Result;
 

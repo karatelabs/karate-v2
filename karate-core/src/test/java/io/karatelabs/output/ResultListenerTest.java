@@ -21,8 +21,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.core;
+package io.karatelabs.output;
 
+import io.karatelabs.core.FeatureResult;
+import io.karatelabs.core.Runner;
+import io.karatelabs.core.ScenarioResult;
+import io.karatelabs.core.Suite;
+import io.karatelabs.core.SuiteResult;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.Scenario;
 import org.junit.jupiter.api.Test;

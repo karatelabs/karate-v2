@@ -25,6 +25,7 @@ package io.karatelabs.core;
 
 import io.karatelabs.common.Resource;
 import io.karatelabs.gherkin.Feature;
+import io.karatelabs.output.Console;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

@@ -23,7 +23,7 @@
  */
 package io.karatelabs.cli;
 
-import io.karatelabs.core.Console;
+import io.karatelabs.output.Console;
 import io.karatelabs.core.MockServer;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;

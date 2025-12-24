@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.log;
+package io.karatelabs.output;
 
 import io.karatelabs.core.ScenarioResult;
 import io.karatelabs.core.StepResult;

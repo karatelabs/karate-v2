@@ -21,10 +21,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.core;
+package io.karatelabs.output;
 
 import io.karatelabs.common.Json;
-import io.karatelabs.log.JvmLogger;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

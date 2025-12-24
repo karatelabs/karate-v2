@@ -23,6 +23,7 @@
  */
 package io.karatelabs.io.http;
 
+import io.karatelabs.output.HttpLogger;
 import io.netty.handler.codec.http.cookie.ClientCookieDecoder;
 import io.netty.handler.codec.http.cookie.ServerCookieEncoder;
 import org.apache.hc.client5.http.auth.AuthScope;

@@ -26,7 +26,8 @@ package io.karatelabs.core;
 import io.karatelabs.common.FileUtils;
 import io.karatelabs.common.Resource;
 import io.karatelabs.gherkin.Feature;
-import io.karatelabs.log.LogLevel;
+import io.karatelabs.output.LogLevel;
+import io.karatelabs.output.ResultListener;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -434,7 +435,7 @@ public final class Runner {
             }
 
             // Apply log level (this is a global setting)
-            io.karatelabs.log.LogContext.setLogLevel(logLevel);
+            io.karatelabs.output.LogContext.setLogLevel(logLevel);
 
             return suite;
         }

@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.log;
+package io.karatelabs.output;
 
 /**
  * Backend for JVM logging. Default is stderr, can be replaced with SLF4J.
