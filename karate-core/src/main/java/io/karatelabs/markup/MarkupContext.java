@@ -31,7 +31,7 @@ import io.karatelabs.js.SimpleObject;
  * <p>
  * This interface defines the core APIs available in both plain templating mode
  * and server mode. Server-specific methods (like redirect, init, close) are
- * added by ServerContext which extends this interface.
+ * added by ServerMarkupContext which extends this interface.
  * <p>
  * In templates, access via the 'context' variable:
  * <pre>

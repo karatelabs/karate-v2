@@ -89,7 +89,7 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
             request.processBody();
 
             // Create context for this request
-            ServerContext context = createContext(request, response);
+            ServerMarkupContext context = createContext(request, response);
 
             // Load existing session from cookie if present
             loadSession(request, context);
@@ -137,13 +137,13 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
         }
     }
 
-    private ServerContext createContext(HttpRequest request, HttpResponse response) {
-        ServerContext context = new ServerContext(request, response, config);
+    private ServerMarkupContext createContext(HttpRequest request, HttpResponse response) {
+        ServerMarkupContext context = new ServerMarkupContext(request, response, config);
         context.setResourceResolver(path -> resolver.resolve(path, null));
         return context;
     }
 
-    private void loadSession(HttpRequest request, ServerContext context) {
+    private void loadSession(HttpRequest request, ServerMarkupContext context) {
         if (!config.isSessionEnabled()) {
             return;
         }
@@ -177,7 +177,7 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
      *
      * @return null if valid or not required, HttpResponse with 403 if invalid
      */
-    private HttpResponse validateCsrf(HttpRequest request, ServerContext context) {
+    private HttpResponse validateCsrf(HttpRequest request, ServerMarkupContext context) {
         // Skip if CSRF protection is disabled
         if (!config.isCsrfEnabled()) {
             return null;
@@ -202,7 +202,7 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
         return null;
     }
 
-    private void saveSession(ServerContext context, HttpResponse response) {
+    private void saveSession(ServerMarkupContext context, HttpResponse response) {
         Session session = context.getSession();
         if (session == null || session.isTemporary()) {
             return;
@@ -218,7 +218,7 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
         response.setHeader("Set-Cookie", cookieValue);
     }
 
-    private HttpResponse route(HttpRequest request, HttpResponse response, ServerContext context) {
+    private HttpResponse route(HttpRequest request, HttpResponse response, ServerMarkupContext context) {
         String path = request.getPath();
 
         // 1. Static files
@@ -235,7 +235,7 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
         return handleTemplate(request, response, context);
     }
 
-    private HttpResponse handleStatic(HttpRequest request, HttpResponse response, ServerContext context) {
+    private HttpResponse handleStatic(HttpRequest request, HttpResponse response, ServerMarkupContext context) {
         String path = request.getPath();
 
         // Path traversal protection
@@ -279,7 +279,7 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
         }
     }
 
-    private HttpResponse handleApi(HttpRequest request, HttpResponse response, ServerContext context) {
+    private HttpResponse handleApi(HttpRequest request, HttpResponse response, ServerMarkupContext context) {
         String path = request.getPath();
 
         // Path traversal protection
@@ -337,7 +337,7 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
         }
     }
 
-    private HttpResponse handleTemplate(HttpRequest request, HttpResponse response, ServerContext context) {
+    private HttpResponse handleTemplate(HttpRequest request, HttpResponse response, ServerMarkupContext context) {
         String path = request.getPath();
 
         // Path traversal protection

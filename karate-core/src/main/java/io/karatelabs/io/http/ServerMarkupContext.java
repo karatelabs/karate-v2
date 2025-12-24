@@ -51,7 +51,7 @@ import java.util.function.Function;
  * &lt;/script&gt;
  * </pre>
  */
-public class ServerContext implements MarkupContext {
+public class ServerMarkupContext implements MarkupContext {
 
     private final HttpRequest request;
     private final HttpResponse response;
@@ -74,7 +74,7 @@ public class ServerContext implements MarkupContext {
     // Callback for syncing session to JS engine after init()
     private java.util.function.Consumer<Session> onSessionInit;
 
-    public ServerContext(HttpRequest request, HttpResponse response, ServerConfig config) {
+    public ServerMarkupContext(HttpRequest request, HttpResponse response, ServerConfig config) {
         this.request = request;
         this.response = response;
         this.config = config;
@@ -150,7 +150,7 @@ public class ServerContext implements MarkupContext {
         if (config != null && config.getLogHandler() != null) {
             config.getLogHandler().accept(message);
         } else {
-            System.out.println("[ServerContext] " + message);
+            System.out.println("[ServerMarkupContext] " + message);
         }
     }
 

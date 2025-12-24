@@ -11,12 +11,12 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class ServerContextTest {
+class ServerMarkupContextTest {
 
     private HttpRequest request;
     private HttpResponse response;
     private ServerConfig config;
-    private ServerContext context;
+    private ServerMarkupContext context;
 
     @BeforeEach
     void setUp() {
@@ -27,7 +27,7 @@ class ServerContextTest {
         config = new ServerConfig()
                 .sessionStore(new InMemorySessionStore())
                 .sessionExpirySeconds(600);
-        context = new ServerContext(request, response, config);
+        context = new ServerMarkupContext(request, response, config);
     }
 
     // MarkupContext tests
@@ -162,7 +162,7 @@ class ServerContextTest {
         List<String> capturedLogs = new ArrayList<>();
         ServerConfig configWithHandler = new ServerConfig()
                 .logHandler(capturedLogs::add);
-        ServerContext ctxWithHandler = new ServerContext(request, response, configWithHandler);
+        ServerMarkupContext ctxWithHandler = new ServerMarkupContext(request, response, configWithHandler);
 
         ctxWithHandler.log("custom", "log", "message");
 
@@ -216,7 +216,7 @@ class ServerContextTest {
 
     @Test
     void testInitWithoutSessionStore() {
-        ServerContext ctx = new ServerContext(request, response, new ServerConfig());
+        ServerMarkupContext ctx = new ServerMarkupContext(request, response, new ServerConfig());
         ctx.init();
         // Should not throw, just no-op
         assertNull(ctx.getSession());
@@ -421,7 +421,7 @@ class ServerContextTest {
         ServerConfig configNoCsrf = new ServerConfig()
                 .sessionStore(new InMemorySessionStore())
                 .csrfEnabled(false);
-        ServerContext contextNoCsrf = new ServerContext(request, response, configNoCsrf);
+        ServerMarkupContext contextNoCsrf = new ServerMarkupContext(request, response, configNoCsrf);
         contextNoCsrf.init();
 
         assertNull(contextNoCsrf.jsGet("csrf"));

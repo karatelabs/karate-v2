@@ -46,12 +46,12 @@ public class MarkupTemplateContext implements IEngineContext {
         this.wrapped = wrapped;
         this.engine = engine;
         this.engine.put("_", vars);
-        // Use existing MarkupContext from template variables if present (e.g., ServerContext in server mode)
+        // Use existing MarkupContext from template variables if present (e.g., ServerMarkupContext in server mode)
         // Otherwise create a SimpleMarkupContext for plain templating mode
         Object existingContext = wrapped.getVariable("context");
         if (existingContext instanceof MarkupContext) {
             this.engine.put("context", existingContext);
-            if (existingContext instanceof io.karatelabs.io.http.ServerContext sc) {
+            if (existingContext instanceof io.karatelabs.io.http.ServerMarkupContext sc) {
                 sc.setOnSessionInit(session -> {
                     engine.put("session", session);
                 });

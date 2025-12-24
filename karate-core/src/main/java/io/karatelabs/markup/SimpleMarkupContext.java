@@ -32,6 +32,8 @@ import org.thymeleaf.templateresource.ITemplateResource;
 /**
  * Implementation of MarkupContext for plain templating mode (without server).
  * Provides access to template metadata, resource reading, and JSON utilities.
+ *
+ * @see io.karatelabs.io.http.ServerMarkupContext for server mode with HTTP request/response handling
  */
 class SimpleMarkupContext implements MarkupContext {
 
