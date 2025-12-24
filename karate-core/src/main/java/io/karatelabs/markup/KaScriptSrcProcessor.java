@@ -33,16 +33,16 @@ import org.thymeleaf.processor.element.AbstractAttributeTagProcessor;
 import org.thymeleaf.processor.element.IElementTagStructureHandler;
 import org.thymeleaf.templatemode.TemplateMode;
 
-class KarateScriptSrcAttributeProcessor extends AbstractAttributeTagProcessor {
+class KaScriptSrcProcessor extends AbstractAttributeTagProcessor {
 
-    private static final Logger logger = LoggerFactory.getLogger(KarateScriptSrcAttributeProcessor.class);
+    private static final Logger logger = LoggerFactory.getLogger(KaScriptSrcProcessor.class);
 
     private final String hostContextPath;
     private final ResourceResolver resolver;
     private final boolean serverMode;
 
-    KarateScriptSrcAttributeProcessor(String dialectPrefix, ResourceResolver resolver, String hostContextPath, boolean serverMode) {
-        super(TemplateMode.HTML, dialectPrefix, null, false, KarateScriptBodyProcessor.SRC, false, 1000, false);
+    KaScriptSrcProcessor(String dialectPrefix, ResourceResolver resolver, String hostContextPath, boolean serverMode) {
+        super(TemplateMode.HTML, dialectPrefix, null, false, KaScriptProcessor.SRC, false, 1000, false);
         this.resolver = resolver;
         this.hostContextPath = hostContextPath;
         this.serverMode = serverMode;
@@ -50,13 +50,13 @@ class KarateScriptSrcAttributeProcessor extends AbstractAttributeTagProcessor {
 
     @Override
     protected void doProcess(ITemplateContext ctx, IProcessableElementTag tag, AttributeName an, String src, IElementTagStructureHandler sh) {
-        String scope = tag.getAttributeValue(getDialectPrefix(), KarateScriptBodyProcessor.SCOPE);
-        String noCache = tag.getAttributeValue(getDialectPrefix(), KarateScriptBodyProcessor.NOCACHE);
+        String scope = tag.getAttributeValue(getDialectPrefix(), KaScriptProcessor.SCOPE);
+        String noCache = tag.getAttributeValue(getDialectPrefix(), KaScriptProcessor.NOCACHE);
 
         // For plain HTML mode (not server), skip resource resolution for static src attributes
         if (!serverMode && scope == null) {
             if (noCache != null) {
-                sh.removeAttribute(getDialectPrefix(), KarateScriptBodyProcessor.NOCACHE);
+                sh.removeAttribute(getDialectPrefix(), KaScriptProcessor.NOCACHE);
             }
             return;
         }
@@ -66,7 +66,7 @@ class KarateScriptSrcAttributeProcessor extends AbstractAttributeTagProcessor {
             // Plain src attribute - just update with context path if needed
             if (hostContextPath != null) {
                 src = hostContextPath + src;
-                sh.setAttribute(KarateScriptBodyProcessor.SRC, src);
+                sh.setAttribute(KaScriptProcessor.SRC, src);
             }
             return;
         }
@@ -82,13 +82,13 @@ class KarateScriptSrcAttributeProcessor extends AbstractAttributeTagProcessor {
                 } catch (Exception e) {
                     logger.warn("nocache failed: {}", e.getMessage());
                 }
-                sh.removeAttribute(getDialectPrefix(), KarateScriptBodyProcessor.NOCACHE);
+                sh.removeAttribute(getDialectPrefix(), KaScriptProcessor.NOCACHE);
             }
-            sh.setAttribute(KarateScriptBodyProcessor.SRC, src);
+            sh.setAttribute(KaScriptProcessor.SRC, src);
         } else { // karate js evaluation
             String js = srcResource.getText();
-            KarateTemplateContext kec = (KarateTemplateContext) ctx;
-            if (KarateScriptBodyProcessor.LOCAL.equals(scope)) {
+            MarkupTemplateContext kec = (MarkupTemplateContext) ctx;
+            if (KaScriptProcessor.LOCAL.equals(scope)) {
                 kec.evalLocal(js);
             } else {
                 kec.evalGlobal(js);

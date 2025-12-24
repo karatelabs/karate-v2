@@ -36,13 +36,13 @@ import org.thymeleaf.templatemode.TemplateMode;
 
 import java.util.*;
 
-public class KarateTemplateContext implements IEngineContext {
+public class MarkupTemplateContext implements IEngineContext {
 
     final IEngineContext wrapped;
     private final Engine engine;
     private final Map<String, Object> vars = new HashMap<>();
 
-    KarateTemplateContext(IEngineContext wrapped, Engine engine, ResourceResolver resolver) {
+    MarkupTemplateContext(IEngineContext wrapped, Engine engine, ResourceResolver resolver) {
         this.wrapped = wrapped;
         this.engine = engine;
         this.engine.put("_", vars);

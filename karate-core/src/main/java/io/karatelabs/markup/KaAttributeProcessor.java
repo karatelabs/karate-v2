@@ -42,9 +42,9 @@ import java.util.Map;
  * derived from
  * org.thymeleaf.standard.processor.AbstractStandardMultipleAttributeModifierTagProcessor
  */
-abstract class KarateAttributeTagProcessor extends AbstractAttributeTagProcessor {
+abstract class KaAttributeProcessor extends AbstractAttributeTagProcessor {
 
-    private static final Logger logger = LoggerFactory.getLogger(KarateAttributeTagProcessor.class);
+    private static final Logger logger = LoggerFactory.getLogger(KaAttributeProcessor.class);
 
     enum ModificationType {
         SUBSTITUTION, APPEND, PREPEND, APPEND_WITH_SPACE, PREPEND_WITH_SPACE
@@ -52,7 +52,7 @@ abstract class KarateAttributeTagProcessor extends AbstractAttributeTagProcessor
 
     private final ModificationType modificationType;
 
-    KarateAttributeTagProcessor(
+    KaAttributeProcessor(
             final TemplateMode templateMode, final String dialectPrefix,
             final String attrName, final int precedence,
             final ModificationType modificationType) {
@@ -67,7 +67,7 @@ abstract class KarateAttributeTagProcessor extends AbstractAttributeTagProcessor
             final IProcessableElementTag tag,
             final AttributeName attributeName, final String av,
             final IElementTagStructureHandler structureHandler) {
-        KarateTemplateContext kec = (KarateTemplateContext) ctx;
+        MarkupTemplateContext kec = (MarkupTemplateContext) ctx;
         Object o = kec.evalLocalAsObject(av);
         if (!(o instanceof Map)) {
             logger.warn("value did not evaluate to json: {}", av);
@@ -118,7 +118,7 @@ abstract class KarateAttributeTagProcessor extends AbstractAttributeTagProcessor
         });
     }
 
-    static class KarateAttrTagProcessor extends KarateAttributeTagProcessor {
+    static class KarateAttrTagProcessor extends KaAttributeProcessor {
 
         public KarateAttrTagProcessor(final TemplateMode templateMode, final String dialectPrefix) {
             super(templateMode, dialectPrefix, "attr", 700, ModificationType.SUBSTITUTION);
@@ -126,7 +126,7 @@ abstract class KarateAttributeTagProcessor extends AbstractAttributeTagProcessor
 
     }
 
-    static class KarateAttrappendTagProcessor extends KarateAttributeTagProcessor {
+    static class KarateAttrappendTagProcessor extends KaAttributeProcessor {
 
         public KarateAttrappendTagProcessor(final TemplateMode templateMode, final String dialectPrefix) {
             super(templateMode, dialectPrefix, "attrappend", 900, ModificationType.APPEND);
@@ -134,7 +134,7 @@ abstract class KarateAttributeTagProcessor extends AbstractAttributeTagProcessor
 
     }
 
-    static class KarateAttrprependTagProcessor extends KarateAttributeTagProcessor {
+    static class KarateAttrprependTagProcessor extends KaAttributeProcessor {
 
         public KarateAttrprependTagProcessor(final TemplateMode templateMode, final String dialectPrefix) {
             super(templateMode, dialectPrefix, "attrprepend", 900, ModificationType.PREPEND);

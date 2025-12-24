@@ -23,7 +23,7 @@
  */
 package io.karatelabs.markup;
 
-import io.karatelabs.markup.KarateTemplateContext;
+import io.karatelabs.markup.MarkupTemplateContext;
 import org.thymeleaf.context.ITemplateContext;
 import org.thymeleaf.engine.AttributeName;
 import org.thymeleaf.model.IProcessableElementTag;
@@ -83,7 +83,7 @@ class HxGenericProcessor extends AbstractAttributeTagProcessor {
     private String resolveValue(ITemplateContext ctx, String value) {
         // Handle expressions that contain ${...}
         if (value.contains("${")) {
-            KarateTemplateContext kec = (KarateTemplateContext) ctx;
+            MarkupTemplateContext kec = (MarkupTemplateContext) ctx;
             Object result = kec.evalLocal("`" + value + "`");
             return result != null ? result.toString() : "";
         }

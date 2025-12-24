@@ -243,7 +243,7 @@ public class StepExecutor {
             // - <xml> literals
             // - varname/xpath (XML XPath shorthand)
             // - Regular JS expressions
-            Object value = evalKarateExpression(expr);
+            Object value = evalMarkupExpression(expr);
             runtime.setVariable(name, value);
         }
     }
@@ -666,7 +666,7 @@ public class StepExecutor {
                     String fullPath = basePath + "[" + indexStr + "]/" + rowPath;
 
                     // Evaluate the value expression
-                    Object value = evalKarateExpression(valueExpr);
+                    Object value = evalMarkupExpression(valueExpr);
 
                     // Set the value at the XPath
                     if (value instanceof org.w3c.dom.Node) {
@@ -691,8 +691,8 @@ public class StepExecutor {
                 // Build the full XPath: basePath + "/" + rowPath
                 String fullPath = basePath + "/" + rowPath;
 
-                // Evaluate the value expression (use evalKarateExpression for XML literal support)
-                Object value = evalKarateExpression(valueExpr);
+                // Evaluate the value expression (use evalMarkupExpression for XML literal support)
+                Object value = evalMarkupExpression(valueExpr);
 
                 // Set the value at the XPath
                 if (value instanceof org.w3c.dom.Node) {
@@ -873,8 +873,8 @@ public class StepExecutor {
         int eqIndex = findAssignmentOperator(text);
         String name = text.substring(0, eqIndex).trim();
         String expr = text.substring(eqIndex + 1).trim();
-        // Use evalKarateExpression to handle XML literals like: json foo = <bar>baz</bar>
-        Object value = evalKarateExpression(expr);
+        // Use evalMarkupExpression to handle XML literals like: json foo = <bar>baz</bar>
+        Object value = evalMarkupExpression(expr);
         // Convert to JSON map/object
         if (value instanceof Node) {
             value = Xml.toObject((Node) value);
@@ -902,7 +902,7 @@ public class StepExecutor {
             expr = text.substring(eqIndex + 1).trim();
         }
         // Evaluate expression using Karate expression evaluation (handles $var /xpath, etc.)
-        Object value = evalKarateExpression(expr);
+        Object value = evalMarkupExpression(expr);
         if (value instanceof String) {
             value = Xml.toXmlDoc((String) value);
         } else if (value instanceof Node) {
@@ -1495,7 +1495,7 @@ public class StepExecutor {
      * - varname/xpath (XML XPath shorthand)
      * - Regular JS expressions with embedded expression processing
      */
-    private Object evalKarateExpression(String expr) {
+    private Object evalMarkupExpression(String expr) {
         if (expr == null || expr.isEmpty()) {
             return null;
         }

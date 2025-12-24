@@ -178,7 +178,7 @@ public class ServerContext implements MarkupContext {
 
     /**
      * Set a callback to be invoked after session initialization.
-     * Used by KarateTemplateContext to sync session to JS engine.
+     * Used by MarkupTemplateContext to sync session to JS engine.
      */
     public void setOnSessionInit(java.util.function.Consumer<Session> callback) {
         this.onSessionInit = callback;

@@ -24,7 +24,7 @@
 package io.karatelabs.markup;
 
 import io.karatelabs.common.Json;
-import io.karatelabs.markup.KarateTemplateContext;
+import io.karatelabs.markup.MarkupTemplateContext;
 import org.thymeleaf.context.ITemplateContext;
 import org.thymeleaf.model.IModel;
 import org.thymeleaf.model.IModelFactory;
@@ -110,7 +110,7 @@ class KaDataProcessor extends AbstractElementModelProcessor {
         String expression = attrValue.substring(colonIndex + 1).trim();
 
         // Evaluate the server expression to get initial data
-        KarateTemplateContext kec = (KarateTemplateContext) ctx;
+        MarkupTemplateContext kec = (MarkupTemplateContext) ctx;
         Object initialData = kec.evalLocal(expression);
         String jsonData = initialData != null ? Json.stringifyStrict(initialData) : "{}";
 

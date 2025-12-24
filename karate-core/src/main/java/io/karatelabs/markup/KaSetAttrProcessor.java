@@ -26,40 +26,40 @@ package io.karatelabs.markup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.thymeleaf.context.ITemplateContext;
-import org.thymeleaf.engine.AttributeName;
+import org.thymeleaf.model.IModel;
 import org.thymeleaf.model.IProcessableElementTag;
-import org.thymeleaf.processor.element.AbstractAttributeTagProcessor;
-import org.thymeleaf.processor.element.IElementTagStructureHandler;
+import org.thymeleaf.model.ITemplateEvent;
+import org.thymeleaf.model.IText;
+import org.thymeleaf.processor.element.AbstractElementModelProcessor;
+import org.thymeleaf.processor.element.IElementModelStructureHandler;
 import org.thymeleaf.templatemode.TemplateMode;
 
-import java.util.Map;
+class KaSetAttrProcessor extends AbstractElementModelProcessor {
 
-class KarateWithTagProcessor extends AbstractAttributeTagProcessor {
+    private static final Logger logger = LoggerFactory.getLogger(KaSetAttrProcessor.class);
 
-    private static final Logger logger = LoggerFactory.getLogger(KarateWithTagProcessor.class);
+    private static final String SET = "set";
 
-    private static final int PRECEDENCE = 600;
-    private static final String ATTR_NAME = "with";
-
-    KarateWithTagProcessor(final TemplateMode templateMode, final String dialectPrefix) {
-        super(templateMode, dialectPrefix, null, false, ATTR_NAME, true, PRECEDENCE, true);
+    KaSetAttrProcessor(String dialectPrefix) {
+        super(TemplateMode.HTML, dialectPrefix, null, false, SET, true, 1000);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    protected void doProcess(
-            final ITemplateContext ctx,
-            final IProcessableElementTag tag,
-            final AttributeName attributeName, String av,
-            final IElementTagStructureHandler structureHandler) {
-        KarateTemplateContext kec = (KarateTemplateContext) ctx;
-        Object o = kec.evalLocalAsObject(av);
-        if (!(o instanceof Map)) {
-            logger.warn("value did not evaluate to json: {}", av);
-            return;
+    protected void doProcess(ITemplateContext ctx, IModel model, IElementModelStructureHandler sh) {
+        int depth = ctx.getElementStack().size();
+        IProcessableElementTag tag = ctx.getElementStack().get(depth - 1);
+        String name = tag.getAttributeValue(getDialectPrefix(), SET);
+        int n = model.size();
+        StringBuilder sb = new StringBuilder();
+        while (n-- != 0) {
+            final ITemplateEvent event = model.get(n);
+            if (event instanceof IText) {
+                sb.append(((IText) event).getText());
+            }
         }
-        Map<String, Object> map = (Map<String, Object>) o;
-        map.forEach(kec::setVariable);
+        MarkupTemplateContext kec = (MarkupTemplateContext) ctx;
+        kec.setLocal(name, sb.toString().trim());
+        model.reset();
     }
 
 }

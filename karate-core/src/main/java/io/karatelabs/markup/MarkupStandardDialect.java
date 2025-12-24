@@ -34,9 +34,9 @@ import org.thymeleaf.standard.processor.*;
 import java.util.HashSet;
 import java.util.Set;
 
-class KarateStandardDialect extends StandardDialect implements IStandardVariableExpressionEvaluator, IStandardExpressionParser {
+class MarkupStandardDialect extends StandardDialect implements IStandardVariableExpressionEvaluator, IStandardExpressionParser {
 
-    private static final Logger logger = LoggerFactory.getLogger(KarateStandardDialect.class);
+    private static final Logger logger = LoggerFactory.getLogger(MarkupStandardDialect.class);
 
     private final StandardExpressionParser expressionParser = new StandardExpressionParser();
 
@@ -56,25 +56,25 @@ class KarateStandardDialect extends StandardDialect implements IStandardVariable
         Set<IProcessor> patched = new HashSet<>(processors.size());
         for (IProcessor p : processors) {
             if (p instanceof StandardEachTagProcessor) {
-                p = new KarateEachTagProcessor(p.getTemplateMode(), dialectPrefix);
+                p = new KaEachProcessor(p.getTemplateMode(), dialectPrefix);
             }
             if (p instanceof StandardWithTagProcessor) {
-                p = new KarateWithTagProcessor(p.getTemplateMode(), dialectPrefix);
+                p = new KaWithProcessor(p.getTemplateMode(), dialectPrefix);
             }
             if (p instanceof StandardAttrTagProcessor) {
-                p = new KarateAttributeTagProcessor.KarateAttrTagProcessor(p.getTemplateMode(), dialectPrefix);
+                p = new KaAttributeProcessor.KarateAttrTagProcessor(p.getTemplateMode(), dialectPrefix);
             }
             if (p instanceof StandardAttrappendTagProcessor) {
-                p = new KarateAttributeTagProcessor.KarateAttrappendTagProcessor(p.getTemplateMode(), dialectPrefix);
+                p = new KaAttributeProcessor.KarateAttrappendTagProcessor(p.getTemplateMode(), dialectPrefix);
             }
             if (p instanceof StandardAttrprependTagProcessor) {
-                p = new KarateAttributeTagProcessor.KarateAttrprependTagProcessor(p.getTemplateMode(), dialectPrefix);
+                p = new KaAttributeProcessor.KarateAttrprependTagProcessor(p.getTemplateMode(), dialectPrefix);
             }
             if (p instanceof StandardInsertTagProcessor) {
-                p = new KarateInsertTagProcessor(p.getTemplateMode(), dialectPrefix);
+                p = new KaInsertProcessor(p.getTemplateMode(), dialectPrefix);
             }
             if (p instanceof StandardReplaceTagProcessor) {
-                p = new KarateReplaceTagProcessor(p.getTemplateMode(), dialectPrefix);
+                p = new KaReplaceProcessor(p.getTemplateMode(), dialectPrefix);
             }
             patched.add(p);
         }
@@ -84,7 +84,7 @@ class KarateStandardDialect extends StandardDialect implements IStandardVariable
     @Override
     public Object evaluate(IExpressionContext ctx, IStandardVariableExpression ve, StandardExpressionExecutionContext ec) {
         // found to be used for th:attrappend="data-parent=${expression}"
-        KarateExpression ke = new KarateExpression(ve.getExpression());
+        MarkupExpression ke = new MarkupExpression(ve.getExpression());
         return ke.execute(ctx);
     }
 
@@ -93,7 +93,7 @@ class KarateStandardDialect extends StandardDialect implements IStandardVariable
         if (input.charAt(0) == '~') { // template
             return expressionParser.parseExpression(context, input);
         }
-        return new KarateExpression(input);
+        return new MarkupExpression(input);
     }
 
 }

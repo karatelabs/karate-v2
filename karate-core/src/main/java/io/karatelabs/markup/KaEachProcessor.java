@@ -37,14 +37,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-class KarateEachTagProcessor extends AbstractAttributeTagProcessor {
+class KaEachProcessor extends AbstractAttributeTagProcessor {
 
-    private static final Logger logger = LoggerFactory.getLogger(KarateEachTagProcessor.class);
+    private static final Logger logger = LoggerFactory.getLogger(KaEachProcessor.class);
 
     private static final int PRECEDENCE = 200;
     private static final String ATTR_NAME = "each";
 
-    KarateEachTagProcessor(final TemplateMode templateMode, final String dialectPrefix) {
+    KaEachProcessor(final TemplateMode templateMode, final String dialectPrefix) {
         super(templateMode, dialectPrefix, null, false, ATTR_NAME, true, PRECEDENCE, true);
     }
 
@@ -71,7 +71,7 @@ class KarateEachTagProcessor extends AbstractAttributeTagProcessor {
                 iterVarName = varPart;
             }
         }
-        KarateTemplateContext kec = (KarateTemplateContext) ctx;
+        MarkupTemplateContext kec = (MarkupTemplateContext) ctx;
         Object value = kec.evalLocal(av);
         // Convert Map to list of entry objects with 'key' and 'value' properties
         // This enables Thymeleaf-style iteration: th:each="entry : someMap"

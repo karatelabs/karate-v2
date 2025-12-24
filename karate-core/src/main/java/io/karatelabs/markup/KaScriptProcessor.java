@@ -34,16 +34,16 @@ import org.thymeleaf.processor.element.AbstractElementModelProcessor;
 import org.thymeleaf.processor.element.IElementModelStructureHandler;
 import org.thymeleaf.templatemode.TemplateMode;
 
-class KarateScriptBodyProcessor extends AbstractElementModelProcessor {
+class KaScriptProcessor extends AbstractElementModelProcessor {
 
-    private static final Logger logger = LoggerFactory.getLogger(KarateScriptBodyProcessor.class);
+    private static final Logger logger = LoggerFactory.getLogger(KaScriptProcessor.class);
 
     static final String SRC = "src";
     static final String SCOPE = "scope";
     static final String LOCAL = "local";
     static final String NOCACHE = "nocache";
 
-    KarateScriptBodyProcessor(String dialectPrefix) {
+    KaScriptProcessor(String dialectPrefix) {
         super(TemplateMode.HTML, dialectPrefix, "script", false, SCOPE, true, 1000);
     }
 
@@ -54,8 +54,8 @@ class KarateScriptBodyProcessor extends AbstractElementModelProcessor {
         String prefix = getDialectPrefix();
         String scope = tag.getAttributeValue(prefix, SCOPE);
         String src = tag.getAttributeValue(null, SRC);
-        KarateTemplateContext kec = (KarateTemplateContext) ctx;
-        // if src is present, it will be processed by KarateScriptSrcAttributeProcessor
+        MarkupTemplateContext kec = (MarkupTemplateContext) ctx;
+        // if src is present, it will be processed by KaScriptSrcProcessor
         // which will also ignore and remove the <script> body if present
         if (src == null) {
             int n = model.size();
@@ -72,7 +72,7 @@ class KarateScriptBodyProcessor extends AbstractElementModelProcessor {
                     }
                 }
             }
-            model.reset(); // ensure KarateScriptSrcAttributeProcessor can re-process
+            model.reset(); // ensure KaScriptSrcProcessor can re-process
         }
     }
 

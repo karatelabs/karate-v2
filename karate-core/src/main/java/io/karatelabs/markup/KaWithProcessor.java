@@ -23,25 +23,43 @@
  */
 package io.karatelabs.markup;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.thymeleaf.context.ITemplateContext;
 import org.thymeleaf.engine.AttributeName;
 import org.thymeleaf.model.IProcessableElementTag;
+import org.thymeleaf.processor.element.AbstractAttributeTagProcessor;
 import org.thymeleaf.processor.element.IElementTagStructureHandler;
-import org.thymeleaf.standard.processor.AbstractStandardFragmentInsertionTagProcessor;
 import org.thymeleaf.templatemode.TemplateMode;
 
-class KarateInsertTagProcessor extends AbstractStandardFragmentInsertionTagProcessor {
+import java.util.Map;
 
-    private static final int PRECEDENCE = 100;
-    private static final String ATTR_NAME = "insert";
+class KaWithProcessor extends AbstractAttributeTagProcessor {
 
-    public KarateInsertTagProcessor(final TemplateMode templateMode, final String dialectPrefix) {
-        super(templateMode, dialectPrefix, ATTR_NAME, PRECEDENCE, false);
+    private static final Logger logger = LoggerFactory.getLogger(KaWithProcessor.class);
+
+    private static final int PRECEDENCE = 600;
+    private static final String ATTR_NAME = "with";
+
+    KaWithProcessor(final TemplateMode templateMode, final String dialectPrefix) {
+        super(templateMode, dialectPrefix, null, false, ATTR_NAME, true, PRECEDENCE, true);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    protected void doProcess(ITemplateContext context, IProcessableElementTag tag, AttributeName attributeName, String attributeValue, IElementTagStructureHandler structureHandler) {
-        super.doProcess(context, tag, attributeName, "~{" + attributeValue + "}", structureHandler);
+    protected void doProcess(
+            final ITemplateContext ctx,
+            final IProcessableElementTag tag,
+            final AttributeName attributeName, String av,
+            final IElementTagStructureHandler structureHandler) {
+        MarkupTemplateContext kec = (MarkupTemplateContext) ctx;
+        Object o = kec.evalLocalAsObject(av);
+        if (!(o instanceof Map)) {
+            logger.warn("value did not evaluate to json: {}", av);
+            return;
+        }
+        Map<String, Object> map = (Map<String, Object>) o;
+        map.forEach(kec::setVariable);
     }
 
 }

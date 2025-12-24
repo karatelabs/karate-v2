@@ -23,32 +23,25 @@
  */
 package io.karatelabs.markup;
 
-import org.thymeleaf.dialect.AbstractProcessorDialect;
-import org.thymeleaf.processor.IProcessor;
+import org.thymeleaf.context.ITemplateContext;
+import org.thymeleaf.engine.AttributeName;
+import org.thymeleaf.model.IProcessableElementTag;
+import org.thymeleaf.processor.element.IElementTagStructureHandler;
+import org.thymeleaf.standard.processor.AbstractStandardFragmentInsertionTagProcessor;
+import org.thymeleaf.templatemode.TemplateMode;
 
-import java.util.HashSet;
-import java.util.Set;
+class KaReplaceProcessor extends AbstractStandardFragmentInsertionTagProcessor {
 
-class KarateProcessorDialect extends AbstractProcessorDialect {
+    private static final int PRECEDENCE = 100;
+    private static final String ATTR_NAME = "replace";
 
-    private final ResourceResolver resolver;
-    private final String contextPath;
-    private final boolean serverMode;
-
-    KarateProcessorDialect(MarkupConfig config) {
-        super("karate", "ka", 2000); // has to be processed after standard (default) dialect which is 1000
-        this.resolver = config.getResolver();
-        this.contextPath = config.getContextPath();
-        this.serverMode = config.isServerMode();
+    public KaReplaceProcessor(final TemplateMode templateMode, final String dialectPrefix) {
+        super(templateMode, dialectPrefix, ATTR_NAME, PRECEDENCE, true);
     }
 
     @Override
-    public Set<IProcessor> getProcessors(String dialectPrefix) {
-        Set<IProcessor> ps = new HashSet<>();
-        ps.add(new KarateScriptSrcAttributeProcessor(dialectPrefix, resolver, contextPath, serverMode));
-        ps.add(new KarateScriptBodyProcessor(dialectPrefix));
-        ps.add(new KarateSetAttrProcessor(dialectPrefix));
-        return ps;
+    protected void doProcess(ITemplateContext context, IProcessableElementTag tag, AttributeName attributeName, String attributeValue, IElementTagStructureHandler structureHandler) {
+        super.doProcess(context, tag, attributeName, "~{" + attributeValue + "}", structureHandler);
     }
 
 }

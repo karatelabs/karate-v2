@@ -24,7 +24,7 @@
 package io.karatelabs.markup;
 
 import io.karatelabs.common.Json;
-import io.karatelabs.markup.KarateTemplateContext;
+import io.karatelabs.markup.MarkupTemplateContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.thymeleaf.context.ITemplateContext;
@@ -59,7 +59,7 @@ class HxValsProcessor extends AbstractAttributeTagProcessor {
     protected void doProcess(ITemplateContext ctx, IProcessableElementTag tag,
                              AttributeName attributeName, String attributeValue,
                              IElementTagStructureHandler structureHandler) {
-        KarateTemplateContext kec = (KarateTemplateContext) ctx;
+        MarkupTemplateContext kec = (MarkupTemplateContext) ctx;
         Object result = kec.evalLocalAsObject(attributeValue);
         if (!(result instanceof Map)) {
             logger.warn("ka:vals did not evaluate to json: {}", attributeValue);

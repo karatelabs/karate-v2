@@ -50,7 +50,7 @@ public class HtmxDialect extends AbstractProcessorDialect {
      * @param config the HTMX configuration
      */
     public HtmxDialect(HtmxConfig config) {
-        // Priority 3000 - processed after KarateProcessorDialect (2000) and standard dialect (1000)
+        // Priority 3000 - processed after KaDialect (2000) and standard dialect (1000)
         super("Htmx", "ka", 3000);
         this.config = config;
     }

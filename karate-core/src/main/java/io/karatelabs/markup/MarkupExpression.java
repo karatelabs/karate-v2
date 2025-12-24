@@ -29,13 +29,13 @@ import org.thymeleaf.context.IExpressionContext;
 import org.thymeleaf.standard.expression.IStandardExpression;
 import org.thymeleaf.standard.expression.StandardExpressionExecutionContext;
 
-class KarateExpression implements IStandardExpression {
+class MarkupExpression implements IStandardExpression {
 
-    private static final Logger logger = LoggerFactory.getLogger(KarateExpression.class);
+    private static final Logger logger = LoggerFactory.getLogger(MarkupExpression.class);
 
     private final String input;
 
-    KarateExpression(String input) {
+    MarkupExpression(String input) {
         if (input.contains("${")) {
             this.input = "`" + input + "`";
         } else {
@@ -50,7 +50,7 @@ class KarateExpression implements IStandardExpression {
 
     @Override
     public Object execute(IExpressionContext ctx) {
-        KarateTemplateContext kec = (KarateTemplateContext) ctx;
+        MarkupTemplateContext kec = (MarkupTemplateContext) ctx;
         return kec.evalLocal(input);
     }
 

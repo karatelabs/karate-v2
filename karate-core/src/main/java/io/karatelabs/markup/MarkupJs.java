@@ -35,10 +35,10 @@ import org.thymeleaf.templateresource.ITemplateResource;
  */
 class MarkupJs implements MarkupContext {
 
-    final KarateTemplateContext markup;
+    final MarkupTemplateContext markup;
     final ResourceResolver resolver;
 
-    MarkupJs(KarateTemplateContext markup, ResourceResolver resolver) {
+    MarkupJs(MarkupTemplateContext markup, ResourceResolver resolver) {
         this.markup = markup;
         this.resolver = resolver;
     }
