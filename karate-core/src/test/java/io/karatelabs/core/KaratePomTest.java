@@ -59,7 +59,7 @@ class KaratePomTest {
         assertTrue(config.getOutput().isHtml());
         assertFalse(config.getOutput().isJunitXml());
         assertFalse(config.getOutput().isCucumberJson());
-        assertFalse(config.getOutput().isNdjson());
+        assertFalse(config.getOutput().isJsonLines());
     }
 
     @Test
@@ -79,7 +79,7 @@ class KaratePomTest {
                 "html": true,
                 "junitXml": true,
                 "cucumberJson": true,
-                "ndjson": true
+                "jsonLines": true
               }
             }
             """;
@@ -99,7 +99,7 @@ class KaratePomTest {
         assertTrue(config.getOutput().isHtml());
         assertTrue(config.getOutput().isJunitXml());
         assertTrue(config.getOutput().isCucumberJson());
-        assertTrue(config.getOutput().isNdjson());
+        assertTrue(config.getOutput().isJsonLines());
     }
 
     @Test
@@ -120,7 +120,7 @@ class KaratePomTest {
         assertTrue(config.getOutput().isHtml()); // default
         assertTrue(config.getOutput().isJunitXml()); // overridden
         assertFalse(config.getOutput().isCucumberJson()); // default
-        assertFalse(config.getOutput().isNdjson()); // default
+        assertFalse(config.getOutput().isJsonLines()); // default
     }
 
     @Test
@@ -277,7 +277,7 @@ class KaratePomTest {
         output.setHtml(false);
         output.setJunitXml(true);
         output.setCucumberJson(true);
-        output.setNdjson(true);
+        output.setJsonLines(true);
         config.setOutput(output);
 
         assertEquals(List.of("path1", "path2"), config.getPaths());
@@ -293,7 +293,7 @@ class KaratePomTest {
         assertFalse(config.getOutput().isHtml());
         assertTrue(config.getOutput().isJunitXml());
         assertTrue(config.getOutput().isCucumberJson());
-        assertTrue(config.getOutput().isNdjson());
+        assertTrue(config.getOutput().isJsonLines());
     }
 
     @Test

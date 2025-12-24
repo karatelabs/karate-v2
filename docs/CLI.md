@@ -204,7 +204,7 @@ The project file name is `karate-pom.json` (inspired by Maven's POM concept). Wh
     "html": true,
     "junitXml": false,
     "cucumberJson": false,
-    "ndjson": false
+    "jsonLines": false
   },
   "logMask": {
     "presets": ["PASSWORDS", "CREDIT_CARDS"],

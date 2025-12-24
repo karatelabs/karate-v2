@@ -30,7 +30,7 @@ Suite → FeatureRuntime → ScenarioRuntime → StepExecutor
 | `KarateJsApi` | Stateless utility methods for `karate.*` API |
 | `Runner` | Fluent API for test execution |
 
-**Reports (io.karatelabs.output):** `HtmlReportListener`, `JunitXmlWriter`, `CucumberJsonWriter`, `NdjsonReportListener`
+**Reports (io.karatelabs.output):** `HtmlReportListener`, `JunitXmlWriter`, `CucumberJsonWriter`, `JsonLinesReportListener`
 
 **Results:** `StepResult`, `ScenarioResult`, `FeatureResult`, `SuiteResult`
 

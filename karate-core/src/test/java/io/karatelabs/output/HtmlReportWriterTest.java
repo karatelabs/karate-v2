@@ -68,7 +68,7 @@ class HtmlReportWriterTest {
         String testResourcesDir = "target/test-classes/io/karatelabs/report";
         SuiteResult result = Runner.path(testResourcesDir)
                 .outputDir(OUTPUT_DIR)
-                .outputNdjson(true)
+                .outputJsonLines(true)
                 .parallel(3);  // parallel for timeline testing
 
         // Verify the run completed (feature count may vary with @ignore features)
@@ -84,8 +84,8 @@ class HtmlReportWriterTest {
         assertTrue(Files.exists(OUTPUT_DIR.resolve("res/bootstrap.min.css")));
         assertTrue(Files.exists(OUTPUT_DIR.resolve("res/favicon.ico")));
 
-        // Verify NDJSON file was created
-        assertTrue(Files.exists(OUTPUT_DIR.resolve("karate-results.ndjson")));
+        // Verify JSON Lines file was created
+        assertTrue(Files.exists(OUTPUT_DIR.resolve("karate-results.jsonl")));
 
         System.out.println("\n=== HTML Reports Generated ===");
         System.out.println("Open: file://" + OUTPUT_DIR.toAbsolutePath().resolve("karate-summary.html"));
@@ -100,11 +100,11 @@ class HtmlReportWriterTest {
         SuiteResult result = Runner.path(testResourcesDir)
                 .karateEnv("staging")
                 .outputDir(outputDir)
-                .outputNdjson(true)  // opt-in for NDJSON
+                .outputJsonLines(true)  // opt-in for JSON Lines
                 .parallel(1);
 
         assertTrue(Files.exists(outputDir.resolve("karate-summary.html")));
-        assertTrue(Files.exists(outputDir.resolve("karate-results.ndjson")));
+        assertTrue(Files.exists(outputDir.resolve("karate-results.jsonl")));
 
         System.out.println("\n=== HTML Reports (with env) Generated ===");
         System.out.println("Open: " + outputDir.toAbsolutePath().resolve("karate-summary.html"));
@@ -148,10 +148,10 @@ class HtmlReportWriterTest {
     }
 
     @Test
-    void testNdjsonFormat(@TempDir Path tempDir) throws Exception {
+    void testJsonLinesFormat(@TempDir Path tempDir) throws Exception {
         Path feature = tempDir.resolve("test.feature");
         Files.writeString(feature, """
-            Feature: NDJSON Format Test
+            Feature: JSON Lines Format Test
 
             Scenario: First scenario
             * def a = 1
@@ -165,12 +165,12 @@ class HtmlReportWriterTest {
         Runner.path(feature.toString())
                 .workingDir(tempDir)
                 .outputDir(reportDir)
-                .outputNdjson(true)  // opt-in to NDJSON
+                .outputJsonLines(true)  // opt-in to JSON Lines
                 .parallel(1);
 
-        // Verify NDJSON format
-        String ndjson = Files.readString(reportDir.resolve("karate-results.ndjson"));
-        String[] lines = ndjson.trim().split("\n");
+        // Verify JSON Lines format
+        String jsonl = Files.readString(reportDir.resolve("karate-results.jsonl"));
+        String[] lines = jsonl.trim().split("\n");
 
         assertEquals(3, lines.length, "Should have 3 lines: suite, feature, suite_end");
 
@@ -208,42 +208,42 @@ class HtmlReportWriterTest {
         Path run2Dir = tempDir.resolve("run2");
         Path combinedDir = tempDir.resolve("combined");
 
-        // Run features separately with NDJSON enabled for aggregation
+        // Run features separately with JSON Lines enabled for aggregation
         Runner.path(feature1.toString())
                 .workingDir(tempDir)
                 .outputDir(run1Dir)
-                .outputNdjson(true)
+                .outputJsonLines(true)
                 .parallel(1);
 
         Runner.path(feature2.toString())
                 .workingDir(tempDir)
                 .outputDir(run2Dir)
-                .outputNdjson(true)
+                .outputJsonLines(true)
                 .parallel(1);
 
-        // Verify both NDJSON files exist
-        assertTrue(Files.exists(run1Dir.resolve("karate-results.ndjson")));
-        assertTrue(Files.exists(run2Dir.resolve("karate-results.ndjson")));
+        // Verify both JSON Lines files exist
+        assertTrue(Files.exists(run1Dir.resolve("karate-results.jsonl")));
+        assertTrue(Files.exists(run2Dir.resolve("karate-results.jsonl")));
 
         // Aggregate reports
         HtmlReport.aggregate()
-                .json(run1Dir.resolve("karate-results.ndjson"))
-                .json(run2Dir.resolve("karate-results.ndjson"))
+                .json(run1Dir.resolve("karate-results.jsonl"))
+                .json(run2Dir.resolve("karate-results.jsonl"))
                 .outputDir(combinedDir)
                 .generate();
 
         // Verify combined report
         assertTrue(Files.exists(combinedDir.resolve("karate-summary.html")));
-        assertTrue(Files.exists(combinedDir.resolve("karate-results.ndjson")));
+        assertTrue(Files.exists(combinedDir.resolve("karate-results.jsonl")));
 
-        // Verify the combined NDJSON has both features
-        String combinedNdjson = Files.readString(combinedDir.resolve("karate-results.ndjson"));
-        assertTrue(combinedNdjson.contains("Aggregation Test 1"));
-        assertTrue(combinedNdjson.contains("Aggregation Test 2"));
+        // Verify the combined JSON Lines has both features
+        String combinedJsonl = Files.readString(combinedDir.resolve("karate-results.jsonl"));
+        assertTrue(combinedJsonl.contains("Aggregation Test 1"));
+        assertTrue(combinedJsonl.contains("Aggregation Test 2"));
 
         // Count feature lines
         int featureCount = 0;
-        for (String line : combinedNdjson.split("\n")) {
+        for (String line : combinedJsonl.split("\n")) {
             if (line.contains("\"t\":\"feature\"")) {
                 featureCount++;
             }
@@ -275,17 +275,17 @@ class HtmlReportWriterTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputHtmlReport(true)
-                .outputNdjson(true)
+                .outputJsonLines(true)
                 .parallel(1);
 
         assertTrue(result.isPassed(), "All scenarios should pass");
         assertEquals(2, result.getScenarioPassedCount());
 
-        // Verify NDJSON contains the substituted scenario names
-        String ndjson = Files.readString(reportDir.resolve("karate-results.ndjson"));
-        assertTrue(ndjson.contains("Testing foo with value 1"),
+        // Verify JSON Lines contains the substituted scenario names
+        String jsonl = Files.readString(reportDir.resolve("karate-results.jsonl"));
+        assertTrue(jsonl.contains("Testing foo with value 1"),
             "Should contain substituted scenario name for first example");
-        assertTrue(ndjson.contains("Testing bar with value 2"),
+        assertTrue(jsonl.contains("Testing bar with value 2"),
             "Should contain substituted scenario name for second example");
     }
 
@@ -306,17 +306,17 @@ class HtmlReportWriterTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputHtmlReport(true)
-                .outputNdjson(true)
+                .outputJsonLines(true)
                 .parallel(1);
 
         assertTrue(result.isPassed());
         assertEquals(1, result.getScenarioPassedCount());
 
-        // Verify NDJSON contains the evaluated scenario name
-        String ndjson = Files.readString(reportDir.resolve("karate-results.ndjson"));
-        assertTrue(ndjson.contains("result is 2"),
+        // Verify JSON Lines contains the evaluated scenario name
+        String jsonl = Files.readString(reportDir.resolve("karate-results.jsonl"));
+        assertTrue(jsonl.contains("result is 2"),
             "Should contain evaluated scenario name 'result is 2'");
-        assertFalse(ndjson.contains("result is ${1+1}"),
+        assertFalse(jsonl.contains("result is ${1+1}"),
             "Should not contain unevaluated template literal");
     }
 
@@ -337,14 +337,14 @@ class HtmlReportWriterTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputHtmlReport(true)
-                .outputNdjson(true)
+                .outputJsonLines(true)
                 .parallel(1);
 
         assertTrue(result.isPassed());
 
-        // Verify NDJSON contains the evaluated scenario name with variable value
-        String ndjson = Files.readString(reportDir.resolve("karate-results.ndjson"));
-        assertTrue(ndjson.contains("status is active"),
+        // Verify JSON Lines contains the evaluated scenario name with variable value
+        String jsonl = Files.readString(reportDir.resolve("karate-results.jsonl"));
+        assertTrue(jsonl.contains("status is active"),
             "Should contain evaluated scenario name with variable value");
     }
 
@@ -370,17 +370,17 @@ class HtmlReportWriterTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputHtmlReport(true)
-                .outputNdjson(true)
+                .outputJsonLines(true)
                 .parallel(1);
 
         assertTrue(result.isPassed());
         assertEquals(2, result.getScenarioPassedCount());
 
-        // Verify NDJSON contains the evaluated scenario names with outline variables
-        String ndjson = Files.readString(reportDir.resolve("karate-results.ndjson"));
-        assertTrue(ndjson.contains("testing foo = 10"),
+        // Verify JSON Lines contains the evaluated scenario names with outline variables
+        String jsonl = Files.readString(reportDir.resolve("karate-results.jsonl"));
+        assertTrue(jsonl.contains("testing foo = 10"),
             "Should contain evaluated name for first example (5 * 2 = 10)");
-        assertTrue(ndjson.contains("testing bar = 20"),
+        assertTrue(jsonl.contains("testing bar = 20"),
             "Should contain evaluated name for second example (10 * 2 = 20)");
     }
 
@@ -401,18 +401,18 @@ class HtmlReportWriterTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputHtmlReport(true)
-                .outputNdjson(true)
+                .outputJsonLines(true)
                 .parallel(1);
 
         // Scenario should still pass (eval failure doesn't fail the test)
         assertTrue(result.isPassed());
 
         // Original name should be preserved (with backticks) in the report
-        String ndjson = Files.readString(reportDir.resolve("karate-results.ndjson"));
-        assertTrue(ndjson.contains("`result is ${undefinedVariable}`"),
+        String jsonl = Files.readString(reportDir.resolve("karate-results.jsonl"));
+        assertTrue(jsonl.contains("`result is ${undefinedVariable}`"),
             "Original name should be preserved when eval fails");
         // Warning should appear in the step log
-        assertTrue(ndjson.contains("Failed to evaluate scenario name"),
+        assertTrue(jsonl.contains("Failed to evaluate scenario name"),
             "Warning should appear in report log");
     }
 

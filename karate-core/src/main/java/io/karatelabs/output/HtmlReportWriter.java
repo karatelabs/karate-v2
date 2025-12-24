@@ -59,7 +59,7 @@ import java.util.Map;
  * Output structure:
  * <pre>
  * target/karate-reports/
- * ├── karate-results.ndjson     (streamed during execution, optional)
+ * ├── karate-results.jsonl      (streamed during execution, optional)
  * ├── index.html                (redirects to karate-summary.html)
  * ├── karate-summary.html       (summary page with tag filtering)
  * ├── features/
@@ -96,16 +96,16 @@ public final class HtmlReportWriter {
     }
 
     /**
-     * Generate HTML reports from an NDJSON file.
-     * This is the primary entry point when using streaming via {@link NdjsonReportListener}.
+     * Generate HTML reports from a JSON Lines file.
+     * This is the primary entry point when using streaming via {@link JsonLinesReportListener}.
      *
-     * @param ndjsonPath the path to the NDJSON file
+     * @param jsonlPath the path to the JSON Lines file
      * @param outputDir  the directory to write reports
      */
-    public static void writeFromNdjson(Path ndjsonPath, Path outputDir) {
+    public static void writeFromJsonLines(Path jsonlPath, Path outputDir) {
         try {
-            // Parse NDJSON file
-            NdjsonData data = parseNdjson(ndjsonPath);
+            // Parse JSON Lines file
+            JsonLinesData data = parseJsonLines(jsonlPath);
 
             // Generate reports
             writeReports(data.suiteData, data.features, outputDir);
@@ -113,7 +113,7 @@ public final class HtmlReportWriter {
             JvmLogger.info("HTML report written to: {}", outputDir.resolve("karate-summary.html"));
 
         } catch (Exception e) {
-            JvmLogger.warn("Failed to write HTML report from NDJSON: {}", e.getMessage());
+            JvmLogger.warn("Failed to write HTML report from JSON Lines: {}", e.getMessage());
             if (JvmLogger.isDebugEnabled()) {
                 JvmLogger.debug("HTML report error details", e);
             }
@@ -263,7 +263,7 @@ public final class HtmlReportWriter {
     }
 
     /**
-     * Core report generation - same for both NDJSON and SuiteResult paths.
+     * Core report generation - same for both JSON Lines and SuiteResult paths.
      */
     private static void writeReports(Map<String, Object> suiteData,
                                      List<Map<String, Object>> features,
@@ -372,11 +372,11 @@ public final class HtmlReportWriter {
         }
     }
 
-    // ========== NDJSON Parsing ==========
+    // ========== JSON Lines Parsing ==========
 
-    private static NdjsonData parseNdjson(Path ndjsonPath) throws IOException {
-        NdjsonData data = new NdjsonData();
-        List<String> lines = Files.readAllLines(ndjsonPath, StandardCharsets.UTF_8);
+    private static JsonLinesData parseJsonLines(Path jsonlPath) throws IOException {
+        JsonLinesData data = new JsonLinesData();
+        List<String> lines = Files.readAllLines(jsonlPath, StandardCharsets.UTF_8);
 
         for (String line : lines) {
             if (line.trim().isEmpty()) continue;
@@ -386,7 +386,7 @@ public final class HtmlReportWriter {
             String type = (String) obj.get("t");
 
             if ("suite".equals(type)) {
-                data.suiteData = buildSuiteDataFromNdjson(obj);
+                data.suiteData = buildSuiteDataFromJsonLines(obj);
             } else if ("feature".equals(type)) {
                 data.features.add(obj);
             } else if ("suite_end".equals(type)) {
@@ -415,7 +415,7 @@ public final class HtmlReportWriter {
         return data;
     }
 
-    private static Map<String, Object> buildSuiteDataFromNdjson(Map<String, Object> suiteHeader) {
+    private static Map<String, Object> buildSuiteDataFromJsonLines(Map<String, Object> suiteHeader) {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("env", suiteHeader.get("env"));
         data.put("threads", suiteHeader.get("threads"));
@@ -640,9 +640,9 @@ public final class HtmlReportWriter {
     }
 
     /**
-     * Internal data holder for NDJSON parsing.
+     * Internal data holder for JSON Lines parsing.
      */
-    private static class NdjsonData {
+    private static class JsonLinesData {
         Map<String, Object> suiteData = new LinkedHashMap<>();
         List<Map<String, Object>> features = new ArrayList<>();
     }

@@ -54,7 +54,7 @@ import java.util.List;
  *     "html": true,
  *     "junitXml": false,
  *     "cucumberJson": false,
- *     "ndjson": false,
+ *     "jsonLines": false,
  *     "logLevel": "info"
  *   }
  * }
@@ -81,7 +81,7 @@ public class KaratePom {
         private boolean html = true;
         private boolean junitXml;
         private boolean cucumberJson;
-        private boolean ndjson;
+        private boolean jsonLines;
         private String logLevel;  // trace, debug, info, warn, error
 
         public String getDir() {
@@ -116,12 +116,12 @@ public class KaratePom {
             this.cucumberJson = cucumberJson;
         }
 
-        public boolean isNdjson() {
-            return ndjson;
+        public boolean isJsonLines() {
+            return jsonLines;
         }
 
-        public void setNdjson(boolean ndjson) {
-            this.ndjson = ndjson;
+        public void setJsonLines(boolean jsonLines) {
+            this.jsonLines = jsonLines;
         }
 
         public String getLogLevel() {
@@ -196,7 +196,7 @@ public class KaratePom {
             j.<Boolean>getOptional("output.html").ifPresent(output::setHtml);
             j.<Boolean>getOptional("output.junitXml").ifPresent(output::setJunitXml);
             j.<Boolean>getOptional("output.cucumberJson").ifPresent(output::setCucumberJson);
-            j.<Boolean>getOptional("output.ndjson").ifPresent(output::setNdjson);
+            j.<Boolean>getOptional("output.jsonLines").ifPresent(output::setJsonLines);
             j.<String>getOptional("output.logLevel").ifPresent(output::setLogLevel);
         }
 
@@ -236,7 +236,7 @@ public class KaratePom {
         builder.outputHtmlReport(output.html);
         builder.outputJunitXml(output.junitXml);
         builder.outputCucumberJson(output.cucumberJson);
-        builder.outputNdjson(output.ndjson);
+        builder.outputJsonLines(output.jsonLines);
         if (output.logLevel != null) {
             builder.logLevel(output.logLevel);
         }

@@ -100,7 +100,7 @@ public final class Runner {
         private Path workingDir = FileUtils.WORKING_DIR.toPath();
         private boolean dryRun;
         private boolean outputHtmlReport = true;
-        private boolean outputNdjson;
+        private boolean outputJsonLines;
         private boolean outputJunitXml;
         private boolean outputCucumberJson;
         private boolean backupReportDir;
@@ -270,11 +270,11 @@ public final class Runner {
         }
 
         /**
-         * Enable/disable NDJSON streaming output.
-         * Writes feature results to karate-results.ndjson as they complete.
+         * Enable/disable JSON Lines streaming output.
+         * Writes feature results to karate-results.jsonl as they complete.
          */
-        public Builder outputNdjson(boolean enabled) {
-            this.outputNdjson = enabled;
+        public Builder outputJsonLines(boolean enabled) {
+            this.outputJsonLines = enabled;
             return this;
         }
 
@@ -415,7 +415,7 @@ public final class Runner {
             }
             suite.dryRun(dryRun);
             suite.outputHtmlReport(outputHtmlReport);
-            suite.outputNdjson(outputNdjson);
+            suite.outputJsonLines(outputJsonLines);
             suite.outputJunitXml(outputJunitXml);
             suite.outputCucumberJson(outputCucumberJson);
             suite.backupReportDir(backupReportDir);

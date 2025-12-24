@@ -33,7 +33,7 @@ import io.karatelabs.output.CucumberJsonWriter;
 import io.karatelabs.output.HtmlReportListener;
 import io.karatelabs.output.JunitXmlWriter;
 import io.karatelabs.output.JvmLogger;
-import io.karatelabs.output.NdjsonReportListener;
+import io.karatelabs.output.JsonLinesReportListener;
 import io.karatelabs.output.ResultListener;
 
 import java.io.File;
@@ -69,7 +69,7 @@ public class Suite {
     private Path workingDir = FileUtils.WORKING_DIR.toPath();
     private boolean writeReport = true;
     private boolean outputHtmlReport = true;
-    private boolean outputNdjson = false;
+    private boolean outputJsonLines = false;
     private boolean outputJunitXml = false;
     private boolean outputCucumberJson = false;
     private boolean backupReportDir = false;
@@ -213,8 +213,8 @@ public class Suite {
         return this;
     }
 
-    public Suite outputNdjson(boolean outputNdjson) {
-        this.outputNdjson = outputNdjson;
+    public Suite outputJsonLines(boolean outputJsonLines) {
+        this.outputJsonLines = outputJsonLines;
         return this;
     }
 
@@ -341,9 +341,9 @@ public class Suite {
             resultListeners.add(new HtmlReportListener(outputDir, env));
         }
 
-        // Optionally register NDJSON streaming listener
-        if (outputNdjson) {
-            resultListeners.add(new NdjsonReportListener(outputDir, env));
+        // Optionally register JSON Lines streaming listener
+        if (outputJsonLines) {
+            resultListeners.add(new JsonLinesReportListener(outputDir, env));
         }
 
         try {

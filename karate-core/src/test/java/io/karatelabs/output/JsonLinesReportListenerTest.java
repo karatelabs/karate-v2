@@ -38,7 +38,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class NdjsonReportListenerTest {
+class JsonLinesReportListenerTest {
 
     @TempDir
     Path tempDir;
@@ -49,10 +49,10 @@ class NdjsonReportListenerTest {
     }
 
     @Test
-    void testNdjsonFileCreated() throws Exception {
+    void testJsonLinesFileCreated() throws Exception {
         Path feature = tempDir.resolve("test.feature");
         Files.writeString(feature, """
-            Feature: NDJSON Test
+            Feature: JSON Lines Test
 
             Scenario: Passing scenario
             * def a = 1
@@ -64,24 +64,24 @@ class NdjsonReportListenerTest {
         SuiteResult result = Runner.path(feature.toString())
                 .workingDir(tempDir)
                 .outputDir(reportDir)
-                .outputNdjson(true)  // opt-in to NDJSON
+                .outputJsonLines(true)  // opt-in to JSON Lines
                 .parallel(1);
 
         assertTrue(result.isPassed());
 
-        // Verify NDJSON file was created
-        Path ndjsonPath = reportDir.resolve("karate-results.ndjson");
-        assertTrue(Files.exists(ndjsonPath), "NDJSON file should exist");
+        // Verify JSON Lines file was created
+        Path jsonlPath = reportDir.resolve("karate-results.jsonl");
+        assertTrue(Files.exists(jsonlPath), "JSON Lines file should exist");
 
-        String content = Files.readString(ndjsonPath);
+        String content = Files.readString(jsonlPath);
         String[] lines = content.trim().split("\n");
 
         // Should have 3 lines: suite header, feature, suite_end
-        assertEquals(3, lines.length, "Should have 3 NDJSON lines");
+        assertEquals(3, lines.length, "Should have 3 JSON Lines");
     }
 
     @Test
-    void testNdjsonSuiteHeader() throws Exception {
+    void testJsonLinesSuiteHeader() throws Exception {
         Path feature = tempDir.resolve("test.feature");
         Files.writeString(feature, """
             Feature: Suite Header Test
@@ -94,12 +94,12 @@ class NdjsonReportListenerTest {
         Runner.path(feature.toString())
                 .workingDir(tempDir)
                 .outputDir(reportDir)
-                .outputNdjson(true)
+                .outputJsonLines(true)
                 .karateEnv("dev")
                 .parallel(1);
 
-        Path ndjsonPath = reportDir.resolve("karate-results.ndjson");
-        String[] lines = Files.readString(ndjsonPath).trim().split("\n");
+        Path jsonlPath = reportDir.resolve("karate-results.jsonl");
+        String[] lines = Files.readString(jsonlPath).trim().split("\n");
 
         // Parse suite header
         @SuppressWarnings("unchecked")
@@ -113,7 +113,7 @@ class NdjsonReportListenerTest {
     }
 
     @Test
-    void testNdjsonFeatureLine() throws Exception {
+    void testJsonLinesFeatureLine() throws Exception {
         Path feature = tempDir.resolve("test.feature");
         Files.writeString(feature, """
             Feature: Feature Line Test
@@ -128,11 +128,11 @@ class NdjsonReportListenerTest {
         Runner.path(feature.toString())
                 .workingDir(tempDir)
                 .outputDir(reportDir)
-                .outputNdjson(true)
+                .outputJsonLines(true)
                 .parallel(1);
 
-        Path ndjsonPath = reportDir.resolve("karate-results.ndjson");
-        String[] lines = Files.readString(ndjsonPath).trim().split("\n");
+        Path jsonlPath = reportDir.resolve("karate-results.jsonl");
+        String[] lines = Files.readString(jsonlPath).trim().split("\n");
 
         // Parse feature line (second line)
         @SuppressWarnings("unchecked")
@@ -161,7 +161,7 @@ class NdjsonReportListenerTest {
     }
 
     @Test
-    void testNdjsonSuiteEnd() throws Exception {
+    void testJsonLinesSuiteEnd() throws Exception {
         Path feature = tempDir.resolve("test.feature");
         Files.writeString(feature, """
             Feature: Suite End Test
@@ -178,11 +178,11 @@ class NdjsonReportListenerTest {
         Runner.path(feature.toString())
                 .workingDir(tempDir)
                 .outputDir(reportDir)
-                .outputNdjson(true)
+                .outputJsonLines(true)
                 .parallel(1);
 
-        Path ndjsonPath = reportDir.resolve("karate-results.ndjson");
-        String[] lines = Files.readString(ndjsonPath).trim().split("\n");
+        Path jsonlPath = reportDir.resolve("karate-results.jsonl");
+        String[] lines = Files.readString(jsonlPath).trim().split("\n");
 
         // Parse suite_end line (last line)
         @SuppressWarnings("unchecked")
@@ -197,7 +197,7 @@ class NdjsonReportListenerTest {
     }
 
     @Test
-    void testNdjsonWithFailures() throws Exception {
+    void testJsonLinesWithFailures() throws Exception {
         Path feature = tempDir.resolve("failing.feature");
         Files.writeString(feature, """
             Feature: Failing Test
@@ -215,13 +215,13 @@ class NdjsonReportListenerTest {
         SuiteResult result = Runner.path(feature.toString())
                 .workingDir(tempDir)
                 .outputDir(reportDir)
-                .outputNdjson(true)
+                .outputJsonLines(true)
                 .parallel(1);
 
         assertTrue(result.isFailed());
 
-        Path ndjsonPath = reportDir.resolve("karate-results.ndjson");
-        String[] lines = Files.readString(ndjsonPath).trim().split("\n");
+        Path jsonlPath = reportDir.resolve("karate-results.jsonl");
+        String[] lines = Files.readString(jsonlPath).trim().split("\n");
 
         // Check feature line
         @SuppressWarnings("unchecked")
@@ -247,7 +247,7 @@ class NdjsonReportListenerTest {
     }
 
     @Test
-    void testNdjsonWithTags() throws Exception {
+    void testJsonLinesWithTags() throws Exception {
         Path feature = tempDir.resolve("tagged.feature");
         Files.writeString(feature, """
             Feature: Tagged Test
@@ -262,11 +262,11 @@ class NdjsonReportListenerTest {
         Runner.path(feature.toString())
                 .workingDir(tempDir)
                 .outputDir(reportDir)
-                .outputNdjson(true)
+                .outputJsonLines(true)
                 .parallel(1);
 
-        Path ndjsonPath = reportDir.resolve("karate-results.ndjson");
-        String[] lines = Files.readString(ndjsonPath).trim().split("\n");
+        Path jsonlPath = reportDir.resolve("karate-results.jsonl");
+        String[] lines = Files.readString(jsonlPath).trim().split("\n");
 
         @SuppressWarnings("unchecked")
         Map<String, Object> featureLine = (Map<String, Object>) Json.of(lines[1]).value();
@@ -284,7 +284,7 @@ class NdjsonReportListenerTest {
     }
 
     @Test
-    void testNdjsonMultipleFeatures() throws Exception {
+    void testJsonLinesMultipleFeatures() throws Exception {
         Path feature1 = tempDir.resolve("feature1.feature");
         Files.writeString(feature1, """
             Feature: Feature One
@@ -304,11 +304,11 @@ class NdjsonReportListenerTest {
         Runner.path(tempDir.toString())
                 .workingDir(tempDir)
                 .outputDir(reportDir)
-                .outputNdjson(true)
+                .outputJsonLines(true)
                 .parallel(1);
 
-        Path ndjsonPath = reportDir.resolve("karate-results.ndjson");
-        String[] lines = Files.readString(ndjsonPath).trim().split("\n");
+        Path jsonlPath = reportDir.resolve("karate-results.jsonl");
+        String[] lines = Files.readString(jsonlPath).trim().split("\n");
 
         // Should have 4 lines: suite header, 2 features, suite_end
         assertEquals(4, lines.length);
@@ -332,10 +332,10 @@ class NdjsonReportListenerTest {
     }
 
     @Test
-    void testHtmlReportGeneratedWithNdjson() throws Exception {
+    void testHtmlReportGeneratedWithJsonLines() throws Exception {
         Path feature = tempDir.resolve("test.feature");
         Files.writeString(feature, """
-            Feature: HTML With NDJSON Test
+            Feature: HTML With JSON Lines Test
             Scenario: Test
             * def a = 1
             """);
@@ -346,11 +346,11 @@ class NdjsonReportListenerTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputHtmlReport(true)
-                .outputNdjson(true)  // opt-in to NDJSON alongside HTML
+                .outputJsonLines(true)  // opt-in to JSON Lines alongside HTML
                 .parallel(1);
 
-        // Verify both NDJSON and HTML reports exist when both are enabled
-        assertTrue(Files.exists(reportDir.resolve("karate-results.ndjson")));
+        // Verify both JSON Lines and HTML reports exist when both are enabled
+        assertTrue(Files.exists(reportDir.resolve("karate-results.jsonl")));
         assertTrue(Files.exists(reportDir.resolve("karate-summary.html")));
         assertTrue(Files.exists(reportDir.resolve("index.html")));
     }

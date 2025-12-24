@@ -152,7 +152,7 @@ public class FeatureResult {
     // ========== Canonical Map Format ==========
 
     /**
-     * Convert to canonical Map format for NDJSON and HTML reports.
+     * Convert to canonical Map format for JSON Lines and HTML reports.
      * This is the single internal format used for all report generation.
      * <p>
      * Format:

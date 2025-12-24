@@ -16,7 +16,7 @@ Karate v2 generates rich interactive HTML reports using Bootstrap 5 + Alpine.js 
 |-------|-------------|
 | `HtmlReportListener` | Async HTML report generation (default), implements `ResultListener` |
 | `HtmlReportWriter` | HTML report generation with inlined JSON |
-| `NdjsonReportListener` | NDJSON streaming (opt-in via `.outputNdjson(true)`) |
+| `JsonLinesReportListener` | JSON Lines streaming (opt-in via `.outputJsonLines(true)`) |
 | `HtmlReport` | Report aggregation API |
 
 ### Runner API
@@ -26,9 +26,9 @@ Karate v2 generates rich interactive HTML reports using Bootstrap 5 + Alpine.js 
 Runner.path("features/")
     .parallel(5);
 
-// Opt-in NDJSON for aggregation/streaming
+// Opt-in JSON Lines for aggregation/streaming
 Runner.path("features/")
-    .outputNdjson(true)
+    .outputJsonLines(true)
     .parallel(5);
 
 // Disable HTML reports
@@ -86,7 +86,7 @@ StepResult.toMap()       // → Map with prefix, keyword, text, status, ms, logs
 ```
 
 This same format is used by:
-- **NDJSON streaming** - `NdjsonReportListener` writes `result.toMap()` directly
+- **JSON Lines streaming** - `JsonLinesReportListener` writes `result.toMap()` directly
 - **HTML summary** - `HtmlReportWriter.writeSummaryPages()` builds from feature maps
 - **HTML timeline** - `HtmlReportWriter.writeTimelineHtml()` uses scenario timing from maps
 - **HTML features** - `HtmlReportWriter.writeFeatureHtml()` renders full step details
@@ -303,9 +303,9 @@ The embed system is extensible via `LogContext.get().embed(data, mimeType)` for 
 
 ---
 
-## NDJSON Streaming (Opt-In)
+## JSON Lines Streaming (Opt-In)
 
-NDJSON output is opt-in via `.outputNdjson(true)`. It provides a **single append-only NDJSON file** with **feature-level granularity** for use cases like:
+JSON Lines output is opt-in via `.outputJsonLines(true)`. It provides a **single append-only JSON Lines file** with **feature-level granularity** for use cases like:
 - Report aggregation across multiple test runs
 - Live tailing during execution for progress monitoring
 - External integrations and custom tooling
@@ -321,7 +321,7 @@ Each `feature` line contains the full scenario/step data as defined in the JSON 
 
 **Why feature-level (not step-level) events:**
 - **Simpler clients** - Each line is a complete, self-contained feature result
-- **Easy progress tracking** - `grep '"t":"feature"' karate-results.ndjson | wc -l`
+- **Easy progress tracking** - `grep '"t":"feature"' karate-results.jsonl | wc -l`
 - **Atomic writes** - No need to reconstruct partial state
 - **Web server friendly** - Serve features as they complete, clients poll/SSE for new lines
 
@@ -520,7 +520,7 @@ private static String pathToFileName(String path) {
 | Test Class | Coverage |
 |------------|----------|
 | `HtmlReportListenerTest` | Async HTML report generation |
-| `NdjsonReportListenerTest` | NDJSON streaming (opt-in) |
+| `JsonLinesReportListenerTest` | JSON Lines streaming (opt-in) |
 | `HtmlReportWriterTest` | HTML report generation and aggregation |
 
 ---

@@ -41,44 +41,44 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * A {@link ResultListener} that streams test results to an NDJSON (newline-delimited JSON) file.
+ * A {@link ResultListener} that streams test results to a JSON Lines (.jsonl) file.
  * <p>
  * This listener writes feature results as they complete during test execution, enabling:
  * <ul>
  *   <li>Memory efficiency - results written to disk immediately, not held in memory</li>
  *   <li>Streaming - can tail the file during execution for live progress</li>
- *   <li>Easy aggregation - multiple NDJSON files can be concatenated</li>
+ *   <li>Easy aggregation - multiple JSON Lines files can be concatenated</li>
  * </ul>
  * <p>
- * NDJSON format:
+ * JSON Lines format:
  * <pre>
  * {"t":"suite","time":"2025-12-16T10:30:00Z","threads":5,"env":"dev","version":"..."}
  * {"t":"feature","path":"features/users.feature","name":"User Management","scenarios":[...],"passed":true,"ms":1234}
  * {"t":"suite_end","featuresPassed":10,"featuresFailed":2,"scenariosPassed":42,"scenariosFailed":3,"ms":12345}
  * </pre>
  * <p>
- * At suite end, this listener generates HTML reports from the accumulated NDJSON data.
+ * At suite end, this listener generates HTML reports from the accumulated JSON Lines data.
  */
-public class NdjsonReportListener implements ResultListener {
+public class JsonLinesReportListener implements ResultListener {
 
     private static final DateTimeFormatter ISO_FORMAT = DateTimeFormatter.ISO_INSTANT;
 
     private final Path outputDir;
-    private final Path ndjsonPath;
+    private final Path jsonlPath;
     private final String env;
     private BufferedWriter writer;
     private long suiteStartTime;
     private int threadCount;
 
     /**
-     * Create a new NDJSON report listener.
+     * Create a new JSON Lines report listener.
      *
      * @param outputDir the directory to write reports
      * @param env       the karate environment (may be null)
      */
-    public NdjsonReportListener(Path outputDir, String env) {
+    public JsonLinesReportListener(Path outputDir, String env) {
         this.outputDir = outputDir;
-        this.ndjsonPath = outputDir.resolve("karate-results.ndjson");
+        this.jsonlPath = outputDir.resolve("karate-results.jsonl");
         this.env = env;
     }
 
@@ -88,8 +88,8 @@ public class NdjsonReportListener implements ResultListener {
             // Create output directory
             Files.createDirectories(outputDir);
 
-            // Open writer for NDJSON file
-            writer = Files.newBufferedWriter(ndjsonPath,
+            // Open writer for JSON Lines file
+            writer = Files.newBufferedWriter(jsonlPath,
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING,
                     StandardOpenOption.WRITE);
@@ -110,10 +110,10 @@ public class NdjsonReportListener implements ResultListener {
 
             writeLine(Json.stringifyStrict(suiteHeader));
 
-            JvmLogger.debug("NDJSON report started: {}", ndjsonPath);
+            JvmLogger.debug("JSON Lines report started: {}", jsonlPath);
 
         } catch (IOException e) {
-            JvmLogger.warn("Failed to start NDJSON report: {}", e.getMessage());
+            JvmLogger.warn("Failed to start JSON Lines report: {}", e.getMessage());
         }
     }
 
@@ -124,13 +124,13 @@ public class NdjsonReportListener implements ResultListener {
         }
 
         try {
-            // Use canonical toMap() format with NDJSON type prefix
+            // Use canonical toMap() format with JSON Lines type prefix
             Map<String, Object> featureLine = new LinkedHashMap<>();
             featureLine.put("t", "feature");
             featureLine.putAll(result.toMap());
             writeLine(Json.stringifyStrict(featureLine));
         } catch (Exception e) {
-            JvmLogger.warn("Failed to write feature to NDJSON: {}", e.getMessage());
+            JvmLogger.warn("Failed to write feature to JSON Lines: {}", e.getMessage());
         }
     }
 
@@ -156,19 +156,19 @@ public class NdjsonReportListener implements ResultListener {
             writer.close();
             writer = null;
 
-            JvmLogger.info("NDJSON report written to: {}", ndjsonPath);
+            JvmLogger.info("JSON Lines report written to: {}", jsonlPath);
 
-            // Note: We do NOT regenerate HTML from NDJSON here.
+            // Note: We do NOT regenerate HTML from JSON Lines here.
             // HtmlReportListener handles HTML generation (with embeds).
-            // NDJSON is for data exchange/aggregation via HtmlReport.aggregate().
+            // JSON Lines is for data exchange/aggregation via HtmlReport.aggregate().
 
         } catch (IOException e) {
-            JvmLogger.warn("Failed to complete NDJSON report: {}", e.getMessage());
+            JvmLogger.warn("Failed to complete JSON Lines report: {}", e.getMessage());
         }
     }
 
     /**
-     * Thread-safe write to NDJSON file.
+     * Thread-safe write to JSON Lines file.
      */
     private synchronized void writeLine(String json) throws IOException {
         if (writer != null) {
@@ -179,10 +179,10 @@ public class NdjsonReportListener implements ResultListener {
     }
 
     /**
-     * Get the path to the NDJSON file.
+     * Get the path to the JSON Lines file.
      */
-    public Path getNdjsonPath() {
-        return ndjsonPath;
+    public Path getJsonlPath() {
+        return jsonlPath;
     }
 
 }

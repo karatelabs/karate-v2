@@ -59,7 +59,7 @@ class HtmlReportListenerTest {
 
         Path reportDir = tempDir.resolve("reports");
 
-        // Run with default settings - HTML enabled, NDJSON not enabled
+        // Run with default settings - HTML enabled, JSON Lines not enabled
         SuiteResult result = Runner.path(feature.toString())
                 .workingDir(tempDir)
                 .outputDir(reportDir)
@@ -73,8 +73,8 @@ class HtmlReportListenerTest {
         assertTrue(Files.exists(reportDir.resolve("index.html")), "Index redirect should exist");
         assertTrue(Files.exists(reportDir.resolve("features")), "Features directory should exist");
 
-        // NDJSON should NOT exist (opt-in only)
-        assertFalse(Files.exists(reportDir.resolve("karate-results.ndjson")), "NDJSON should not exist by default");
+        // JSON Lines should NOT exist (opt-in only)
+        assertFalse(Files.exists(reportDir.resolve("karate-results.jsonl")), "JSON Lines should not exist by default");
 
         // Static resources should be copied
         assertTrue(Files.exists(reportDir.resolve("res/bootstrap.min.css")), "Bootstrap CSS should exist");

@@ -357,11 +357,11 @@ Beyond being LLM-friendly, Karate can be a tool for testing AI systems:
 
 ### Code Organization
 - [ ] Move all reporting and logging related code to an "output" folder (not "reports")
-- [ ] Consolidate `HtmlReportListener`, `NdjsonReportListener`, `HtmlReportWriter` into unified output package
+- [ ] Consolidate `HtmlReportListener`, `JsonLinesReportListener`, `HtmlReportWriter` into unified output package
 
 ### Report Format & Compatibility
 - [ ] Verify v2 karate-json format matches v1 format for external tool compatibility
-- [ ] Verify report events (NDJSON) are sufficient for external aggregation services
+- [ ] Verify report events (JSON Lines) are sufficient for external aggregation services
 - [ ] Implement report merging from multiple runs (`HtmlReport.aggregate()`)
 - [ ] Cucumber JSON format support
 

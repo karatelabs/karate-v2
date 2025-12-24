@@ -37,7 +37,7 @@ import java.util.Map;
 /**
  * Fluent API for HTML report aggregation across multiple test runs.
  * <p>
- * This class allows merging NDJSON files from different test runs to create
+ * This class allows merging JSON Lines files from different test runs to create
  * a combined HTML report. This is useful for aggregating results from:
  * <ul>
  *   <li>Parallel test shards</li>
@@ -48,8 +48,8 @@ import java.util.Map;
  * Example usage:
  * <pre>
  * HtmlReport.aggregate()
- *     .json("target/run1/karate-results.ndjson")
- *     .json("target/run2/karate-results.ndjson")
+ *     .json("target/run1/karate-results.jsonl")
+ *     .json("target/run2/karate-results.jsonl")
  *     .outputDir("target/combined-report")
  *     .generate();
  * </pre>
@@ -69,31 +69,31 @@ public final class HtmlReport {
     }
 
     /**
-     * Builder for aggregating multiple NDJSON files into a single HTML report.
+     * Builder for aggregating multiple JSON Lines files into a single HTML report.
      */
     public static class AggregateBuilder {
-        private final List<Path> ndjsonFiles = new ArrayList<>();
+        private final List<Path> jsonlFiles = new ArrayList<>();
         private Path outputDir;
 
         /**
-         * Add an NDJSON file to aggregate.
+         * Add a JSON Lines file to aggregate.
          *
-         * @param path path to the NDJSON file
+         * @param path path to the JSON Lines file
          * @return this builder
          */
         public AggregateBuilder json(String path) {
-            ndjsonFiles.add(Path.of(path));
+            jsonlFiles.add(Path.of(path));
             return this;
         }
 
         /**
-         * Add an NDJSON file to aggregate.
+         * Add a JSON Lines file to aggregate.
          *
-         * @param path path to the NDJSON file
+         * @param path path to the JSON Lines file
          * @return this builder
          */
         public AggregateBuilder json(Path path) {
-            ndjsonFiles.add(path);
+            jsonlFiles.add(path);
             return this;
         }
 
@@ -122,18 +122,18 @@ public final class HtmlReport {
         /**
          * Generate the aggregated HTML report.
          *
-         * @throws IllegalStateException if no NDJSON files or output directory specified
+         * @throws IllegalStateException if no JSON Lines files or output directory specified
          */
         public void generate() {
-            if (ndjsonFiles.isEmpty()) {
-                throw new IllegalStateException("No NDJSON files specified for aggregation");
+            if (jsonlFiles.isEmpty()) {
+                throw new IllegalStateException("No JSON Lines files specified for aggregation");
             }
             if (outputDir == null) {
                 throw new IllegalStateException("Output directory not specified");
             }
 
             try {
-                // Parse and merge all NDJSON files
+                // Parse and merge all JSON Lines files
                 List<Map<String, Object>> allFeatures = new ArrayList<>();
                 Map<String, Object> suiteData = new LinkedHashMap<>();
                 int totalFeaturesPassed = 0;
@@ -142,13 +142,13 @@ public final class HtmlReport {
                 int totalScenariosFailed = 0;
                 long totalDuration = 0;
 
-                for (Path ndjsonFile : ndjsonFiles) {
-                    if (!Files.exists(ndjsonFile)) {
-                        JvmLogger.warn("NDJSON file not found, skipping: {}", ndjsonFile);
+                for (Path jsonlFile : jsonlFiles) {
+                    if (!Files.exists(jsonlFile)) {
+                        JvmLogger.warn("JSON Lines file not found, skipping: {}", jsonlFile);
                         continue;
                     }
 
-                    List<String> lines = Files.readAllLines(ndjsonFile, StandardCharsets.UTF_8);
+                    List<String> lines = Files.readAllLines(jsonlFile, StandardCharsets.UTF_8);
                     for (String line : lines) {
                         if (line.trim().isEmpty()) continue;
 
@@ -196,13 +196,13 @@ public final class HtmlReport {
 
                 suiteData.put("summary", summary);
 
-                // Write merged NDJSON
-                Path mergedNdjson = outputDir.resolve("karate-results.ndjson");
+                // Write merged JSON Lines
+                Path mergedJsonl = outputDir.resolve("karate-results.jsonl");
                 Files.createDirectories(outputDir);
-                writeMergedNdjson(mergedNdjson, suiteData, allFeatures, summary);
+                writeMergedJsonLines(mergedJsonl, suiteData, allFeatures, summary);
 
                 // Generate HTML from merged data
-                HtmlReportWriter.writeFromNdjson(mergedNdjson, outputDir);
+                HtmlReportWriter.writeFromJsonLines(mergedJsonl, outputDir);
 
                 JvmLogger.info("Aggregated report generated at: {}", outputDir);
 
@@ -211,7 +211,7 @@ public final class HtmlReport {
             }
         }
 
-        private void writeMergedNdjson(Path path, Map<String, Object> suiteData,
+        private void writeMergedJsonLines(Path path, Map<String, Object> suiteData,
                                         List<Map<String, Object>> features,
                                         Map<String, Object> summary) throws IOException {
             StringBuilder sb = new StringBuilder();
