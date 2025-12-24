@@ -44,11 +44,9 @@ public class Value implements SimpleObject {
 
     /**
      * Memory threshold in bytes above which collections are stored on disk.
-     * Can be configured via system property "karate.match.memoryThreshold".
      * Default is 10MB.
      */
-    public static final long MEMORY_THRESHOLD = Long.parseLong(
-            System.getProperty("karate.match.memoryThreshold", String.valueOf(10 * 1024 * 1024)));
+    public static final long MEMORY_THRESHOLD = 10 * 1024 * 1024;
 
     public enum Type {
         NULL,
@@ -67,6 +65,7 @@ public class Value implements SimpleObject {
 
     private final Object value;
     private LargeValueStore largeStore;
+    private final long memoryThreshold;
 
     private Context context;
 
@@ -75,11 +74,16 @@ public class Value implements SimpleObject {
     }
 
     Value(Object value, Context context, BiConsumer<Context, Result> onResult) {
-        this(value, context, onResult, true);
+        this(value, context, onResult, true, MEMORY_THRESHOLD);
     }
 
     Value(Object value, Context context, BiConsumer<Context, Result> onResult, boolean checkLargeCollection) {
+        this(value, context, onResult, checkLargeCollection, MEMORY_THRESHOLD);
+    }
+
+    Value(Object value, Context context, BiConsumer<Context, Result> onResult, boolean checkLargeCollection, long memoryThreshold) {
         this.context = context;
+        this.memoryThreshold = memoryThreshold;
         if (value instanceof Set<?> set) {
             value = new ArrayList<Object>(set);
         } else if (value != null && value.getClass().isArray()) {
@@ -118,7 +122,7 @@ public class Value implements SimpleObject {
 
     private void checkAndCreateLargeStore(List<?> list) {
         long estimatedSize = DiskBackedList.estimateCollectionSize(list);
-        if (estimatedSize > MEMORY_THRESHOLD) {
+        if (estimatedSize > memoryThreshold) {
             try {
                 largeStore = DiskBackedList.create(list);
                 logger.debug("created disk-backed store for collection of estimated size {} bytes", estimatedSize);

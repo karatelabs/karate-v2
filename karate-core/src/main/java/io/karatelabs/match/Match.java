@@ -73,4 +73,12 @@ public class Match {
         return op.getResult();
     }
 
+    public static Result execute(Engine engine, Type matchType, Object actual, Object expected, long memoryThreshold) {
+        Value actualValue = new Value(actual, null, null, true, memoryThreshold);
+        Value expectedValue = new Value(expected, null, null, true, memoryThreshold);
+        Operation op = new Operation(engine, matchType, actualValue, expectedValue);
+        op.execute();
+        return op.getResult();
+    }
+
 }

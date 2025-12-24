@@ -225,18 +225,7 @@ Remove early-return patterns to collect all mismatches before failing.
 
 ### Design
 
-#### 3.1 Add Configuration Flag
-
-```java
-// MatchContext.java additions
-boolean collectAllFailures = true; // default to new behavior
-
-// Or via system property for migration
-static final boolean COLLECT_ALL =
-    Boolean.parseBoolean(System.getProperty("karate.match.collectAll", "true"));
-```
-
-#### 3.2 Modify Early-Return Patterns
+#### 3.1 Remove Early-Return Patterns
 
 **Pattern A: EACH Match (lines 160-169)**
 ```java

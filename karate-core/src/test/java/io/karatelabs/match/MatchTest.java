@@ -410,6 +410,41 @@ class MatchTest {
     }
 
     @Test
+    void testListFailureMessages() {
+        // Multiple element mismatches
+        match("[1, 2, 3]", EQUALS, "[1, 9, 9]", FAILS);
+        String expected = """
+                match failed: EQUALS
+                  $ | not equal | array match failed at indices [1, 2] (LIST:LIST)
+                  [1,2,3]
+                  [1,9,9]
+
+                    $[2] | not equal (NUMBER:NUMBER)
+                    3
+                    9
+
+                    $[1] | not equal (NUMBER:NUMBER)
+                    2
+                    9
+                """;
+        message(expected);
+    }
+
+    @Test
+    void testNestedFailureMessages() {
+        // Nested maps with multiple failures at each level
+        match("{ a: { x: 1, y: 2 }, b: { x: 1, y: 2 } }", EQUALS, "{ a: { x: 9, y: 9 }, b: { x: 9, y: 9 } }", FAILS);
+        // Verify cascading: top level shows [a, b], each nested shows [x, y]
+        assertTrue(message.contains("match failed for names: [a, b]"));
+        assertTrue(message.contains("$.b | not equal | match failed for names: [x, y]"));
+        assertTrue(message.contains("$.a | not equal | match failed for names: [x, y]"));
+        assertTrue(message.contains("$.b.y | not equal"));
+        assertTrue(message.contains("$.b.x | not equal"));
+        assertTrue(message.contains("$.a.y | not equal"));
+        assertTrue(message.contains("$.a.x | not equal"));
+    }
+
+    @Test
     void testJsonFailureMessages() {
         match("{ a: 1, b: 2, c: 3 }", EQUALS, "{ a: 1, b: 9, c: 3 }", FAILS);
         String expected = """
@@ -420,6 +455,23 @@ class MatchTest {
                 
                     $.b | not equal (NUMBER:NUMBER)
                     2
+                    9
+                """;
+        message(expected);
+        // Multiple value mismatches in map
+        match("{ a: 1, b: 2, c: 3 }", EQUALS, "{ a: 9, b: 9, c: 3 }", FAILS);
+        expected = """
+                match failed: EQUALS
+                  $ | not equal | match failed for names: [a, b] (MAP:MAP)
+                  {"a":1,"b":2,"c":3}
+                  {"a":9,"b":9,"c":3}
+
+                    $.b | not equal (NUMBER:NUMBER)
+                    2
+                    9
+
+                    $.a | not equal (NUMBER:NUMBER)
+                    1
                     9
                 """;
         message(expected);

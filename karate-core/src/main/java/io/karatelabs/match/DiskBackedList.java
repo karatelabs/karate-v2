@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Random;
 
 /**
  * A disk-backed list implementation for handling large collections without
@@ -122,17 +123,35 @@ public class DiskBackedList implements LargeValueStore {
     }
 
     /**
-     * Estimates the total memory size of a collection.
+     * Estimates the total memory size of a list using random sampling.
+     * For lists with more than SAMPLE_SIZE items, samples 5 random items and extrapolates.
      *
-     * @param items the collection to estimate
+     * @param list the list to estimate
      * @return estimated size in bytes
      */
-    public static long estimateCollectionSize(Iterable<?> items) {
-        long total = 40;
-        for (Object item : items) {
-            total += 8 + estimateSize(item);
+    public static long estimateCollectionSize(List<?> list) {
+        final int SAMPLE_SIZE = 5;
+        int size = list.size();
+        if (size == 0) {
+            return 40;
         }
-        return total;
+        if (size <= SAMPLE_SIZE) {
+            // Small list - check all items
+            long total = 40;
+            for (Object item : list) {
+                total += 8 + estimateSize(item);
+            }
+            return total;
+        }
+        // Large list - random sample of 5 items
+        long sampleTotal = 0;
+        Random random = new Random();
+        for (int i = 0; i < SAMPLE_SIZE; i++) {
+            int idx = random.nextInt(size);
+            sampleTotal += 8 + estimateSize(list.get(idx));
+        }
+        long avgItemSize = sampleTotal / SAMPLE_SIZE;
+        return 40 + (avgItemSize * size);
     }
 
     private static String serializeItem(Object item) {
