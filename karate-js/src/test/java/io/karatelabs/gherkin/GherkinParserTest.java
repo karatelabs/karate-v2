@@ -365,4 +365,24 @@ class GherkinParserTest {
         assertEquals("read('file.txt').replaceAll(\"\\r\", \"\")", me.getExpectedExpr());
     }
 
+    @Test
+    void testParseMatchExpressionWithin() {
+        MatchExpression me = GherkinParser.parseMatchExpression("subset within superset");
+        assertFalse(me.isEach());
+        assertEquals("subset", me.getActualExpr());
+        assertEquals("within", me.getOperator());
+        assertEquals("superset", me.getExpectedExpr());
+        assertEquals("WITHIN", me.getMatchTypeName());
+    }
+
+    @Test
+    void testParseMatchExpressionNotWithin() {
+        MatchExpression me = GherkinParser.parseMatchExpression("foo !within bar");
+        assertFalse(me.isEach());
+        assertEquals("foo", me.getActualExpr());
+        assertEquals("!within", me.getOperator());
+        assertEquals("bar", me.getExpectedExpr());
+        assertEquals("NOT_WITHIN", me.getMatchTypeName());
+    }
+
 }

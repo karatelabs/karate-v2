@@ -660,7 +660,8 @@ public class GherkinParser extends Parser {
 
     private static boolean isMatchOperator(String text) {
         return text.equals("==") || text.equals("!=") ||
-               text.startsWith("contains") || text.equals("!contains");
+               text.startsWith("contains") || text.equals("!contains") ||
+               text.equals("within") || text.equals("!within");
     }
 
 }

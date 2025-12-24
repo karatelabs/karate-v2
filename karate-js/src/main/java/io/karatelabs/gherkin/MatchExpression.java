@@ -79,6 +79,8 @@ public class MatchExpression {
             case "contains only deep" -> "CONTAINS_ONLY_DEEP";
             case "contains any" -> "CONTAINS_ANY";
             case "contains any deep" -> "CONTAINS_ANY_DEEP";
+            case "within" -> "WITHIN";
+            case "!within" -> "NOT_WITHIN";
             default -> throw new RuntimeException("Unknown operator: " + operator);
         };
         return each ? "EACH_" + base : base;

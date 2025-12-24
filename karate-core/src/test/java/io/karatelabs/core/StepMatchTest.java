@@ -239,4 +239,66 @@ class StepMatchTest {
         assertPassed(sr);
     }
 
+    // ========== Within ==========
+
+    @Test
+    void testMatchWithinArray() {
+        ScenarioRuntime sr = run("""
+            * def subset = [1, 2]
+            * def superset = [1, 2, 3, 4, 5]
+            * match subset within superset
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMatchWithinArrayFailure() {
+        ScenarioRuntime sr = run("""
+            * def subset = [1, 6]
+            * def superset = [1, 2, 3, 4, 5]
+            * match subset within superset
+            """);
+        assertFailed(sr);
+    }
+
+    @Test
+    void testMatchWithinMap() {
+        ScenarioRuntime sr = run("""
+            * def subset = { name: 'bar' }
+            * def superset = { name: 'bar', age: 30, city: 'NYC' }
+            * match subset within superset
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMatchWithinMapFailure() {
+        ScenarioRuntime sr = run("""
+            * def subset = { name: 'baz' }
+            * def superset = { name: 'bar', age: 30 }
+            * match subset within superset
+            """);
+        assertFailed(sr);
+    }
+
+    @Test
+    void testMatchNotWithin() {
+        ScenarioRuntime sr = run("""
+            * def subset = [7, 8]
+            * def superset = [1, 2, 3]
+            * match subset !within superset
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMatchNotWithinFailure() {
+        ScenarioRuntime sr = run("""
+            * def subset = [1, 2]
+            * def superset = [1, 2, 3]
+            * match subset !within superset
+            """);
+        assertFailed(sr);
+    }
+
 }

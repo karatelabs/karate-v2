@@ -70,7 +70,7 @@ GM_PREFIX = "*"|"Given"|"When"|"Then"|"And"|"But"
 GM_TYPE_KEYWORD = "def"|"json"|"xml"|"xmlstring"|"yaml"|"csv"|"string"|"bytes"|"copy"
 GM_ASSIGN_KEYWORD = "configure"|"header"|"param"|"cookie"|"form field"|"multipart file"|"multipart field"
 GM_SPACED_KEYWORD = "form fields"|"multipart fields"|"multipart files"|"soap action"|"retry until"|"multipart entity"
-GM_MATCH_TYPE = ("=="|"!="|"contains"|"!contains") ({WS}+("only"|"any"))? ({WS}+"deep")?
+GM_MATCH_TYPE = ("=="|"!="|"contains"|"!contains"|"within"|"!within") ({WS}+("only"|"any"))? ({WS}+"deep")?
 GM_TRIPLE_QUOTE = \"\"\"
 GM_TAG = "@" {NOT_WSLF}+
 
