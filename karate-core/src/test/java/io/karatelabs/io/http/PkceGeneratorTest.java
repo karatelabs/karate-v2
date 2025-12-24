@@ -1,4 +1,4 @@
-package io.karatelabs.io.http.oauth;
+package io.karatelabs.io.http;
 
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -12,13 +12,13 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class PKCEGeneratorTest {
+class PkceGeneratorTest {
 
-    static final Logger logger = LoggerFactory.getLogger(PKCEGeneratorTest.class);
+    static final Logger logger = LoggerFactory.getLogger(PkceGeneratorTest.class);
 
     @Test
     void testCreateWithDefaultS256Method() {
-        PKCEGenerator pkce = PKCEGenerator.create();
+        PkceGenerator pkce = PkceGenerator.create();
 
         assertNotNull(pkce.getVerifier());
         assertNotNull(pkce.getChallenge());
@@ -27,7 +27,7 @@ class PKCEGeneratorTest {
 
     @Test
     void testCreateWithS256Method() {
-        PKCEGenerator pkce = PKCEGenerator.create("S256");
+        PkceGenerator pkce = PkceGenerator.create("S256");
 
         assertNotNull(pkce.getVerifier());
         assertNotNull(pkce.getChallenge());
@@ -39,7 +39,7 @@ class PKCEGeneratorTest {
 
     @Test
     void testCreateWithPlainMethod() {
-        PKCEGenerator pkce = PKCEGenerator.create("plain");
+        PkceGenerator pkce = PkceGenerator.create("plain");
 
         assertNotNull(pkce.getVerifier());
         assertNotNull(pkce.getChallenge());
@@ -52,7 +52,7 @@ class PKCEGeneratorTest {
     @Test
     void testUnsupportedMethod() {
         Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-            PKCEGenerator.create("unsupported");
+            PkceGenerator.create("unsupported");
         });
 
         assertTrue(exception.getMessage().contains("Unsupported PKCE method"));
@@ -60,7 +60,7 @@ class PKCEGeneratorTest {
 
     @Test
     void testVerifierLength() {
-        PKCEGenerator pkce = PKCEGenerator.create();
+        PkceGenerator pkce = PkceGenerator.create();
         String verifier = pkce.getVerifier();
 
         // RFC 7636: code_verifier = 43-128 characters
@@ -70,7 +70,7 @@ class PKCEGeneratorTest {
 
     @Test
     void testVerifierCharacters() {
-        PKCEGenerator pkce = PKCEGenerator.create();
+        PkceGenerator pkce = PkceGenerator.create();
         String verifier = pkce.getVerifier();
 
         // RFC 7636: code_verifier uses unreserved characters [A-Z] / [a-z] / [0-9] / "-" / "." / "_" / "~"
@@ -81,7 +81,7 @@ class PKCEGeneratorTest {
 
     @Test
     void testChallengeLength() {
-        PKCEGenerator pkce = PKCEGenerator.create("S256");
+        PkceGenerator pkce = PkceGenerator.create("S256");
         String challenge = pkce.getChallenge();
 
         // SHA-256 hash is 32 bytes, Base64-URL encoded is 43 characters
@@ -91,7 +91,7 @@ class PKCEGeneratorTest {
 
     @Test
     void testChallengeCharacters() {
-        PKCEGenerator pkce = PKCEGenerator.create();
+        PkceGenerator pkce = PkceGenerator.create();
         String challenge = pkce.getChallenge();
 
         // Base64-URL encoding uses [A-Z] / [a-z] / [0-9] / "-" / "_"
@@ -105,7 +105,7 @@ class PKCEGeneratorTest {
 
         // Generate 100 verifiers and ensure they're all unique
         for (int i = 0; i < 100; i++) {
-            PKCEGenerator pkce = PKCEGenerator.create();
+            PkceGenerator pkce = PkceGenerator.create();
             verifiers.add(pkce.getVerifier());
         }
 
@@ -118,7 +118,7 @@ class PKCEGeneratorTest {
 
         // Generate 100 challenges and ensure they're all unique
         for (int i = 0; i < 100; i++) {
-            PKCEGenerator pkce = PKCEGenerator.create();
+            PkceGenerator pkce = PkceGenerator.create();
             challenges.add(pkce.getChallenge());
         }
 
@@ -127,7 +127,7 @@ class PKCEGeneratorTest {
 
     @Test
     void testS256ChallengeIsCorrectHash() throws Exception {
-        PKCEGenerator pkce = PKCEGenerator.create("S256");
+        PkceGenerator pkce = PkceGenerator.create("S256");
         String verifier = pkce.getVerifier();
         String challenge = pkce.getChallenge();
 
@@ -144,7 +144,7 @@ class PKCEGeneratorTest {
 
     @Test
     void testPlainChallengeEqualsVerifier() {
-        PKCEGenerator pkce = PKCEGenerator.create("plain");
+        PkceGenerator pkce = PkceGenerator.create("plain");
 
         assertEquals(pkce.getVerifier(), pkce.getChallenge(),
             "Plain method: challenge should equal verifier");
@@ -152,7 +152,7 @@ class PKCEGeneratorTest {
 
     @Test
     void testNoPaddingInBase64Url() {
-        PKCEGenerator pkce = PKCEGenerator.create();
+        PkceGenerator pkce = PkceGenerator.create();
         String verifier = pkce.getVerifier();
         String challenge = pkce.getChallenge();
 
@@ -163,8 +163,8 @@ class PKCEGeneratorTest {
 
     @Test
     void testMultipleInstancesProduceDifferentValues() {
-        PKCEGenerator pkce1 = PKCEGenerator.create();
-        PKCEGenerator pkce2 = PKCEGenerator.create();
+        PkceGenerator pkce1 = PkceGenerator.create();
+        PkceGenerator pkce2 = PkceGenerator.create();
 
         assertNotEquals(pkce1.getVerifier(), pkce2.getVerifier(),
             "Different instances should produce different verifiers");
@@ -174,7 +174,7 @@ class PKCEGeneratorTest {
 
     @Test
     void testGettersReturnCorrectValues() {
-        PKCEGenerator pkce = PKCEGenerator.create("S256");
+        PkceGenerator pkce = PkceGenerator.create("S256");
 
         assertNotNull(pkce.getVerifier());
         assertNotNull(pkce.getChallenge());

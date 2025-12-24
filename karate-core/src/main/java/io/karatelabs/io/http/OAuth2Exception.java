@@ -1,4 +1,4 @@
-package io.karatelabs.io.http.oauth;
+package io.karatelabs.io.http;
 
 public class OAuth2Exception extends RuntimeException {
     public OAuth2Exception(String message) {

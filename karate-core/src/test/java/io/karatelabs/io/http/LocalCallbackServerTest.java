@@ -1,4 +1,4 @@
-package io.karatelabs.io.http.oauth;
+package io.karatelabs.io.http;
 
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;

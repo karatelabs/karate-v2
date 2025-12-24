@@ -1,7 +1,7 @@
 package io.karatelabs.io.http;
 
 import io.karatelabs.common.Json;
-import io.karatelabs.io.http.oauth.OAuth2Exception;
+import io.karatelabs.io.http.OAuth2Exception;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;

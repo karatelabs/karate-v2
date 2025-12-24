@@ -1,4 +1,4 @@
-package io.karatelabs.io.http.oauth;
+package io.karatelabs.io.http;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -9,13 +9,13 @@ import java.util.Base64;
  * PKCE (Proof Key for Code Exchange) code verifier and challenge generator.
  * RFC 7636: https://datatracker.ietf.org/doc/html/rfc7636
  */
-public class PKCEGenerator {
+public class PkceGenerator {
 
     private final String verifier;
     private final String challenge;
     private final String method;
 
-    private PKCEGenerator(String verifier, String challenge, String method) {
+    private PkceGenerator(String verifier, String challenge, String method) {
         this.verifier = verifier;
         this.challenge = challenge;
         this.method = method;
@@ -24,7 +24,7 @@ public class PKCEGenerator {
     /**
      * Create PKCE with S256 method (recommended)
      */
-    public static PKCEGenerator create() {
+    public static PkceGenerator create() {
         return create("S256");
     }
 
@@ -32,10 +32,10 @@ public class PKCEGenerator {
      * Create PKCE with specified method
      * @param method "S256" (recommended) or "plain"
      */
-    public static PKCEGenerator create(String method) {
+    public static PkceGenerator create(String method) {
         String verifier = generateCodeVerifier();
         String challenge = generateCodeChallenge(verifier, method);
-        return new PKCEGenerator(verifier, challenge, method);
+        return new PkceGenerator(verifier, challenge, method);
     }
 
     /**

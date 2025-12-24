@@ -1,6 +1,6 @@
 package io.karatelabs.io.http;
 
-import io.karatelabs.io.http.oauth.OAuth2Exception;
+import io.karatelabs.io.http.OAuth2Exception;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

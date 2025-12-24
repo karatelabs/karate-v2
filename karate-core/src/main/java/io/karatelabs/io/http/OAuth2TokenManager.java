@@ -1,4 +1,4 @@
-package io.karatelabs.io.http.oauth;
+package io.karatelabs.io.http;
 
 import io.karatelabs.common.Json;
 import io.karatelabs.io.http.HttpRequestBuilder;

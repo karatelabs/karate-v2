@@ -1,7 +1,7 @@
 package io.karatelabs.io.http;
 
 import io.karatelabs.common.Json;
-import io.karatelabs.io.http.oauth.*;
+import io.karatelabs.io.http.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +69,7 @@ public class AuthorizationCodeAuthHandler implements AuthHandler {
         try {
             // 1. Generate PKCE
             logger.debug("Generating PKCE...");
-            PKCEGenerator pkce = PKCEGenerator.create();
+            PkceGenerator pkce = PkceGenerator.create();
 
             // 2. Start local callback server
             logger.debug("Starting local callback server...");
@@ -128,7 +128,7 @@ public class AuthorizationCodeAuthHandler implements AuthHandler {
     /**
      * Build authorization URL with all required parameters
      */
-    private String buildAuthorizationUrl(PKCEGenerator pkce, String redirectUri) {
+    private String buildAuthorizationUrl(PkceGenerator pkce, String redirectUri) {
         String authzEndpoint = (String) config.get("authorizationUrl");
         if (authzEndpoint == null) {
             throw new OAuth2Exception("Missing 'authorizationUrl' in OAuth config");
