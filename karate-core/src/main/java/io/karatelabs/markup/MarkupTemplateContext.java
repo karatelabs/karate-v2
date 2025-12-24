@@ -47,7 +47,7 @@ public class MarkupTemplateContext implements IEngineContext {
         this.engine = engine;
         this.engine.put("_", vars);
         // Use existing MarkupContext from template variables if present (e.g., ServerContext in server mode)
-        // Otherwise create a MarkupJs for plain templating mode
+        // Otherwise create a SimpleMarkupContext for plain templating mode
         Object existingContext = wrapped.getVariable("context");
         if (existingContext instanceof MarkupContext) {
             this.engine.put("context", existingContext);
@@ -57,7 +57,7 @@ public class MarkupTemplateContext implements IEngineContext {
                 });
             }
         } else {
-            this.engine.put("context", new MarkupJs(this, resolver));
+            this.engine.put("context", new SimpleMarkupContext(this, resolver));
         }
     }
 

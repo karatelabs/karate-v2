@@ -33,12 +33,12 @@ import org.thymeleaf.templateresource.ITemplateResource;
  * Implementation of MarkupContext for plain templating mode (without server).
  * Provides access to template metadata, resource reading, and JSON utilities.
  */
-class MarkupJs implements MarkupContext {
+class SimpleMarkupContext implements MarkupContext {
 
     final MarkupTemplateContext markup;
     final ResourceResolver resolver;
 
-    MarkupJs(MarkupTemplateContext markup, ResourceResolver resolver) {
+    SimpleMarkupContext(MarkupTemplateContext markup, ResourceResolver resolver) {
         this.markup = markup;
         this.resolver = resolver;
     }
