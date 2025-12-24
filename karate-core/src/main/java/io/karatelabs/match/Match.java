@@ -63,14 +63,6 @@ public class Match {
         });
     }
 
-    /**
-     * Execute a match with a specific JS Engine for variable resolution.
-     * This allows embedded expressions like #(^varname) to access variables.
-     *
-     * NOTE: This method expects already-evaluated values from StepExecutor.
-     * It does NOT parse strings as JSON/XML - that should be done during evaluation.
-     * This aligns with V1 behavior where Match.execute receives pre-evaluated values.
-     */
     public static Result execute(Engine engine, Type matchType, Object actual, Object expected) {
         Value actualValue = new Value(actual);
         Value expectedValue = new Value(expected);
@@ -81,32 +73,6 @@ public class Match {
         } else {
             return Result.fail(op.getFailureReasons());
         }
-    }
-
-    /**
-     * Execute a match preserving the actual value type.
-     * Use this when the actual value should remain as-is (e.g., String from xmlstring).
-     *
-     * NOTE: This method expects already-evaluated values from StepExecutor.
-     * It does NOT parse strings as JSON/XML - that should be done during evaluation.
-     */
-    public static Result executePreserveActual(Engine engine, Type matchType, Object actual, Object expected) {
-        Value actualValue = new Value(actual);
-        Value expectedValue = new Value(expected);
-        Operation op = new Operation(engine, matchType, actualValue, expectedValue);
-        op.execute();
-        if (op.pass) {
-            return Result.PASS;
-        } else {
-            return Result.fail(op.getFailureReasons());
-        }
-    }
-
-    private static boolean isContainsType(Type t) {
-        return t == Type.CONTAINS || t == Type.NOT_CONTAINS
-                || t == Type.CONTAINS_ANY || t == Type.CONTAINS_ONLY
-                || t == Type.CONTAINS_DEEP || t == Type.CONTAINS_ONLY_DEEP
-                || t == Type.CONTAINS_ANY_DEEP;
     }
 
 }

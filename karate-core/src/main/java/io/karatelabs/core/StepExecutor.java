@@ -1138,9 +1138,7 @@ public class StepExecutor {
 
         Match.Type matchType = Match.Type.valueOf(expr.getMatchTypeName());
 
-        // Use Match.executePreserveActual to preserve String actual values for CONTAINS
-        // This ensures xmlstring values are matched as strings, not converted to XML
-        Result result = Match.executePreserveActual(runtime.getEngine(), matchType, actual, expected);
+        Result result = Match.execute(runtime.getEngine(), matchType, actual, expected);
         if (!result.pass) {
             throw new AssertionError(result.message);
         }
