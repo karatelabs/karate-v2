@@ -1395,7 +1395,7 @@ This section covers how to configure and start the Karate HTTP server for servin
 ```java
 import io.karatelabs.http.*;
 import io.karatelabs.markup.*;
-import io.karatelabs.markup.HtmxDialect;
+import io.karatelabs.markup.HxDialect;
 import io.karatelabs.js.Engine;
 
 // 1. Create resource resolver (classpath or file-based)
@@ -1524,7 +1524,7 @@ Engine engine = new Engine();
 MarkupConfig markupConfig = new MarkupConfig();
 markupConfig.setResolver(resolver);
 
-Markup markup = Markup.init(engine, markupConfig, new HtmxDialect());
+Markup markup = Markup.init(engine, markupConfig, new HxDialect(markupConfig));
 
 // Render with variables
 Map<String, Object> vars = Map.of("name", "John", "items", itemList);

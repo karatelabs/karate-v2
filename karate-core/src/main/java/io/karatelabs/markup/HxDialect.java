@@ -34,33 +34,41 @@ import java.util.Set;
  * Provides processors for ka:get, ka:post, ka:put, ka:patch, ka:delete, ka:vals, ka:target, ka:swap, etc.
  * These are converted to their hx-* equivalents during template processing.
  */
-public class HtmxDialect extends AbstractProcessorDialect {
+public class HxDialect extends AbstractProcessorDialect {
 
-    private final HtmxConfig config;
+    private final String contextPath;
 
     /**
-     * Create a new HtmxDialect with default configuration.
+     * Create a new HxDialect with default configuration (no context path).
      */
-    public HtmxDialect() {
-        this(new HtmxConfig());
+    public HxDialect() {
+        this((String) null);
     }
 
     /**
-     * Create a new HtmxDialect with the given configuration.
-     * @param config the HTMX configuration
+     * Create a new HxDialect with the given markup configuration.
+     * @param config the markup configuration (uses contextPath from it)
      */
-    public HtmxDialect(HtmxConfig config) {
+    public HxDialect(MarkupConfig config) {
+        this(config != null ? config.getContextPath() : null);
+    }
+
+    /**
+     * Create a new HxDialect with the given context path.
+     * @param contextPath the context path to prepend to HTMX URLs
+     */
+    public HxDialect(String contextPath) {
         // Priority 3000 - processed after KaDialect (2000) and standard dialect (1000)
         super("Htmx", "ka", 3000);
-        this.config = config;
+        this.contextPath = contextPath;
     }
 
     /**
-     * Get the configuration for this dialect.
-     * @return the HTMX configuration
+     * Get the context path for this dialect.
+     * @return the context path (may be null)
      */
-    public HtmxConfig getConfig() {
-        return config;
+    public String getContextPath() {
+        return contextPath;
     }
 
     @Override
@@ -68,11 +76,11 @@ public class HtmxDialect extends AbstractProcessorDialect {
         Set<IProcessor> processors = new HashSet<>();
 
         // HTTP method processors (ka:get, ka:post, ka:put, ka:patch, ka:delete)
-        processors.add(new HxMethodProcessor(dialectPrefix, "get", config));
-        processors.add(new HxMethodProcessor(dialectPrefix, "post", config));
-        processors.add(new HxMethodProcessor(dialectPrefix, "put", config));
-        processors.add(new HxMethodProcessor(dialectPrefix, "patch", config));
-        processors.add(new HxMethodProcessor(dialectPrefix, "delete", config));
+        processors.add(new HxMethodProcessor(dialectPrefix, "get", contextPath));
+        processors.add(new HxMethodProcessor(dialectPrefix, "post", contextPath));
+        processors.add(new HxMethodProcessor(dialectPrefix, "put", contextPath));
+        processors.add(new HxMethodProcessor(dialectPrefix, "patch", contextPath));
+        processors.add(new HxMethodProcessor(dialectPrefix, "delete", contextPath));
 
         // ka:vals processor
         processors.add(new HxValsProcessor(dialectPrefix));

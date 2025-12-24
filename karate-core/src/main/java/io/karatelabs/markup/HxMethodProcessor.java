@@ -23,7 +23,6 @@
  */
 package io.karatelabs.markup;
 
-import io.karatelabs.markup.MarkupTemplateContext;
 import org.thymeleaf.context.ITemplateContext;
 import org.thymeleaf.engine.AttributeName;
 import org.thymeleaf.model.IProcessableElementTag;
@@ -43,12 +42,12 @@ import org.thymeleaf.templatemode.TemplateMode;
 class HxMethodProcessor extends AbstractAttributeTagProcessor {
 
     private final String method;
-    private final HtmxConfig config;
+    private final String contextPath;
 
-    HxMethodProcessor(String dialectPrefix, String method, HtmxConfig config) {
+    HxMethodProcessor(String dialectPrefix, String method, String contextPath) {
         super(TemplateMode.HTML, dialectPrefix, null, false, method, true, 1000, true);
         this.method = method;
-        this.config = config;
+        this.contextPath = contextPath;
     }
 
     @Override
@@ -59,7 +58,6 @@ class HxMethodProcessor extends AbstractAttributeTagProcessor {
         String url = resolveUrl(ctx, attributeValue);
 
         // Prepend context path if configured
-        String contextPath = config.getContextPath();
         if (contextPath != null && !contextPath.isEmpty() && url.startsWith("/")) {
             url = contextPath + url;
         }
