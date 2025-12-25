@@ -71,11 +71,19 @@ class UploadE2eTest {
               * json jsonField = requestParams['jsonField'][0]
               * def response = { text: textField, json: jsonField }
 
-            # ===== Brotli Scenarios =====
+            # ===== Compression Scenarios =====
 
             Scenario: pathMatches('/brotli')
               * def responseHeaders = { 'Content-Encoding': 'br', 'Content-Type': 'application/json' }
               * def response = karate.readAsBytes('classpath:io/karatelabs/core/upload/brotli.bin')
+
+            Scenario: pathMatches('/gzip')
+              * def responseHeaders = { 'Content-Encoding': 'gzip', 'Content-Type': 'application/json' }
+              * def response = karate.readAsBytes('classpath:io/karatelabs/core/upload/gzip.bin')
+
+            Scenario: pathMatches('/deflate')
+              * def responseHeaders = { 'Content-Encoding': 'deflate', 'Content-Type': 'application/json' }
+              * def response = karate.readAsBytes('classpath:io/karatelabs/core/upload/deflate.bin')
 
             # ===== Download Scenarios =====
 
@@ -278,7 +286,7 @@ class UploadE2eTest {
         assertPassed(sr);
     }
 
-    // ===== Brotli Decompression Tests =====
+    // ===== Content Decompression Tests =====
 
     @Test
     void testBrotliDecompression() {
@@ -288,6 +296,38 @@ class UploadE2eTest {
             Scenario: Auto-decompress brotli response
             * url 'http://localhost:%d'
             * path '/brotli'
+            * method get
+            * status 200
+            * match response == { hello: 'world' }
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testGzipDecompression() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Gzip Decompression
+
+            Scenario: Auto-decompress gzip response
+            * url 'http://localhost:%d'
+            * path '/gzip'
+            * method get
+            * status 200
+            * match response == { hello: 'world' }
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testDeflateDecompression() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Deflate Decompression
+
+            Scenario: Auto-decompress deflate response
+            * url 'http://localhost:%d'
+            * path '/deflate'
             * method get
             * status 200
             * match response == { hello: 'world' }
