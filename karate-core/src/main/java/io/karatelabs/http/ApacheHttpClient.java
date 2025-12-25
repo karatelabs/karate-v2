@@ -56,6 +56,7 @@ import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
 import org.apache.hc.core5.ssl.SSLContextBuilder;
 import org.apache.hc.core5.ssl.SSLContexts;
+import org.brotli.dec.BrotliInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -253,6 +254,7 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
         PoolingHttpClientConnectionManagerBuilder connectionManagerBuilder = PoolingHttpClientConnectionManagerBuilder.create();
         HttpClientBuilder clientBuilder = HttpClientBuilder.create();
         clientBuilder.useSystemProperties();
+        clientBuilder.disableContentCompression(); // handle brotli manually with pure-java library
         if (httpRetryEnabled) {
             clientBuilder.setRetryStrategy(new DefaultHttpRequestRetryStrategy(
                     retryCount,
@@ -440,7 +442,27 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
             HttpEntity entity = classicHttpResponse.getEntity();
             if (entity != null) {
                 try {
-                    byte[] bytes = EntityUtils.toByteArray(entity);
+                    byte[] bytes;
+                    Header contentEncoding = httpResponse.getFirstHeader("Content-Encoding");
+                    String encoding = contentEncoding != null ? contentEncoding.getValue() : null;
+                    if ("br".equalsIgnoreCase(encoding)) {
+                        try (InputStream is = entity.getContent();
+                             BrotliInputStream brotliIs = new BrotliInputStream(is)) {
+                            bytes = brotliIs.readAllBytes();
+                        }
+                    } else if ("gzip".equalsIgnoreCase(encoding)) {
+                        try (InputStream is = entity.getContent();
+                             java.util.zip.GZIPInputStream gzipIs = new java.util.zip.GZIPInputStream(is)) {
+                            bytes = gzipIs.readAllBytes();
+                        }
+                    } else if ("deflate".equalsIgnoreCase(encoding)) {
+                        try (InputStream is = entity.getContent();
+                             java.util.zip.InflaterInputStream inflaterIs = new java.util.zip.InflaterInputStream(is)) {
+                            bytes = inflaterIs.readAllBytes();
+                        }
+                    } else {
+                        bytes = EntityUtils.toByteArray(entity);
+                    }
                     response.setBody(bytes, null);
                     response.setContentLength(bytes.length);
                 } catch (Exception e) {
