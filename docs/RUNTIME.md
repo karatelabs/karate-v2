@@ -1,6 +1,6 @@
 # Karate v2 Runtime Design
 
-> See also: [CLI.md](./CLI.md) | [PARSER.md](./PARSER.md) | [JS_ENGINE.md](./JS_ENGINE.md) | [HTML_REPORTS.md](./HTML_REPORTS.md) | [PRINCIPLES.md](./PRINCIPLES.md)
+> See also: [CLI.md](./CLI.md) | [PARSER.md](./PARSER.md) | [JS_ENGINE.md](./JS_ENGINE.md) | [HTML_REPORTS.md](./HTML_REPORTS.md) | [EVENTS.md](./EVENTS.md) | [PRINCIPLES.md](./PRINCIPLES.md)
 
 ---
 
@@ -29,6 +29,8 @@ Suite → FeatureRuntime → ScenarioRuntime → StepExecutor
 | `KarateJs` | JS engine bridge, `karate.*` methods |
 | `KarateJsApi` | Stateless utility methods for `karate.*` API |
 | `Runner` | Fluent API for test execution |
+| `RuntimeHook` | Lifecycle callbacks for test execution interception (see [EVENTS.md](./EVENTS.md) for new API) |
+| `ResultListener` | Observation interface for reporting |
 
 **Reports (io.karatelabs.output):** `HtmlReportListener`, `JunitXmlWriter`, `CucumberJsonWriter`, `JsonLinesReportListener`
 

@@ -276,6 +276,22 @@ Error-tolerant parsing for IDE features (syntax coloring, code completion, forma
 - [ ] Classpath scanning for feature files (`classpath:features/`)
 - [ ] CLI JSON Configuration (`karate --config karate.json`)
 
+### Event System (see [EVENTS.md](./EVENTS.md))
+
+Unified event system with backward compatibility for `RuntimeHook`:
+
+- [ ] `RunEventType` enum (SUITE_ENTER, SCENARIO_EXIT, etc.)
+- [ ] `RunEvent` class with full runtime object access and `isTopLevel()`
+- [ ] `RunListener` interface with single `onEvent(RunEvent)` method
+- [ ] `RunListenerFactory` for per-thread listeners (debugger support)
+- [ ] Refactor Suite/FeatureRuntime/ScenarioRuntime/StepExecutor to use `fireEvent()`
+- [ ] Events fire for all calls (use `isTopLevel()` to filter if needed)
+- [ ] `RuntimeHookAdapter` for backward compatibility with existing hooks
+- [ ] JSONL event stream for decoupled consumers (replayable, aggregatable)
+- [ ] Review event data for reporting platforms (Allure, ReportPortal, JIRA/X-Ray)
+- [ ] Remove direct Cucumber JSON writer - render from JSONL instead
+- [ ] JS event handling via optional library (karate-boot.js, karate.on()) - future
+
 ### Templating & Markup
 - [ ] Document Thymeleaf-based templating
 - [ ] Document custom Karate dialect processors
