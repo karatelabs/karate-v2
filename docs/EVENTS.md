@@ -1,6 +1,6 @@
 # Karate v2 Event System
 
-> See also: [RUNTIME.md](./RUNTIME.md) | [JS_ENGINE.md](./JS_ENGINE.md) | [PRINCIPLES.md](./PRINCIPLES.md)
+> See also: [RUNTIME.md](./RUNTIME.md) | [JS_ENGINE.md](./JS_ENGINE.md) | [REPORTS.md](./REPORTS.md) | [PRINCIPLES.md](./PRINCIPLES.md)
 
 ---
 
@@ -300,7 +300,13 @@ SUITE_EXIT
 
 ## JSONL Event Stream
 
-Events are written to a newline-delimited JSON file (`karate-events.jsonl`) for external consumption.
+Karate v2 writes a **unified event stream** to `karate-events.jsonl`. This single file serves both **live progress monitoring** and **report generation**:
+
+- **During execution:** Lightweight events for real-time UIs
+- **On feature completion:** Full `toKarateJson()` output for report generation
+- **Post-execution:** "Replay" the stream to generate reports
+
+See [REPORTS.md](./REPORTS.md#jsonl-event-stream) for complete event format specification.
 
 ### Benefits
 
@@ -308,19 +314,72 @@ Events are written to a newline-delimited JSON file (`karate-events.jsonl`) for 
 - **Parallel-safe** - Each line is atomic, includes timestamp and thread ID
 - **Replayable** - File can be saved and replayed for report aggregation, debugging, or analysis
 - **Simple integration** - Consumers just tail the file (poll or watch)
+- **Dual-purpose** - Same stream supports live progress AND static report generation
+- **Future-proof** - Standard envelope with `data` payload allows schema evolution
+
+### Standard Event Envelope
+
+All events share a common structure:
+
+```json
+{
+  "type": "EVENT_TYPE",
+  "ts": 1703500000200,
+  "threadId": "worker-1",
+  "data": { ... }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | Event type (UPPER_CASE) |
+| `ts` | long | Epoch milliseconds |
+| `threadId` | string? | Thread identifier (nullable for suite-level events) |
+| `data` | object | Event-specific payload |
 
 ### File Format
 
 ```jsonl
-{"type":"SUITE_ENTER","timestamp":1703500000000,"threadId":1}
-{"type":"FEATURE_ENTER","timestamp":1703500000010,"threadId":1,"feature":"login.feature","line":1,"name":"Login Tests"}
-{"type":"SCENARIO_ENTER","timestamp":1703500000020,"threadId":1,"scenario":"Valid login","line":5,"topLevel":true}
-{"type":"STEP_ENTER","timestamp":1703500000030,"threadId":1,"keyword":"Given","text":"url 'https://api.example.com'","line":6}
-{"type":"STEP_EXIT","timestamp":1703500000040,"threadId":1,"status":"PASSED","durationNanos":10000000}
-{"type":"SCENARIO_EXIT","timestamp":1703500000100,"threadId":1,"status":"PASSED","durationNanos":80000000}
-{"type":"FEATURE_EXIT","timestamp":1703500000200,"threadId":1,"status":"PASSED","scenariosPassed":1,"scenariosFailed":0}
-{"type":"SUITE_EXIT","timestamp":1703500000500,"threadId":1,"featuresPassed":1,"featuresFailed":0}
+{"type":"SUITE_ENTER","ts":1703500000000,"threadId":null,"data":{"version":"2.0.0","schemaVersion":"1","env":"dev","threads":5}}
+{"type":"FEATURE_ENTER","ts":1703500000010,"threadId":"worker-1","data":{"path":"login.feature","name":"Login Tests","line":1}}
+{"type":"SCENARIO_ENTER","ts":1703500000020,"threadId":"worker-1","data":{"feature":"login.feature","name":"Valid login","line":5,"refId":"[1:5]"}}
+{"type":"SCENARIO_EXIT","ts":1703500000100,"threadId":"worker-1","data":{"feature":"login.feature","name":"Valid login","line":5,"passed":true,"durationMs":80}}
+{"type":"FEATURE_EXIT","ts":1703500000200,"threadId":"worker-1","data":{...full toKarateJson()...}}
+{"type":"PROGRESS","ts":1703500005000,"threadId":null,"data":{"completed":15,"total":42,"percent":35,"elapsedMs":5000}}
+{"type":"SUITE_EXIT","ts":1703500010000,"threadId":null,"data":{"featuresPassed":10,"featuresFailed":2,"featureSummary":[...]}}
 ```
+
+### Core Event Types
+
+| Event Type | Description |
+|------------|-------------|
+| `SUITE_ENTER` | Suite start with metadata (version, schemaVersion, env, threads, paths) |
+| `SUITE_EXIT` | Suite end with summary stats and `featureSummary` for HTML reports |
+| `FEATURE_ENTER` | Feature start (lightweight: path, name, line) |
+| `FEATURE_EXIT` | Feature complete - **full `toKarateJson()` in `data`** |
+| `SCENARIO_ENTER` | Scenario start - **key for IDE test runners** |
+| `SCENARIO_EXIT` | Scenario complete with status - **key for IDE test runners** |
+| `PROGRESS` | Periodic progress update for live dashboards |
+| `ERROR` | Explicit error capture |
+
+### Future Event Types (Reserved)
+
+| Event Type | Purpose |
+|------------|---------|
+| `HTTP` | HTTP request/response capture with cURL export |
+| `SCRIPT_ENTER` / `SCRIPT_EXIT` | JavaScript test execution (`.karate.js`) |
+| `MOCK_REQUEST` | Mock server request handling |
+| `CALL_ENTER` / `CALL_EXIT` | Feature call tracking (opt-in) |
+| `STEP_ENTER` / `STEP_EXIT` | Step-level events (opt-in debug) |
+| `RETRY` | Scenario retry attempts |
+| `ABORT` | Execution aborted |
+
+### Notes
+
+- **Step events not default:** Reduces event volume. Full step details in `FEATURE_EXIT` via `toKarateJson()`.
+- **Tag filtering:** `FEATURE_EXIT` contains only executed scenarios (those matching tag filters).
+- **Schema versioning:** `schemaVersion` in `SUITE_ENTER.data` allows consumers to handle format changes.
+- **`threadId` as string:** Allows flexibility for future thread naming schemes.
 
 ### Consumer Pattern
 
@@ -334,7 +393,9 @@ while (running) {
         String line;
         while ((line = raf.readLine()) != null) {
             JsonObject event = parseJson(line);
-            handleEvent(event);
+            String type = event.getString("type");
+            JsonObject data = event.getJsonObject("data");
+            handleEvent(type, data);
         }
         lastPosition = raf.getFilePointer();
     }
@@ -346,9 +407,11 @@ Alternatively, use `java.nio.file.WatchService` for file change notifications.
 
 ### Use Cases
 
-- **Real-time test dashboards** - Stream results as tests run
+- **Real-time test dashboards** - Stream lightweight events as tests run
+- **Static HTML reports** - Extract `FEATURE_EXIT` events, render with Alpine.js
+- **Cucumber JSON generation** - Convert `FEATURE_EXIT` events to cucumber format
+- **HTTP traffic analysis** - Future: analyze `HTTP` events
 - **Report aggregation** - Combine JSONL from multiple runs/machines
-- **Format conversion** - Generate Cucumber JSON, Allure, or custom formats from JSONL
 - **CI/CD integration** - Parse events for build status, notifications
 - **Debugging** - Replay execution sequence for analysis
 
@@ -453,14 +516,16 @@ Integration points (see existing `RuntimeHook` calls for reference):
 - [ ] Create `RunListenerTest.java`
 
 ### Phase 5: JSONL Event Stream
-- [ ] Implement `JsonLinesEventWriter` that writes RunEvents to JSONL file
-- [ ] Include all data needed for report generation (see Phase 6)
+- [ ] Implement `JsonLinesEventWriter` that writes RunEvents to `karate-events.jsonl`
+- [ ] Standard event envelope: `{"type":"...","ts":...,"threadId":"...","data":{...}}`
+- [ ] `threadId` as nullable string for flexibility
+- [ ] `schemaVersion` in `SUITE_ENTER.data` for forward compatibility
+- [ ] Lightweight events for ENTER types (name, path, line only)
+- [ ] `FEATURE_EXIT.data` contains full `toKarateJson()` output - **single source of truth**
+- [ ] `SUITE_EXIT.data` includes `featureSummary` array for `karate-summary.html`
 - [ ] Ensure atomic line writes (thread-safe)
-- [ ] Add `Suite.jsonlOutput(Path)` builder method
-- [ ] Add `PROGRESS` event type for progress tracking:
-  ```jsonl
-  {"type":"PROGRESS","timestamp":...,"completed":15,"total":42,"percent":35}
-  ```
+- [ ] Add `Suite.outputJsonLines(true)` builder method
+- [ ] Add `PROGRESS` event type for progress tracking
 - [ ] Periodic console progress summary (every 10 seconds, Gatling-style):
   ```
   ================================================================================
@@ -469,15 +534,26 @@ Integration points (see existing `RuntimeHook` calls for reference):
   ================================================================================
   ```
 
-### Phase 6: Reporting Platform Compatibility
-- [ ] Review JSONL event data sufficiency for:
+### Phase 6: Report Generation from JSONL
+- [ ] Remove direct `CucumberJsonWriter` - render Cucumber JSON from JSONL instead
+- [ ] `CucumberJsonConverter.fromJsonLines(path)` - filter `FEATURE_EXIT` events, convert to cucumber format
+- [ ] HTML summary from `SUITE_EXIT.data.featureSummary`
+- [ ] HTML feature pages from `FEATURE_EXIT.data`
+- [ ] Review JSONL event data sufficiency for external tools:
   - Allure report generation
   - ReportPortal integration
   - JIRA / X-Ray test management cross-referencing
   - Requirements traceability
-- [ ] Add any missing fields (tags, labels, links, attachments, parameters)
-- [ ] Remove direct `CucumberJsonWriter` - render Cucumber JSON from JSONL instead
-- [ ] Document JSONL → report format conversion utilities
+- [ ] Document JSONL → report format conversion utilities in [REPORTS.md](./REPORTS.md)
+
+### Phase 7: Future Event Types
+- [ ] `HTTP` event for request/response capture with cURL export
+- [ ] `SCRIPT_ENTER` / `SCRIPT_EXIT` for `.karate.js` execution
+- [ ] `MOCK_REQUEST` for mock server requests
+- [ ] `CALL_ENTER` / `CALL_EXIT` for feature call tracking (opt-in)
+- [ ] `STEP_ENTER` / `STEP_EXIT` for step-level debugging (opt-in)
+- [ ] `RETRY` for scenario retry attempts
+- [ ] `ABORT` for execution aborted
 
 ### Future: JavaScript Event Handling (Separate Library)
 

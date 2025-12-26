@@ -477,5 +477,5 @@ Capture JS line-of-code execution for reports, similar to how Gherkin steps are 
 - Performance overhead acceptable since opt-in
 
 **Related:**
-- [HTML_REPORTS.md](./HTML_REPORTS.md) - Configure report TODO
+- [REPORTS.md](./REPORTS.md) - Configure report
 - [RUNTIME.md](./RUNTIME.md) - Priority 7 (JS Script Execution)

@@ -1,6 +1,6 @@
 # Karate v2 Runtime Design
 
-> See also: [CLI.md](./CLI.md) | [PARSER.md](./PARSER.md) | [JS_ENGINE.md](./JS_ENGINE.md) | [HTML_REPORTS.md](./HTML_REPORTS.md) | [EVENTS.md](./EVENTS.md) | [PRINCIPLES.md](./PRINCIPLES.md)
+> See also: [CLI.md](./CLI.md) | [PARSER.md](./PARSER.md) | [JS_ENGINE.md](./JS_ENGINE.md) | [REPORTS.md](./REPORTS.md) | [EVENTS.md](./EVENTS.md) | [PRINCIPLES.md](./PRINCIPLES.md)
 
 ---
 
@@ -288,7 +288,7 @@ proc.close()
 
 Controls report verbosity, JS line-level capture, HTTP detail, payload size limits.
 
-See [HTML_REPORTS.md](./HTML_REPORTS.md) for specification.
+See [REPORTS.md](./REPORTS.md) for specification.
 
 ---
 
