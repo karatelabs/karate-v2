@@ -66,7 +66,7 @@ public record FeatureRunEvent(
     @Override
     public Map<String, Object> toJson() {
         if (type == RunEventType.FEATURE_EXIT && result != null) {
-            return result.toKarateJson();
+            return result.toJson();
         }
         // FEATURE_ENTER data (lightweight)
         Map<String, Object> map = new LinkedHashMap<>();

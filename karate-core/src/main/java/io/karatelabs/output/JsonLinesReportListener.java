@@ -129,10 +129,10 @@ public class JsonLinesReportListener implements ResultListener {
         }
 
         try {
-            // Use canonical toMap() format with JSON Lines type prefix
+            // Use toJson() format with JSON Lines type prefix
             Map<String, Object> featureLine = new LinkedHashMap<>();
             featureLine.put("t", "feature");
-            featureLine.putAll(result.toMap());
+            featureLine.putAll(result.toJson());
             writeLine(Json.stringifyStrict(featureLine));
         } catch (Exception e) {
             logger.warn("Failed to write feature to JSON Lines: {}", e.getMessage());

@@ -27,17 +27,26 @@ import io.karatelabs.gherkin.Feature;
 import io.karatelabs.output.Console;
 import io.karatelabs.gherkin.Tag;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class FeatureResult {
 
+    private static final DateTimeFormatter RESULT_DATE_FORMAT = DateTimeFormatter
+            .ofPattern("yyyy-MM-dd hh:mm:ss a", Locale.US)
+            .withZone(ZoneId.systemDefault());
+
     private final Feature feature;
     private final List<ScenarioResult> scenarioResults = Collections.synchronizedList(new ArrayList<>());
     private int callDepth;
+    private int loopIndex = -1;  // -1 means not looped
     private Object callArg;
     private Map<String, Object> resultVariables;
     private long startTime;
@@ -73,6 +82,14 @@ public class FeatureResult {
 
     public void setCallDepth(int callDepth) {
         this.callDepth = callDepth;
+    }
+
+    public int getLoopIndex() {
+        return loopIndex;
+    }
+
+    public void setLoopIndex(int loopIndex) {
+        this.loopIndex = loopIndex;
     }
 
     public Object getCallArg() {
@@ -152,37 +169,65 @@ public class FeatureResult {
     // ========== Canonical Map Format ==========
 
     /**
-     * Convert to canonical Map format for JSON Lines and HTML reports.
-     * This is the single internal format used for all report generation.
-     * <p>
-     * Format:
-     * <pre>
-     * {
-     *   "path": "target/test-classes/features/users.feature",
-     *   "name": "User Management",
-     *   "passed": true,
-     *   "ms": 1234,
-     *   "startTime": 1703347200000,
-     *   "scenarios": [...]
-     * }
-     * </pre>
+     * Convert to JSON format.
+     * Used for HTML reports, JSONL streaming, and report aggregation.
      */
-    public Map<String, Object> toMap() {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("path", getDisplayName());
-        data.put("name", feature.getName());
-        data.put("passed", isPassed());
-        data.put("ms", getDurationMillis());
-        data.put("startTime", startTime);
+    public Map<String, Object> toJson() {
+        Map<String, Object> map = new LinkedHashMap<>();
 
-        // Scenarios
-        List<Map<String, Object>> scenarioList = new ArrayList<>();
-        for (ScenarioResult sr : scenarioResults) {
-            scenarioList.add(sr.toMap());
+        // Core identity
+        map.put("name", feature.getName());
+        map.put("description", feature.getDescription());
+
+        // Metrics
+        map.put("passed", isPassed());
+        map.put("failed", isFailed());
+        map.put("durationMillis", getDurationMillis());
+        map.put("passedCount", getPassedCount());
+        map.put("failedCount", getFailedCount());
+
+        // Path fields
+        map.put("packageQualifiedName", feature.getResource().getPackageQualifiedName());
+        map.put("relativePath", feature.getResource().getRelativePath());
+        map.put("resultDate", RESULT_DATE_FORMAT.format(Instant.ofEpochMilli(endTime)));
+        map.put("prefixedPath", feature.getResource().getPrefixedPath());
+
+        // Timing
+        map.put("startTime", startTime);
+        map.put("endTime", endTime);
+
+        // Call hierarchy (for called features)
+        map.put("loopIndex", loopIndex);
+        map.put("callDepth", callDepth);
+        if (callArg != null) {
+            map.put("callArg", callArg);
         }
-        data.put("scenarios", scenarioList);
 
-        return data;
+        // Feature location
+        map.put("line", feature.getLine());
+        map.put("id", feature.getResource().getRelativePath().replace('/', '_').replace('.', '_'));
+
+        // Tags
+        List<Tag> tags = feature.getTags();
+        if (tags != null && !tags.isEmpty()) {
+            List<Map<String, Object>> tagList = new ArrayList<>();
+            for (Tag tag : tags) {
+                Map<String, Object> tagMap = new LinkedHashMap<>();
+                tagMap.put("name", tag.toString());
+                tagMap.put("line", feature.getLine());
+                tagList.add(tagMap);
+            }
+            map.put("tags", tagList);
+        }
+
+        // Scenario results
+        List<Map<String, Object>> scenarioResultsList = new ArrayList<>();
+        for (ScenarioResult sr : scenarioResults) {
+            scenarioResultsList.add(sr.toJson());
+        }
+        map.put("scenarioResults", scenarioResultsList);
+
+        return map;
     }
 
     // ========== Console Output ==========
@@ -210,48 +255,6 @@ public class FeatureResult {
         Console.println(String.format("scenarios: %2d | passed: %2d | %s | time: %.4f",
                 total, passed, status, secs));
         Console.println(Console.line(57));
-    }
-
-    public Map<String, Object> toKarateJson() {
-        Map<String, Object> map = new LinkedHashMap<>();
-
-        // Feature metadata
-        map.put("line", feature.getLine());
-        map.put("id", feature.getResource().getRelativePath().replace('/', '_').replace('.', '_'));
-        map.put("name", feature.getName());
-        map.put("description", feature.getDescription());
-        map.put("uri", feature.getResource().getRelativePath());
-
-        // Tags
-        List<Tag> tags = feature.getTags();
-        if (tags != null && !tags.isEmpty()) {
-            List<Map<String, Object>> tagList = new ArrayList<>();
-            for (Tag tag : tags) {
-                Map<String, Object> tagMap = new LinkedHashMap<>();
-                tagMap.put("name", tag.toString());
-                tagMap.put("line", feature.getLine());
-                tagList.add(tagMap);
-            }
-            map.put("tags", tagList);
-        }
-
-        // Scenarios
-        List<Map<String, Object>> elements = new ArrayList<>();
-        for (ScenarioResult sr : scenarioResults) {
-            elements.add(sr.toKarateJson());
-        }
-        map.put("elements", elements);
-
-        // Summary
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("status", isFailed() ? "failed" : "passed");
-        result.put("duration_millis", getDurationMillis());
-        result.put("scenario_count", getScenarioCount());
-        result.put("passed_count", getPassedCount());
-        result.put("failed_count", getFailedCount());
-        map.put("result", result);
-
-        return map;
     }
 
 }

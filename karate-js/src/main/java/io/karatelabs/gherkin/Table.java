@@ -112,7 +112,7 @@ public class Table {
         return new Table(rows, lines);
     }
     
-    public List<Map<String, Object>> toKarateJson() {
+    public List<Map<String, Object>> toJson() {
         int count = rows.size();
         List<Map<String, Object>> list = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {

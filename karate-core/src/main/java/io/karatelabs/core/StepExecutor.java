@@ -62,8 +62,18 @@ public class StepExecutor {
 
     private final ScenarioRuntime runtime;
 
+    // Call results accumulated during current step execution (for call/callonce steps)
+    private List<FeatureResult> stepCallResults;
+
     public StepExecutor(ScenarioRuntime runtime) {
         this.runtime = runtime;
+    }
+
+    private void addCallResult(FeatureResult result) {
+        if (stepCallResults == null) {
+            stepCallResults = new ArrayList<>();
+        }
+        stepCallResults.add(result);
     }
 
     private Suite getSuite() {
@@ -74,6 +84,7 @@ public class StepExecutor {
     public StepResult execute(Step step) {
         long startTime = System.currentTimeMillis();
         long startNanos = System.nanoTime();
+        stepCallResults = null;  // Clear for this step
 
         // Fire STEP_ENTER event (RuntimeHookAdapter calls beforeStep)
         Suite suite = getSuite();
@@ -201,10 +212,9 @@ public class StepExecutor {
                 result.addEmbed(embed);
             }
         }
-        // Collect nested results from call steps
-        java.util.List<ScenarioResult> nestedResults = ctx.collectNestedResults();
-        if (nestedResults != null && !nestedResults.isEmpty()) {
-            result.setNestedResults(nestedResults);
+        // Set call results accumulated during this step's execution
+        if (stepCallResults != null && !stepCallResults.isEmpty()) {
+            result.setCallResults(stepCallResults);
         }
     }
 
@@ -307,7 +317,35 @@ public class StepExecutor {
             calledFeature = Feature.read(calledResource);
         }
 
-        // Create nested FeatureRuntime with isolated scope and optional tag selector
+        // Check if it's an array loop call
+        if (call.argList != null) {
+            List<Map<String, Object>> results = new ArrayList<>();
+            for (Object item : call.argList) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> callArg = item instanceof Map ? (Map<String, Object>) item : null;
+
+                FeatureRuntime nestedFr = new FeatureRuntime(
+                        fr != null ? fr.getSuite() : null,
+                        calledFeature,
+                        fr,
+                        runtime,
+                        false,  // Isolated scope
+                        callArg,
+                        call.tagSelector
+                );
+
+                FeatureResult featureResult = nestedFr.call();
+                addCallResult(featureResult);
+
+                if (nestedFr.getLastExecuted() != null) {
+                    results.add(nestedFr.getLastExecuted().getAllVariables());
+                }
+            }
+            runtime.setVariable(resultVar, results);
+            return;
+        }
+
+        // Single call
         FeatureRuntime nestedFr = new FeatureRuntime(
                 fr != null ? fr.getSuite() : null,
                 calledFeature,
@@ -321,10 +359,8 @@ public class StepExecutor {
         // Execute the called feature
         FeatureResult featureResult = nestedFr.call();
 
-        // Capture nested scenario results for HTML report display
-        for (ScenarioResult sr : featureResult.getScenarioResults()) {
-            LogContext.get().addNestedResult(sr);
-        }
+        // Capture feature result for HTML report display (V1 style)
+        addCallResult(featureResult);
 
         // Capture result variables from the last executed scenario (isolated scope)
         if (nestedFr.getLastExecuted() != null) {
@@ -403,10 +439,8 @@ public class StepExecutor {
         // Execute the called feature
         FeatureResult featureResult = nestedFr.call();
 
-        // Capture nested scenario results for HTML report display
-        for (ScenarioResult sr : featureResult.getScenarioResults()) {
-            LogContext.get().addNestedResult(sr);
-        }
+        // Capture feature result for HTML report display (V1 style)
+        addCallResult(featureResult);
 
         // Capture result variables from the last executed scenario (isolated scope)
         if (nestedFr.getLastExecuted() != null) {
@@ -2054,10 +2088,8 @@ public class StepExecutor {
         // Execute the called feature
         FeatureResult result = nestedFr.call();
 
-        // Capture nested scenario results for HTML report display
-        for (ScenarioResult sr : result.getScenarioResults()) {
-            LogContext.get().addNestedResult(sr);
-        }
+        // Capture feature result for HTML report display (V1 style)
+        addCallResult(result);
 
         // Capture result variables from the last executed scenario
         if (nestedFr.getLastExecuted() != null) {
@@ -2133,10 +2165,8 @@ public class StepExecutor {
 
                 FeatureResult featureResult = nestedFr.call();
 
-                // Capture nested scenario results for HTML report display
-                for (ScenarioResult sr : featureResult.getScenarioResults()) {
-                    LogContext.get().addNestedResult(sr);
-                }
+                // Capture feature result for HTML report display (V1 style)
+                addCallResult(featureResult);
 
                 if (nestedFr.getLastExecuted() != null) {
                     results.add(nestedFr.getLastExecuted().getAllVariables());
@@ -2172,10 +2202,8 @@ public class StepExecutor {
         // Execute the called feature
         FeatureResult featureResult = nestedFr.call();
 
-        // Capture nested scenario results for HTML report display
-        for (ScenarioResult sr : featureResult.getScenarioResults()) {
-            LogContext.get().addNestedResult(sr);
-        }
+        // Capture feature result for HTML report display (V1 style)
+        addCallResult(featureResult);
 
         // Capture result variables
         if (nestedFr.getLastExecuted() != null) {
@@ -2255,9 +2283,12 @@ public class StepExecutor {
                 // Check for arguments after the read()
                 String remainder = text.substring(closeParen + 1).trim();
                 if (!remainder.isEmpty()) {
-                    // Evaluate as JS - could be an object literal or variable
+                    // Evaluate as JS - could be an object literal, array, or variable
                     Object argObj = runtime.eval(remainder);
-                    if (argObj instanceof Map) {
+                    if (argObj instanceof List) {
+                        // Array argument - for loop calls
+                        expr.argList = (List<?>) argObj;
+                    } else if (argObj instanceof Map) {
                         @SuppressWarnings("unchecked")
                         Map<String, Object> argMap = (Map<String, Object>) argObj;
                         // Process embedded expressions in call arguments (e.g., { nodes: '#(nodes)' })
@@ -2312,6 +2343,7 @@ public class StepExecutor {
     private static class CallExpression {
         String path;
         Map<String, Object> arg;
+        List<?> argList;     // For loop calls with array argument
         String resultVar;
         String tagSelector;  // For call-by-tag syntax
         boolean sameFile;    // true if calling scenario in same file

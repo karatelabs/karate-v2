@@ -471,7 +471,7 @@ public class Suite {
                 // Sanitize filename
                 String safeName = featureName.replaceAll("[^a-zA-Z0-9_-]", "_");
                 Path featurePath = outputDir.resolve(safeName + ".json");
-                String featureJson = io.karatelabs.common.Json.of(fr.toKarateJson()).toStringPretty();
+                String featureJson = io.karatelabs.common.Json.of(fr.toJson()).toStringPretty();
                 java.nio.file.Files.writeString(featurePath, featureJson);
             }
         } catch (Exception e) {

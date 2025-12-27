@@ -228,7 +228,7 @@ public final class HtmlReportWriter {
      * Write summary pages (summary, index) from feature maps.
      * Used by {@link HtmlReportListener} at suite end.
      *
-     * @param features  the collected feature maps (from FeatureResult.toMap())
+     * @param features  the collected feature maps (from FeatureResult.toJson())
      * @param result    the suite result
      * @param outputDir the root output directory
      * @param env       the karate environment (may be null)
@@ -498,6 +498,7 @@ public final class HtmlReportWriter {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("path", fr.getDisplayName());
         data.put("name", fr.getFeature().getName());
+        data.put("relativePath", fr.getFeature().getResource().getRelativePath());
         data.put("passed", fr.isPassed());
         data.put("ms", fr.getDurationMillis());
 
@@ -594,16 +595,16 @@ public final class HtmlReportWriter {
             data.put("embeds", embedList);
         }
 
-        // Nested scenarios (from call steps)
-        boolean hasNestedScenarios = step.hasNestedResults();
-        data.put("hasNestedScenarios", hasNestedScenarios);
+        // Call results (from call steps) - V1 uses FeatureResult
+        boolean hasCallResults = step.hasCallResults();
+        data.put("hasCallResults", hasCallResults);
 
-        if (hasNestedScenarios) {
-            List<Map<String, Object>> nestedList = new ArrayList<>();
-            for (ScenarioResult sr : step.getNestedResults()) {
-                nestedList.add(buildScenarioData(sr));
+        if (hasCallResults) {
+            List<Map<String, Object>> callList = new ArrayList<>();
+            for (FeatureResult fr : step.getCallResults()) {
+                callList.add(buildFeatureData(fr));
             }
-            data.put("nestedScenarios", nestedList);
+            data.put("callResults", callList);
         }
 
         return data;
@@ -616,73 +617,33 @@ public final class HtmlReportWriter {
         for (Map<String, Object> feature : features) {
             Map<String, Object> summary = new LinkedHashMap<>();
             summary.put("name", feature.get("name"));
-
-            // Handle both old (path) and new (uri) format
-            String path = feature.get("uri") != null ? (String) feature.get("uri") : (String) feature.get("path");
-            summary.put("relativePath", path);
+            summary.put("relativePath", feature.get("relativePath"));
             summary.put("fileName", getFeatureFileName(feature));
 
-            // Handle both old (passed boolean) and new (result.status) format
-            boolean featurePassed;
-            long durationMillis = 0;
-            @SuppressWarnings("unchecked")
-            Map<String, Object> result = (Map<String, Object>) feature.get("result");
-            if (result != null) {
-                featurePassed = "passed".equals(result.get("status"));
-                Object duration = result.get("duration_millis");
-                if (duration instanceof Number) {
-                    durationMillis = ((Number) duration).longValue();
-                }
-            } else {
-                featurePassed = Boolean.TRUE.equals(feature.get("passed"));
-                Object ms = feature.get("ms");
-                if (ms instanceof Number) {
-                    durationMillis = ((Number) ms).longValue();
-                }
-            }
-            summary.put("passed", featurePassed);
-            summary.put("failed", !featurePassed);
-            summary.put("durationMillis", durationMillis);
+            summary.put("passed", Boolean.TRUE.equals(feature.get("passed")));
+            summary.put("failed", Boolean.TRUE.equals(feature.get("failed")));
+            Object duration = feature.get("durationMillis");
+            summary.put("durationMillis", duration instanceof Number ? ((Number) duration).longValue() : 0);
 
-            // Handle both old (scenarios) and new (elements) format
             @SuppressWarnings("unchecked")
-            List<Map<String, Object>> elements = (List<Map<String, Object>>) feature.get("elements");
-            if (elements == null) {
-                @SuppressWarnings("unchecked")
-                List<Map<String, Object>> scenarios = (List<Map<String, Object>>) feature.get("scenarios");
-                elements = scenarios;
-            }
-            int total = elements != null ? elements.size() : 0;
+            List<Map<String, Object>> scenarioResults = (List<Map<String, Object>>) feature.get("scenarioResults");
+            int total = scenarioResults != null ? scenarioResults.size() : 0;
             int passed = 0;
             int failed = 0;
             List<Map<String, Object>> scenarioSummaries = new ArrayList<>();
-            if (elements != null) {
-                for (Map<String, Object> s : elements) {
-                    // Handle both old (passed boolean) and new (result.status) format
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> scenarioResult = (Map<String, Object>) s.get("result");
-                    boolean scenarioPassed;
-                    if (scenarioResult != null) {
-                        scenarioPassed = "passed".equals(scenarioResult.get("status"));
-                    } else {
-                        scenarioPassed = Boolean.TRUE.equals(s.get("passed"));
-                    }
+            if (scenarioResults != null) {
+                for (Map<String, Object> s : scenarioResults) {
+                    boolean scenarioPassed = Boolean.TRUE.equals(s.get("passed"));
                     if (scenarioPassed) {
                         passed++;
                     } else {
                         failed++;
                     }
-                    // Include scenario data for tag filtering in summary page
                     Map<String, Object> scenarioSummary = new LinkedHashMap<>();
                     scenarioSummary.put("name", s.get("name"));
                     scenarioSummary.put("refId", s.get("refId"));
                     scenarioSummary.put("passed", scenarioPassed);
-                    // Handle duration from result
-                    if (scenarioResult != null) {
-                        scenarioSummary.put("ms", scenarioResult.get("duration_millis"));
-                    } else {
-                        scenarioSummary.put("ms", s.get("ms"));
-                    }
+                    scenarioSummary.put("durationMillis", s.get("durationMillis"));
                     scenarioSummary.put("tags", s.get("tags"));
                     scenarioSummaries.add(scenarioSummary);
                 }
@@ -704,11 +665,7 @@ public final class HtmlReportWriter {
      * Example: "users/list.feature" → "users.list"
      */
     private static String getFeatureFileName(Map<String, Object> feature) {
-        // Handle both old (path) and new (uri) format
-        String path = (String) feature.get("uri");
-        if (path == null || path.isEmpty()) {
-            path = (String) feature.get("path");
-        }
+        String path = (String) feature.get("relativePath");
         if (path == null || path.isEmpty()) {
             path = (String) feature.get("name");
         }

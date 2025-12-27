@@ -86,7 +86,7 @@ public class ExamplesTable {
         this.outline = outline;
     }
 
-    public Map<String, Object> toKarateJson() {
+    public Map<String, Object> toJson() {
         Map<String, Object> map = new HashMap<>();
         List<String> tagStrings = new ArrayList<>();
         if (tags != null) {

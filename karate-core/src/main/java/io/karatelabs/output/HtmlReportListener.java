@@ -57,7 +57,7 @@ public class HtmlReportListener implements ResultListener {
     private final Path outputDir;
     private final String env;
     private final ExecutorService executor;
-    // Use canonical Map format from FeatureResult.toMap()
+    // Use JSON format from FeatureResult.toJson()
     private final List<Map<String, Object>> featureMaps = new CopyOnWriteArrayList<>();
 
     private long suiteStartTime;
@@ -99,8 +99,8 @@ public class HtmlReportListener implements ResultListener {
         // Sort scenarios for deterministic ordering in reports
         result.sortScenarioResults();
 
-        // Collect feature data using canonical toMap() format
-        featureMaps.add(result.toMap());
+        // Collect feature data using toJson() format
+        featureMaps.add(result.toJson());
 
         // Queue feature HTML generation (async)
         executor.submit(() -> {

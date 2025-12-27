@@ -172,18 +172,18 @@ public final class HtmlReport {
                                 suiteData.put("ts", envelope.get("ts"));
                             }
                         } else if ("FEATURE_EXIT".equals(eventType) && data != null) {
-                            // Feature data from toKarateJson()
+                            // Feature data from toJson()
                             allFeatures.add(data);
                         } else if ("SUITE_EXIT".equals(eventType) && data != null) {
-                            // Summary from SuiteResult.toKarateJson()
+                            // Summary from SuiteResult.toJson()
                             @SuppressWarnings("unchecked")
                             Map<String, Object> summary = (Map<String, Object>) data.get("summary");
                             if (summary != null) {
-                                totalFeaturesPassed += ((Number) summary.getOrDefault("feature_passed", 0)).intValue();
-                                totalFeaturesFailed += ((Number) summary.getOrDefault("feature_failed", 0)).intValue();
-                                totalScenariosPassed += ((Number) summary.getOrDefault("scenario_passed", 0)).intValue();
-                                totalScenariosFailed += ((Number) summary.getOrDefault("scenario_failed", 0)).intValue();
-                                totalDuration += ((Number) summary.getOrDefault("duration_millis", 0)).longValue();
+                                totalFeaturesPassed += ((Number) summary.getOrDefault("featuresPassed", 0)).intValue();
+                                totalFeaturesFailed += ((Number) summary.getOrDefault("featuresFailed", 0)).intValue();
+                                totalScenariosPassed += ((Number) summary.getOrDefault("scenariosPassed", 0)).intValue();
+                                totalScenariosFailed += ((Number) summary.getOrDefault("scenariosFailed", 0)).intValue();
+                                totalDuration += ((Number) summary.getOrDefault("durationMillis", 0)).longValue();
                             }
                         }
                     }
@@ -193,8 +193,8 @@ public final class HtmlReport {
                 int totalScenarios = 0;
                 for (Map<String, Object> feature : allFeatures) {
                     @SuppressWarnings("unchecked")
-                    List<?> elements = (List<?>) feature.get("elements");
-                    totalScenarios += elements != null ? elements.size() : 0;
+                    List<?> scenarioResults = (List<?>) feature.get("scenarioResults");
+                    totalScenarios += scenarioResults != null ? scenarioResults.size() : 0;
                 }
 
                 Map<String, Object> summary = new LinkedHashMap<>();

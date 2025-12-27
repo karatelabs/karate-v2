@@ -164,93 +164,56 @@ public class ScenarioResult implements Comparable<ScenarioResult> {
     }
 
     /**
-     * Convert to canonical Map format for JSON Lines and HTML reports.
-     * This is the single internal format used for all report generation.
+     * Convert to JSON format.
+     * Used for HTML reports, JSONL streaming, and report aggregation.
      */
-    public Map<String, Object> toMap() {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("name", scenario.getName());
-        data.put("line", scenario.getLine());
-        data.put("passed", isPassed());
-        data.put("ms", getDurationMillis());
-
-        // RefId and outline info for UI
-        data.put("refId", scenario.getRefId());
-        data.put("sectionIndex", scenario.getSection().getIndex() + 1);
-        data.put("exampleIndex", scenario.getExampleIndex());
-        data.put("isOutlineExample", scenario.isOutlineExample());
-
-        // Thread info (for timeline)
-        if (threadName != null) {
-            data.put("thread", threadName);
-        }
-
-        // Timing info (for timeline)
-        data.put("startTime", startTime);
-        data.put("endTime", endTime);
-
-        // Tags
-        var tags = scenario.getTags();
-        if (tags != null && !tags.isEmpty()) {
-            List<String> tagNames = new ArrayList<>();
-            for (var tag : tags) {
-                tagNames.add(tag.toString());
-            }
-            data.put("tags", tagNames);
-        }
-
-        // Steps
-        List<Map<String, Object>> steps = new ArrayList<>();
-        for (StepResult step : stepResults) {
-            steps.add(step.toMap());
-        }
-        data.put("steps", steps);
-
-        // Error info if failed
-        if (isFailed() && getFailureMessage() != null) {
-            data.put("error", getFailureMessage());
-        }
-
-        return data;
-    }
-
-    public Map<String, Object> toKarateJson() {
+    public Map<String, Object> toJson() {
         Map<String, Object> map = new LinkedHashMap<>();
-        map.put("line", scenario.getLine());
-        map.put("id", scenario.getUniqueId());
+
+        // Core identity
         map.put("name", scenario.getName());
         map.put("description", scenario.getDescription());
+        map.put("line", scenario.getLine());
 
-        List<Tag> tags = scenario.getTags();
-        if (tags != null && !tags.isEmpty()) {
-            List<Map<String, Object>> tagList = new ArrayList<>();
-            for (Tag tag : tags) {
-                Map<String, Object> tagMap = new LinkedHashMap<>();
-                tagMap.put("name", tag.toString());
-                tagMap.put("line", scenario.getLine());
-                tagList.add(tagMap);
-            }
-            map.put("tags", tagList);
-        }
-
-        List<Map<String, Object>> steps = new ArrayList<>();
-        for (StepResult sr : stepResults) {
-            steps.add(sr.toKarateJson());
-        }
-        map.put("steps", steps);
-
-        // Summary
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("status", isFailed() ? "failed" : "passed");
-        result.put("duration_millis", getDurationMillis());
-        result.put("duration_nanos", getDurationNanos());
-        if (threadName != null) {
-            result.put("thread_name", threadName);
-        }
+        // Status
+        map.put("passed", isPassed());
+        map.put("failed", isFailed());
+        map.put("durationMillis", getDurationMillis());
         if (isFailed()) {
-            result.put("error_message", getFailureMessage());
+            map.put("error", getFailureMessage());
         }
-        map.put("result", result);
+
+        // RefId and outline info
+        map.put("refId", scenario.getRefId());
+        map.put("sectionIndex", scenario.getSection().getIndex());
+        map.put("exampleIndex", scenario.getExampleIndex());
+        map.put("isOutlineExample", scenario.isOutlineExample());
+        Map<String, Object> exampleData = scenario.getExampleData();
+        if (exampleData != null) {
+            map.put("exampleData", exampleData);
+        }
+
+        // Execution info
+        map.put("executorName", threadName);
+        map.put("startTime", startTime);
+        map.put("endTime", endTime);
+
+        // Tags (effective = merged feature + scenario)
+        List<Tag> effectiveTags = scenario.getTagsEffective();
+        if (effectiveTags != null && !effectiveTags.isEmpty()) {
+            List<String> tagNames = new ArrayList<>();
+            for (Tag tag : effectiveTags) {
+                tagNames.add(tag.toString());
+            }
+            map.put("tags", tagNames);
+        }
+
+        // Step results
+        List<Map<String, Object>> stepResultsList = new ArrayList<>();
+        for (StepResult sr : stepResults) {
+            stepResultsList.add(sr.toJson());
+        }
+        map.put("stepResults", stepResultsList);
 
         return map;
     }

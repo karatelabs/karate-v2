@@ -151,28 +151,26 @@ class JsonLinesReportListenerTest {
         assertNotNull(featureData, "Should have FEATURE_EXIT event");
 
         assertEquals("Feature Line Test", featureData.get("name"));
-        assertTrue(featureData.get("uri").toString().endsWith("test.feature"));
+        assertTrue(featureData.get("relativePath").toString().endsWith("test.feature"));
 
-        // Check result
+        // Check status
+        assertEquals(true, featureData.get("passed"));
+        assertTrue(featureData.containsKey("durationMillis"));
+
+        // Check scenarioResults array
         @SuppressWarnings("unchecked")
-        Map<String, Object> result = (Map<String, Object>) featureData.get("result");
-        assertEquals("passed", result.get("status"));
-        assertTrue(result.containsKey("duration_millis"));
+        List<Map<String, Object>> scenarioResults = (List<Map<String, Object>>) featureData.get("scenarioResults");
+        assertEquals(1, scenarioResults.size());
 
-        // Check elements (scenarios) array
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> elements = (List<Map<String, Object>>) featureData.get("elements");
-        assertEquals(1, elements.size());
-
-        Map<String, Object> scenario = elements.get(0);
+        Map<String, Object> scenario = scenarioResults.get(0);
         assertEquals("Passing scenario", scenario.get("name"));
 
-        // Check steps
+        // Check stepResults
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> steps = (List<Map<String, Object>>) scenario.get("steps");
-        assertEquals(2, steps.size());
+        List<Map<String, Object>> stepResults = (List<Map<String, Object>>) scenario.get("stepResults");
+        assertEquals(2, stepResults.size());
         @SuppressWarnings("unchecked")
-        Map<String, Object> stepResult = (Map<String, Object>) steps.get(0).get("result");
+        Map<String, Object> stepResult = (Map<String, Object>) stepResults.get(0).get("result");
         assertEquals("passed", stepResult.get("status"));
     }
 
@@ -216,11 +214,11 @@ class JsonLinesReportListenerTest {
         }
         assertNotNull(summary, "Should have SUITE_EXIT event with summary");
 
-        assertEquals(1, ((Number) summary.get("feature_passed")).intValue());
-        assertEquals(0, ((Number) summary.get("feature_failed")).intValue());
-        assertEquals(2, ((Number) summary.get("scenario_passed")).intValue());
-        assertEquals(0, ((Number) summary.get("scenario_failed")).intValue());
-        assertTrue(summary.containsKey("duration_millis"));
+        assertEquals(1, ((Number) summary.get("featuresPassed")).intValue());
+        assertEquals(0, ((Number) summary.get("featuresFailed")).intValue());
+        assertEquals(2, ((Number) summary.get("scenariosPassed")).intValue());
+        assertEquals(0, ((Number) summary.get("scenariosFailed")).intValue());
+        assertTrue(summary.containsKey("durationMillis"));
     }
 
     @Test
@@ -264,15 +262,13 @@ class JsonLinesReportListenerTest {
         }
         assertNotNull(featureData);
 
-        // Check result
-        @SuppressWarnings("unchecked")
-        Map<String, Object> featureResult = (Map<String, Object>) featureData.get("result");
-        assertEquals("failed", featureResult.get("status"));
+        // Check status
+        assertEquals(true, featureData.get("failed"));
 
-        // Check elements (scenarios) - one passed, one failed
+        // Check scenarioResults - one passed, one failed
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> elements = (List<Map<String, Object>>) featureData.get("elements");
-        assertEquals(2, elements.size());
+        List<Map<String, Object>> scenarioResults = (List<Map<String, Object>>) featureData.get("scenarioResults");
+        assertEquals(2, scenarioResults.size());
 
         // Find SUITE_EXIT and check summary
         Map<String, Object> summary = null;
@@ -289,10 +285,10 @@ class JsonLinesReportListenerTest {
             }
         }
         assertNotNull(summary);
-        assertEquals(0, ((Number) summary.get("feature_passed")).intValue());
-        assertEquals(1, ((Number) summary.get("feature_failed")).intValue());
-        assertEquals(1, ((Number) summary.get("scenario_passed")).intValue());
-        assertEquals(1, ((Number) summary.get("scenario_failed")).intValue());
+        assertEquals(0, ((Number) summary.get("featuresPassed")).intValue());
+        assertEquals(1, ((Number) summary.get("featuresFailed")).intValue());
+        assertEquals(1, ((Number) summary.get("scenariosPassed")).intValue());
+        assertEquals(1, ((Number) summary.get("scenariosFailed")).intValue());
     }
 
     @Test
@@ -332,11 +328,11 @@ class JsonLinesReportListenerTest {
         assertNotNull(featureData);
 
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> elements = (List<Map<String, Object>>) featureData.get("elements");
-        Map<String, Object> scenario = elements.get(0);
+        List<Map<String, Object>> scenarioResults = (List<Map<String, Object>>) featureData.get("scenarioResults");
+        Map<String, Object> scenario = scenarioResults.get(0);
 
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> tags = (List<Map<String, Object>>) scenario.get("tags");
+        List<String> tags = (List<String>) scenario.get("tags");
         assertNotNull(tags);
         assertEquals(2, tags.size());
     }
@@ -397,8 +393,8 @@ class JsonLinesReportListenerTest {
             }
         }
         assertNotNull(summary);
-        assertEquals(2, ((Number) summary.get("feature_passed")).intValue());
-        assertEquals(2, ((Number) summary.get("scenario_passed")).intValue());
+        assertEquals(2, ((Number) summary.get("featuresPassed")).intValue());
+        assertEquals(2, ((Number) summary.get("scenariosPassed")).intValue());
     }
 
     @Test

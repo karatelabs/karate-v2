@@ -104,37 +104,37 @@ public class SuiteResult {
 
     // ========== Serialization ==========
 
-    public Map<String, Object> toKarateJson() {
+    public Map<String, Object> toJson() {
         Map<String, Object> map = new LinkedHashMap<>();
 
         // Features
         List<Map<String, Object>> features = new ArrayList<>();
         for (FeatureResult fr : featureResults) {
-            features.add(fr.toKarateJson());
+            features.add(fr.toJson());
         }
         map.put("features", features);
 
         // Summary
         Map<String, Object> summary = new LinkedHashMap<>();
-        summary.put("feature_count", getFeatureCount());
-        summary.put("feature_passed", getFeaturePassedCount());
-        summary.put("feature_failed", getFeatureFailedCount());
-        summary.put("scenario_count", getScenarioCount());
-        summary.put("scenario_passed", getScenarioPassedCount());
-        summary.put("scenario_failed", getScenarioFailedCount());
-        summary.put("duration_millis", getDurationMillis());
-        summary.put("status", isFailed() ? "failed" : "passed");
+        summary.put("featureCount", getFeatureCount());
+        summary.put("featuresPassed", getFeaturePassedCount());
+        summary.put("featuresFailed", getFeatureFailedCount());
+        summary.put("scenarioCount", getScenarioCount());
+        summary.put("scenariosPassed", getScenarioPassedCount());
+        summary.put("scenariosFailed", getScenarioFailedCount());
+        summary.put("durationMillis", getDurationMillis());
+        summary.put("passed", !isFailed());
         map.put("summary", summary);
 
         return map;
     }
 
-    public String toJson() {
-        return io.karatelabs.common.Json.stringifyStrict(toKarateJson());
+    public String toJsonString() {
+        return io.karatelabs.common.Json.stringifyStrict(toJson());
     }
 
     public String toJsonPretty() {
-        return io.karatelabs.common.Json.of(toKarateJson()).toStringPretty();
+        return io.karatelabs.common.Json.of(toJson()).toStringPretty();
     }
 
     // ========== Console Output ==========

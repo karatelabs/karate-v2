@@ -23,7 +23,6 @@
  */
 package io.karatelabs.output;
 
-import io.karatelabs.core.ScenarioResult;
 import io.karatelabs.core.StepResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +62,6 @@ public class LogContext {
 
     private final StringBuilder buffer = new StringBuilder();
     private List<StepResult.Embed> embeds;
-    private List<ScenarioResult> nestedResults;
 
     // ========== Thread-Local Access ==========
 
@@ -221,28 +219,6 @@ public class LogContext {
     public List<StepResult.Embed> collectEmbeds() {
         List<StepResult.Embed> result = embeds;
         embeds = null;
-        return result;
-    }
-
-    // ========== Nested Results (for call steps) ==========
-
-    /**
-     * Add a nested scenario result from a called feature.
-     * Used to capture feature call results for HTML report display.
-     */
-    public void addNestedResult(ScenarioResult result) {
-        if (nestedResults == null) {
-            nestedResults = new ArrayList<>();
-        }
-        nestedResults.add(result);
-    }
-
-    /**
-     * Collect and clear nested results.
-     */
-    public List<ScenarioResult> collectNestedResults() {
-        List<ScenarioResult> result = nestedResults;
-        nestedResults = null;
         return result;
     }
 

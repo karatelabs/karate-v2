@@ -100,7 +100,7 @@ public class Step {
         return step;
     }
 
-    public Map<String, Object> toKarateJson() {
+    public Map<String, Object> toJson() {
         Map<String, Object> map = new HashMap<>();
         if (isBackground()) {
             map.put("background", true);
@@ -119,7 +119,7 @@ public class Step {
             map.put("docString", docString);
         }
         if (table != null) {
-            map.put("table", table.toKarateJson());
+            map.put("table", table.toJson());
         }
         return map;
     }

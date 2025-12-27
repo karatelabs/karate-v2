@@ -233,7 +233,7 @@ class HtmlReportWriterTest {
         for (String line : lines) {
             if (line.contains("\"type\":\"FEATURE_EXIT\"")) {
                 hasFeatureExit = true;
-                assertTrue(line.contains("\"elements\""));
+                assertTrue(line.contains("\"scenarioResults\""));
                 break;
             }
         }

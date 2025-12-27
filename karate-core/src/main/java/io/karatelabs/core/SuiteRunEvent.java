@@ -67,7 +67,7 @@ public record SuiteRunEvent(
     public Map<String, Object> toJson() {
         Map<String, Object> map = new LinkedHashMap<>();
         if (type == RunEventType.SUITE_EXIT && result != null) {
-            return result.toKarateJson();
+            return result.toJson();
         }
         // SUITE_ENTER data
         if (source != null) {

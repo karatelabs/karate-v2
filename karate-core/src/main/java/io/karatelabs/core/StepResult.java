@@ -43,7 +43,7 @@ public class StepResult {
     private final Throwable error;
     private String log;
     private List<Embed> embeds;
-    private List<ScenarioResult> nestedResults;  // For call steps - nested feature results
+    private List<FeatureResult> callResults;  // For call steps - called feature results (V1 style)
 
     private StepResult(Step step, Status status, long startTime, long durationNanos, Throwable error) {
         this.step = step;
@@ -134,16 +134,16 @@ public class StepResult {
         embeds.add(embed);
     }
 
-    public List<ScenarioResult> getNestedResults() {
-        return nestedResults;
+    public List<FeatureResult> getCallResults() {
+        return callResults;
     }
 
-    public void setNestedResults(List<ScenarioResult> nestedResults) {
-        this.nestedResults = nestedResults;
+    public void setCallResults(List<FeatureResult> callResults) {
+        this.callResults = callResults;
     }
 
-    public boolean hasNestedResults() {
-        return nestedResults != null && !nestedResults.isEmpty();
+    public boolean hasCallResults() {
+        return callResults != null && !callResults.isEmpty();
     }
 
     public boolean isPassed() {
@@ -163,84 +163,41 @@ public class StepResult {
     }
 
     /**
-     * Convert to canonical Map format for JSON Lines and HTML reports.
-     * This is the single internal format used for all report generation.
+     * Convert to JSON format (V1 nested structure).
+     * Uses nested `step` and `result` objects for V1 compatibility.
      */
-    public Map<String, Object> toMap() {
-        Map<String, Object> data = new LinkedHashMap<>();
-        if (step != null) {
-            data.put("prefix", step.getPrefix());
-            data.put("keyword", step.getKeyword());
-            data.put("text", step.getText());
-            data.put("line", step.getLine());
-        } else {
-            // Fake step (e.g., for @fail tag)
-            data.put("prefix", "*");
-            data.put("keyword", "*");
-            data.put("text", log != null ? log : "");
-            data.put("line", 0);
-        }
-        data.put("status", status.name().toLowerCase());
-        data.put("ms", durationNanos / 1_000_000);
-
-        // Log indicator for UI
-        boolean hasLogs = log != null && !log.isEmpty();
-        data.put("hasLogs", hasLogs);
-        if (hasLogs) {
-            data.put("logs", log);
-        }
-
-        // Error
-        if (error != null) {
-            data.put("error", error.getMessage());
-        }
-
-        // Embeds (images, HTML, etc.)
-        boolean hasEmbeds = embeds != null && !embeds.isEmpty();
-        data.put("hasEmbeds", hasEmbeds);
-        if (hasEmbeds) {
-            List<Map<String, Object>> embedList = new ArrayList<>();
-            for (Embed embed : embeds) {
-                embedList.add(embed.toMap());
-            }
-            data.put("embeds", embedList);
-        }
-
-        // Nested scenarios (for call steps)
-        boolean hasNestedScenarios = nestedResults != null && !nestedResults.isEmpty();
-        data.put("hasNestedScenarios", hasNestedScenarios);
-        if (hasNestedScenarios) {
-            List<Map<String, Object>> nestedList = new ArrayList<>();
-            for (ScenarioResult sr : nestedResults) {
-                nestedList.add(sr.toMap());
-            }
-            data.put("nestedScenarios", nestedList);
-        }
-
-        return data;
-    }
-
-    public Map<String, Object> toKarateJson() {
+    public Map<String, Object> toJson() {
         Map<String, Object> map = new LinkedHashMap<>();
+
+        // Step object
         if (step != null) {
-            map.put("line", step.getLine());
-            map.put("keyword", step.getKeyword());
-            map.put("name", step.getText());
+            map.put("step", step.toJson());
         } else {
             // Fake step (e.g., for @fail tag)
-            map.put("line", 0);
-            map.put("keyword", "*");
-            map.put("name", log != null ? log : "");
+            Map<String, Object> fakeStep = new LinkedHashMap<>();
+            fakeStep.put("index", -1);
+            fakeStep.put("line", 0);
+            fakeStep.put("prefix", "*");
+            fakeStep.put("text", log != null ? log : "");
+            map.put("step", fakeStep);
         }
-        map.put("result", resultToMap());
-        if (step != null && step.getDocString() != null) {
-            map.put("doc_string", step.getDocString());
+
+        // Result object
+        Map<String, Object> resultMap = new LinkedHashMap<>();
+        resultMap.put("status", status.name().toLowerCase());
+        resultMap.put("millis", durationNanos / 1_000_000);
+        resultMap.put("nanos", durationNanos);
+        resultMap.put("startTime", startTime);
+        long endTime = startTime + (durationNanos / 1_000_000);
+        resultMap.put("endTime", endTime);
+        if (error != null) {
+            resultMap.put("errorMessage", error.getMessage());
         }
-        if (step != null && step.getTable() != null) {
-            map.put("table", step.getTable().toKarateJson());
-        }
+        map.put("result", resultMap);
+
+        // Top-level optional fields
         if (log != null && !log.isEmpty()) {
-            map.put("log", log);
+            map.put("stepLog", log);
         }
         if (embeds != null && !embeds.isEmpty()) {
             List<Map<String, Object>> embedList = new ArrayList<>();
@@ -249,16 +206,14 @@ public class StepResult {
             }
             map.put("embeds", embedList);
         }
-        return map;
-    }
-
-    private Map<String, Object> resultToMap() {
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("status", status.name().toLowerCase());
-        map.put("duration_nanos", durationNanos);
-        if (error != null) {
-            map.put("error_message", error.getMessage());
+        if (callResults != null && !callResults.isEmpty()) {
+            List<Map<String, Object>> callResultsList = new ArrayList<>();
+            for (FeatureResult fr : callResults) {
+                callResultsList.add(fr.toJson());
+            }
+            map.put("callResults", callResultsList);
         }
+
         return map;
     }
 
