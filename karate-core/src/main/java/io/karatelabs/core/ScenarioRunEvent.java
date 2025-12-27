@@ -81,7 +81,7 @@ public record ScenarioRunEvent(
         }
         if (type == RunEventType.SCENARIO_EXIT && result != null) {
             map.put("passed", !result.isFailed());
-            map.put("durationMs", result.getDurationMillis());
+            map.put("durationMillis", result.getDurationMillis());
         }
         return map;
     }

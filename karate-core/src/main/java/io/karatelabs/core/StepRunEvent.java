@@ -80,7 +80,7 @@ public record StepRunEvent(
         }
         if (type == RunEventType.STEP_EXIT && result != null) {
             map.put("status", result.getStatus().name().toLowerCase());
-            map.put("durationMs", result.getDurationMillis());
+            map.put("durationMillis", result.getDurationMillis());
         }
         return map;
     }
