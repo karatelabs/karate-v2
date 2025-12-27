@@ -97,7 +97,7 @@ The Gherkin parser lives in `karate-js` (reuses the JS lexer). The ScenarioEngin
 - [x] Timeline view (Gantt-style parallel execution)
 - [x] Result embedding in reports (images, HTML, etc.)
 - [x] Nested feature call display in HTML reports
-- [ ] Cucumber JSON report format
+- [x] Cucumber JSON report format (`cucumber-json/` subfolder, async per-feature)
 - [ ] Tag-based analytics page
 
 ### CLI Compatibility
@@ -105,21 +105,22 @@ The Gherkin parser lives in `karate-js` (reuses the JS lexer). The ScenarioEngin
 Integration with [Karate CLI](https://github.com/karatelabs/karate-cli):
 
 - [ ] Update Karate CLI to support karate-v2 as backend
-- [ ] Feature file/directory paths
-- [ ] `-t, --tags` - Tag filtering
-- [ ] `-T, --threads` - Parallel thread count
-- [ ] `-n, --name` - Run single scenario by name
-- [ ] `-D, --dryrun` - Dry run mode
-- [ ] `-o, --output` - Output directory
-- [ ] `-f, --format` - Report formats (html, cucumber:json, junit:xml)
-- [ ] `-e, --env` - Environment variable
-- [ ] `-g, --configdir` - Config directory for karate-config.js
-- [ ] `-C, --clean` - Clean output before run
+- [x] Feature file/directory paths
+- [x] `-t, --tags` - Tag filtering
+- [x] `-T, --threads` - Parallel thread count
+- [x] `-n, --name` - Run single scenario by name
+- [x] `-D, --dryrun` - Dry run mode
+- [x] `-o, --output` - Output directory
+- [x] `-f, --format` - Report formats (html, cucumber:json, junit:xml, karate:jsonl)
+- [x] `-e, --env` - Environment variable
+- [x] `-g, --configdir` - Config directory for karate-config.js
+- [x] `-C, --clean` - Clean output before run
 - [ ] `-d, --debug` - Debug mode with port
 - [ ] `-H, --hook` - Runtime hook classes
-- [ ] ANSI colored console output
-- [ ] Progress indicators
+- [x] ANSI colored console output
+- [ ] Progress indicators (deferred - PROGRESS events)
 - [ ] Interactive mode for LLM sessions
+- [ ] Two-way `karate-pom.json` (deferred - serialize CLI to JSON and back)
 
 ### Console & Logging
 
@@ -280,16 +281,18 @@ Error-tolerant parsing for IDE features (syntax coloring, code completion, forma
 
 Unified event system with backward compatibility for `RuntimeHook`:
 
-- [ ] `RunEventType` enum (SUITE_ENTER, SCENARIO_EXIT, etc.)
-- [ ] `RunEvent` class with full runtime object access and `isTopLevel()`
-- [ ] `RunListener` interface with single `onEvent(RunEvent)` method
-- [ ] `RunListenerFactory` for per-thread listeners (debugger support)
-- [ ] Refactor Suite/FeatureRuntime/ScenarioRuntime/StepExecutor to use `fireEvent()`
-- [ ] Events fire for all calls (use `isTopLevel()` to filter if needed)
-- [ ] `RuntimeHookAdapter` for backward compatibility with existing hooks
-- [ ] JSONL event stream for decoupled consumers (replayable, aggregatable)
-- [ ] Review event data for reporting platforms (Allure, ReportPortal, JIRA/X-Ray)
-- [ ] Remove direct Cucumber JSON writer - render from JSONL instead
+- [x] `RunEventType` enum (SUITE_ENTER, SCENARIO_EXIT, etc.)
+- [x] `RunEvent` interface with full runtime object access and `isTopLevel()`
+- [x] `RunListener` interface with single `onEvent(RunEvent)` method
+- [x] `RunListenerFactory` for per-thread listeners (debugger support)
+- [x] Refactor Suite/FeatureRuntime/ScenarioRuntime/StepExecutor to use `fireEvent()`
+- [x] Events fire for all calls (use `isTopLevel()` to filter if needed)
+- [x] `RuntimeHookAdapter` for backward compatibility with existing hooks
+- [x] JSONL event stream for decoupled consumers (replayable, aggregatable)
+- [x] Review event data for reporting platforms (Allure, ReportPortal, JIRA/X-Ray)
+- [x] Cucumber JSON from FeatureResult (async per-feature, same data as JSONL)
+- [ ] PROGRESS events for real-time progress display (deferred)
+- [ ] `FeatureResult.fromJson()` for offline report generation from JSONL (deferred)
 - [ ] JS event handling via optional library (karate-boot.js, karate.on()) - future
 
 ### Templating & Markup
@@ -373,14 +376,15 @@ Beyond being LLM-friendly, Karate can be a tool for testing AI systems:
 > Items identified during Dec 2023 logging/reporting session.
 
 ### Code Organization
-- [ ] Move all reporting and logging related code to an "output" folder (not "reports")
-- [ ] Consolidate `HtmlReportListener`, `JsonLinesReportListener`, `HtmlReportWriter` into unified output package
+- [x] Move all reporting and logging related code to an "output" folder (not "reports")
+- [x] Consolidate `HtmlReportListener`, `JsonLinesEventWriter`, `HtmlReportWriter` into unified output package
 
 ### Report Format & Compatibility
-- [ ] Verify v2 karate-json format matches v1 format for external tool compatibility
-- [ ] Verify report events (JSON Lines) are sufficient for external aggregation services
-- [ ] Implement report merging from multiple runs (`HtmlReport.aggregate()`)
-- [ ] Cucumber JSON format support
+- [x] Verify v2 karate-json format matches v1 format for external tool compatibility
+- [x] Verify report events (JSON Lines) are sufficient for external aggregation services
+- [x] Implement report merging from multiple runs (`HtmlReport.aggregate()`)
+- [x] Cucumber JSON format support (async per-feature, `cucumber-json/` subfolder)
+- [x] JUnit XML format support (async per-feature, `junit-xml/` subfolder)
 
 ### Logging Configuration
 - [x] Clarify LogContext vs SLF4J relationship for log level settings

@@ -27,7 +27,7 @@ This document describes the reporting architecture for Karate v2, including the 
 
 | Component | Description |
 |-----------|-------------|
-| PROGRESS Events | Periodic progress updates and console display (EVENTS.md Phase 5b) |
+| PROGRESS Events | Periodic progress updates and console display |
 | JSONL → FeatureResult | `FeatureResult.fromJson()` to reconstitute results from JSONL for offline report generation |
 
 ---
