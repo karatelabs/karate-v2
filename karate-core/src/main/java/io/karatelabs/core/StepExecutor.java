@@ -66,16 +66,25 @@ public class StepExecutor {
         this.runtime = runtime;
     }
 
+    private Suite getSuite() {
+        FeatureRuntime fr = runtime.getFeatureRuntime();
+        return fr != null ? fr.getSuite() : null;
+    }
+
     public StepResult execute(Step step) {
         long startTime = System.currentTimeMillis();
         long startNanos = System.nanoTime();
 
-        // Call beforeStep hooks
-        if (!beforeStep(step)) {
-            // Hook returned false - skip this step
-            StepResult skipped = StepResult.skipped(step, startTime);
-            collectLogsAndEmbeds(skipped);
-            return skipped;
+        // Fire STEP_ENTER event (RuntimeHookAdapter calls beforeStep)
+        Suite suite = getSuite();
+        if (suite != null) {
+            boolean proceed = suite.fireEvent(StepRunEvent.enter(step, runtime));
+            if (!proceed) {
+                // Listener returned false - skip this step
+                StepResult skipped = StepResult.skipped(step, startTime);
+                collectLogsAndEmbeds(skipped);
+                return skipped;
+            }
         }
 
         try {
@@ -161,36 +170,25 @@ public class StepExecutor {
             long elapsedNanos = System.nanoTime() - startNanos;
             StepResult result = StepResult.passed(step, startTime, elapsedNanos);
             collectLogsAndEmbeds(result);
-            afterStep(result);
+
+            // Fire STEP_EXIT event (RuntimeHookAdapter calls afterStep)
+            if (suite != null) {
+                suite.fireEvent(StepRunEvent.exit(result, runtime));
+            }
+
             return result;
 
         } catch (AssertionError | Exception e) {
             long elapsedNanos = System.nanoTime() - startNanos;
             StepResult result = StepResult.failed(step, startTime, elapsedNanos, e);
             collectLogsAndEmbeds(result);
-            afterStep(result);
+
+            // Fire STEP_EXIT event (RuntimeHookAdapter calls afterStep)
+            if (suite != null) {
+                suite.fireEvent(StepRunEvent.exit(result, runtime));
+            }
+
             return result;
-        }
-    }
-
-    private boolean beforeStep(Step step) {
-        FeatureRuntime fr = runtime.getFeatureRuntime();
-        if (fr != null && fr.getSuite() != null) {
-            for (RuntimeHook hook : fr.getSuite().getHooks()) {
-                if (!hook.beforeStep(step, runtime)) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    private void afterStep(StepResult result) {
-        FeatureRuntime fr = runtime.getFeatureRuntime();
-        if (fr != null && fr.getSuite() != null) {
-            for (RuntimeHook hook : fr.getSuite().getHooks()) {
-                hook.afterStep(result, runtime);
-            }
         }
     }
 

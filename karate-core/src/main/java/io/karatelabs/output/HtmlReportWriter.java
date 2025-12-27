@@ -386,46 +386,81 @@ public final class HtmlReportWriter {
             if (line.trim().isEmpty()) continue;
 
             @SuppressWarnings("unchecked")
-            Map<String, Object> obj = (Map<String, Object>) Json.of(line).value();
-            String type = (String) obj.get("t");
+            Map<String, Object> envelope = (Map<String, Object>) Json.of(line).value();
+            String eventType = (String) envelope.get("type");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> eventData = (Map<String, Object>) envelope.get("data");
 
-            if ("suite".equals(type)) {
-                data.suiteData = buildSuiteDataFromJsonLines(obj);
-            } else if ("feature".equals(type)) {
-                data.features.add(obj);
-            } else if ("suite_end".equals(type)) {
-                // Update suite data with final counts
-                Map<String, Object> summary = new LinkedHashMap<>();
-                summary.put("feature_count", data.features.size());
-                summary.put("feature_passed", obj.get("featuresPassed"));
-                summary.put("feature_failed", obj.get("featuresFailed"));
-                summary.put("scenario_passed", obj.get("scenariosPassed"));
-                summary.put("scenario_failed", obj.get("scenariosFailed"));
-                summary.put("duration_millis", obj.get("ms"));
-
-                int scenarioCount = 0;
-                for (Map<String, Object> f : data.features) {
-                    @SuppressWarnings("unchecked")
-                    List<?> scenarios = (List<?>) f.get("scenarios");
-                    scenarioCount += scenarios != null ? scenarios.size() : 0;
+            if ("SUITE_ENTER".equals(eventType) && eventData != null) {
+                data.suiteData = buildSuiteDataFromEvent(envelope, eventData);
+            } else if ("FEATURE_EXIT".equals(eventType) && eventData != null) {
+                data.features.add(eventData);
+            } else if ("SUITE_EXIT".equals(eventType) && eventData != null) {
+                // Get summary from SUITE_EXIT data
+                @SuppressWarnings("unchecked")
+                Map<String, Object> summary = (Map<String, Object>) eventData.get("summary");
+                if (summary != null) {
+                    data.suiteData.put("summary", summary);
                 }
-                summary.put("scenario_count", scenarioCount);
-                summary.put("status", ((Number) obj.get("featuresFailed")).intValue() > 0 ? "failed" : "passed");
-
-                data.suiteData.put("summary", summary);
             }
+        }
+
+        // If summary wasn't set, build it from features
+        if (!data.suiteData.containsKey("summary")) {
+            Map<String, Object> summary = buildSummaryFromFeatures(data.features);
+            data.suiteData.put("summary", summary);
         }
 
         return data;
     }
 
-    private static Map<String, Object> buildSuiteDataFromJsonLines(Map<String, Object> suiteHeader) {
+    private static Map<String, Object> buildSuiteDataFromEvent(Map<String, Object> envelope, Map<String, Object> eventData) {
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("env", suiteHeader.get("env"));
-        data.put("threads", suiteHeader.get("threads"));
-        data.put("karateVersion", suiteHeader.get("version"));
-        data.put("reportDate", suiteHeader.get("time"));
+        data.put("env", eventData.get("env"));
+        data.put("threads", eventData.get("threads"));
+        data.put("karateVersion", eventData.get("version"));
+        // Convert timestamp to date string
+        Object ts = envelope.get("ts");
+        if (ts instanceof Number) {
+            data.put("reportDate", DATE_FORMAT.format(Instant.ofEpochMilli(((Number) ts).longValue())));
+        }
         return data;
+    }
+
+    private static Map<String, Object> buildSummaryFromFeatures(List<Map<String, Object>> features) {
+        Map<String, Object> summary = new LinkedHashMap<>();
+        int featurePassed = 0;
+        int featureFailed = 0;
+        int scenarioPassed = 0;
+        int scenarioFailed = 0;
+        long durationMillis = 0;
+
+        for (Map<String, Object> feature : features) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = (Map<String, Object>) feature.get("result");
+            if (result != null) {
+                String status = (String) result.get("status");
+                if ("passed".equals(status)) {
+                    featurePassed++;
+                } else {
+                    featureFailed++;
+                }
+                scenarioPassed += ((Number) result.getOrDefault("passed_count", 0)).intValue();
+                scenarioFailed += ((Number) result.getOrDefault("failed_count", 0)).intValue();
+                durationMillis += ((Number) result.getOrDefault("duration_millis", 0)).longValue();
+            }
+        }
+
+        summary.put("feature_count", features.size());
+        summary.put("feature_passed", featurePassed);
+        summary.put("feature_failed", featureFailed);
+        summary.put("scenario_count", scenarioPassed + scenarioFailed);
+        summary.put("scenario_passed", scenarioPassed);
+        summary.put("scenario_failed", scenarioFailed);
+        summary.put("duration_millis", durationMillis);
+        summary.put("status", featureFailed > 0 ? "failed" : "passed");
+
+        return summary;
     }
 
     // ========== Data Building from SuiteResult ==========
@@ -581,22 +616,58 @@ public final class HtmlReportWriter {
         for (Map<String, Object> feature : features) {
             Map<String, Object> summary = new LinkedHashMap<>();
             summary.put("name", feature.get("name"));
-            summary.put("relativePath", feature.get("path"));
-            summary.put("fileName", getFeatureFileName(feature));
-            summary.put("passed", feature.get("passed"));
-            summary.put("failed", !((Boolean) feature.get("passed")));
-            summary.put("durationMillis", feature.get("ms"));
 
-            // Count scenarios and build scenario summaries for tag filtering
+            // Handle both old (path) and new (uri) format
+            String path = feature.get("uri") != null ? (String) feature.get("uri") : (String) feature.get("path");
+            summary.put("relativePath", path);
+            summary.put("fileName", getFeatureFileName(feature));
+
+            // Handle both old (passed boolean) and new (result.status) format
+            boolean featurePassed;
+            long durationMillis = 0;
             @SuppressWarnings("unchecked")
-            List<Map<String, Object>> scenarios = (List<Map<String, Object>>) feature.get("scenarios");
-            int total = scenarios != null ? scenarios.size() : 0;
+            Map<String, Object> result = (Map<String, Object>) feature.get("result");
+            if (result != null) {
+                featurePassed = "passed".equals(result.get("status"));
+                Object duration = result.get("duration_millis");
+                if (duration instanceof Number) {
+                    durationMillis = ((Number) duration).longValue();
+                }
+            } else {
+                featurePassed = Boolean.TRUE.equals(feature.get("passed"));
+                Object ms = feature.get("ms");
+                if (ms instanceof Number) {
+                    durationMillis = ((Number) ms).longValue();
+                }
+            }
+            summary.put("passed", featurePassed);
+            summary.put("failed", !featurePassed);
+            summary.put("durationMillis", durationMillis);
+
+            // Handle both old (scenarios) and new (elements) format
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> elements = (List<Map<String, Object>>) feature.get("elements");
+            if (elements == null) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> scenarios = (List<Map<String, Object>>) feature.get("scenarios");
+                elements = scenarios;
+            }
+            int total = elements != null ? elements.size() : 0;
             int passed = 0;
             int failed = 0;
             List<Map<String, Object>> scenarioSummaries = new ArrayList<>();
-            if (scenarios != null) {
-                for (Map<String, Object> s : scenarios) {
-                    if (Boolean.TRUE.equals(s.get("passed"))) {
+            if (elements != null) {
+                for (Map<String, Object> s : elements) {
+                    // Handle both old (passed boolean) and new (result.status) format
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> scenarioResult = (Map<String, Object>) s.get("result");
+                    boolean scenarioPassed;
+                    if (scenarioResult != null) {
+                        scenarioPassed = "passed".equals(scenarioResult.get("status"));
+                    } else {
+                        scenarioPassed = Boolean.TRUE.equals(s.get("passed"));
+                    }
+                    if (scenarioPassed) {
                         passed++;
                     } else {
                         failed++;
@@ -605,8 +676,13 @@ public final class HtmlReportWriter {
                     Map<String, Object> scenarioSummary = new LinkedHashMap<>();
                     scenarioSummary.put("name", s.get("name"));
                     scenarioSummary.put("refId", s.get("refId"));
-                    scenarioSummary.put("passed", s.get("passed"));
-                    scenarioSummary.put("ms", s.get("ms"));
+                    scenarioSummary.put("passed", scenarioPassed);
+                    // Handle duration from result
+                    if (scenarioResult != null) {
+                        scenarioSummary.put("ms", scenarioResult.get("duration_millis"));
+                    } else {
+                        scenarioSummary.put("ms", s.get("ms"));
+                    }
                     scenarioSummary.put("tags", s.get("tags"));
                     scenarioSummaries.add(scenarioSummary);
                 }
@@ -628,7 +704,11 @@ public final class HtmlReportWriter {
      * Example: "users/list.feature" → "users.list"
      */
     private static String getFeatureFileName(Map<String, Object> feature) {
-        String path = (String) feature.get("path");
+        // Handle both old (path) and new (uri) format
+        String path = (String) feature.get("uri");
+        if (path == null || path.isEmpty()) {
+            path = (String) feature.get("path");
+        }
         if (path == null || path.isEmpty()) {
             path = (String) feature.get("name");
         }

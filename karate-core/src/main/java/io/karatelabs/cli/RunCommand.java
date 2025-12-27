@@ -162,6 +162,12 @@ public class RunCommand implements Callable<Integer> {
     )
     String runtimeLogLevel;
 
+    @Option(
+            names = {"--jsonl"},
+            description = "Output JSONL event stream to karate-events.jsonl (for CI/CD, IDEs, dashboards)"
+    )
+    Boolean jsonl;
+
     // Loaded pom config
     private KaratePom pom;
 
@@ -256,6 +262,12 @@ public class RunCommand implements Callable<Integer> {
             String effectiveLogLevel = resolveLogLevel();
             if (effectiveLogLevel != null) {
                 builder.logLevel(effectiveLogLevel);
+            }
+
+            // JSONL event stream
+            boolean effectiveJsonl = resolveJsonl();
+            if (effectiveJsonl) {
+                builder.outputJsonLines(true);
             }
 
             // Run tests
@@ -369,6 +381,16 @@ public class RunCommand implements Callable<Integer> {
             return pom.getOutput().getLogLevel();
         }
         return null; // Use default (INFO)
+    }
+
+    private boolean resolveJsonl() {
+        if (jsonl != null) {
+            return jsonl;
+        }
+        if (pom != null) {
+            return pom.getOutput().isJsonLines();
+        }
+        return false;
     }
 
     /**

@@ -84,8 +84,13 @@ public class Suite {
     // System properties (available via karate.properties)
     private Map<String, String> systemProperties;
 
-    // Hooks
+    // Hooks (legacy)
     private final List<RuntimeHook> hooks = new ArrayList<>();
+
+    // Run event listeners (new unified event system)
+    private final List<RunListener> listeners = new ArrayList<>();
+    private final List<RunListenerFactory> listenerFactories = new ArrayList<>();
+    private final ThreadLocal<List<RunListener>> threadListeners = new ThreadLocal<>();
 
     // Result listeners
     private final List<ResultListener> resultListeners = new ArrayList<>();
@@ -163,8 +168,36 @@ public class Suite {
         return this;
     }
 
+    /**
+     * Add a runtime hook (legacy API). The hook is wrapped as a RunListener
+     * and receives events through the unified event system.
+     * @param hook the hook
+     * @return this suite for chaining
+     */
     public Suite hook(RuntimeHook hook) {
-        this.hooks.add(hook);
+        this.hooks.add(hook);  // Keep for getHooks() backward compatibility
+        this.listeners.add(new RuntimeHookAdapter(hook));  // Wrap as listener
+        return this;
+    }
+
+    /**
+     * Add a run event listener. Listeners receive all runtime events.
+     * @param listener the listener
+     * @return this suite for chaining
+     */
+    public Suite listener(RunListener listener) {
+        this.listeners.add(listener);
+        return this;
+    }
+
+    /**
+     * Add a run listener factory for per-thread listeners.
+     * A new listener is created for each execution thread.
+     * @param factory the factory
+     * @return this suite for chaining
+     */
+    public Suite listenerFactory(RunListenerFactory factory) {
+        this.listenerFactories.add(factory);
         return this;
     }
 
@@ -349,9 +382,17 @@ public class Suite {
             resultListeners.add(new HtmlReportListener(outputDir, env));
         }
 
-        // Optionally register JSON Lines streaming listener
+        // Optionally register JSON Lines event stream writer (karate-events.jsonl)
+        JsonLinesEventWriter jsonlWriter = null;
         if (outputJsonLines) {
-            resultListeners.add(new JsonLinesReportListener(outputDir, env));
+            jsonlWriter = new JsonLinesEventWriter(outputDir, env, threadCount);
+            try {
+                jsonlWriter.init();
+                listeners.add(jsonlWriter);
+            } catch (Exception e) {
+                logger.warn("Failed to initialize JSONL event stream: {}", e.getMessage());
+                jsonlWriter = null;
+            }
         }
 
         try {
@@ -363,7 +404,8 @@ public class Suite {
                 listener.onSuiteStart(this);
             }
 
-            beforeSuite();
+            // Fire SUITE_ENTER event (RuntimeHookAdapter calls beforeSuite)
+            fireEvent(SuiteRunEvent.enter(this));
 
             if (parallel && threadCount > 1) {
                 runParallel();
@@ -371,9 +413,20 @@ public class Suite {
                 runSequential();
             }
 
-            afterSuite();
+            // Fire SUITE_EXIT event (RuntimeHookAdapter calls afterSuite)
+            fireEvent(SuiteRunEvent.exit(this, result));
         } finally {
             result.setEndTime(System.currentTimeMillis());
+
+            // Close JSONL event writer
+            if (jsonlWriter != null) {
+                try {
+                    listeners.remove(jsonlWriter);
+                    jsonlWriter.close();
+                } catch (Exception e) {
+                    logger.warn("Failed to close JSONL event stream: {}", e.getMessage());
+                }
+            }
 
             // Notify listeners
             for (ResultListener listener : resultListeners) {
@@ -427,17 +480,22 @@ public class Suite {
     }
 
     private void runSequential() {
-        for (Feature feature : features) {
-            // Skip features with @ignore tag at feature level
-            if (isFeatureIgnored(feature)) {
-                continue;
+        initThreadListeners();
+        try {
+            for (Feature feature : features) {
+                // Skip features with @ignore tag at feature level
+                if (isFeatureIgnored(feature)) {
+                    continue;
+                }
+                FeatureRuntime fr = new FeatureRuntime(this, feature);
+                FeatureResult featureResult = fr.call();
+                result.addFeatureResult(featureResult);
+                if (outputConsoleSummary) {
+                    featureResult.printSummary();
+                }
             }
-            FeatureRuntime fr = new FeatureRuntime(this, feature);
-            FeatureResult featureResult = fr.call();
-            result.addFeatureResult(featureResult);
-            if (outputConsoleSummary) {
-                featureResult.printSummary();
-            }
+        } finally {
+            cleanupThreadListeners();
         }
     }
 
@@ -454,6 +512,7 @@ public class Suite {
                 }
                 Future<FeatureResult> future = executor.submit(() -> {
                     semaphore.acquire();
+                    initThreadListeners();
                     try {
                         FeatureRuntime fr = new FeatureRuntime(this, feature);
                         FeatureResult featureResult = fr.call();
@@ -462,6 +521,7 @@ public class Suite {
                         }
                         return featureResult;
                     } finally {
+                        cleanupThreadListeners();
                         semaphore.release();
                     }
                 });
@@ -493,16 +553,59 @@ public class Suite {
         return false;
     }
 
-    private void beforeSuite() {
-        for (RuntimeHook hook : hooks) {
-            hook.beforeSuite(this);
+    // ========== Event System ==========
+
+    /**
+     * Initialize per-thread listeners from factories.
+     * Called at the start of each execution thread.
+     */
+    void initThreadListeners() {
+        if (listenerFactories.isEmpty()) {
+            return;
         }
+        List<RunListener> perThread = new ArrayList<>();
+        for (RunListenerFactory factory : listenerFactories) {
+            perThread.add(factory.create());
+        }
+        threadListeners.set(perThread);
     }
 
-    private void afterSuite() {
-        for (RuntimeHook hook : hooks) {
-            hook.afterSuite(this);
+    /**
+     * Clean up per-thread listeners.
+     * Called at the end of each execution thread.
+     */
+    void cleanupThreadListeners() {
+        threadListeners.remove();
+    }
+
+    /**
+     * Fire an event to all listeners.
+     * Returns false if any listener returns false (for ENTER events, this means skip).
+     *
+     * @param event the event to fire
+     * @return true to continue, false to skip
+     */
+    public boolean fireEvent(RunEvent event) {
+        boolean proceed = true;
+
+        // Global listeners (shared across threads)
+        for (RunListener listener : listeners) {
+            if (!listener.onEvent(event)) {
+                proceed = false;
+            }
         }
+
+        // Per-thread listeners (created from factories)
+        List<RunListener> perThread = threadListeners.get();
+        if (perThread != null) {
+            for (RunListener listener : perThread) {
+                if (!listener.onEvent(event)) {
+                    proceed = false;
+                }
+            }
+        }
+
+        return proceed;
     }
 
     private static final DateTimeFormatter BACKUP_DATE_FORMAT =
@@ -597,6 +700,14 @@ public class Suite {
 
     public List<RuntimeHook> getHooks() {
         return hooks;
+    }
+
+    public List<RunListener> getListeners() {
+        return listeners;
+    }
+
+    public List<RunListenerFactory> getListenerFactories() {
+        return listenerFactories;
     }
 
     public List<ResultListener> getResultListeners() {

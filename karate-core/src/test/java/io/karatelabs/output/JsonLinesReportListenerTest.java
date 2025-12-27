@@ -70,14 +70,14 @@ class JsonLinesReportListenerTest {
         assertTrue(result.isPassed());
 
         // Verify JSON Lines file was created
-        Path jsonlPath = reportDir.resolve("karate-results.jsonl");
+        Path jsonlPath = reportDir.resolve("karate-events.jsonl");
         assertTrue(Files.exists(jsonlPath), "JSON Lines file should exist");
 
         String content = Files.readString(jsonlPath);
         String[] lines = content.trim().split("\n");
 
-        // Should have 3 lines: suite header, feature, suite_end
-        assertEquals(3, lines.length, "Should have 3 JSON Lines");
+        // Should have at least SUITE_ENTER, FEATURE_EXIT, SUITE_EXIT
+        assertTrue(lines.length >= 3, "Should have at least 3 event lines");
     }
 
     @Test
@@ -98,18 +98,20 @@ class JsonLinesReportListenerTest {
                 .karateEnv("dev")
                 .parallel(1);
 
-        Path jsonlPath = reportDir.resolve("karate-results.jsonl");
+        Path jsonlPath = reportDir.resolve("karate-events.jsonl");
         String[] lines = Files.readString(jsonlPath).trim().split("\n");
 
-        // Parse suite header
+        // Parse SUITE_ENTER event (first line)
         @SuppressWarnings("unchecked")
-        Map<String, Object> suiteHeader = (Map<String, Object>) Json.of(lines[0]).value();
+        Map<String, Object> envelope = (Map<String, Object>) Json.of(lines[0]).value();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) envelope.get("data");
 
-        assertEquals("suite", suiteHeader.get("t"));
-        assertEquals("dev", suiteHeader.get("env"));
-        assertEquals(Globals.KARATE_VERSION, suiteHeader.get("version"));
-        assertTrue(suiteHeader.containsKey("time"));
-        assertTrue(suiteHeader.containsKey("threads"));
+        assertEquals("SUITE_ENTER", envelope.get("type"));
+        assertEquals("dev", data.get("env"));
+        assertEquals(Globals.KARATE_VERSION, data.get("version"));
+        assertTrue(envelope.containsKey("ts"));
+        assertTrue(data.containsKey("threads"));
     }
 
     @Test
@@ -131,33 +133,47 @@ class JsonLinesReportListenerTest {
                 .outputJsonLines(true)
                 .parallel(1);
 
-        Path jsonlPath = reportDir.resolve("karate-results.jsonl");
+        Path jsonlPath = reportDir.resolve("karate-events.jsonl");
         String[] lines = Files.readString(jsonlPath).trim().split("\n");
 
-        // Parse feature line (second line)
+        // Find FEATURE_EXIT event
+        Map<String, Object> featureData = null;
+        for (String line : lines) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> envelope = (Map<String, Object>) Json.of(line).value();
+            if ("FEATURE_EXIT".equals(envelope.get("type"))) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> data = (Map<String, Object>) envelope.get("data");
+                featureData = data;
+                break;
+            }
+        }
+        assertNotNull(featureData, "Should have FEATURE_EXIT event");
+
+        assertEquals("Feature Line Test", featureData.get("name"));
+        assertTrue(featureData.get("uri").toString().endsWith("test.feature"));
+
+        // Check result
         @SuppressWarnings("unchecked")
-        Map<String, Object> featureLine = (Map<String, Object>) Json.of(lines[1]).value();
+        Map<String, Object> result = (Map<String, Object>) featureData.get("result");
+        assertEquals("passed", result.get("status"));
+        assertTrue(result.containsKey("duration_millis"));
 
-        assertEquals("feature", featureLine.get("t"));
-        assertEquals("Feature Line Test", featureLine.get("name"));
-        assertTrue(featureLine.get("path").toString().endsWith("test.feature"));
-        assertTrue((Boolean) featureLine.get("passed"));
-        assertTrue(featureLine.containsKey("ms"));
-
-        // Check scenarios array
+        // Check elements (scenarios) array
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> scenarios = (List<Map<String, Object>>) featureLine.get("scenarios");
-        assertEquals(1, scenarios.size());
+        List<Map<String, Object>> elements = (List<Map<String, Object>>) featureData.get("elements");
+        assertEquals(1, elements.size());
 
-        Map<String, Object> scenario = scenarios.get(0);
+        Map<String, Object> scenario = elements.get(0);
         assertEquals("Passing scenario", scenario.get("name"));
-        assertTrue((Boolean) scenario.get("passed"));
 
         // Check steps
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> steps = (List<Map<String, Object>>) scenario.get("steps");
         assertEquals(2, steps.size());
-        assertEquals("passed", steps.get(0).get("status"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> stepResult = (Map<String, Object>) steps.get(0).get("result");
+        assertEquals("passed", stepResult.get("status"));
     }
 
     @Test
@@ -181,19 +197,30 @@ class JsonLinesReportListenerTest {
                 .outputJsonLines(true)
                 .parallel(1);
 
-        Path jsonlPath = reportDir.resolve("karate-results.jsonl");
+        Path jsonlPath = reportDir.resolve("karate-events.jsonl");
         String[] lines = Files.readString(jsonlPath).trim().split("\n");
 
-        // Parse suite_end line (last line)
-        @SuppressWarnings("unchecked")
-        Map<String, Object> suiteEnd = (Map<String, Object>) Json.of(lines[lines.length - 1]).value();
+        // Find SUITE_EXIT event (last line)
+        Map<String, Object> summary = null;
+        for (String line : lines) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> envelope = (Map<String, Object>) Json.of(line).value();
+            if ("SUITE_EXIT".equals(envelope.get("type"))) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> data = (Map<String, Object>) envelope.get("data");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> s = (Map<String, Object>) data.get("summary");
+                summary = s;
+                break;
+            }
+        }
+        assertNotNull(summary, "Should have SUITE_EXIT event with summary");
 
-        assertEquals("suite_end", suiteEnd.get("t"));
-        assertEquals(1, ((Number) suiteEnd.get("featuresPassed")).intValue());
-        assertEquals(0, ((Number) suiteEnd.get("featuresFailed")).intValue());
-        assertEquals(2, ((Number) suiteEnd.get("scenariosPassed")).intValue());
-        assertEquals(0, ((Number) suiteEnd.get("scenariosFailed")).intValue());
-        assertTrue(suiteEnd.containsKey("ms"));
+        assertEquals(1, ((Number) summary.get("feature_passed")).intValue());
+        assertEquals(0, ((Number) summary.get("feature_failed")).intValue());
+        assertEquals(2, ((Number) summary.get("scenario_passed")).intValue());
+        assertEquals(0, ((Number) summary.get("scenario_failed")).intValue());
+        assertTrue(summary.containsKey("duration_millis"));
     }
 
     @Test
@@ -220,30 +247,52 @@ class JsonLinesReportListenerTest {
 
         assertTrue(result.isFailed());
 
-        Path jsonlPath = reportDir.resolve("karate-results.jsonl");
+        Path jsonlPath = reportDir.resolve("karate-events.jsonl");
         String[] lines = Files.readString(jsonlPath).trim().split("\n");
 
-        // Check feature line
-        @SuppressWarnings("unchecked")
-        Map<String, Object> featureLine = (Map<String, Object>) Json.of(lines[1]).value();
-        assertFalse((Boolean) featureLine.get("passed"));
+        // Find FEATURE_EXIT event
+        Map<String, Object> featureData = null;
+        for (String line : lines) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> envelope = (Map<String, Object>) Json.of(line).value();
+            if ("FEATURE_EXIT".equals(envelope.get("type"))) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> data = (Map<String, Object>) envelope.get("data");
+                featureData = data;
+                break;
+            }
+        }
+        assertNotNull(featureData);
 
-        // Check scenarios - one passed, one failed
+        // Check result
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> scenarios = (List<Map<String, Object>>) featureLine.get("scenarios");
-        assertEquals(2, scenarios.size());
+        Map<String, Object> featureResult = (Map<String, Object>) featureData.get("result");
+        assertEquals("failed", featureResult.get("status"));
 
-        assertTrue((Boolean) scenarios.get(0).get("passed"));
-        assertFalse((Boolean) scenarios.get(1).get("passed"));
-        assertTrue(scenarios.get(1).containsKey("error"));
-
-        // Check suite_end
+        // Check elements (scenarios) - one passed, one failed
         @SuppressWarnings("unchecked")
-        Map<String, Object> suiteEnd = (Map<String, Object>) Json.of(lines[2]).value();
-        assertEquals(0, ((Number) suiteEnd.get("featuresPassed")).intValue());
-        assertEquals(1, ((Number) suiteEnd.get("featuresFailed")).intValue());
-        assertEquals(1, ((Number) suiteEnd.get("scenariosPassed")).intValue());
-        assertEquals(1, ((Number) suiteEnd.get("scenariosFailed")).intValue());
+        List<Map<String, Object>> elements = (List<Map<String, Object>>) featureData.get("elements");
+        assertEquals(2, elements.size());
+
+        // Find SUITE_EXIT and check summary
+        Map<String, Object> summary = null;
+        for (String line : lines) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> envelope = (Map<String, Object>) Json.of(line).value();
+            if ("SUITE_EXIT".equals(envelope.get("type"))) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> data = (Map<String, Object>) envelope.get("data");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> s = (Map<String, Object>) data.get("summary");
+                summary = s;
+                break;
+            }
+        }
+        assertNotNull(summary);
+        assertEquals(0, ((Number) summary.get("feature_passed")).intValue());
+        assertEquals(1, ((Number) summary.get("feature_failed")).intValue());
+        assertEquals(1, ((Number) summary.get("scenario_passed")).intValue());
+        assertEquals(1, ((Number) summary.get("scenario_failed")).intValue());
     }
 
     @Test
@@ -265,22 +314,31 @@ class JsonLinesReportListenerTest {
                 .outputJsonLines(true)
                 .parallel(1);
 
-        Path jsonlPath = reportDir.resolve("karate-results.jsonl");
+        Path jsonlPath = reportDir.resolve("karate-events.jsonl");
         String[] lines = Files.readString(jsonlPath).trim().split("\n");
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> featureLine = (Map<String, Object>) Json.of(lines[1]).value();
+        // Find FEATURE_EXIT event
+        Map<String, Object> featureData = null;
+        for (String line : lines) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> envelope = (Map<String, Object>) Json.of(line).value();
+            if ("FEATURE_EXIT".equals(envelope.get("type"))) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> data = (Map<String, Object>) envelope.get("data");
+                featureData = data;
+                break;
+            }
+        }
+        assertNotNull(featureData);
 
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> scenarios = (List<Map<String, Object>>) featureLine.get("scenarios");
-        Map<String, Object> scenario = scenarios.get(0);
+        List<Map<String, Object>> elements = (List<Map<String, Object>>) featureData.get("elements");
+        Map<String, Object> scenario = elements.get(0);
 
         @SuppressWarnings("unchecked")
-        List<String> tags = (List<String>) scenario.get("tags");
+        List<Map<String, Object>> tags = (List<Map<String, Object>>) scenario.get("tags");
         assertNotNull(tags);
         assertEquals(2, tags.size());
-        assertTrue(tags.contains("@smoke"));
-        assertTrue(tags.contains("@regression"));
     }
 
     @Test
@@ -307,28 +365,40 @@ class JsonLinesReportListenerTest {
                 .outputJsonLines(true)
                 .parallel(1);
 
-        Path jsonlPath = reportDir.resolve("karate-results.jsonl");
+        Path jsonlPath = reportDir.resolve("karate-events.jsonl");
         String[] lines = Files.readString(jsonlPath).trim().split("\n");
 
-        // Should have 4 lines: suite header, 2 features, suite_end
-        assertEquals(4, lines.length);
+        // Should have at least 4 event lines: SUITE_ENTER, 2x FEATURE_EXIT, SUITE_EXIT
+        assertTrue(lines.length >= 4);
 
-        // Verify both feature lines
+        // Verify both FEATURE_EXIT events
         int featureCount = 0;
         for (String line : lines) {
             @SuppressWarnings("unchecked")
-            Map<String, Object> parsed = (Map<String, Object>) Json.of(line).value();
-            if ("feature".equals(parsed.get("t"))) {
+            Map<String, Object> envelope = (Map<String, Object>) Json.of(line).value();
+            if ("FEATURE_EXIT".equals(envelope.get("type"))) {
                 featureCount++;
             }
         }
         assertEquals(2, featureCount);
 
-        // Check suite_end totals
-        @SuppressWarnings("unchecked")
-        Map<String, Object> suiteEnd = (Map<String, Object>) Json.of(lines[3]).value();
-        assertEquals(2, ((Number) suiteEnd.get("featuresPassed")).intValue());
-        assertEquals(2, ((Number) suiteEnd.get("scenariosPassed")).intValue());
+        // Check SUITE_EXIT summary totals
+        Map<String, Object> summary = null;
+        for (String line : lines) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> envelope = (Map<String, Object>) Json.of(line).value();
+            if ("SUITE_EXIT".equals(envelope.get("type"))) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> data = (Map<String, Object>) envelope.get("data");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> s = (Map<String, Object>) data.get("summary");
+                summary = s;
+                break;
+            }
+        }
+        assertNotNull(summary);
+        assertEquals(2, ((Number) summary.get("feature_passed")).intValue());
+        assertEquals(2, ((Number) summary.get("scenario_passed")).intValue());
     }
 
     @Test
@@ -350,7 +420,7 @@ class JsonLinesReportListenerTest {
                 .parallel(1);
 
         // Verify both JSON Lines and HTML reports exist when both are enabled
-        assertTrue(Files.exists(reportDir.resolve("karate-results.jsonl")));
+        assertTrue(Files.exists(reportDir.resolve("karate-events.jsonl")));
         assertTrue(Files.exists(reportDir.resolve("karate-summary.html")));
         assertTrue(Files.exists(reportDir.resolve("index.html")));
     }

@@ -138,7 +138,7 @@ public final class HtmlReport {
             }
 
             try {
-                // Parse and merge all JSON Lines files
+                // Parse and merge all JSON Lines files (new event format)
                 List<Map<String, Object>> allFeatures = new ArrayList<>();
                 Map<String, Object> suiteData = new LinkedHashMap<>();
                 int totalFeaturesPassed = 0;
@@ -158,25 +158,33 @@ public final class HtmlReport {
                         if (line.trim().isEmpty()) continue;
 
                         @SuppressWarnings("unchecked")
-                        Map<String, Object> obj = (Map<String, Object>) Json.of(line).value();
-                        String type = (String) obj.get("t");
+                        Map<String, Object> envelope = (Map<String, Object>) Json.of(line).value();
+                        String eventType = (String) envelope.get("type");
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> data = (Map<String, Object>) envelope.get("data");
 
-                        if ("suite".equals(type)) {
+                        if ("SUITE_ENTER".equals(eventType)) {
                             // Take metadata from the first suite header
-                            if (suiteData.isEmpty()) {
-                                suiteData.put("env", obj.get("env"));
-                                suiteData.put("threads", obj.get("threads"));
-                                suiteData.put("karateVersion", obj.get("version"));
-                                suiteData.put("reportDate", obj.get("time"));
+                            if (suiteData.isEmpty() && data != null) {
+                                suiteData.put("env", data.get("env"));
+                                suiteData.put("threads", data.get("threads"));
+                                suiteData.put("karateVersion", data.get("version"));
+                                suiteData.put("ts", envelope.get("ts"));
                             }
-                        } else if ("feature".equals(type)) {
-                            allFeatures.add(obj);
-                        } else if ("suite_end".equals(type)) {
-                            totalFeaturesPassed += ((Number) obj.getOrDefault("featuresPassed", 0)).intValue();
-                            totalFeaturesFailed += ((Number) obj.getOrDefault("featuresFailed", 0)).intValue();
-                            totalScenariosPassed += ((Number) obj.getOrDefault("scenariosPassed", 0)).intValue();
-                            totalScenariosFailed += ((Number) obj.getOrDefault("scenariosFailed", 0)).intValue();
-                            totalDuration += ((Number) obj.getOrDefault("ms", 0)).longValue();
+                        } else if ("FEATURE_EXIT".equals(eventType) && data != null) {
+                            // Feature data from toKarateJson()
+                            allFeatures.add(data);
+                        } else if ("SUITE_EXIT".equals(eventType) && data != null) {
+                            // Summary from SuiteResult.toKarateJson()
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> summary = (Map<String, Object>) data.get("summary");
+                            if (summary != null) {
+                                totalFeaturesPassed += ((Number) summary.getOrDefault("feature_passed", 0)).intValue();
+                                totalFeaturesFailed += ((Number) summary.getOrDefault("feature_failed", 0)).intValue();
+                                totalScenariosPassed += ((Number) summary.getOrDefault("scenario_passed", 0)).intValue();
+                                totalScenariosFailed += ((Number) summary.getOrDefault("scenario_failed", 0)).intValue();
+                                totalDuration += ((Number) summary.getOrDefault("duration_millis", 0)).longValue();
+                            }
                         }
                     }
                 }
@@ -185,8 +193,8 @@ public final class HtmlReport {
                 int totalScenarios = 0;
                 for (Map<String, Object> feature : allFeatures) {
                     @SuppressWarnings("unchecked")
-                    List<?> scenarios = (List<?>) feature.get("scenarios");
-                    totalScenarios += scenarios != null ? scenarios.size() : 0;
+                    List<?> elements = (List<?>) feature.get("elements");
+                    totalScenarios += elements != null ? elements.size() : 0;
                 }
 
                 Map<String, Object> summary = new LinkedHashMap<>();
@@ -202,7 +210,7 @@ public final class HtmlReport {
                 suiteData.put("summary", summary);
 
                 // Write merged JSON Lines
-                Path mergedJsonl = outputDir.resolve("karate-results.jsonl");
+                Path mergedJsonl = outputDir.resolve("karate-events.jsonl");
                 Files.createDirectories(outputDir);
                 writeMergedJsonLines(mergedJsonl, suiteData, allFeatures, summary);
 
@@ -220,32 +228,43 @@ public final class HtmlReport {
                                         List<Map<String, Object>> features,
                                         Map<String, Object> summary) throws IOException {
             StringBuilder sb = new StringBuilder();
+            long ts = System.currentTimeMillis();
 
-            // Suite header
-            Map<String, Object> header = new LinkedHashMap<>();
-            header.put("t", "suite");
-            header.put("time", suiteData.get("reportDate"));
-            header.put("threads", suiteData.get("threads"));
+            // SUITE_ENTER event
+            Map<String, Object> enterEnvelope = new LinkedHashMap<>();
+            enterEnvelope.put("type", "SUITE_ENTER");
+            enterEnvelope.put("ts", suiteData.get("ts") != null ? suiteData.get("ts") : ts);
+            enterEnvelope.put("threadId", null);
+            Map<String, Object> enterData = new LinkedHashMap<>();
+            enterData.put("schemaVersion", "1");
+            enterData.put("version", suiteData.get("karateVersion"));
             if (suiteData.get("env") != null) {
-                header.put("env", suiteData.get("env"));
+                enterData.put("env", suiteData.get("env"));
             }
-            header.put("version", suiteData.get("karateVersion"));
-            sb.append(Json.stringifyStrict(header)).append("\n");
+            enterData.put("threads", suiteData.get("threads"));
+            enterEnvelope.put("data", enterData);
+            sb.append(Json.stringifyStrict(enterEnvelope)).append("\n");
 
-            // Feature lines
+            // FEATURE_EXIT events
             for (Map<String, Object> feature : features) {
-                sb.append(Json.stringifyStrict(feature)).append("\n");
+                Map<String, Object> featureEnvelope = new LinkedHashMap<>();
+                featureEnvelope.put("type", "FEATURE_EXIT");
+                featureEnvelope.put("ts", ts);
+                featureEnvelope.put("threadId", "aggregated");
+                featureEnvelope.put("data", feature);
+                sb.append(Json.stringifyStrict(featureEnvelope)).append("\n");
             }
 
-            // Suite end
-            Map<String, Object> suiteEnd = new LinkedHashMap<>();
-            suiteEnd.put("t", "suite_end");
-            suiteEnd.put("featuresPassed", summary.get("feature_passed"));
-            suiteEnd.put("featuresFailed", summary.get("feature_failed"));
-            suiteEnd.put("scenariosPassed", summary.get("scenario_passed"));
-            suiteEnd.put("scenariosFailed", summary.get("scenario_failed"));
-            suiteEnd.put("ms", summary.get("duration_millis"));
-            sb.append(Json.stringifyStrict(suiteEnd)).append("\n");
+            // SUITE_EXIT event
+            Map<String, Object> exitEnvelope = new LinkedHashMap<>();
+            exitEnvelope.put("type", "SUITE_EXIT");
+            exitEnvelope.put("ts", ts);
+            exitEnvelope.put("threadId", null);
+            Map<String, Object> exitData = new LinkedHashMap<>();
+            exitData.put("features", features);
+            exitData.put("summary", summary);
+            exitEnvelope.put("data", exitData);
+            sb.append(Json.stringifyStrict(exitEnvelope)).append("\n");
 
             Files.writeString(path, sb.toString());
         }

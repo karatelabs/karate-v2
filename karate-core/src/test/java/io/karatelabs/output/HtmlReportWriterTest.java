@@ -135,7 +135,7 @@ class HtmlReportWriterTest {
         assertTrue(Files.exists(OUTPUT_DIR.resolve("res/favicon.ico")));
 
         // Verify JSON Lines file was created
-        assertTrue(Files.exists(OUTPUT_DIR.resolve("karate-results.jsonl")));
+        assertTrue(Files.exists(OUTPUT_DIR.resolve("karate-events.jsonl")));
 
         System.out.println("\n=== HTML Reports Generated ===");
         System.out.println("Open: file://" + OUTPUT_DIR.toAbsolutePath().resolve("karate-summary.html"));
@@ -154,7 +154,7 @@ class HtmlReportWriterTest {
                 .parallel(1);
 
         assertTrue(Files.exists(outputDir.resolve("karate-summary.html")));
-        assertTrue(Files.exists(outputDir.resolve("karate-results.jsonl")));
+        assertTrue(Files.exists(outputDir.resolve("karate-events.jsonl")));
 
         System.out.println("\n=== HTML Reports (with env) Generated ===");
         System.out.println("Open: " + outputDir.toAbsolutePath().resolve("karate-summary.html"));
@@ -218,23 +218,30 @@ class HtmlReportWriterTest {
                 .outputJsonLines(true)  // opt-in to JSON Lines
                 .parallel(1);
 
-        // Verify JSON Lines format
-        String jsonl = Files.readString(reportDir.resolve("karate-results.jsonl"));
+        // Verify JSON Lines format (new event envelope format)
+        String jsonl = Files.readString(reportDir.resolve("karate-events.jsonl"));
         String[] lines = jsonl.trim().split("\n");
 
-        assertEquals(3, lines.length, "Should have 3 lines: suite, feature, suite_end");
+        assertTrue(lines.length >= 3, "Should have at least 3 event lines");
 
-        // First line should be suite header
-        assertTrue(lines[0].contains("\"t\":\"suite\""));
+        // First line should be SUITE_ENTER
+        assertTrue(lines[0].contains("\"type\":\"SUITE_ENTER\""));
         assertTrue(lines[0].contains("\"version\":\"" + Globals.KARATE_VERSION + "\""));
 
-        // Second line should be feature
-        assertTrue(lines[1].contains("\"t\":\"feature\""));
-        assertTrue(lines[1].contains("\"scenarios\""));
+        // Should have FEATURE_EXIT events
+        boolean hasFeatureExit = false;
+        for (String line : lines) {
+            if (line.contains("\"type\":\"FEATURE_EXIT\"")) {
+                hasFeatureExit = true;
+                assertTrue(line.contains("\"elements\""));
+                break;
+            }
+        }
+        assertTrue(hasFeatureExit, "Should have FEATURE_EXIT event");
 
-        // Last line should be suite_end
-        assertTrue(lines[2].contains("\"t\":\"suite_end\""));
-        assertTrue(lines[2].contains("\"featuresPassed\""));
+        // Last line should be SUITE_EXIT
+        assertTrue(lines[lines.length - 1].contains("\"type\":\"SUITE_EXIT\""));
+        assertTrue(lines[lines.length - 1].contains("\"summary\""));
     }
 
     @Test
@@ -272,33 +279,33 @@ class HtmlReportWriterTest {
                 .parallel(1);
 
         // Verify both JSON Lines files exist
-        assertTrue(Files.exists(run1Dir.resolve("karate-results.jsonl")));
-        assertTrue(Files.exists(run2Dir.resolve("karate-results.jsonl")));
+        assertTrue(Files.exists(run1Dir.resolve("karate-events.jsonl")));
+        assertTrue(Files.exists(run2Dir.resolve("karate-events.jsonl")));
 
         // Aggregate reports
         HtmlReport.aggregate()
-                .json(run1Dir.resolve("karate-results.jsonl"))
-                .json(run2Dir.resolve("karate-results.jsonl"))
+                .json(run1Dir.resolve("karate-events.jsonl"))
+                .json(run2Dir.resolve("karate-events.jsonl"))
                 .outputDir(combinedDir)
                 .generate();
 
         // Verify combined report
         assertTrue(Files.exists(combinedDir.resolve("karate-summary.html")));
-        assertTrue(Files.exists(combinedDir.resolve("karate-results.jsonl")));
+        assertTrue(Files.exists(combinedDir.resolve("karate-events.jsonl")));
 
         // Verify the combined JSON Lines has both features
-        String combinedJsonl = Files.readString(combinedDir.resolve("karate-results.jsonl"));
+        String combinedJsonl = Files.readString(combinedDir.resolve("karate-events.jsonl"));
         assertTrue(combinedJsonl.contains("Aggregation Test 1"));
         assertTrue(combinedJsonl.contains("Aggregation Test 2"));
 
-        // Count feature lines
+        // Count FEATURE_EXIT events
         int featureCount = 0;
         for (String line : combinedJsonl.split("\n")) {
-            if (line.contains("\"t\":\"feature\"")) {
+            if (line.contains("\"type\":\"FEATURE_EXIT\"")) {
                 featureCount++;
             }
         }
-        assertEquals(2, featureCount, "Combined report should have 2 features");
+        assertEquals(2, featureCount, "Combined report should have 2 FEATURE_EXIT events");
     }
 
     // ========== Scenario Name Substitution Tests ==========
@@ -332,7 +339,7 @@ class HtmlReportWriterTest {
         assertEquals(2, result.getScenarioPassedCount());
 
         // Verify JSON Lines contains the substituted scenario names
-        String jsonl = Files.readString(reportDir.resolve("karate-results.jsonl"));
+        String jsonl = Files.readString(reportDir.resolve("karate-events.jsonl"));
         assertTrue(jsonl.contains("Testing foo with value 1"),
             "Should contain substituted scenario name for first example");
         assertTrue(jsonl.contains("Testing bar with value 2"),
@@ -362,12 +369,19 @@ class HtmlReportWriterTest {
         assertTrue(result.isPassed());
         assertEquals(1, result.getScenarioPassedCount());
 
-        // Verify JSON Lines contains the evaluated scenario name
-        String jsonl = Files.readString(reportDir.resolve("karate-results.jsonl"));
-        assertTrue(jsonl.contains("result is 2"),
-            "Should contain evaluated scenario name 'result is 2'");
-        assertFalse(jsonl.contains("result is ${1+1}"),
-            "Should not contain unevaluated template literal");
+        // Verify EXIT events contain evaluated scenario name
+        // Note: SCENARIO_ENTER fires before steps run, so it has the unevaluated name - that's expected
+        String jsonl = Files.readString(reportDir.resolve("karate-events.jsonl"));
+
+        // Check SCENARIO_EXIT and FEATURE_EXIT events have evaluated name
+        for (String line : jsonl.split("\n")) {
+            if (line.contains("SCENARIO_EXIT") || line.contains("FEATURE_EXIT")) {
+                assertTrue(line.contains("result is 2"),
+                    "EXIT events should contain evaluated name 'result is 2': " + line);
+                assertFalse(line.contains("result is ${1+1}"),
+                    "EXIT events should not contain unevaluated template: " + line);
+            }
+        }
     }
 
     @Test
@@ -393,7 +407,7 @@ class HtmlReportWriterTest {
         assertTrue(result.isPassed());
 
         // Verify JSON Lines contains the evaluated scenario name with variable value
-        String jsonl = Files.readString(reportDir.resolve("karate-results.jsonl"));
+        String jsonl = Files.readString(reportDir.resolve("karate-events.jsonl"));
         assertTrue(jsonl.contains("status is active"),
             "Should contain evaluated scenario name with variable value");
     }
@@ -427,7 +441,7 @@ class HtmlReportWriterTest {
         assertEquals(2, result.getScenarioPassedCount());
 
         // Verify JSON Lines contains the evaluated scenario names with outline variables
-        String jsonl = Files.readString(reportDir.resolve("karate-results.jsonl"));
+        String jsonl = Files.readString(reportDir.resolve("karate-events.jsonl"));
         assertTrue(jsonl.contains("testing foo = 10"),
             "Should contain evaluated name for first example (5 * 2 = 10)");
         assertTrue(jsonl.contains("testing bar = 20"),
@@ -458,7 +472,7 @@ class HtmlReportWriterTest {
         assertTrue(result.isPassed());
 
         // Original name should be preserved (with backticks) in the report
-        String jsonl = Files.readString(reportDir.resolve("karate-results.jsonl"));
+        String jsonl = Files.readString(reportDir.resolve("karate-events.jsonl"));
         assertTrue(jsonl.contains("`result is ${undefinedVariable}`"),
             "Original name should be preserved when eval fails");
         // Warning should appear in the step log

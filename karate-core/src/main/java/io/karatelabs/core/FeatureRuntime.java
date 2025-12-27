@@ -111,7 +111,10 @@ public class FeatureRuntime implements Callable<FeatureResult> {
         }
 
         try {
-            beforeFeature();
+            // Fire FEATURE_ENTER event (RuntimeHookAdapter calls beforeFeature)
+            if (suite != null) {
+                suite.fireEvent(FeatureRunEvent.enter(this));
+            }
 
             for (Scenario scenario : selectedScenarios()) {
                 // Notify listeners of scenario start (only for top-level features)
@@ -134,7 +137,10 @@ public class FeatureRuntime implements Callable<FeatureResult> {
                 }
             }
 
-            afterFeature();
+            // Fire FEATURE_EXIT event (RuntimeHookAdapter calls afterFeature)
+            if (suite != null) {
+                suite.fireEvent(FeatureRunEvent.exit(this, result));
+            }
         } finally {
             result.setEndTime(System.currentTimeMillis());
 
@@ -147,25 +153,6 @@ public class FeatureRuntime implements Callable<FeatureResult> {
         }
 
         return result;
-    }
-
-    private void beforeFeature() {
-        if (suite != null) {
-            for (RuntimeHook hook : suite.getHooks()) {
-                if (!hook.beforeFeature(this)) {
-                    // Hook returned false - skip this feature
-                    return;
-                }
-            }
-        }
-    }
-
-    private void afterFeature() {
-        if (suite != null) {
-            for (RuntimeHook hook : suite.getHooks()) {
-                hook.afterFeature(this);
-            }
-        }
     }
 
     /**

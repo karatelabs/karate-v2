@@ -6,6 +6,42 @@ This document describes the reporting architecture for Karate v2, including the 
 
 ---
 
+## Implementation Status
+
+> **This is the primary document for remaining report system work.** The event system ([EVENTS.md](./EVENTS.md)) is complete.
+
+### Completed ✅
+
+| Component | Description |
+|-----------|-------------|
+| Event System (EVENTS.md Phases 1-5) | `RunEvent`, `RunListener`, `RunListenerFactory` interfaces |
+| JSONL Event Stream | `JsonLinesEventWriter` writes `karate-events.jsonl` with standard envelope |
+| Report Aggregation | `HtmlReport.aggregate()` and `HtmlReportWriter.parseJsonLines()` parse new format |
+| HTML Report Generation | `HtmlReportWriter` generates HTML from JSONL or runtime results |
+
+### In Progress / TODO
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| **Phase 1: JSON Reshaping** | Consolidate `toKarateJson()` with V1 fields (Feature, Scenario, Step, Suite) | TODO |
+| **Phase 2: HTML Template Updates** | Update Alpine.js templates for new JSON structure | TODO (depends on Phase 1) |
+| **Phase 3: Cucumber JSON** | Generate from JSONL `FEATURE_EXIT` events | TODO (depends on Phase 1) |
+
+### Deferred
+
+| Component | Description |
+|-----------|-------------|
+| PROGRESS Events | Periodic progress updates and console display (EVENTS.md Phase 5b) |
+
+### Next Steps
+
+1. **Start with Phase 1** - Update `toKarateJson()` methods in result classes to match V1 format
+2. Key files to modify: `FeatureResult.java`, `ScenarioResult.java`, `StepResult.java`, `SuiteResult.java`
+3. V1 reference files are in `/Users/peter/dev/zcode/karate/karate-core/src/main/java/com/intuit/karate/`
+4. See [Implementation Plan](#implementation-plan) section for detailed field mappings
+
+---
+
 ## Overview
 
 Karate v2 uses a unified reporting architecture:
@@ -315,9 +351,11 @@ All events share a common structure for consistency and future-proofing:
 | Field | Type | Description |
 |-------|------|-------------|
 | `type` | string | Event type (UPPER_CASE) |
-| `ts` | long | Epoch milliseconds |
+| `ts` | long | Epoch milliseconds (UTC, timezone-agnostic) |
 | `threadId` | string? | Thread identifier (nullable for suite-level events) |
 | `data` | object | Event-specific payload |
+
+**Note:** All `ts` values are Unix epoch milliseconds (milliseconds since 1970-01-01 00:00:00 UTC). Consumers can convert to any local timezone.
 
 ### Core Event Types
 
@@ -894,13 +932,21 @@ This section captures all design decisions for the v2 report system refactoring.
 
 ---
 
-## Implementation Plan (TODO)
+## Implementation Plan
 
 This section documents the refactoring needed to align v2 with v1 karate JSON format.
+
+> **Dependency order:** Phase 1 (JSON) → Phase 2 (HTML) → Phase 3 (Cucumber)
+>
+> Cucumber JSON generation depends on `toKarateJson()` producing V1-compatible output.
+
+---
 
 ### Phase 1: Consolidate to Single Format
 
 **Goal:** Remove `toMap()`, use `toKarateJson()` everywhere.
+
+**Status:** TODO
 
 #### Files to Modify
 
@@ -909,8 +955,8 @@ This section documents the refactoring needed to align v2 with v1 karate JSON fo
 | `FeatureResult.java` | Remove `toMap()`, update `toKarateJson()` to include all v1 fields |
 | `ScenarioResult.java` | Remove `toMap()`, update `toKarateJson()` to include all v1 fields |
 | `StepResult.java` | Remove `toMap()`, restructure to v1 nested `step`/`result` format |
+| `SuiteResult.java` | Align `toKarateJson()` with v1 `Results.toKarateJson()` |
 | `HtmlReportWriter.java` | Use `toKarateJson()` instead of `toMap()` |
-| `JsonLinesReportListener.java` | Use `toKarateJson()` instead of `toMap()` |
 
 #### FeatureResult Changes
 
@@ -1001,50 +1047,7 @@ public Map<String, Object> toKarateJson() {
 }
 ```
 
-### Phase 2: Update HTML Templates
-
-Update Alpine.js templates to use new JSON structure:
-
-| Current | New |
-|---------|-----|
-| `step.prefix` | `step.step.prefix` |
-| `step.text` | `step.step.text` |
-| `step.status` | `step.result.status` |
-| `step.ms` | `step.result.millis` |
-| `step.logs` | `step.stepLog` |
-| `step.nestedScenarios` | `step.callResults` |
-| `feature.scenarios` | `feature.scenarioResults` |
-
-### Phase 3: Cucumber JSON from JSONL
-
-**Goal:** Generate cucumber JSON by post-processing `FEATURE_EXIT` events from `karate-events.jsonl`, not directly from runtime.
-
-```
-karate-events.jsonl
-        ↓
-Filter FEATURE_EXIT events (each contains full toKarateJson())
-        ↓
-CucumberJsonConverter.fromJsonLines(path)
-        ↓
-cucumber.json
-```
-
-#### Conversion Mapping
-
-| Karate JSON | Cucumber JSON |
-|-------------|---------------|
-| `name` | `name` |
-| `relativePath` | `uri` |
-| `scenarioResults` | `elements` (with background interleaved) |
-| `stepResults` | `steps` |
-| `step.prefix` | `keyword` |
-| `step.text` | `name` |
-| `result.nanos` | `result.duration` |
-| `stepLog` | `doc_string.value` |
-| `embeds` | `embeddings` |
-| Nested `callResults` | Flatten with `>` prefix on keywords |
-
-### Phase 4: SuiteResult Changes
+#### SuiteResult Changes
 
 Align `SuiteResult.toKarateJson()` with V1 `Results.toKarateJson()`:
 
@@ -1100,9 +1103,60 @@ Align `SuiteResult.toKarateJson()` with V1 `Results.toKarateJson()`:
 - Add: `featureSummary` array with lightweight feature info (for `karate-summary.html`)
 - Remove: nested `summary` object (flatten to top level)
 
-### Phase 5: JSONL Event Writer
+### Phase 2: Update HTML Templates
 
-Implement `JsonLinesEventWriter` with standard envelope:
+**Goal:** Update Alpine.js templates to use new JSON structure from Phase 1.
+
+**Status:** TODO (depends on Phase 1)
+
+Update Alpine.js templates to use new JSON structure:
+
+| Current | New |
+|---------|-----|
+| `step.prefix` | `step.step.prefix` |
+| `step.text` | `step.step.text` |
+| `step.status` | `step.result.status` |
+| `step.ms` | `step.result.millis` |
+| `step.logs` | `step.stepLog` |
+| `step.nestedScenarios` | `step.callResults` |
+| `feature.scenarios` | `feature.scenarioResults` |
+
+### Phase 3: Cucumber JSON from JSONL
+
+**Goal:** Generate cucumber JSON by post-processing `FEATURE_EXIT` events from `karate-events.jsonl`, not directly from runtime.
+
+**Status:** TODO (depends on Phase 1)
+
+```
+karate-events.jsonl
+        ↓
+Filter FEATURE_EXIT events (each contains full toKarateJson())
+        ↓
+CucumberJsonConverter.fromJsonLines(path)
+        ↓
+cucumber.json
+```
+
+#### Conversion Mapping
+
+| Karate JSON | Cucumber JSON |
+|-------------|---------------|
+| `name` | `name` |
+| `relativePath` | `uri` |
+| `scenarioResults` | `elements` (with background interleaved) |
+| `stepResults` | `steps` |
+| `step.prefix` | `keyword` |
+| `step.text` | `name` |
+| `result.nanos` | `result.duration` |
+| `stepLog` | `doc_string.value` |
+| `embeds` | `embeddings` |
+| Nested `callResults` | Flatten with `>` prefix on keywords |
+
+### Phase 4: JSONL Event Writer ✅
+
+**Status:** COMPLETE
+
+Implement `JsonLinesEventWriter` with standard envelope. Uses pattern matching on sealed `RunEvent` types:
 
 ```java
 public class JsonLinesEventWriter implements RunListener {
@@ -1116,30 +1170,48 @@ public class JsonLinesEventWriter implements RunListener {
         envelope.put("type", event.getType().name());
         envelope.put("ts", System.currentTimeMillis());
         envelope.put("threadId", getThreadId());  // nullable string
-        envelope.put("data", buildData(event));
+        envelope.put("data", event.toJson());  // Each event type serializes itself
 
         writeLine(Json.stringify(envelope));
         return true;
     }
+}
+```
 
-    private Map<String, Object> buildData(RunEvent event) {
-        return switch (event.getType()) {
-            case SUITE_ENTER -> Map.of(
-                "version", Globals.KARATE_VERSION,
-                "schemaVersion", "1",
-                "env", suite.getEnv(),
-                "threads", suite.getThreadCount(),
-                "paths", suite.getPaths()
-            );
-            case FEATURE_EXIT -> event.getFeatureResult().toKarateJson();
-            case SUITE_EXIT -> buildSuiteExitData(event.getSuiteResult());
-            // ... other cases
-        };
-    }
+Each sealed event type implements `toJson()`:
+
+```java
+// In SuiteRunEvent
+public Map<String, Object> toJson() {
+    return switch (type) {
+        case SUITE_ENTER -> Map.of(
+            "version", Globals.KARATE_VERSION,
+            "schemaVersion", "1",
+            "env", source.getEnv(),
+            "threads", source.getThreadCount()
+        );
+        case SUITE_EXIT -> result.toKarateJson();
+        default -> Map.of();
+    };
+}
+
+// In FeatureRunEvent
+public Map<String, Object> toJson() {
+    return switch (type) {
+        case FEATURE_ENTER -> Map.of(
+            "path", source.getFeature().getResource().getRelativePath(),
+            "name", source.getFeature().getName(),
+            "line", source.getFeature().getLine()
+        );
+        case FEATURE_EXIT -> result.toKarateJson();
+        default -> Map.of();
+    };
 }
 ```
 
 ### Phase 6: HTML Template Updates
+
+**Status:** TODO (depends on Phase 1)
 
 Update Alpine.js templates for new JSON structure:
 

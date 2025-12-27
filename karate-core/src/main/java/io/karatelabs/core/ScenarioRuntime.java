@@ -734,7 +734,15 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         result.setThreadName(threadName);
 
         try {
-            beforeScenario();
+            // Fire SCENARIO_ENTER event (RuntimeHookAdapter calls beforeScenario)
+            Suite suite = featureRuntime != null ? featureRuntime.getSuite() : null;
+            if (suite != null) {
+                boolean proceed = suite.fireEvent(ScenarioRunEvent.enter(this));
+                if (!proceed) {
+                    // Listener returned false - skip this scenario
+                    stopped = true;
+                }
+            }
 
             List<Step> steps = skipBackground ? scenario.getSteps() : scenario.getStepsIncludingBackground();
             for (Step step : steps) {
@@ -755,14 +763,20 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
                 }
             }
 
+            // Evaluate backtick scenario name for reports (e.g., `result is ${1+1}`)
+            // Must happen BEFORE SCENARIO_EXIT so the event contains the evaluated name
+            evaluateScenarioName();
+
+            // Fire SCENARIO_EXIT event
+            if (suite != null) {
+                suite.fireEvent(ScenarioRunEvent.exit(this, result));
+            }
+
         } catch (Throwable t) {
             error = t;
             stopped = true;
         } finally {
-            afterScenario();
-            // Evaluate backtick scenario name for reports (e.g., `result is ${1+1}`)
-            // Must happen before LogContext.clear() so warnings are captured in report
-            evaluateScenarioName();
+            // Note: afterScenario is called via SCENARIO_EXIT event through RuntimeHookAdapter
 
             // Handle @fail tag - invert pass/fail result
             if (scenario.isFail()) {
@@ -773,26 +787,6 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         }
 
         return result;
-    }
-
-    private void beforeScenario() {
-        if (featureRuntime != null && featureRuntime.getSuite() != null) {
-            for (RuntimeHook hook : featureRuntime.getSuite().getHooks()) {
-                if (!hook.beforeScenario(this)) {
-                    // Hook returned false - skip this scenario
-                    stopped = true;
-                    return;
-                }
-            }
-        }
-    }
-
-    private void afterScenario() {
-        if (featureRuntime != null && featureRuntime.getSuite() != null) {
-            for (RuntimeHook hook : featureRuntime.getSuite().getHooks()) {
-                hook.afterScenario(this);
-            }
-        }
     }
 
     /**
