@@ -48,6 +48,11 @@ public interface RunEvent {
     RunEventType getType();
 
     /**
+     * Returns the timestamp when this event occurred (epoch milliseconds).
+     */
+    long getTimeStamp();
+
+    /**
      * Serializes this event to a map for JSONL output.
      */
     Map<String, Object> toJson();

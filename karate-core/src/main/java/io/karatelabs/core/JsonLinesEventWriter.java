@@ -41,12 +41,12 @@ import java.util.Map;
  * <p>
  * This writer outputs events in the standard envelope format:
  * <pre>
- * {"type":"SUITE_ENTER","ts":1703500000000,"threadId":null,"data":{...}}
- * {"type":"FEATURE_ENTER","ts":1703500000010,"threadId":"worker-1","data":{...}}
- * {"type":"SCENARIO_ENTER","ts":1703500000020,"threadId":"worker-1","data":{...}}
- * {"type":"SCENARIO_EXIT","ts":1703500000100,"threadId":"worker-1","data":{...}}
- * {"type":"FEATURE_EXIT","ts":1703500000200,"threadId":"worker-1","data":{...}}
- * {"type":"SUITE_EXIT","ts":1703500010000,"threadId":null,"data":{...}}
+ * {"type":"SUITE_ENTER","timeStamp":1703500000000,"threadId":null,"data":{...}}
+ * {"type":"FEATURE_ENTER","timeStamp":1703500000010,"threadId":"worker-1","data":{...}}
+ * {"type":"SCENARIO_ENTER","timeStamp":1703500000020,"threadId":"worker-1","data":{...}}
+ * {"type":"SCENARIO_EXIT","timeStamp":1703500000100,"threadId":"worker-1","data":{...}}
+ * {"type":"FEATURE_EXIT","timeStamp":1703500000200,"threadId":"worker-1","data":{...}}
+ * {"type":"SUITE_EXIT","timeStamp":1703500010000,"threadId":null,"data":{...}}
  * </pre>
  * <p>
  * Use cases:
@@ -104,7 +104,7 @@ public class JsonLinesEventWriter implements RunListener, Closeable {
         try {
             Map<String, Object> envelope = new LinkedHashMap<>();
             envelope.put("type", event.getType().name());
-            envelope.put("ts", System.currentTimeMillis());
+            envelope.put("timeStamp", event.getTimeStamp());
             envelope.put("threadId", getThreadId(event));
 
             // Build data payload

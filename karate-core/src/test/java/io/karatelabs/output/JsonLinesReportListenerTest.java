@@ -110,7 +110,7 @@ class JsonLinesReportListenerTest {
         assertEquals("SUITE_ENTER", envelope.get("type"));
         assertEquals("dev", data.get("env"));
         assertEquals(Globals.KARATE_VERSION, data.get("version"));
-        assertTrue(envelope.containsKey("ts"));
+        assertTrue(envelope.containsKey("timeStamp"));
         assertTrue(data.containsKey("threads"));
     }
 

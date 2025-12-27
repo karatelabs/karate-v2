@@ -35,21 +35,27 @@ public record StepRunEvent(
         RunEventType type,
         Step step,
         ScenarioRuntime scenarioRuntime,
-        StepResult result  // null for ENTER
+        StepResult result,  // null for ENTER
+        long timeStamp
 ) implements RunEvent {
 
     public static StepRunEvent enter(Step step, ScenarioRuntime sr) {
-        return new StepRunEvent(RunEventType.STEP_ENTER, step, sr, null);
+        return new StepRunEvent(RunEventType.STEP_ENTER, step, sr, null, System.currentTimeMillis());
     }
 
     public static StepRunEvent exit(StepResult result, ScenarioRuntime sr) {
         Step step = result != null ? result.getStep() : null;
-        return new StepRunEvent(RunEventType.STEP_EXIT, step, sr, result);
+        return new StepRunEvent(RunEventType.STEP_EXIT, step, sr, result, System.currentTimeMillis());
     }
 
     @Override
     public RunEventType getType() {
         return type;
+    }
+
+    @Override
+    public long getTimeStamp() {
+        return timeStamp;
     }
 
     @Override

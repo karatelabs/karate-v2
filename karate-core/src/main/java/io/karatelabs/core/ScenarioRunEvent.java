@@ -32,20 +32,26 @@ import java.util.Map;
 public record ScenarioRunEvent(
         RunEventType type,
         ScenarioRuntime source,
-        ScenarioResult result  // null for ENTER
+        ScenarioResult result,  // null for ENTER
+        long timeStamp
 ) implements RunEvent {
 
     public static ScenarioRunEvent enter(ScenarioRuntime sr) {
-        return new ScenarioRunEvent(RunEventType.SCENARIO_ENTER, sr, null);
+        return new ScenarioRunEvent(RunEventType.SCENARIO_ENTER, sr, null, System.currentTimeMillis());
     }
 
     public static ScenarioRunEvent exit(ScenarioRuntime sr, ScenarioResult result) {
-        return new ScenarioRunEvent(RunEventType.SCENARIO_EXIT, sr, result);
+        return new ScenarioRunEvent(RunEventType.SCENARIO_EXIT, sr, result, System.currentTimeMillis());
     }
 
     @Override
     public RunEventType getType() {
         return type;
+    }
+
+    @Override
+    public long getTimeStamp() {
+        return timeStamp;
     }
 
     @Override

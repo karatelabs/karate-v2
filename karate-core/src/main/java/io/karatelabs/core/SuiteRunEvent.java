@@ -32,20 +32,26 @@ import java.util.Map;
 public record SuiteRunEvent(
         RunEventType type,
         Suite source,
-        SuiteResult result  // null for ENTER
+        SuiteResult result,  // null for ENTER
+        long timeStamp
 ) implements RunEvent {
 
     public static SuiteRunEvent enter(Suite suite) {
-        return new SuiteRunEvent(RunEventType.SUITE_ENTER, suite, null);
+        return new SuiteRunEvent(RunEventType.SUITE_ENTER, suite, null, System.currentTimeMillis());
     }
 
     public static SuiteRunEvent exit(Suite suite, SuiteResult result) {
-        return new SuiteRunEvent(RunEventType.SUITE_EXIT, suite, result);
+        return new SuiteRunEvent(RunEventType.SUITE_EXIT, suite, result, System.currentTimeMillis());
     }
 
     @Override
     public RunEventType getType() {
         return type;
+    }
+
+    @Override
+    public long getTimeStamp() {
+        return timeStamp;
     }
 
     @Override

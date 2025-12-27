@@ -32,16 +32,22 @@ import java.util.Map;
 public record ProgressRunEvent(
         Suite suite,
         int completed,
-        int total
+        int total,
+        long timeStamp
 ) implements RunEvent {
 
     public static ProgressRunEvent of(Suite suite, int completed, int total) {
-        return new ProgressRunEvent(suite, completed, total);
+        return new ProgressRunEvent(suite, completed, total, System.currentTimeMillis());
     }
 
     @Override
     public RunEventType getType() {
         return RunEventType.PROGRESS;
+    }
+
+    @Override
+    public long getTimeStamp() {
+        return timeStamp;
     }
 
     @Override

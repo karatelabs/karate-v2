@@ -170,28 +170,31 @@ class RunListenerTest {
     @Test
     void testFeatureRunEventToJson() {
         // FeatureRunEvent.enter with null source should not throw
-        FeatureRunEvent event = new FeatureRunEvent(RunEventType.FEATURE_ENTER, null, null);
+        FeatureRunEvent event = FeatureRunEvent.enter(null);
         Map<String, Object> json = event.toJson();
         assertNotNull(json);
         assertTrue(json.isEmpty());
+        assertTrue(event.getTimeStamp() > 0);
     }
 
     @Test
     void testScenarioRunEventToJson() {
         // ScenarioRunEvent with null source should not throw
-        ScenarioRunEvent event = new ScenarioRunEvent(RunEventType.SCENARIO_ENTER, null, null);
+        ScenarioRunEvent event = ScenarioRunEvent.enter(null);
         Map<String, Object> json = event.toJson();
         assertNotNull(json);
         assertTrue(json.isEmpty());
+        assertTrue(event.getTimeStamp() > 0);
     }
 
     @Test
     void testStepRunEventToJson() {
         // StepRunEvent with null step should not throw
-        StepRunEvent event = new StepRunEvent(RunEventType.STEP_ENTER, null, null, null);
+        StepRunEvent event = StepRunEvent.enter(null, null);
         Map<String, Object> json = event.toJson();
         assertNotNull(json);
         assertTrue(json.isEmpty());
+        assertTrue(event.getTimeStamp() > 0);
     }
 
     @Test

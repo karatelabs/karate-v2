@@ -31,16 +31,22 @@ import java.util.Map;
  */
 public record ErrorRunEvent(
         ScenarioRuntime scenarioRuntime,
-        Throwable error
+        Throwable error,
+        long timeStamp
 ) implements RunEvent {
 
     public static ErrorRunEvent of(Throwable error, ScenarioRuntime sr) {
-        return new ErrorRunEvent(sr, error);
+        return new ErrorRunEvent(sr, error, System.currentTimeMillis());
     }
 
     @Override
     public RunEventType getType() {
         return RunEventType.ERROR;
+    }
+
+    @Override
+    public long getTimeStamp() {
+        return timeStamp;
     }
 
     @Override

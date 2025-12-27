@@ -32,20 +32,26 @@ import java.util.Map;
 public record FeatureRunEvent(
         RunEventType type,
         FeatureRuntime source,
-        FeatureResult result  // null for ENTER
+        FeatureResult result,  // null for ENTER
+        long timeStamp
 ) implements RunEvent {
 
     public static FeatureRunEvent enter(FeatureRuntime fr) {
-        return new FeatureRunEvent(RunEventType.FEATURE_ENTER, fr, null);
+        return new FeatureRunEvent(RunEventType.FEATURE_ENTER, fr, null, System.currentTimeMillis());
     }
 
     public static FeatureRunEvent exit(FeatureRuntime fr, FeatureResult result) {
-        return new FeatureRunEvent(RunEventType.FEATURE_EXIT, fr, result);
+        return new FeatureRunEvent(RunEventType.FEATURE_EXIT, fr, result, System.currentTimeMillis());
     }
 
     @Override
     public RunEventType getType() {
         return type;
+    }
+
+    @Override
+    public long getTimeStamp() {
+        return timeStamp;
     }
 
     @Override
