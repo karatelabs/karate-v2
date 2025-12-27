@@ -163,10 +163,13 @@ public class RunCommand implements Callable<Integer> {
     String runtimeLogLevel;
 
     @Option(
-            names = {"--jsonl"},
-            description = "Output JSONL event stream to karate-events.jsonl (for CI/CD, IDEs, dashboards)"
+            names = {"-f", "--format"},
+            split = ",",
+            description = "Comma-separated output formats. Use ~ to disable. "
+                    + "e.g. '-f ~html,cucumber:json' "
+                    + "Formats: html (default), cucumber:json, junit:xml, karate:jsonl"
     )
-    Boolean jsonl;
+    List<String> formats;
 
     // Loaded pom config
     private KaratePom pom;
@@ -264,10 +267,13 @@ public class RunCommand implements Callable<Integer> {
                 builder.logLevel(effectiveLogLevel);
             }
 
-            // JSONL event stream
-            boolean effectiveJsonl = resolveJsonl();
-            if (effectiveJsonl) {
-                builder.outputJsonLines(true);
+            // Output formats (HTML is default on, others default off)
+            // CLI -f flag overrides pom settings
+            if (formats != null) {
+                builder.outputHtmlReport(isFormatEnabled("html", true));
+                builder.outputCucumberJson(isFormatEnabled("cucumber:json", false));
+                builder.outputJunitXml(isFormatEnabled("junit:xml", false));
+                builder.outputJsonLines(isFormatEnabled("karate:jsonl", false));
             }
 
             // Run tests
@@ -383,14 +389,28 @@ public class RunCommand implements Callable<Integer> {
         return null; // Use default (INFO)
     }
 
-    private boolean resolveJsonl() {
-        if (jsonl != null) {
-            return jsonl;
+    /**
+     * Check if a format is enabled based on the -f/--format flag.
+     * Supports negation with ~ prefix (e.g., ~html disables html).
+     *
+     * @param format       the format name (e.g., "html", "cucumber:json")
+     * @param defaultValue the default value if format not mentioned
+     * @return true if format is enabled
+     */
+    private boolean isFormatEnabled(String format, boolean defaultValue) {
+        if (formats == null) {
+            return defaultValue;
         }
-        if (pom != null) {
-            return pom.getOutput().isJsonLines();
+        // Check for explicit disable (~format)
+        if (formats.contains("~" + format)) {
+            return false;
         }
-        return false;
+        // Check for explicit enable
+        if (formats.contains(format)) {
+            return true;
+        }
+        // Not mentioned, use default
+        return defaultValue;
     }
 
     /**

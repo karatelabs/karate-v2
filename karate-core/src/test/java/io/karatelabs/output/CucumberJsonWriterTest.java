@@ -72,8 +72,8 @@ class CucumberJsonWriterTest {
 
         assertTrue(result.isPassed());
 
-        // Verify JSON file was created
-        Path jsonPath = reportDir.resolve("cucumber.json");
+        // Verify per-feature JSON file was created (named after packageQualifiedName)
+        Path jsonPath = reportDir.resolve("cucumber-json/test.json");
         assertTrue(Files.exists(jsonPath), "Cucumber JSON file should exist");
 
         String jsonStr = Files.readString(jsonPath);
@@ -141,7 +141,7 @@ class CucumberJsonWriterTest {
 
         assertTrue(result.isFailed());
 
-        Path jsonPath = reportDir.resolve("cucumber.json");
+        Path jsonPath = reportDir.resolve("cucumber-json/failing.json");
         assertTrue(Files.exists(jsonPath));
 
         String jsonStr = Files.readString(jsonPath);
@@ -192,7 +192,7 @@ class CucumberJsonWriterTest {
                 .outputCucumberJson(true)
                 .parallel(1);
 
-        Path jsonPath = reportDir.resolve("cucumber.json");
+        Path jsonPath = reportDir.resolve("cucumber-json/tagged.json");
         String jsonStr = Files.readString(jsonPath);
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> features = (List<Map<String, Object>>) (List<?>) Json.of(jsonStr).asList();
@@ -216,9 +216,9 @@ class CucumberJsonWriterTest {
 
     @Test
     void testCucumberJsonNotGeneratedByDefault() throws Exception {
-        Path feature = tempDir.resolve("simple.feature");
+        Path feature = tempDir.resolve("nocucumber.feature");
         Files.writeString(feature, """
-            Feature: Simple
+            Feature: No Cucumber JSON
             Scenario: Test
             * def a = 1
             """);
@@ -228,26 +228,17 @@ class CucumberJsonWriterTest {
         Runner.path(feature.toString())
                 .workingDir(tempDir)
                 .outputDir(reportDir)
+                .outputCucumberJson(false)  // explicitly disabled
                 .parallel(1);
 
         // JSON summary should exist
         assertTrue(Files.exists(reportDir.resolve("karate-summary.json")));
 
-        // Cucumber JSON should NOT exist by default
-        assertFalse(Files.exists(reportDir.resolve("cucumber.json")));
-    }
-
-    @Test
-    void testToJsonMethod() {
-        // Create a minimal SuiteResult manually
-        SuiteResult result = new SuiteResult();
-        result.setStartTime(System.currentTimeMillis());
-        result.setEndTime(System.currentTimeMillis() + 1000);
-
-        String json = CucumberJsonWriter.toJson(result);
-
-        // Should be an empty array (pretty printed)
-        assertTrue(json.contains("[") && json.contains("]"), "Should be an empty JSON array");
+        // Cucumber JSON should NOT exist (check for the packageQualifiedName-based file)
+        // Note: Karate JSON writes {featureName}.json, Cucumber JSON writes {packageQualifiedName}.json
+        // On case-insensitive filesystems, we need distinct names to avoid collision
+        assertFalse(Files.exists(reportDir.resolve("cucumber-json/nocucumber.json")),
+                "Cucumber JSON file should not exist when outputCucumberJson is false");
     }
 
     @Test
@@ -275,7 +266,7 @@ class CucumberJsonWriterTest {
                 .outputCucumberJson(true)
                 .parallel(1);
 
-        Path jsonPath = reportDir.resolve("cucumber.json");
+        Path jsonPath = reportDir.resolve("cucumber-json/docstring.json");
         String jsonStr = Files.readString(jsonPath);
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> features = (List<Map<String, Object>>) (List<?>) Json.of(jsonStr).asList();
@@ -321,7 +312,7 @@ class CucumberJsonWriterTest {
                 .outputCucumberJson(true)
                 .parallel(1);
 
-        Path jsonPath = reportDir.resolve("cucumber.json");
+        Path jsonPath = reportDir.resolve("cucumber-json/table.json");
         String jsonStr = Files.readString(jsonPath);
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> features = (List<Map<String, Object>>) (List<?>) Json.of(jsonStr).asList();

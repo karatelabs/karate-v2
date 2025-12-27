@@ -27,7 +27,6 @@ import io.karatelabs.common.Json;
 import io.karatelabs.core.FeatureResult;
 import io.karatelabs.core.ScenarioResult;
 import io.karatelabs.core.StepResult;
-import io.karatelabs.core.SuiteResult;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.Scenario;
 import io.karatelabs.gherkin.Step;
@@ -39,6 +38,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,39 +81,40 @@ public final class CucumberJsonWriter {
     }
 
     /**
-     * Write Cucumber JSON report to the specified output directory.
+     * Write Cucumber JSON report for a single feature.
+     * <p>
+     * Output file is named {@code {packageQualifiedName}.json} and contains
+     * an array with a single feature object (Cucumber JSON format).
      *
-     * @param result    the suite result to convert
+     * @param result    the feature result to convert
      * @param outputDir the directory to write the report
      */
-    public static void write(SuiteResult result, Path outputDir) {
+    public static void writeFeature(FeatureResult result, Path outputDir) {
         try {
             if (!Files.exists(outputDir)) {
                 Files.createDirectories(outputDir);
             }
 
-            Path jsonPath = outputDir.resolve("cucumber.json");
-            String json = toJson(result);
+            String fileName = result.getFeature().getResource().getPackageQualifiedName() + ".json";
+            Path jsonPath = outputDir.resolve(fileName);
+            String json = featureToJson(result);
             Files.writeString(jsonPath, json);
-            logger.info("Cucumber JSON report written to: {}", jsonPath);
+            logger.debug("Cucumber JSON written: {}", jsonPath);
         } catch (Exception e) {
-            logger.warn("Failed to write Cucumber JSON report: {}", e.getMessage());
+            logger.warn("Failed to write Cucumber JSON for {}: {}", result.getDisplayName(), e.getMessage());
         }
     }
 
     /**
-     * Convert suite result to Cucumber JSON string.
+     * Convert a single feature result to Cucumber JSON string.
+     * <p>
+     * Returns a JSON array containing a single feature object.
      *
-     * @param result the suite result
+     * @param result the feature result
      * @return JSON string
      */
-    public static String toJson(SuiteResult result) {
-        List<Map<String, Object>> features = new ArrayList<>();
-
-        for (FeatureResult fr : result.getFeatureResults()) {
-            features.add(featureToMap(fr));
-        }
-
+    public static String featureToJson(FeatureResult result) {
+        List<Map<String, Object>> features = Collections.singletonList(featureToMap(result));
         return Json.of(features).toStringPretty();
     }
 

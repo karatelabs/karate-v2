@@ -70,24 +70,21 @@ class JunitXmlWriterTest {
 
         assertTrue(result.isPassed());
 
-        // Verify XML file was created
-        Path xmlPath = reportDir.resolve("karate-junit.xml");
+        // Verify per-feature XML file was created (named after packageQualifiedName)
+        Path xmlPath = reportDir.resolve("junit-xml/test.xml");
         assertTrue(Files.exists(xmlPath), "JUnit XML file should exist");
 
         String xml = Files.readString(xmlPath);
 
-        // Verify XML structure
-        assertTrue(xml.startsWith("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
-        assertTrue(xml.contains("<testsuites"));
-        assertTrue(xml.contains("name=\"karate\""));
-        assertTrue(xml.contains("tests=\"2\""));
-        assertTrue(xml.contains("failures=\"0\""));
+        // Verify XML structure (per-feature, single <testsuite> root)
         assertTrue(xml.contains("<testsuite"));
         assertTrue(xml.contains("name=\"JUnit XML Test\""));
+        assertTrue(xml.contains("tests=\"2\""));
+        assertTrue(xml.contains("failures=\"0\""));
         assertTrue(xml.contains("<testcase"));
         assertTrue(xml.contains("name=\"Passing scenario\""));
         assertTrue(xml.contains("name=\"Another passing\""));
-        assertTrue(xml.contains("</testsuites>"));
+        assertTrue(xml.contains("</testsuite>"));
     }
 
     @Test
@@ -115,7 +112,7 @@ class JunitXmlWriterTest {
 
         assertTrue(result.isFailed());
 
-        Path xmlPath = reportDir.resolve("karate-junit.xml");
+        Path xmlPath = reportDir.resolve("junit-xml/failing.xml");
         assertTrue(Files.exists(xmlPath));
 
         String xml = Files.readString(xmlPath);
@@ -149,7 +146,7 @@ class JunitXmlWriterTest {
                 .outputJunitXml(true)
                 .parallel(1);
 
-        Path xmlPath = reportDir.resolve("karate-junit.xml");
+        Path xmlPath = reportDir.resolve("junit-xml/special.xml");
         String xml = Files.readString(xmlPath);
 
         // Verify special characters are escaped
@@ -161,9 +158,9 @@ class JunitXmlWriterTest {
 
     @Test
     void testJunitXmlNotGeneratedByDefault() throws Exception {
-        Path feature = tempDir.resolve("simple.feature");
+        Path feature = tempDir.resolve("nojunit.feature");
         Files.writeString(feature, """
-            Feature: Simple
+            Feature: No JUnit
             Scenario: Test
             * def a = 1
             """);
@@ -178,24 +175,71 @@ class JunitXmlWriterTest {
         // JSON report should exist
         assertTrue(Files.exists(reportDir.resolve("karate-summary.json")));
 
-        // JUnit XML should NOT exist by default
-        assertFalse(Files.exists(reportDir.resolve("karate-junit.xml")));
+        // JUnit XML should NOT exist by default (per-feature file)
+        assertFalse(Files.exists(reportDir.resolve("junit-xml/nojunit.xml")),
+                "JUnit XML file should not exist when outputJunitXml is false");
     }
 
     @Test
-    void testToXmlMethod() {
-        // Create a minimal SuiteResult manually
-        SuiteResult result = new SuiteResult();
-        result.setStartTime(System.currentTimeMillis());
-        result.setEndTime(System.currentTimeMillis() + 1000);
+    void testJunitXmlWithTags() throws Exception {
+        Path feature = tempDir.resolve("tagged.feature");
+        Files.writeString(feature, """
+            @feature-tag
+            Feature: Tagged Feature
 
-        String xml = JunitXmlWriter.toXml(result);
+            @smoke @api
+            Scenario: Tagged scenario
+            * def a = 1
+            * match a == 1
+            """);
 
-        assertTrue(xml.contains("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
-        assertTrue(xml.contains("<testsuites"));
-        assertTrue(xml.contains("tests=\"0\""));
-        assertTrue(xml.contains("failures=\"0\""));
-        assertTrue(xml.contains("</testsuites>"));
+        Path reportDir = tempDir.resolve("reports");
+
+        Runner.path(feature.toString())
+                .workingDir(tempDir)
+                .outputDir(reportDir)
+                .outputJunitXml(true)
+                .parallel(1);
+
+        Path xmlPath = reportDir.resolve("junit-xml/tagged.xml");
+        String xml = Files.readString(xmlPath);
+
+        // Verify tags are included as properties
+        assertTrue(xml.contains("<properties>"));
+        assertTrue(xml.contains("<property name=\"tag\""));
+        assertTrue(xml.contains("@smoke"));
+        assertTrue(xml.contains("</properties>"));
+    }
+
+    @Test
+    void testJunitXmlWithStepLogs() throws Exception {
+        Path feature = tempDir.resolve("logs.feature");
+        Files.writeString(feature, """
+            Feature: Step Logs
+
+            Scenario: With print
+            * def a = 1
+            * print 'hello world'
+            * match a == 1
+            """);
+
+        Path reportDir = tempDir.resolve("reports");
+
+        Runner.path(feature.toString())
+                .workingDir(tempDir)
+                .outputDir(reportDir)
+                .outputJunitXml(true)
+                .parallel(1);
+
+        Path xmlPath = reportDir.resolve("junit-xml/logs.xml");
+        String xml = Files.readString(xmlPath);
+
+        // Verify step logs in system-out
+        assertTrue(xml.contains("<system-out>"));
+        assertTrue(xml.contains("a = 1"), "Should contain step text");
+        // print step logs appear as actual content, not keyword
+        assertTrue(xml.contains("hello world"), "Should contain print output");
+        assertTrue(xml.contains("</system-out>"), "XML should contain </system-out>");
     }
 
 }

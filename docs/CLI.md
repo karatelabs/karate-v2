@@ -124,7 +124,35 @@ karate run tests/
 | `--no-color` | Disable colored output |
 | `--report-log-level <level>` | Minimum log level for HTML reports (default: info) |
 | `--runtime-log-level <level>` | SLF4J logger level for console output |
+| `-f, --format <formats>` | Output formats (see below) |
 | `--log-mask <presets>` | Log masking presets (comma-separated) |
+
+### Output Formats
+
+Control report output with `-f/--format`. Comma-separated, use `~` to disable:
+
+| Format | Description | Default |
+|--------|-------------|---------|
+| `html` | Karate HTML reports | On |
+| `cucumber:json` | Per-feature Cucumber JSON (for Allure, ReportPortal) | Off |
+| `junit:xml` | JUnit XML reports | Off |
+| `karate:jsonl` | JSONL event stream (for CI/CD, IDEs) | Off |
+
+**Examples:**
+
+```bash
+# Enable Cucumber JSON (HTML still on by default)
+karate run -f cucumber:json features/
+
+# Enable multiple formats
+karate run -f cucumber:json,junit:xml features/
+
+# Disable HTML, enable Cucumber JSON
+karate run -f ~html,cucumber:json features/
+
+# Only JSONL output (disable HTML)
+karate run -f ~html,karate:jsonl features/
+```
 
 ### Log Masking
 
@@ -391,6 +419,24 @@ karate mcp --stdio
 ```
 
 > **Note:** `karate init` is implemented in Rust. See [Rust Launcher Spec](../../karate-cli/docs/spec.md) for details.
+
+---
+
+## TODO
+
+### Two-Way JSON Configuration
+
+Currently `karate-pom.json` is read-only (JSON → config). Implement bidirectional conversion:
+
+1. **`KaratePom.toJson()`** - serialize config back to JSON
+2. **`RunCommand.toPom()`** - convert CLI args to KaratePom object
+3. **`karate config --export`** - dump effective merged config as JSON
+4. **`karate config --show`** - display current effective configuration
+
+**Use cases:**
+- IDE tooling for programmatic config read/write
+- `karate init` generating starter `karate-pom.json` with user's CLI preferences
+- Debugging: see what config is actually being used after CLI + pom merge
 
 ---
 
