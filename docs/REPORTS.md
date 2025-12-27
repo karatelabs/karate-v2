@@ -18,14 +18,14 @@ This document describes the reporting architecture for Karate v2, including the 
 | JSONL Event Stream | `JsonLinesEventWriter` writes `karate-events.jsonl` with standard envelope |
 | Report Aggregation | `HtmlReport.aggregate()` and `HtmlReportWriter.parseJsonLines()` parse new format |
 | HTML Report Generation | `HtmlReportWriter` generates HTML from JSONL or runtime results |
+| **Phase 1: JSON Consolidation** | Renamed `toKarateJson()` to `toJson()`, standardized field names (`durationMillis`, `scenarioResults`, `stepResults`) |
+| **Phase 2: HTML Template Updates** | Updated Alpine.js templates for new JSON structure, fixed loop call results, timeline generation |
 
 ### In Progress / TODO
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| **Phase 1: JSON Reshaping** | Consolidate `toKarateJson()` with V1 fields (Feature, Scenario, Step, Suite) | TODO |
-| **Phase 2: HTML Template Updates** | Update Alpine.js templates for new JSON structure | TODO (depends on Phase 1) |
-| **Phase 3: Cucumber JSON** | Generate from JSONL `FEATURE_EXIT` events | TODO (depends on Phase 1) |
+| **Phase 3: Cucumber JSON** | Generate from JSONL `FEATURE_EXIT` events | TODO |
 
 ### Deferred
 
@@ -35,10 +35,10 @@ This document describes the reporting architecture for Karate v2, including the 
 
 ### Next Steps
 
-1. **Start with Phase 1** - Update `toKarateJson()` methods in result classes to match V1 format
-2. Key files to modify: `FeatureResult.java`, `ScenarioResult.java`, `StepResult.java`, `SuiteResult.java`
-3. V1 reference files are in `/Users/peter/dev/zcode/karate/karate-core/src/main/java/com/intuit/karate/`
-4. See [Implementation Plan](#implementation-plan) section for detailed field mappings
+1. **Phase 3: Cucumber JSON** - Generate from JSONL `FEATURE_EXIT` events using `CucumberJsonConverter`
+2. Key file: `CucumberJsonConverter.java` - convert `toJson()` output to Cucumber JSON format
+3. V1 reference: `/Users/peter/dev/zcode/karate/karate-core/src/test/java/com/intuit/karate/core/feature-result-cucumber.json`
+4. See [Cucumber JSON](#cucumber-json) section for conversion mapping
 
 ---
 
@@ -942,11 +942,11 @@ This section documents the refactoring needed to align v2 with v1 karate JSON fo
 
 ---
 
-### Phase 1: Consolidate to Single Format
+### Phase 1: Consolidate to Single Format ✅
 
-**Goal:** Remove `toMap()`, use `toKarateJson()` everywhere.
+**Goal:** Remove `toMap()`, use `toJson()` everywhere.
 
-**Status:** TODO
+**Status:** COMPLETE
 
 #### Files to Modify
 
@@ -1103,11 +1103,11 @@ Align `SuiteResult.toKarateJson()` with V1 `Results.toKarateJson()`:
 - Add: `featureSummary` array with lightweight feature info (for `karate-summary.html`)
 - Remove: nested `summary` object (flatten to top level)
 
-### Phase 2: Update HTML Templates
+### Phase 2: Update HTML Templates ✅
 
 **Goal:** Update Alpine.js templates to use new JSON structure from Phase 1.
 
-**Status:** TODO (depends on Phase 1)
+**Status:** COMPLETE
 
 Update Alpine.js templates to use new JSON structure:
 
@@ -1209,9 +1209,9 @@ public Map<String, Object> toJson() {
 }
 ```
 
-### Phase 6: HTML Template Updates
+### Phase 6: HTML Template Updates ✅
 
-**Status:** TODO (depends on Phase 1)
+**Status:** COMPLETE (merged with Phase 2)
 
 Update Alpine.js templates for new JSON structure:
 
