@@ -99,6 +99,35 @@ class StepIoTest {
         assertTrue(stream instanceof InputStream, "Expected InputStream");
     }
 
+    @Test
+    void testReadAsStreamWithJavaProperties(@TempDir Path tempDir) throws Exception {
+        Path propsFile = tempDir.resolve("test.properties");
+        Files.writeString(propsFile, "hello=world\nfoo=bar\n");
+        Path featureFile = tempDir.resolve("test.feature");
+        Files.writeString(featureFile, """
+            Feature:
+            Scenario:
+            * def readProps =
+            \"\"\"
+            function(path) {
+              var stream = karate.readAsStream(path);
+              var props = new java.util.Properties();
+              props.load(stream);
+              return props;
+            }
+            \"\"\"
+            * def props = readProps('test.properties')
+            * match props == { hello: 'world', foo: 'bar' }
+            """);
+        io.karatelabs.gherkin.Feature feature = io.karatelabs.gherkin.Feature.read(
+                io.karatelabs.common.Resource.from(featureFile));
+        io.karatelabs.gherkin.Scenario scenario = feature.getSections().getFirst().getScenario();
+        KarateJs karate = new KarateJs(io.karatelabs.common.Resource.from(tempDir), new InMemoryHttpClient());
+        ScenarioRuntime sr = new ScenarioRuntime(karate, scenario);
+        sr.call();
+        assertPassed(sr);
+    }
+
     // ========== toAbsolutePath ==========
 
     @Test
