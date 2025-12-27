@@ -83,7 +83,10 @@
                     <source>${java.compiler.version}</source>
                     <target>${java.compiler.version}</target>
                     <release>${java.release.version}</release>
-                    <compilerArgument>-Werror</compilerArgument>
+                    <compilerArgs>
+                        <arg>-Werror</arg>
+                        <arg>-Xlint:deprecation</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>

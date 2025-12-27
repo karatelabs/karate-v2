@@ -383,7 +383,7 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
                             entityBuilder.chunked();
                         }
                         if (te.contains("gzip")) {
-                            entityBuilder.gzipCompressed();
+                            entityBuilder.setContentEncoding("gzip");
                         }
                     }
                     request.removeHeader(Http.Header.TRANSFER_ENCODING.key);
