@@ -947,6 +947,34 @@ class OutlineTest {
         assertEquals(0, result.getFailedCount());
     }
 
+    @Test
+    void testDynamicOutlineWithCsvFile() throws Exception {
+        // Test that read('file.csv') works in dynamic Examples
+        Path csvFile = tempDir.resolve("data.csv");
+        Files.writeString(csvFile, """
+            name,value
+            first,1
+            second,2
+            """);
+
+        Path feature = tempDir.resolve("outline-csv.feature");
+        Files.writeString(feature, """
+            Feature:
+
+            Scenario Outline: name is <name>
+            * match __row == { name: '#string', value: '#string' }
+
+            Examples:
+            | read('data.csv') |
+            """);
+
+        Suite suite = Suite.of(tempDir, feature.toString()).writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "CSV-based outline should pass: " + getFailureMessage(result));
+        assertEquals(2, result.getScenarioCount(), "Should have 2 scenarios from CSV");
+    }
+
     // ========== Helper Methods ==========
 
     private String getFailureMessage(SuiteResult result) {

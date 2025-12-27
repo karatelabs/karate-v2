@@ -62,7 +62,7 @@ java-060,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallJsonPath,,
 java-061,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSchemaRead,,testSchemaRead,root,passed,Added matchEachEmptyAllowed configure key,StepMatchTest,2025-12-27
 java-062,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTypeConversion,,testTypeConversion,root,passed,Already covered by testCsvKeywordWithDocString and testYamlNestedStructure,StepDefTest,2025-12-27
 java-063,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateGet,,testKarateGet,root,passed,Added karate.call(sharedScope path) support,StepCallTest,2025-12-27
-java-064,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineCsv,,testOutlineCsv,root,pending,,,
+java-064,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineCsv,,testOutlineCsv,root,passed,Added read() support for csv and yaml files,KarateJs,2025-12-27
 java-065,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testReadProperties,,testReadProperties,root,pending,,,
 java-066,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallSelf,,testCallSelf,root,pending,,,
 java-067,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testBigDecimal,,testBigDecimal,root,passed,runs big-decimal.feature which passes,,2025-12-19

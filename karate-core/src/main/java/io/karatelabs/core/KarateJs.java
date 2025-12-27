@@ -23,6 +23,7 @@
  */
 package io.karatelabs.core;
 
+import io.karatelabs.common.DataUtils;
 import io.karatelabs.common.Json;
 import io.karatelabs.common.Resource;
 import io.karatelabs.common.StringUtils;
@@ -173,6 +174,8 @@ public class KarateJs implements SimpleObject {
                     processXmlEmbeddedExpressions(doc);
                     yield doc;
                 }
+                case "csv" -> DataUtils.fromCsv(resource.getText());
+                case "yml", "yaml" -> DataUtils.fromYaml(resource.getText());
                 default -> resource.getText();
             };
         };
