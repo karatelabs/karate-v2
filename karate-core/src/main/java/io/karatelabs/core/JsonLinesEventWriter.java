@@ -136,9 +136,10 @@ public class JsonLinesEventWriter implements RunListener, Closeable {
      * Suite-level events have null threadId.
      */
     private String getThreadId(RunEvent event) {
-        if (event.isTopLevel() && (event.getType() == RunEventType.SUITE_ENTER
-                || event.getType() == RunEventType.SUITE_EXIT
-                || event.getType() == RunEventType.PROGRESS)) {
+        RunEventType type = event.getType();
+        if (type == RunEventType.SUITE_ENTER
+                || type == RunEventType.SUITE_EXIT
+                || type == RunEventType.PROGRESS) {
             return null;
         }
         Thread thread = Thread.currentThread();

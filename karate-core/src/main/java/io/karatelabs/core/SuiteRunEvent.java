@@ -49,21 +49,6 @@ public record SuiteRunEvent(
     }
 
     @Override
-    public Suite getSuite() {
-        return source;
-    }
-
-    @Override
-    public boolean isTopLevel() {
-        return true;  // Suite events are always top-level
-    }
-
-    @Override
-    public int getCallDepth() {
-        return 0;
-    }
-
-    @Override
     public Map<String, Object> toJson() {
         Map<String, Object> map = new LinkedHashMap<>();
         if (type == RunEventType.SUITE_EXIT && result != null) {

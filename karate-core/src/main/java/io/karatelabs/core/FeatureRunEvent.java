@@ -49,21 +49,6 @@ public record FeatureRunEvent(
     }
 
     @Override
-    public Suite getSuite() {
-        return source != null ? source.getSuite() : null;
-    }
-
-    @Override
-    public boolean isTopLevel() {
-        return RunEvent.computeIsTopLevel(source);
-    }
-
-    @Override
-    public int getCallDepth() {
-        return RunEvent.computeCallDepth(source);
-    }
-
-    @Override
     public Map<String, Object> toJson() {
         if (type == RunEventType.FEATURE_EXIT && result != null) {
             return result.toJson();

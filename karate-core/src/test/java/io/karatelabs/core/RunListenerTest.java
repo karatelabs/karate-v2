@@ -63,11 +63,8 @@ class RunListenerTest {
         SuiteRunEvent event = SuiteRunEvent.enter(suite);
 
         assertEquals(RunEventType.SUITE_ENTER, event.getType());
-        assertSame(suite, event.getSuite());
         assertSame(suite, event.source());
         assertNull(event.result());
-        assertTrue(event.isTopLevel());
-        assertEquals(0, event.getCallDepth());
 
         // Test toJson
         Map<String, Object> json = event.toJson();
@@ -81,9 +78,8 @@ class RunListenerTest {
         SuiteRunEvent event = SuiteRunEvent.exit(suite, result);
 
         assertEquals(RunEventType.SUITE_EXIT, event.getType());
-        assertSame(suite, event.getSuite());
+        assertSame(suite, event.source());
         assertSame(result, event.result());
-        assertTrue(event.isTopLevel());
     }
 
     @Test
@@ -92,11 +88,9 @@ class RunListenerTest {
         ProgressRunEvent event = ProgressRunEvent.of(suite, 5, 10);
 
         assertEquals(RunEventType.PROGRESS, event.getType());
-        assertSame(suite, event.getSuite());
+        assertSame(suite, event.suite());
         assertEquals(5, event.completed());
         assertEquals(10, event.total());
-        assertTrue(event.isTopLevel());
-        assertEquals(0, event.getCallDepth());
 
         // Test toJson
         Map<String, Object> json = event.toJson();
@@ -113,7 +107,6 @@ class RunListenerTest {
         assertEquals(RunEventType.ERROR, event.getType());
         assertSame(error, event.error());
         assertNull(event.scenarioRuntime());
-        assertTrue(event.isTopLevel());
 
         // Test toJson
         Map<String, Object> json = event.toJson();

@@ -48,41 +48,8 @@ public interface RunEvent {
     RunEventType getType();
 
     /**
-     * Returns the suite associated with this event, or null if not available.
-     */
-    Suite getSuite();
-
-    /**
-     * Returns true if this event is for a top-level execution (not a called feature/scenario).
-     */
-    boolean isTopLevel();
-
-    /**
-     * Returns the call depth (0 for top-level, 1 for first nested call, etc.).
-     */
-    int getCallDepth();
-
-    /**
      * Serializes this event to a map for JSONL output.
      */
     Map<String, Object> toJson();
-
-    // ========== Helper methods for computing depth ==========
-
-    static int computeCallDepth(FeatureRuntime fr) {
-        if (fr == null) {
-            return 0;
-        }
-        int depth = 0;
-        while (fr.getCaller() != null) {
-            depth++;
-            fr = fr.getCaller();
-        }
-        return depth;
-    }
-
-    static boolean computeIsTopLevel(FeatureRuntime fr) {
-        return fr == null || fr.getCaller() == null;
-    }
 
 }

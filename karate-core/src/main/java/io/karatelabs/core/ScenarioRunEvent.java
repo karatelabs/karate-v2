@@ -49,24 +49,6 @@ public record ScenarioRunEvent(
     }
 
     @Override
-    public Suite getSuite() {
-        FeatureRuntime fr = source != null ? source.getFeatureRuntime() : null;
-        return fr != null ? fr.getSuite() : null;
-    }
-
-    @Override
-    public boolean isTopLevel() {
-        FeatureRuntime fr = source != null ? source.getFeatureRuntime() : null;
-        return RunEvent.computeIsTopLevel(fr);
-    }
-
-    @Override
-    public int getCallDepth() {
-        FeatureRuntime fr = source != null ? source.getFeatureRuntime() : null;
-        return RunEvent.computeCallDepth(fr);
-    }
-
-    @Override
     public Map<String, Object> toJson() {
         Map<String, Object> map = new LinkedHashMap<>();
         if (source != null && source.getScenario() != null) {

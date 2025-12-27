@@ -53,24 +53,6 @@ public record StepRunEvent(
     }
 
     @Override
-    public Suite getSuite() {
-        FeatureRuntime fr = scenarioRuntime != null ? scenarioRuntime.getFeatureRuntime() : null;
-        return fr != null ? fr.getSuite() : null;
-    }
-
-    @Override
-    public boolean isTopLevel() {
-        FeatureRuntime fr = scenarioRuntime != null ? scenarioRuntime.getFeatureRuntime() : null;
-        return RunEvent.computeIsTopLevel(fr);
-    }
-
-    @Override
-    public int getCallDepth() {
-        FeatureRuntime fr = scenarioRuntime != null ? scenarioRuntime.getFeatureRuntime() : null;
-        return RunEvent.computeCallDepth(fr);
-    }
-
-    @Override
     public Map<String, Object> toJson() {
         Map<String, Object> map = new LinkedHashMap<>();
         if (step != null) {
