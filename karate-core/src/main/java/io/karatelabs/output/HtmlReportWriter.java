@@ -779,8 +779,8 @@ public final class HtmlReportWriter {
 
                 // Build tooltip title
                 String startTimeStr = TIME_FORMAT.format(Instant.ofEpochMilli(startTime));
-                String endTimeStr = TIME_FORMAT.format(Instant.ofEpochMilli(endTime));
-                String title = content + " " + startTimeStr + "-" + endTimeStr;
+                long durationMs = endTime - startTime + 1; // +1 because we subtracted 1 from endTime above
+                String title = content + " " + startTimeStr + " (" + durationMs + " ms)";
                 String scenarioName = (String) scenario.get("name");
                 if (scenarioName != null && !scenarioName.isEmpty()) {
                     title = title + " " + scenarioName;
