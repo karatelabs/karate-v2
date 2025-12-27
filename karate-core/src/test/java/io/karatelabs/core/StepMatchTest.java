@@ -301,4 +301,36 @@ class StepMatchTest {
         assertFailed(sr);
     }
 
+    // ========== Match Each Empty Allowed ==========
+
+    @Test
+    void testMatchEachEmptyArrayFails() {
+        ScenarioRuntime sr = run("""
+            * def items = []
+            * match each items == '#string'
+            """);
+        assertFailed(sr);
+    }
+
+    @Test
+    void testMatchEachEmptyArrayPassesWithConfig() {
+        ScenarioRuntime sr = run("""
+            * configure matchEachEmptyAllowed = true
+            * def items = []
+            * match each items == '#string'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMatchEachEmptyAllowedWithSchema() {
+        ScenarioRuntime sr = run("""
+            * configure matchEachEmptyAllowed = true
+            * def schema = { id: '#number' }
+            * def response = []
+            * match each response == schema
+            """);
+        assertPassed(sr);
+    }
+
 }

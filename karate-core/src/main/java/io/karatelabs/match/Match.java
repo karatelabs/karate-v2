@@ -66,9 +66,13 @@ public class Match {
     }
 
     public static Result execute(Engine engine, Type matchType, Object actual, Object expected) {
+        return execute(engine, matchType, actual, expected, false);
+    }
+
+    public static Result execute(Engine engine, Type matchType, Object actual, Object expected, boolean matchEachEmptyAllowed) {
         Value actualValue = new Value(actual);
         Value expectedValue = new Value(expected);
-        Operation op = new Operation(engine, matchType, actualValue, expectedValue);
+        Operation op = new Operation(engine, matchType, actualValue, expectedValue, matchEachEmptyAllowed);
         op.execute();
         return op.getResult();
     }

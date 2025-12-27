@@ -374,6 +374,32 @@ class StepCallTest {
         assertTrue(result.isPassed(), "__arg should be available with assignment: " + getFailureMessage(result));
     }
 
+    @Test
+    void testCallJsonPathOnParentVariable() throws Exception {
+        // Tests that called feature can use JSONPath on variables from caller scope
+        Path calledFeature = tempDir.resolve("called.feature");
+        Files.writeString(calledFeature, """
+            Feature: Called
+            Scenario:
+            * def vals = $foo[*].a
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Caller
+            Scenario:
+            * def foo = [{a: 1}, {a: 2}]
+            * def bar = call read('called.feature')
+            * match bar.vals == [1, 2]
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "JSONPath on parent variable should work: " + getFailureMessage(result));
+    }
+
     private String getFailureMessage(SuiteResult result) {
         if (result.isPassed()) return "none";
         for (FeatureResult fr : result.getFeatureResults()) {

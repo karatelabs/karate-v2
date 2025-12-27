@@ -81,7 +81,7 @@ public class KarateConfig implements SimpleObject {
             // callSingleCache
             "callSingleCacheMinutes", "callSingleCacheDir",
             // Execution control
-            "continueOnStepFailure", "abortedStepsShouldPass", "abortSuiteOnFailure",
+            "continueOnStepFailure", "abortedStepsShouldPass", "abortSuiteOnFailure", "matchEachEmptyAllowed",
             // NTLM Auth
             "ntlmUsername", "ntlmPassword", "ntlmDomain", "ntlmWorkstation",
             // Mock settings
@@ -140,6 +140,7 @@ public class KarateConfig implements SimpleObject {
     private boolean continueOnStepFailure;
     private boolean abortedStepsShouldPass;
     private boolean abortSuiteOnFailure;
+    private boolean matchEachEmptyAllowed;
 
     // NTLM Auth (Map with username, password, domain, workstation)
     private String ntlmUsername;
@@ -204,6 +205,7 @@ public class KarateConfig implements SimpleObject {
         copy.continueOnStepFailure = this.continueOnStepFailure;
         copy.abortedStepsShouldPass = this.abortedStepsShouldPass;
         copy.abortSuiteOnFailure = this.abortSuiteOnFailure;
+        copy.matchEachEmptyAllowed = this.matchEachEmptyAllowed;
         // NTLM Auth
         copy.ntlmUsername = this.ntlmUsername;
         copy.ntlmPassword = this.ntlmPassword;
@@ -316,6 +318,10 @@ public class KarateConfig implements SimpleObject {
             }
             case "abortSuiteOnFailure" -> {
                 this.abortSuiteOnFailure = toBoolean(value);
+                yield false;
+            }
+            case "matchEachEmptyAllowed" -> {
+                this.matchEachEmptyAllowed = toBoolean(value);
                 yield false;
             }
 
@@ -541,6 +547,7 @@ public class KarateConfig implements SimpleObject {
             case "continueOnStepFailure" -> continueOnStepFailure;
             case "abortedStepsShouldPass" -> abortedStepsShouldPass;
             case "abortSuiteOnFailure" -> abortSuiteOnFailure;
+            case "matchEachEmptyAllowed" -> matchEachEmptyAllowed;
             case "ntlmUsername" -> ntlmUsername;
             case "ntlmPassword" -> ntlmPassword;
             case "ntlmDomain" -> ntlmDomain;
@@ -689,6 +696,10 @@ public class KarateConfig implements SimpleObject {
 
     public boolean isAbortSuiteOnFailure() {
         return abortSuiteOnFailure;
+    }
+
+    public boolean isMatchEachEmptyAllowed() {
+        return matchEachEmptyAllowed;
     }
 
     public String getNtlmUsername() {

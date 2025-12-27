@@ -58,8 +58,8 @@ java-056,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateFork,,te
 java-057,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCsv,,testCsv,root,passed,runs csv.feature which passes,,2025-12-19
 java-058,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testXmlPretty,,testXmlPretty,root,passed,karate.prettyXml() implemented,io/karatelabs/core/StepXmlTest,2025-12-19
 java-059,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testMatchStep,,testMatchStep,root,passed,runs match-step.feature which passes,,2025-12-19
-java-060,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallJsonPath,,testCallJsonPath,root,pending,,,
-java-061,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSchemaRead,,testSchemaRead,root,pending,,,
+java-060,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallJsonPath,,testCallJsonPath,root,passed,V2 test added: testCallJsonPathOnParentVariable,StepCallTest,2025-12-27
+java-061,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSchemaRead,,testSchemaRead,root,passed,Added matchEachEmptyAllowed configure key,StepMatchTest,2025-12-27
 java-062,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTypeConversion,,testTypeConversion,root,pending,,,
 java-063,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateGet,,testKarateGet,root,pending,,,
 java-064,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineCsv,,testOutlineCsv,root,pending,,,

@@ -56,6 +56,10 @@ public class Operation {
         this(engine, null, type, actual, expected, false);
     }
 
+    Operation(Engine engine, Match.Type type, Value actual, Value expected, boolean matchEachEmptyAllowed) {
+        this(engine, null, type, actual, expected, matchEachEmptyAllowed);
+    }
+
     Operation(MatchContext context, Match.Type type, Value actual, Value expected, boolean matchEachEmptyAllowed) {
         this(null, context, type, actual, expected, matchEachEmptyAllowed);
     }

@@ -1173,7 +1173,8 @@ public class StepExecutor {
 
         Match.Type matchType = Match.Type.valueOf(expr.getMatchTypeName());
 
-        Result result = Match.execute(runtime.getEngine(), matchType, actual, expected);
+        boolean matchEachEmptyAllowed = runtime.getConfig().isMatchEachEmptyAllowed();
+        Result result = Match.execute(runtime.getEngine(), matchType, actual, expected, matchEachEmptyAllowed);
         if (!result.pass) {
             throw new AssertionError(result.message);
         }
