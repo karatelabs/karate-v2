@@ -500,7 +500,7 @@ public final class HtmlReportWriter {
         data.put("name", fr.getFeature().getName());
         data.put("relativePath", fr.getFeature().getResource().getRelativePath());
         data.put("passed", fr.isPassed());
-        data.put("ms", fr.getDurationMillis());
+        data.put("durationMillis", fr.getDurationMillis());
 
         // Scenarios
         List<Map<String, Object>> scenarios = new ArrayList<>();
@@ -517,7 +517,9 @@ public final class HtmlReportWriter {
         data.put("name", sr.getScenario().getName());
         data.put("line", sr.getScenario().getLine());
         data.put("passed", sr.isPassed());
-        data.put("ms", sr.getDurationMillis());
+        data.put("durationMillis", sr.getDurationMillis());
+        data.put("startTime", sr.getStartTime());
+        data.put("endTime", sr.getEndTime());
 
         // RefId and outline info for v1-style UI
         data.put("refId", sr.getScenario().getRefId());
@@ -569,7 +571,7 @@ public final class HtmlReportWriter {
             data.put("line", 0);
         }
         data.put("status", step.getStatus().name().toLowerCase());
-        data.put("ms", step.getDurationNanos() / 1_000_000);
+        data.put("durationMillis", step.getDurationNanos() / 1_000_000);
 
         // Log indicator for UI
         boolean hasLogs = step.getLog() != null && !step.getLog().isEmpty();
@@ -734,14 +736,14 @@ public final class HtmlReportWriter {
 
         for (Map<String, Object> feature : features) {
             // Extract feature filename for timeline display
-            String path = (String) feature.get("path");
+            String path = (String) feature.get("relativePath");
             String featureFileName = extractFileName(path);
 
-            List<Map<String, Object>> scenarios = (List<Map<String, Object>>) feature.get("scenarios");
+            List<Map<String, Object>> scenarios = (List<Map<String, Object>>) feature.get("scenarioResults");
             if (scenarios == null) continue;
 
             for (Map<String, Object> scenario : scenarios) {
-                String threadName = (String) scenario.get("thread");
+                String threadName = (String) scenario.get("executorName");
                 if (threadName == null || threadName.isEmpty()) {
                     threadName = "main";
                 }

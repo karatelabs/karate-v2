@@ -145,7 +145,7 @@
                         </template>
                     </span>
                     <span>
-                        <small class="text-muted me-2" x-text="scenario.ms + ' ms'"></small>
+                        <small class="text-muted me-2" x-text="scenario.durationMillis + ' ms'"></small>
                         <span x-show="scenario.passed" class="badge bg-success">PASS</span>
                         <span x-show="!scenario.passed" class="badge bg-danger">FAIL</span>
                     </span>
@@ -186,7 +186,7 @@
                                           x-text="(step.callResults?.length || 0) + ' calls'"></span>
                                 </div>
                                 <div class="text-muted ms-2" style="width: 70px; text-align: right;">
-                                    <small x-text="step.ms + ' ms'"></small>
+                                    <small x-text="step.durationMillis + ' ms'"></small>
                                 </div>
                             </div>
                             <!-- Expandable Logs -->
@@ -258,7 +258,7 @@
                                                 <div class="d-flex align-items-center mb-2">
                                                     <span class="badge bg-secondary me-2" x-text="'#' + (fidx + 1)"></span>
                                                     <small class="text-muted" x-text="calledFeature.path || calledFeature.name"></small>
-                                                    <small class="text-muted ms-2" x-text="calledFeature.ms + ' ms'"></small>
+                                                    <small class="text-muted ms-2" x-text="calledFeature.durationMillis + ' ms'"></small>
                                                     <span x-show="calledFeature.passed" class="badge bg-success ms-2">PASS</span>
                                                     <span x-show="!calledFeature.passed" class="badge bg-danger ms-2">FAIL</span>
                                                 </div>
@@ -267,7 +267,7 @@
                                             <template x-if="(step.callResults?.length || 0) === 1">
                                                 <div class="small text-muted mb-1">
                                                     <span x-text="calledFeature.path || calledFeature.name"></span>
-                                                    <span class="ms-2" x-text="calledFeature.ms + ' ms'"></span>
+                                                    <span class="ms-2" x-text="calledFeature.durationMillis + ' ms'"></span>
                                                 </div>
                                             </template>
                                             <!-- Scenarios in called feature -->
@@ -280,7 +280,7 @@
                                                             <span x-text="nested.name"></span>
                                                         </span>
                                                         <span>
-                                                            <small class="text-muted me-2" x-text="nested.ms + ' ms'"></small>
+                                                            <small class="text-muted me-2" x-text="nested.durationMillis + ' ms'"></small>
                                                             <span x-show="nested.passed" class="badge bg-success">PASS</span>
                                                             <span x-show="!nested.passed" class="badge bg-danger">FAIL</span>
                                                         </span>
