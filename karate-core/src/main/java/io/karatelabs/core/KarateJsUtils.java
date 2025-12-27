@@ -25,8 +25,11 @@ package io.karatelabs.core;
 
 import io.karatelabs.common.DataUtils;
 import io.karatelabs.common.Json;
+import io.karatelabs.common.OsUtils;
 import io.karatelabs.common.StringUtils;
 import io.karatelabs.common.Xml;
+import io.karatelabs.output.LogContext;
+import org.slf4j.Logger;
 import io.karatelabs.js.Invokable;
 import io.karatelabs.js.JsCallable;
 import org.w3c.dom.Node;
@@ -46,12 +49,24 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Stateless utility methods for the karate.* API.
- * These methods don't require engine state or providers.
+ * Stateless utility methods for the karate.* JavaScript API.
+ * <p>
+ * Contains pure functions that don't require access to:
+ * - The JavaScript engine or variable scope
+ * - Provider callbacks (scenario, feature, config, etc.)
+ * - HTTP client or resource resolution
+ * <p>
+ * Methods here operate only on their input arguments and return results.
+ * This allows them to be tested in isolation and reused across contexts.
+ *
+ * @see KarateJs for stateful methods that require engine access
+ * @see KarateJsBase for shared state and infrastructure
  */
-public class KarateJsApi {
+public class KarateJsUtils {
 
-    private KarateJsApi() {
+    private static final Logger logger = LogContext.RUNTIME_LOGGER;
+
+    private KarateJsUtils() {
         // utility class
     }
 
@@ -550,9 +565,9 @@ public class KarateJsApi {
         if (obj instanceof Map) {
             Map<String, Object> map = (Map<String, Object>) obj;
             map.entrySet().removeIf(e -> e.getValue() == null);
-            map.values().forEach(KarateJsApi::removeNullValues);
+            map.values().forEach(KarateJsUtils::removeNullValues);
         } else if (obj instanceof List) {
-            ((List<?>) obj).forEach(KarateJsApi::removeNullValues);
+            ((List<?>) obj).forEach(KarateJsUtils::removeNullValues);
         }
     }
 
@@ -642,6 +657,235 @@ public class KarateJsApi {
             }
             return new ArrayList<>();
         };
+    }
+
+    // ========== OS Utilities ==========
+
+    /**
+     * Returns OS information for karate.os.
+     * Uses OsUtils for platform detection.
+     */
+    static Map<String, Object> getOsInfo() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("name", System.getProperty("os.name", "unknown"));
+        result.put("type", OsUtils.getOsType());
+        return result;
+    }
+
+    // ========== XML Utilities ==========
+
+    /**
+     * Evaluate an XPath expression on an XML node.
+     * Returns the appropriate type: String, Number, Node, or List of nodes.
+     */
+    static Object evalXmlPath(Node doc, String path) {
+        org.w3c.dom.NodeList nodeList;
+        try {
+            nodeList = Xml.getNodeListByPath(doc, path);
+        } catch (Exception e) {
+            // XPath functions like count() don't return nodes
+            String strValue = Xml.getTextValueByPath(doc, path);
+            if (path.startsWith("count")) {
+                try {
+                    return Integer.parseInt(strValue);
+                } catch (NumberFormatException nfe) {
+                    return strValue;
+                }
+            }
+            return strValue;
+        }
+        int count = nodeList.getLength();
+        if (count == 0) {
+            return null; // Not present
+        }
+        if (count == 1) {
+            return nodeToValue(nodeList.item(0));
+        }
+        // Multiple nodes - return a list
+        List<Object> list = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            list.add(nodeToValue(nodeList.item(i)));
+        }
+        return list;
+    }
+
+    /**
+     * Convert an XML node to an appropriate value.
+     * Attributes return their value, leaf nodes return text content,
+     * complex nodes return as a new XML document.
+     */
+    static Object nodeToValue(Node node) {
+        if (node.getNodeType() == Node.ATTRIBUTE_NODE) {
+            return node.getNodeValue();
+        }
+        if (Xml.getChildElementCount(node) == 0) {
+            // Leaf node - return text content
+            return node.getTextContent();
+        }
+        // Return as a new XML document
+        return Xml.toNewDocument(node);
+    }
+
+    // ========== Type Conversion Utilities ==========
+
+    /**
+     * Parse a string as JSON, XML, or return as-is.
+     * - If the string looks like JSON (starts with { or [), parse as JSON
+     * - If the string looks like XML (starts with &lt;), parse as XML
+     * - Otherwise, return the string unchanged
+     */
+    static Invokable fromString() {
+        return args -> {
+            if (args.length == 0 || args[0] == null) {
+                return null;
+            }
+            String text = args[0].toString();
+            if (text.isEmpty()) {
+                return text;
+            }
+            if (StringUtils.looksLikeJson(text)) {
+                try {
+                    return Json.of(text).value();
+                } catch (Exception e) {
+                    logger.warn("fromString JSON parse failed: {}", e.getMessage());
+                    return text;
+                }
+            } else if (StringUtils.isXml(text)) {
+                try {
+                    return Xml.toXmlDoc(text);
+                } catch (Exception e) {
+                    logger.warn("fromString XML parse failed: {}", e.getMessage());
+                    return text;
+                }
+            }
+            return text;
+        };
+    }
+
+    /**
+     * Auto-detect MIME type from data object.
+     */
+    static String detectMimeType(Object obj) {
+        if (obj instanceof Map || obj instanceof List) {
+            return "application/json";
+        } else if (obj instanceof Node) {
+            return "application/xml";
+        } else if (obj instanceof byte[]) {
+            return "application/octet-stream";
+        } else {
+            return "text/plain";
+        }
+    }
+
+    /**
+     * Convert various data types to bytes.
+     */
+    static byte[] convertToBytes(Object obj) {
+        if (obj == null) {
+            return new byte[0];
+        }
+        if (obj instanceof byte[]) {
+            return (byte[]) obj;
+        }
+        if (obj instanceof String str) {
+            return str.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+        if (obj instanceof List<?> list) {
+            // Check if it's a list of numbers (byte array representation)
+            if (!list.isEmpty() && list.getFirst() instanceof Number) {
+                byte[] bytes = new byte[list.size()];
+                for (int i = 0; i < list.size(); i++) {
+                    bytes[i] = ((Number) list.get(i)).byteValue();
+                }
+                return bytes;
+            }
+            // Otherwise serialize as JSON
+            return StringUtils.formatJson(list).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+        if (obj instanceof Map) {
+            return StringUtils.formatJson(obj).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+        if (obj instanceof Node) {
+            return Xml.toString((Node) obj, true).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+        // Fallback: convert to string
+        return obj.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    // ========== JSON Path Utilities ==========
+
+    /**
+     * Navigate to a nested path in a Map structure.
+     * Path is dot-separated like "foo.bar.baz".
+     */
+    @SuppressWarnings("unchecked")
+    static Object navigateToPath(Object target, String path) {
+        String[] parts = path.split("\\.");
+        Object current = target;
+        for (String part : parts) {
+            if (current instanceof Map) {
+                current = ((Map<String, Object>) current).get(part);
+            } else {
+                return null;
+            }
+        }
+        return current;
+    }
+
+    /**
+     * Set a value at a nested path in a Map structure.
+     * Creates intermediate maps as needed.
+     */
+    @SuppressWarnings("unchecked")
+    static void setAtPath(Object target, String path, Object value) {
+        String[] parts = path.split("\\.");
+        Object current = target;
+        for (int i = 0; i < parts.length - 1; i++) {
+            if (current instanceof Map) {
+                Map<String, Object> map = (Map<String, Object>) current;
+                Object next = map.get(parts[i]);
+                if (next == null) {
+                    next = new java.util.LinkedHashMap<>();
+                    map.put(parts[i], next);
+                }
+                current = next;
+            }
+        }
+        if (current instanceof Map) {
+            ((Map<String, Object>) current).put(parts[parts.length - 1], value);
+        }
+    }
+
+    // ========== String Parsing Utilities ==========
+
+    /**
+     * Find the matching closing parenthesis for an open paren.
+     * Used for parsing embedded expressions like #(expr).
+     */
+    static int findMatchingParen(String str, int openPos) {
+        int depth = 1;
+        for (int i = openPos + 1; i < str.length(); i++) {
+            char c = str.charAt(i);
+            if (c == '(') depth++;
+            else if (c == ')') {
+                depth--;
+                if (depth == 0) return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Convert a value to string, handling XML nodes properly.
+     */
+    static String valueToString(Object value) {
+        if (value == null) {
+            return "";
+        }
+        if (value instanceof Node) {
+            return Xml.toString((Node) value, false);
+        }
+        return value.toString();
     }
 
 }

@@ -1223,7 +1223,7 @@ public class StepExecutor {
         if (expr.startsWith("/")) {
             Object response = runtime.getVariable("response");
             if (response instanceof Node) {
-                return KarateJs.evalXmlPath((Node) response, expr);
+                return KarateJsUtils.evalXmlPath((Node) response, expr);
             }
         }
 
@@ -1345,7 +1345,7 @@ public class StepExecutor {
             if (isValidVariableName(varName)) {
                 Object target = runtime.getVariable(varName);
                 if (target instanceof Node) {
-                    Object result = KarateJs.evalXmlPath((Node) target, xpath);
+                    Object result = KarateJsUtils.evalXmlPath((Node) target, xpath);
                     return result == null ? XPATH_NOT_PRESENT : result;
                 }
             }
@@ -1362,7 +1362,7 @@ public class StepExecutor {
                     Object target = runtime.getVariable(varName);
                     if (target instanceof Node) {
                         String xpath = expr.substring(slashIdx);
-                        Object result = KarateJs.evalXmlPath((Node) target, xpath);
+                        Object result = KarateJsUtils.evalXmlPath((Node) target, xpath);
                         return result == null ? XPATH_NOT_PRESENT : result;
                     }
                 }
@@ -1387,7 +1387,7 @@ public class StepExecutor {
     private Object evalXmlPathWithFunction(Node node, String path) {
         // Try to evaluate as normal XPath returning nodes
         try {
-            Object result = KarateJs.evalXmlPath(node, path);
+            Object result = KarateJsUtils.evalXmlPath(node, path);
             if (result != null) {
                 return result;
             }
@@ -1484,7 +1484,7 @@ public class StepExecutor {
 
         if (isXPath) {
             if (target instanceof Node) {
-                return KarateJs.evalXmlPath((Node) target, path);
+                return KarateJsUtils.evalXmlPath((Node) target, path);
             }
             // Fall back to jsonpath if not XML
             return JsonPath.read(toJsonForJsonPath(target), "$" + path);
@@ -1556,7 +1556,7 @@ public class StepExecutor {
         if (expr.startsWith("/")) {
             Object response = runtime.getVariable("response");
             if (response instanceof Node) {
-                return KarateJs.evalXmlPath((Node) response, expr);
+                return KarateJsUtils.evalXmlPath((Node) response, expr);
             }
         }
 
@@ -2546,7 +2546,7 @@ public class StepExecutor {
 
         // Handle XPath for XML nodes
         if (target instanceof Node && path != null && path.startsWith("/")) {
-            Object result = KarateJs.evalXmlPath((Node) target, path);
+            Object result = KarateJsUtils.evalXmlPath((Node) target, path);
             // Apply index if specified
             if (index >= 0 && result instanceof List) {
                 List<?> list = (List<?>) result;

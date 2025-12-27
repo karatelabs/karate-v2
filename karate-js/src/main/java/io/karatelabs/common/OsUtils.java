@@ -23,6 +23,10 @@
  */
 package io.karatelabs.common;
 
+/**
+ * Operating system detection utilities.
+ * Provides platform-specific checks used throughout Karate.
+ */
 public class OsUtils {
 
     public static final String OS_NAME = System.getProperty("os.name").toLowerCase();
@@ -42,6 +46,25 @@ public class OsUtils {
 
     public static boolean isWindowsOrMac() {
         return isWindows() || isMac();
+    }
+
+    public static boolean isLinux() {
+        return OS_NAME.contains("nix") || OS_NAME.contains("nux");
+    }
+
+    /**
+     * Returns the OS type as a string for karate.os.type.
+     * Values: "windows", "macosx", "linux", "unknown"
+     */
+    public static String getOsType() {
+        if (isWindows()) {
+            return "windows";
+        } else if (isMac()) {
+            return "macosx";
+        } else if (isLinux()) {
+            return "linux";
+        }
+        return "unknown";
     }
 
 }

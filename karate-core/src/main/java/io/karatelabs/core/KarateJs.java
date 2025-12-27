@@ -23,95 +23,50 @@
  */
 package io.karatelabs.core;
 
+import com.jayway.jsonpath.JsonPath;
 import io.karatelabs.common.DataUtils;
 import io.karatelabs.common.Json;
 import io.karatelabs.common.Resource;
-import io.karatelabs.common.StringUtils;
 import io.karatelabs.common.Xml;
-import io.karatelabs.http.ApacheHttpClient;
-import io.karatelabs.http.HttpClient;
-import io.karatelabs.http.HttpRequest;
-import io.karatelabs.http.HttpRequestBuilder;
-import io.karatelabs.http.HttpResponse;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.MatchExpression;
-import io.karatelabs.js.Context;
-import io.karatelabs.js.Engine;
+import io.karatelabs.http.*;
 import io.karatelabs.js.GherkinParser;
+import io.karatelabs.markup.Markup;
 import io.karatelabs.js.Invokable;
 import io.karatelabs.js.JsCallable;
-import io.karatelabs.js.SimpleObject;
-import io.karatelabs.output.LogContext;
-import io.karatelabs.output.LogLevel;
-import io.karatelabs.markup.Markup;
-import io.karatelabs.markup.ResourceResolver;
 import io.karatelabs.match.Match;
 import io.karatelabs.match.Result;
 import io.karatelabs.match.Value;
 import io.karatelabs.process.ProcessBuilder;
-import io.karatelabs.process.ProcessConfig;
 import io.karatelabs.process.ProcessHandle;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-
-import com.jayway.jsonpath.JsonPath;
 
 import java.io.File;
-import java.io.InputStream;
 import java.net.Socket;
 import java.net.URI;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
+import java.util.*;
 import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
-public class KarateJs implements SimpleObject {
-
-    private static final Logger logger = LogContext.RUNTIME_LOGGER;
-
-    public final Resource root;
-    public final Engine engine;
-    public final HttpClient client;
-    public final HttpRequestBuilder http;
-
-    private ResourceResolver resolver;
-    private Markup _markup;
-    private Consumer<String> onDoc;
-    private BiConsumer<Context, Result> onMatch;
-    private Function<String, Map<String, Object>> setupProvider;
-    private Function<String, Map<String, Object>> setupOnceProvider;
-    private Runnable abortHandler;
-    private BiFunction<String, Object, Map<String, Object>> callProvider;
-    private BiFunction<String, Object, Map<String, Object>> callOnceProvider;
-    private BiFunction<String, Object, Object> callSingleProvider;
-    private Supplier<Map<String, Object>> infoProvider;
-    private Supplier<Map<String, Object>> scenarioProvider;
-    private Supplier<Map<String, Object>> featureProvider;
-    private Supplier<List<String>> tagsProvider;
-    private Supplier<Map<String, List<String>>> tagValuesProvider;
-    private Supplier<Map<String, Object>> scenarioOutlineProvider;
-    private Consumer<Object> signalConsumer;
-    private BiConsumer<String, Object> configureHandler;
-    private Supplier<KarateConfig> configProvider;
-    private Supplier<Resource> currentResourceProvider;
-    private Supplier<Map<String, String>> propertiesProvider;
-    private String env;
-    private MockHandler mockHandler; // non-null only in mock context
-    private Supplier<String> outputDirProvider; // for karate.write()
-    private io.karatelabs.http.HttpRequest prevRequest; // tracks previous HTTP request
-    private LogFacade logFacade; // lazy-initialized
+/**
+ * Main implementation of the karate.* JavaScript API.
+ * <p>
+ * This class contains methods that require stateful access to:
+ * - The JavaScript engine (for variable lookup and evaluation)
+ * - Provider callbacks (scenario, feature, config, call, etc.)
+ * - HTTP client and resource resolution
+ * - Mock handler context
+ * <p>
+ * Stateless utility methods are delegated to {@link KarateJsUtils}.
+ * Shared state and infrastructure are inherited from {@link KarateJsBase}.
+ *
+ * @see KarateJsUtils for pure utility functions
+ * @see KarateJsBase for state management and initialization
+ */
+public class KarateJs extends KarateJsBase {
 
     private final JsCallable read;
 
@@ -120,171 +75,10 @@ public class KarateJs implements SimpleObject {
     }
 
     public KarateJs(Resource root, HttpClient client) {
-        this.root = root;
-        this.client = client;
-        http = new HttpRequestBuilder(client);
-        this.engine = new Engine();
-        engine.setOnConsoleLog(s -> LogContext.get().log(s));
-        // TODO: implement whitelisting for safety - currently allows access to all Java classes
-        engine.setExternalBridge(new io.karatelabs.js.ExternalBridge() {});
-        read = (context, args) -> {
-            if (args.length == 0) {
-                throw new RuntimeException("read() needs at least one argument");
-            }
-            String rawPath = args[0] + "";
-
-            // Parse tag selector for feature files
-            // Supports: file.feature@tag or @tag (same-file)
-            String path;
-            String tagSelector = null;
-            if (rawPath.startsWith("@")) {
-                // Same-file tag - return a FeatureCall wrapper
-                return new FeatureCall(null, rawPath);
-            } else {
-                int tagPos = rawPath.indexOf(".feature@");
-                if (tagPos != -1) {
-                    path = rawPath.substring(0, tagPos + 8);  // "file.feature"
-                    tagSelector = "@" + rawPath.substring(tagPos + 9);  // "@tag"
-                } else {
-                    path = rawPath;
-                }
-            }
-
-            // V1 compatibility: handle 'this:' prefix for relative paths
-            // 'this:file.ext' means relative to current feature file's directory
-            Resource resource;
-            if (path.startsWith("this:")) {
-                path = path.substring(5);  // Remove 'this:' prefix
-                // Resolve relative to current feature's resource
-                Resource currentResource = currentResourceProvider != null ? currentResourceProvider.get() : null;
-                resource = currentResource != null ? currentResource.resolve(path) : root.resolve(path);
-            } else {
-                resource = root.resolve(path);
-            }
-            return switch (resource.getExtension()) {
-                case "json" -> Json.of(resource.getText()).value();
-                case "js" -> engine.eval(resource.getText());
-                case "feature" -> {
-                    Feature feature = Feature.read(resource);
-                    yield tagSelector != null ? new FeatureCall(feature, tagSelector) : feature;
-                }
-                case "xml" -> {
-                    // Parse XML and process embedded expressions
-                    Document doc = Xml.toXmlDoc(resource.getText());
-                    processXmlEmbeddedExpressions(doc);
-                    yield doc;
-                }
-                case "csv" -> DataUtils.fromCsv(resource.getText());
-                case "yml", "yaml" -> DataUtils.fromYaml(resource.getText());
-                default -> resource.getText();
-            };
-        };
+        super(root, client);
         engine.put("karate", this);
-        engine.put("read", read);
+        engine.put("read", read = initRead());
         engine.put("match", matchFluent());
-    }
-
-    public Markup markup() {
-        if (_markup == null) {
-            if (resolver != null) {
-                _markup = Markup.init(engine, resolver);
-            } else {
-                _markup = Markup.init(engine, root.getPrefixedPath());
-            }
-        }
-        return _markup;
-    }
-
-    public void setOnDoc(Consumer<String> onDoc) {
-        this.onDoc = onDoc;
-    }
-
-    public void setResourceResolver(ResourceResolver resolver) {
-        this.resolver = resolver;
-    }
-
-    public void setOnMatch(BiConsumer<Context, Result> onMatch) {
-        this.onMatch = onMatch;
-    }
-
-    public void setSetupProvider(Function<String, Map<String, Object>> provider) {
-        this.setupProvider = provider;
-    }
-
-    public void setSetupOnceProvider(Function<String, Map<String, Object>> provider) {
-        this.setupOnceProvider = provider;
-    }
-
-    public void setAbortHandler(Runnable handler) {
-        this.abortHandler = handler;
-    }
-
-    public void setCallProvider(BiFunction<String, Object, Map<String, Object>> provider) {
-        this.callProvider = provider;
-    }
-
-    public void setCallOnceProvider(BiFunction<String, Object, Map<String, Object>> provider) {
-        this.callOnceProvider = provider;
-    }
-
-    public void setCallSingleProvider(BiFunction<String, Object, Object> provider) {
-        this.callSingleProvider = provider;
-    }
-
-    public void setInfoProvider(Supplier<Map<String, Object>> provider) {
-        this.infoProvider = provider;
-    }
-
-    public void setScenarioProvider(Supplier<Map<String, Object>> provider) {
-        this.scenarioProvider = provider;
-    }
-
-    public void setFeatureProvider(Supplier<Map<String, Object>> provider) {
-        this.featureProvider = provider;
-    }
-
-    public void setTagsProvider(Supplier<List<String>> provider) {
-        this.tagsProvider = provider;
-    }
-
-    public void setTagValuesProvider(Supplier<Map<String, List<String>>> provider) {
-        this.tagValuesProvider = provider;
-    }
-
-    public void setScenarioOutlineProvider(Supplier<Map<String, Object>> provider) {
-        this.scenarioOutlineProvider = provider;
-    }
-
-    public void setEnv(String env) {
-        this.env = env;
-    }
-
-    public void setSignalConsumer(Consumer<Object> consumer) {
-        this.signalConsumer = consumer;
-    }
-
-    public void setConfigureHandler(BiConsumer<String, Object> handler) {
-        this.configureHandler = handler;
-    }
-
-    public void setConfigProvider(Supplier<KarateConfig> provider) {
-        this.configProvider = provider;
-    }
-
-    public void setCurrentResourceProvider(Supplier<Resource> provider) {
-        this.currentResourceProvider = provider;
-    }
-
-    public void setPropertiesProvider(Supplier<Map<String, String>> provider) {
-        this.propertiesProvider = provider;
-    }
-
-    public void setMockHandler(MockHandler handler) {
-        this.mockHandler = handler;
-    }
-
-    public void setOutputDirProvider(Supplier<String> provider) {
-        this.outputDirProvider = provider;
     }
 
     /**
@@ -295,83 +89,25 @@ public class KarateJs implements SimpleObject {
         this.prevRequest = request;
     }
 
-    private Map<String, Object> getInfo() {
-        if (infoProvider != null) {
-            return infoProvider.get();
-        }
-        return Map.of();
-    }
-
-    private Map<String, Object> getScenario() {
-        if (scenarioProvider != null) {
-            return scenarioProvider.get();
-        }
-        return Map.of();
-    }
-
-    private Map<String, Object> getFeature() {
-        if (featureProvider != null) {
-            return featureProvider.get();
-        }
-        return Map.of();
-    }
-
-    private List<String> getTags() {
-        if (tagsProvider != null) {
-            return tagsProvider.get();
-        }
-        return List.of();
-    }
-
-    private Map<String, List<String>> getTagValues() {
-        if (tagValuesProvider != null) {
-            return tagValuesProvider.get();
-        }
-        return Map.of();
-    }
-
-    private Map<String, Object> getScenarioOutline() {
-        if (scenarioOutlineProvider != null) {
-            return scenarioOutlineProvider.get();
-        }
-        return null;  // V1 returns null when not in an outline
-    }
-
     /**
-     * Returns the config settings (from configure keyword) as a KarateConfig.
-     * Returns a copy to prevent mutation from JavaScript.
+     * Lazy-initialize and return the Markup template engine.
+     * Used for doc() and render() template processing.
      */
-    private KarateConfig getConfig() {
-        if (configProvider != null) {
-            // Return a copy to prevent mutation
-            return configProvider.get().copy();
-        }
-        return new KarateConfig();
-    }
-
-    private Invokable abort() {
-        return args -> {
-            if (abortHandler != null) {
-                abortHandler.run();
+    public Markup markup() {
+        if (_markup == null) {
+            if (resourceResolver != null) {
+                _markup = Markup.init(engine, resourceResolver);
+            } else {
+                _markup = Markup.init(engine, root.getPrefixedPath());
             }
-            return null;
-        };
-    }
-
-    private Invokable fail() {
-        return args -> {
-            String message = args.length > 0 && args[0] != null ? args[0].toString() : "karate.fail() called";
-            throw new RuntimeException(message);
-        };
+        }
+        return _markup;
     }
 
     /**
      * Renders an HTML template and returns the result.
      * Also sends to onDoc consumer if set.
      * Called by the 'doc' keyword in StepExecutor.
-     *
-     * @param options map containing 'read' key with template path
-     * @return the rendered HTML string
      */
     public String doc(Map<String, Object> options) {
         String read = (String) options.get("read");
@@ -417,6 +153,223 @@ public class KarateJs implements SimpleObject {
             onDoc.accept(html);
             return null;
         };
+    }
+
+    // ========== Engine-Dependent Methods ==========
+    // These methods require access to the JavaScript engine for evaluation.
+
+    private JsCallable initRead() {
+        return (context, args) -> {
+            if (args.length == 0) {
+                throw new RuntimeException("read() needs at least one argument");
+            }
+            String rawPath = args[0] + "";
+
+            // Parse tag selector for feature files
+            // Supports: file.feature@tag or @tag (same-file)
+            String path;
+            String tagSelector = null;
+            if (rawPath.startsWith("@")) {
+                // Same-file tag - return a FeatureCall wrapper
+                return new FeatureCall(null, rawPath);
+            } else {
+                int tagPos = rawPath.indexOf(".feature@");
+                if (tagPos != -1) {
+                    path = rawPath.substring(0, tagPos + 8);  // "file.feature"
+                    tagSelector = "@" + rawPath.substring(tagPos + 9);  // "@tag"
+                } else {
+                    path = rawPath;
+                }
+            }
+
+            // V1 compatibility: handle 'this:' prefix for relative paths
+            Resource resource;
+            if (path.startsWith("this:")) {
+                path = path.substring(5);
+                Resource currentResource = currentResourceProvider != null ? currentResourceProvider.get() : null;
+                resource = currentResource != null ? currentResource.resolve(path) : root.resolve(path);
+            } else {
+                resource = root.resolve(path);
+            }
+            return switch (resource.getExtension()) {
+                case "json" -> Json.of(resource.getText()).value();
+                case "js" -> engine.eval(resource.getText());
+                case "feature" -> {
+                    Feature feature = Feature.read(resource);
+                    yield tagSelector != null ? new FeatureCall(feature, tagSelector) : feature;
+                }
+                case "xml" -> {
+                    Document doc = Xml.toXmlDoc(resource.getText());
+                    processXmlEmbeddedExpressions(doc);
+                    yield doc;
+                }
+                case "csv" -> DataUtils.fromCsv(resource.getText());
+                case "yml", "yaml" -> DataUtils.fromYaml(resource.getText());
+                default -> resource.getText();
+            };
+        };
+    }
+
+    /**
+     * Fluent match API for global match() function.
+     */
+    private Invokable matchFluent() {
+        return args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("match() needs at least one argument");
+            }
+            return Match.evaluate(args[0], null, (ctx, result) -> {
+                if (onMatch != null) {
+                    onMatch.accept(ctx, result);
+                }
+            });
+        };
+    }
+
+    /**
+     * Process embedded expressions in XML nodes.
+     * Handles #(expr) and ##(optional) patterns in text content and attributes.
+     */
+    private void processXmlEmbeddedExpressions(org.w3c.dom.Node node) {
+        if (node == null) return;
+        if (node.getNodeType() == org.w3c.dom.Node.DOCUMENT_NODE) {
+            node = node.getFirstChild();
+        }
+        if (node == null) return;
+
+        // Process attributes
+        org.w3c.dom.NamedNodeMap attribs = node.getAttributes();
+        if (attribs != null) {
+            for (int i = 0; i < attribs.getLength(); i++) {
+                org.w3c.dom.Attr attr = (org.w3c.dom.Attr) attribs.item(i);
+                String value = attr.getValue();
+                if (value != null && value.contains("#(")) {
+                    attr.setValue(processEmbeddedString(value));
+                }
+            }
+        }
+
+        // Process child nodes
+        java.util.List<org.w3c.dom.Node> elementsToRemove = new java.util.ArrayList<>();
+        java.util.List<org.w3c.dom.Node[]> nodesToReplace = new java.util.ArrayList<>();
+        org.w3c.dom.NodeList children = node.getChildNodes();
+        for (int i = 0; i < children.getLength(); i++) {
+            org.w3c.dom.Node child = children.item(i);
+            if (child.getNodeType() == org.w3c.dom.Node.TEXT_NODE) {
+                String text = child.getTextContent();
+                if (text != null && text.contains("#(")) {
+                    String trimmed = text.trim();
+                    if (trimmed.startsWith("##(") && trimmed.endsWith(")")) {
+                        String expr = trimmed.substring(3, trimmed.length() - 1);
+                        Object result = engine.eval(expr);
+                        if (result == null) {
+                            elementsToRemove.add(child.getParentNode());
+                        } else if (result instanceof org.w3c.dom.Node) {
+                            nodesToReplace.add(new org.w3c.dom.Node[]{child, (org.w3c.dom.Node) result});
+                        } else {
+                            child.setTextContent(result.toString());
+                        }
+                    } else if (trimmed.startsWith("#(") && trimmed.endsWith(")") && !trimmed.substring(2).contains("#(")) {
+                        String expr = trimmed.substring(2, trimmed.length() - 1);
+                        try {
+                            Object result = engine.eval(expr);
+                            if (result instanceof org.w3c.dom.Node) {
+                                nodesToReplace.add(new org.w3c.dom.Node[]{child, (org.w3c.dom.Node) result});
+                            } else {
+                                child.setTextContent(KarateJsUtils.valueToString(result));
+                            }
+                        } catch (Exception e) {
+                            // Keep original if evaluation fails
+                        }
+                    } else {
+                        child.setTextContent(processEmbeddedString(text));
+                    }
+                }
+            } else if (child.getNodeType() == org.w3c.dom.Node.ELEMENT_NODE) {
+                processXmlEmbeddedExpressions(child);
+            } else if (child.getNodeType() == org.w3c.dom.Node.CDATA_SECTION_NODE) {
+                String text = child.getTextContent();
+                if (text != null && text.contains("#(")) {
+                    child.setTextContent(processEmbeddedString(text));
+                }
+            }
+        }
+
+        // Replace text nodes with imported XML nodes
+        for (org.w3c.dom.Node[] pair : nodesToReplace) {
+            org.w3c.dom.Node textNode = pair[0];
+            org.w3c.dom.Node xmlNode = pair[1];
+            org.w3c.dom.Node parent = textNode.getParentNode();
+            if (parent != null) {
+                Document ownerDoc = parent.getOwnerDocument();
+                org.w3c.dom.Node toImport = xmlNode;
+                if (toImport.getNodeType() == org.w3c.dom.Node.DOCUMENT_NODE) {
+                    toImport = ((Document) toImport).getDocumentElement();
+                }
+                org.w3c.dom.Node imported = ownerDoc.importNode(toImport, true);
+                parent.replaceChild(imported, textNode);
+            }
+        }
+
+        // Remove elements marked for removal
+        for (org.w3c.dom.Node toRemove : elementsToRemove) {
+            Node parent = toRemove.getParentNode();
+            if (parent != null) {
+                parent.removeChild(toRemove);
+            }
+        }
+    }
+
+    /**
+     * Process a string with embedded expressions like "Hello #(name)!"
+     */
+    private String processEmbeddedString(String str) {
+        StringBuilder result = new StringBuilder();
+        int i = 0;
+        while (i < str.length()) {
+            int hashPos = str.indexOf('#', i);
+            if (hashPos == -1 || hashPos >= str.length() - 1) {
+                result.append(str.substring(i));
+                break;
+            }
+            result.append(str, i, hashPos);
+            char next = str.charAt(hashPos + 1);
+            if (next == '(') {
+                int closePos = KarateJsUtils.findMatchingParen(str, hashPos + 1);
+                if (closePos > 0) {
+                    String expr = str.substring(hashPos + 2, closePos);
+                    try {
+                        Object value = engine.eval(expr);
+                        result.append(KarateJsUtils.valueToString(value));
+                    } catch (Exception e) {
+                        result.append(str, hashPos, closePos + 1);
+                    }
+                    i = closePos + 1;
+                } else {
+                    result.append('#');
+                    i = hashPos + 1;
+                }
+            } else if (next == '#' && hashPos + 2 < str.length() && str.charAt(hashPos + 2) == '(') {
+                int closePos = KarateJsUtils.findMatchingParen(str, hashPos + 2);
+                if (closePos > 0) {
+                    String expr = str.substring(hashPos + 3, closePos);
+                    try {
+                        Object value = engine.eval(expr);
+                        result.append(KarateJsUtils.valueToString(value));
+                    } catch (Exception e) {
+                        result.append(str, hashPos, closePos + 1);
+                    }
+                    i = closePos + 1;
+                } else {
+                    result.append("##");
+                    i = hashPos + 2;
+                }
+            } else {
+                result.append('#');
+                i = hashPos + 1;
+            }
+        }
+        return result.toString();
     }
 
     private Invokable http() {
@@ -556,7 +509,7 @@ public class KarateJs implements SimpleObject {
                     engine.put(name, target);
                     // Direct path set for JSON
                     String navPath = path.startsWith("$.") ? path.substring(2) : path;
-                    setAtPath(target, navPath, value);
+                    KarateJsUtils.setAtPath(target, navPath, value);
                 } else {
                     // Handle special jsonpath cases
                     if (path.endsWith("[]")) {
@@ -570,7 +523,7 @@ public class KarateJs implements SimpleObject {
                         } else {
                             // Navigate to array and append
                             String navPath = arrayPath.substring(2); // remove "$."
-                            Object arr = navigateToPath(target, navPath);
+                            Object arr = KarateJsUtils.navigateToPath(target, navPath);
                             if (arr instanceof List) {
                                 ((List<Object>) arr).add(value);
                             }
@@ -578,64 +531,11 @@ public class KarateJs implements SimpleObject {
                     } else {
                         // Direct path set
                         String navPath = path.startsWith("$.") ? path.substring(2) : path;
-                        setAtPath(target, navPath, value);
+                        KarateJsUtils.setAtPath(target, navPath, value);
                     }
                 }
             }
             return null;
-        };
-    }
-
-    @SuppressWarnings("unchecked")
-    private Object navigateToPath(Object target, String path) {
-        String[] parts = path.split("\\.");
-        Object current = target;
-        for (String part : parts) {
-            if (current instanceof Map) {
-                current = ((Map<String, Object>) current).get(part);
-            } else {
-                return null;
-            }
-        }
-        return current;
-    }
-
-    @SuppressWarnings("unchecked")
-    private void setAtPath(Object target, String path, Object value) {
-        String[] parts = path.split("\\.");
-        Object current = target;
-        for (int i = 0; i < parts.length - 1; i++) {
-            if (current instanceof Map) {
-                Map<String, Object> map = (Map<String, Object>) current;
-                Object next = map.get(parts[i]);
-                if (next == null) {
-                    next = new java.util.LinkedHashMap<>();
-                    map.put(parts[i], next);
-                }
-                current = next;
-            }
-        }
-        if (current instanceof Map) {
-            ((Map<String, Object>) current).put(parts[parts.length - 1], value);
-        }
-    }
-
-    /**
-     * Fluent match API for global match() function.
-     * Usage: match(obj).contains({...}), match(obj)._equals({...})
-     * Returns a Match.Value for chaining.
-     */
-    private Invokable matchFluent() {
-        return args -> {
-            if (args.length == 0) {
-                throw new RuntimeException("match() needs at least one argument");
-            }
-            // Return a Value for fluent API: match(obj).contains(...)
-            return Match.evaluate(args[0], null, (context, result) -> {
-                if (onMatch != null) {
-                    onMatch.accept(context, result);
-                }
-            });
         };
     }
 
@@ -670,41 +570,6 @@ public class KarateJs implements SimpleObject {
                 Result result = value.is(matchType, expected);
                 return result.toMap();
             }
-        };
-    }
-
-    private Invokable toStringPretty() {
-        return args -> {
-            if (args.length == 0) {
-                throw new RuntimeException("toStringPretty() needs at least one argument");
-            }
-            if (args[0] instanceof List || args[0] instanceof Map) {
-                return StringUtils.formatJson(args[0]);
-            } else if (args[0] instanceof Node) {
-                return Xml.toString((Node) args[0], true);
-            } else {
-                return args[0] + "";
-            }
-        };
-    }
-
-    private Invokable setup() {
-        return args -> {
-            if (setupProvider == null) {
-                throw new RuntimeException("karate.setup() is not available in this context");
-            }
-            String name = args.length > 0 && args[0] != null ? args[0].toString() : null;
-            return setupProvider.apply(name);
-        };
-    }
-
-    private Invokable setupOnce() {
-        return args -> {
-            if (setupOnceProvider == null) {
-                throw new RuntimeException("karate.setupOnce() is not available in this context");
-            }
-            String name = args.length > 0 && args[0] != null ? args[0].toString() : null;
-            return setupOnceProvider.apply(name);
         };
     }
 
@@ -746,63 +611,6 @@ public class KarateJs implements SimpleObject {
         };
     }
 
-    /**
-     * karate.callonce() - Execute a feature file once per feature and cache the result.
-     * Same as: callonce result = call read('path')
-     */
-    private Invokable callonce() {
-        return args -> {
-            if (callOnceProvider == null) {
-                throw new RuntimeException("karate.callonce() is not available in this context");
-            }
-            if (args.length == 0) {
-                throw new RuntimeException("karate.callonce() requires at least one argument (feature path)");
-            }
-            String path = args[0].toString();
-            Object arg = args.length > 1 ? args[1] : null;
-            return callOnceProvider.apply(path, arg);
-        };
-    }
-
-    /**
-     * karate.callSingle() - Execute a feature/JS file once per Suite and cache the result.
-     * All parallel threads share the same cached result.
-     *
-     * Uses Suite-level locking to ensure only one thread executes the call,
-     * while others wait and receive the cached result.
-     */
-    private Invokable callSingle() {
-        return args -> {
-            if (callSingleProvider == null) {
-                throw new RuntimeException("karate.callSingle() is not available in this context");
-            }
-            if (args.length == 0) {
-                throw new RuntimeException("karate.callSingle() requires at least one argument (path)");
-            }
-            String path = args[0].toString();
-            Object arg = args.length > 1 ? args[1] : null;
-            return callSingleProvider.apply(path, arg);
-        };
-    }
-
-    /**
-     * karate.configure() - Apply configuration from JavaScript.
-     * Usage: karate.configure('key', value)
-     */
-    private Invokable configure() {
-        return args -> {
-            if (args.length < 2) {
-                throw new RuntimeException("configure() needs two arguments: key and value");
-            }
-            String key = args[0].toString();
-            Object value = args[1];
-            if (configureHandler != null) {
-                configureHandler.accept(key, value);
-            }
-            return null;
-        };
-    }
-
     private Invokable eval() {
         return args -> {
             if (args.length == 0) {
@@ -812,72 +620,7 @@ public class KarateJs implements SimpleObject {
         };
     }
 
-    private Map<String, Object> getOsInfo() {
-        Map<String, Object> result = new LinkedHashMap<>();
-        String osName = System.getProperty("os.name", "unknown").toLowerCase();
-        result.put("name", System.getProperty("os.name", "unknown"));
-        if (osName.contains("win")) {
-            result.put("type", "windows");
-        } else if (osName.contains("mac")) {
-            result.put("type", "macosx");
-        } else if (osName.contains("nix") || osName.contains("nux")) {
-            result.put("type", "linux");
-        } else {
-            result.put("type", "unknown");
-        }
-        return result;
-    }
-
-    /**
-     * Returns system properties available via karate.properties['key'].
-     * If a propertiesProvider is set (from Suite), uses that.
-     * Otherwise falls back to JVM System.getProperties().
-     */
-    private Map<String, String> getProperties() {
-        if (propertiesProvider != null) {
-            return propertiesProvider.get();
-        }
-        // Fallback to JVM system properties
-        Map<String, String> props = new HashMap<>();
-        System.getProperties().forEach((k, v) -> props.put(k.toString(), v.toString()));
-        return props;
-    }
-
     // ========== Type Utilities ==========
-
-    /**
-     * Parses a string as JSON, XML, or returns the string as-is.
-     * - If the string looks like JSON (starts with { or [), parse as JSON
-     * - If the string looks like XML (starts with <), parse as XML
-     * - Otherwise, return the string unchanged
-     */
-    private Invokable fromString() {
-        return args -> {
-            if (args.length == 0 || args[0] == null) {
-                return null;
-            }
-            String text = args[0].toString();
-            if (text.isEmpty()) {
-                return text;
-            }
-            if (StringUtils.looksLikeJson(text)) {
-                try {
-                    return Json.of(text).value();
-                } catch (Exception e) {
-                    logger.warn("fromString JSON parse failed: {}", e.getMessage());
-                    return text;
-                }
-            } else if (StringUtils.isXml(text)) {
-                try {
-                    return Xml.toXmlDoc(text);
-                } catch (Exception e) {
-                    logger.warn("fromString XML parse failed: {}", e.getMessage());
-                    return text;
-                }
-            }
-            return text;
-        };
-    }
 
     private Invokable toJava() {
         return args -> {
@@ -910,95 +653,6 @@ public class KarateJs implements SimpleObject {
         };
     }
 
-    @SuppressWarnings("unchecked")
-    private Invokable log() {
-        return args -> {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < args.length; i++) {
-                if (i > 0) sb.append(" ");
-                Object arg = args[i];
-                if (arg instanceof Node) {
-                    sb.append(Xml.toString((Node) arg, true));
-                } else if (arg instanceof Map || arg instanceof List) {
-                    sb.append(StringUtils.formatJson(arg));
-                } else {
-                    sb.append(arg);
-                }
-            }
-            LogContext.get().log(sb.toString());
-            return null;
-        };
-    }
-
-    /**
-     * Embed content in the report. Auto-detects MIME type if not provided.
-     * Usage: karate.embed(data), karate.embed(data, mimeType), karate.embed(data, mimeType, name)
-     */
-    private Invokable embed() {
-        return args -> {
-            if (args.length < 1) {
-                throw new RuntimeException("embed() needs at least one argument: data");
-            }
-            Object dataArg = args[0];
-            String mimeType = args.length > 1 && args[1] != null ? args[1].toString() : detectMimeType(dataArg);
-            String name = args.length > 2 ? args[2].toString() : null;
-
-            byte[] data = convertToBytes(dataArg);
-            LogContext.get().embed(data, mimeType, name);
-            return null;
-        };
-    }
-
-    /**
-     * Auto-detect MIME type from data object (like v1's ResourceType.fromObject).
-     */
-    private String detectMimeType(Object obj) {
-        if (obj instanceof Map || obj instanceof List) {
-            return "application/json";
-        } else if (obj instanceof Node) {
-            return "application/xml";
-        } else if (obj instanceof byte[]) {
-            return "application/octet-stream";
-        } else {
-            return "text/plain";
-        }
-    }
-
-    /**
-     * Convert various data types to bytes for embedding.
-     */
-    private byte[] convertToBytes(Object obj) {
-        if (obj == null) {
-            return new byte[0];
-        }
-        if (obj instanceof byte[]) {
-            return (byte[]) obj;
-        }
-        if (obj instanceof String str) {
-            return str.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        }
-        if (obj instanceof List<?> list) {
-            // Check if it's a list of numbers (byte array representation)
-            if (!list.isEmpty() && list.get(0) instanceof Number) {
-                byte[] bytes = new byte[list.size()];
-                for (int i = 0; i < list.size(); i++) {
-                    bytes[i] = ((Number) list.get(i)).byteValue();
-                }
-                return bytes;
-            }
-            // Otherwise serialize as JSON
-            return StringUtils.formatJson(list).getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        }
-        if (obj instanceof Map) {
-            return StringUtils.formatJson(obj).getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        }
-        if (obj instanceof Node) {
-            return Xml.toString((Node) obj, true).getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        }
-        // Fallback: convert to string
-        return obj.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
-    }
-
     private Invokable xmlPath() {
         return args -> {
             if (args.length < 2) {
@@ -1015,242 +669,11 @@ public class KarateJs implements SimpleObject {
                 throw new RuntimeException("xmlPath() first argument must be XML node or string, but was: " + (xmlObj == null ? "null" : xmlObj.getClass()));
             }
             try {
-                return evalXmlPath(doc, path);
+                return KarateJsUtils.evalXmlPath(doc, path);
             } catch (Exception e) {
                 throw new RuntimeException("xmlPath failed for path: " + path + " - " + e.getMessage(), e);
             }
         };
-    }
-
-    /**
-     * Evaluate an XPath expression on an XML node.
-     * Returns the appropriate type: String, Number, Node, or List of nodes.
-     */
-    public static Object evalXmlPath(Node doc, String path) {
-        NodeList nodeList;
-        try {
-            nodeList = Xml.getNodeListByPath(doc, path);
-        } catch (Exception e) {
-            // XPath functions like count() don't return nodes
-            String strValue = Xml.getTextValueByPath(doc, path);
-            if (path.startsWith("count")) {
-                try {
-                    return Integer.parseInt(strValue);
-                } catch (NumberFormatException nfe) {
-                    return strValue;
-                }
-            }
-            return strValue;
-        }
-        int count = nodeList.getLength();
-        if (count == 0) {
-            return null; // Not present
-        }
-        if (count == 1) {
-            return nodeToValue(nodeList.item(0));
-        }
-        // Multiple nodes - return a list
-        List<Object> list = new ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
-            list.add(nodeToValue(nodeList.item(i)));
-        }
-        return list;
-    }
-
-    private static Object nodeToValue(Node node) {
-        if (node.getNodeType() == Node.ATTRIBUTE_NODE) {
-            return node.getNodeValue();
-        }
-        if (Xml.getChildElementCount(node) == 0) {
-            // Leaf node - return text content
-            return node.getTextContent();
-        }
-        // Return as a new XML document
-        return Xml.toNewDocument(node);
-    }
-
-    /**
-     * Process embedded expressions in XML nodes.
-     * Handles #(expr) and ##(optional) patterns in text content and attributes.
-     */
-    private void processXmlEmbeddedExpressions(Node node) {
-        if (node == null) return;
-        if (node.getNodeType() == Node.DOCUMENT_NODE) {
-            node = node.getFirstChild();
-        }
-        if (node == null) return;
-
-        // Process attributes
-        org.w3c.dom.NamedNodeMap attribs = node.getAttributes();
-        if (attribs != null) {
-            for (int i = 0; i < attribs.getLength(); i++) {
-                org.w3c.dom.Attr attr = (org.w3c.dom.Attr) attribs.item(i);
-                String value = attr.getValue();
-                if (value != null && value.contains("#(")) {
-                    attr.setValue(processEmbeddedString(value));
-                }
-            }
-        }
-
-        // Process child nodes
-        List<Node> elementsToRemove = new ArrayList<>();
-        List<Node[]> nodesToReplace = new ArrayList<>();
-        org.w3c.dom.NodeList children = node.getChildNodes();
-        for (int i = 0; i < children.getLength(); i++) {
-            Node child = children.item(i);
-            if (child.getNodeType() == Node.TEXT_NODE) {
-                String text = child.getTextContent();
-                if (text != null && text.contains("#(")) {
-                    String trimmed = text.trim();
-                    // Check for ##(optional) pattern
-                    if (trimmed.startsWith("##(") && trimmed.endsWith(")")) {
-                        String expr = trimmed.substring(3, trimmed.length() - 1);
-                        Object result = engine.eval(expr);
-                        if (result == null) {
-                            // Mark parent element for removal
-                            elementsToRemove.add(child.getParentNode());
-                        } else if (result instanceof Node) {
-                            // Schedule replacement with imported XML node
-                            nodesToReplace.add(new Node[]{child, (Node) result});
-                        } else {
-                            child.setTextContent(result.toString());
-                        }
-                    } else if (trimmed.startsWith("#(") && trimmed.endsWith(")") && !trimmed.substring(2).contains("#(")) {
-                        // Single #(expr) pattern - may need to import XML node
-                        String expr = trimmed.substring(2, trimmed.length() - 1);
-                        try {
-                            Object result = engine.eval(expr);
-                            if (result instanceof Node) {
-                                // Schedule replacement with imported XML node
-                                nodesToReplace.add(new Node[]{child, (Node) result});
-                            } else {
-                                child.setTextContent(valueToString(result));
-                            }
-                        } catch (Exception e) {
-                            // Keep original if evaluation fails
-                        }
-                    } else {
-                        child.setTextContent(processEmbeddedString(text));
-                    }
-                }
-            } else if (child.getNodeType() == Node.ELEMENT_NODE) {
-                processXmlEmbeddedExpressions(child);
-            } else if (child.getNodeType() == Node.CDATA_SECTION_NODE) {
-                // Process embedded expressions in CDATA, keeping result as text
-                String text = child.getTextContent();
-                if (text != null && text.contains("#(")) {
-                    child.setTextContent(processEmbeddedString(text));
-                }
-            }
-        }
-
-        // Replace text nodes with imported XML nodes
-        for (Node[] pair : nodesToReplace) {
-            Node textNode = pair[0];
-            Node xmlNode = pair[1];
-            Node parent = textNode.getParentNode();
-            if (parent != null) {
-                Document ownerDoc = parent.getOwnerDocument();
-                // Get the root element of the XML node to import
-                Node toImport = xmlNode;
-                if (toImport.getNodeType() == Node.DOCUMENT_NODE) {
-                    toImport = ((Document) toImport).getDocumentElement();
-                }
-                // Import and insert the node
-                Node imported = ownerDoc.importNode(toImport, true);
-                parent.replaceChild(imported, textNode);
-            }
-        }
-
-        // Remove elements marked for removal
-        for (Node toRemove : elementsToRemove) {
-            Node parent = toRemove.getParentNode();
-            if (parent != null) {
-                parent.removeChild(toRemove);
-            }
-        }
-    }
-
-    /**
-     * Convert a value to string, handling XML nodes properly.
-     */
-    private String valueToString(Object value) {
-        if (value == null) {
-            return "";
-        }
-        if (value instanceof Node) {
-            return Xml.toString((Node) value, false);
-        }
-        return value.toString();
-    }
-
-    /**
-     * Process a string with embedded expressions like "Hello #(name)!"
-     */
-    private String processEmbeddedString(String str) {
-        StringBuilder result = new StringBuilder();
-        int i = 0;
-        while (i < str.length()) {
-            int hashPos = str.indexOf('#', i);
-            if (hashPos == -1 || hashPos >= str.length() - 1) {
-                result.append(str.substring(i));
-                break;
-            }
-            result.append(str, i, hashPos);
-            char next = str.charAt(hashPos + 1);
-            if (next == '(') {
-                // #(expr) pattern
-                int closePos = findMatchingParen(str, hashPos + 1);
-                if (closePos > 0) {
-                    String expr = str.substring(hashPos + 2, closePos);
-                    try {
-                        Object value = engine.eval(expr);
-                        result.append(valueToString(value));
-                    } catch (Exception e) {
-                        // If expression fails (variable not defined), keep original
-                        result.append(str, hashPos, closePos + 1);
-                    }
-                    i = closePos + 1;
-                } else {
-                    result.append('#');
-                    i = hashPos + 1;
-                }
-            } else if (next == '#' && hashPos + 2 < str.length() && str.charAt(hashPos + 2) == '(') {
-                // ##(optional) pattern - handle inline
-                int closePos = findMatchingParen(str, hashPos + 2);
-                if (closePos > 0) {
-                    String expr = str.substring(hashPos + 3, closePos);
-                    try {
-                        Object value = engine.eval(expr);
-                        result.append(valueToString(value));
-                    } catch (Exception e) {
-                        // If expression fails, keep original
-                        result.append(str, hashPos, closePos + 1);
-                    }
-                    i = closePos + 1;
-                } else {
-                    result.append("##");
-                    i = hashPos + 2;
-                }
-            } else {
-                result.append('#');
-                i = hashPos + 1;
-            }
-        }
-        return result.toString();
-    }
-
-    private static int findMatchingParen(String str, int openPos) {
-        int depth = 1;
-        for (int i = openPos + 1; i < str.length(); i++) {
-            char c = str.charAt(i);
-            if (c == '(') depth++;
-            else if (c == ')') {
-                depth--;
-                if (depth == 0) return i;
-            }
-        }
-        return -1;
     }
 
     private Invokable setXml() {
@@ -1286,9 +709,9 @@ public class KarateJs implements SimpleObject {
      * karate.exec() - Synchronous process execution.
      * Returns stdout as string.
      * Usage:
-     *   karate.exec('ls -la')
-     *   karate.exec(['ls', '-la'])
-     *   karate.exec({ line: 'ls -la', workingDir: '/tmp' })
+     * karate.exec('ls -la')
+     * karate.exec(['ls', '-la'])
+     * karate.exec({ line: 'ls -la', workingDir: '/tmp' })
      */
     @SuppressWarnings("unchecked")
     private Invokable exec() {
@@ -1317,14 +740,14 @@ public class KarateJs implements SimpleObject {
      * karate.fork() - Asynchronous process execution.
      * Returns ProcessHandle for async control.
      * Usage:
-     *   var proc = karate.fork('ping google.com')
-     *   var proc = karate.fork({ args: ['node', 'server.js'], listener: fn })
-     *   var proc = karate.fork({ args: [...], start: false })  // deferred start
-     *   proc.onStdOut(fn).start()
-     *   proc.waitSync()
-     *   proc.stdOut
-     *   proc.exitCode
-     *   proc.close()
+     * var proc = karate.fork('ping google.com')
+     * var proc = karate.fork({ args: ['node', 'server.js'], listener: fn })
+     * var proc = karate.fork({ args: [...], start: false })  // deferred start
+     * proc.onStdOut(fn).start()
+     * proc.waitSync()
+     * proc.stdOut
+     * proc.exitCode
+     * proc.close()
      */
     @SuppressWarnings("unchecked")
     private Invokable fork() {
@@ -1397,19 +820,6 @@ public class KarateJs implements SimpleObject {
                 handle.start();
             }
             return handle;
-        };
-    }
-
-    /**
-     * karate.signal() - Signal a result for listen/listenResult.
-     * Triggers listenResult in the waiting scenario.
-     */
-    private Invokable signal() {
-        return args -> {
-            if (signalConsumer != null && args.length > 0) {
-                signalConsumer.accept(args[0]);
-            }
-            return null;
         };
     }
 
@@ -1531,33 +941,6 @@ public class KarateJs implements SimpleObject {
     }
 
     // ========== Pending Methods Implementation ==========
-
-    /**
-     * karate.logger - Log facade with debug/info/warn/error methods.
-     * Uses LogContext to capture logs in reports and optionally cascade to SLF4J.
-     */
-    private LogFacade getLogger() {
-        if (logFacade == null) {
-            logFacade = new LogFacade();
-        }
-        return logFacade;
-    }
-
-    /**
-     * karate.prevRequest - Returns the previous HTTP request made in this scenario.
-     * Returns a map with: method, url, headers, body
-     */
-    private Map<String, Object> getPrevRequest() {
-        if (prevRequest == null) {
-            return null;
-        }
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("method", prevRequest.getMethod());
-        map.put("url", prevRequest.getUrlAndPath());
-        map.put("headers", prevRequest.getHeaders());
-        map.put("body", prevRequest.getBodyConverted());
-        return map;
-    }
 
     /**
      * karate.request - Returns the current mock request (only in mock context).
@@ -1820,7 +1203,7 @@ public class KarateJs implements SimpleObject {
             }
 
             // Convert value to bytes
-            byte[] bytes = convertToBytes(value);
+            byte[] bytes = KarateJsUtils.convertToBytes(value);
 
             // Write to file
             try {
@@ -1833,98 +1216,44 @@ public class KarateJs implements SimpleObject {
         };
     }
 
-    /**
-     * LogFacade - Provides karate.logger.trace/debug/info/warn/error methods.
-     * Implements SimpleObject for clean JS interop: karate.logger.debug('msg')
-     * Logs go to LogContext with level filtering for report capture,
-     * and cascade to SLF4J via karate.scenario category.
-     */
-    public static class LogFacade implements SimpleObject {
-
-        private static final LogContext.LogWriter log = LogContext.with(LogContext.SCENARIO_LOGGER);
-
-        @Override
-        public Object jsGet(String key) {
-            return switch (key) {
-                case "trace" -> logMethod(LogLevel.TRACE);
-                case "debug" -> logMethod(LogLevel.DEBUG);
-                case "info" -> logMethod(LogLevel.INFO);
-                case "warn" -> logMethod(LogLevel.WARN);
-                case "error" -> logMethod(LogLevel.ERROR);
-                default -> null;
-            };
-        }
-
-        private Invokable logMethod(LogLevel level) {
-            return args -> {
-                // Check if level is enabled before formatting
-                if (!level.isEnabled(LogContext.getLogLevel())) {
-                    return null; // Filtered
-                }
-                StringBuilder sb = new StringBuilder();
-                // Add level prefix for TRACE/DEBUG/WARN/ERROR (distinguish from INFO)
-                if (level != LogLevel.INFO) {
-                    sb.append("[").append(level).append("] ");
-                }
-                for (int i = 0; i < args.length; i++) {
-                    if (i > 0) sb.append(" ");
-                    Object val = args[i];
-                    if (val instanceof Node) {
-                        sb.append(Xml.toString((Node) val, true));
-                    } else if (val instanceof Map || val instanceof List) {
-                        sb.append(StringUtils.formatJson(val));
-                    } else {
-                        sb.append(val);
-                    }
-                }
-                // Log via LogWriter (captures to buffer AND cascades to SLF4J)
-                switch (level) {
-                    case TRACE -> log.trace(sb.toString());
-                    case DEBUG -> log.debug(sb.toString());
-                    case INFO -> log.info(sb.toString());
-                    case WARN -> log.warn(sb.toString());
-                    case ERROR -> log.error(sb.toString());
-                }
-                return null;
-            };
-        }
-    }
-
     @Override
     public Object jsGet(String key) {
         return switch (key) {
             // Stateless utility methods (KarateJsApi)
-            case "append" -> KarateJsApi.append();
-            case "appendTo" -> KarateJsApi.appendTo();
-            case "distinct" -> KarateJsApi.distinct();
-            case "extract" -> KarateJsApi.extract();
-            case "extractAll" -> KarateJsApi.extractAll();
-            case "filter" -> KarateJsApi.filter();
-            case "filterKeys" -> KarateJsApi.filterKeys();
-            case "forEach" -> KarateJsApi.forEach();
-            case "fromJson" -> KarateJsApi.fromJson();
-            case "jsonPath" -> KarateJsApi.jsonPath();
-            case "keysOf" -> KarateJsApi.keysOf();
-            case "lowerCase" -> KarateJsApi.lowerCase();
-            case "map" -> KarateJsApi.map();
-            case "mapWithKey" -> KarateJsApi.mapWithKey();
-            case "merge" -> KarateJsApi.merge();
-            case "pause" -> KarateJsApi.pause();
-            case "pretty" -> KarateJsApi.pretty();
-            case "prettyXml" -> KarateJsApi.prettyXml();
-            case "range" -> KarateJsApi.range();
-            case "repeat" -> KarateJsApi.repeat();
-            case "sizeOf" -> KarateJsApi.sizeOf();
-            case "sort" -> KarateJsApi.sort();
-            case "toBean" -> KarateJsApi.toBean();
-            case "toBytes" -> KarateJsApi.toBytes();
-            case "toCsv" -> KarateJsApi.toCsv();
-            case "toJson" -> KarateJsApi.toJson();
-            case "toString" -> KarateJsApi.toStringValue();
-            case "typeOf" -> KarateJsApi.typeOf();
-            case "urlDecode" -> KarateJsApi.urlDecode();
-            case "urlEncode" -> KarateJsApi.urlEncode();
-            case "valuesOf" -> KarateJsApi.valuesOf();
+            case "append" -> KarateJsUtils.append();
+            case "appendTo" -> KarateJsUtils.appendTo();
+            case "distinct" -> KarateJsUtils.distinct();
+            case "extract" -> KarateJsUtils.extract();
+            case "extractAll" -> KarateJsUtils.extractAll();
+            case "filter" -> KarateJsUtils.filter();
+            case "filterKeys" -> KarateJsUtils.filterKeys();
+            case "forEach" -> KarateJsUtils.forEach();
+            case "fromJson" -> KarateJsUtils.fromJson();
+            case "fromString" -> KarateJsUtils.fromString();
+            case "jsonPath" -> KarateJsUtils.jsonPath();
+            case "keysOf" -> KarateJsUtils.keysOf();
+            case "lowerCase" -> KarateJsUtils.lowerCase();
+            case "map" -> KarateJsUtils.map();
+            case "mapWithKey" -> KarateJsUtils.mapWithKey();
+            case "merge" -> KarateJsUtils.merge();
+            case "os" -> KarateJsUtils.getOsInfo();
+            case "pause" -> KarateJsUtils.pause();
+            case "pretty" -> KarateJsUtils.pretty();
+            case "prettyXml" -> KarateJsUtils.prettyXml();
+            case "range" -> KarateJsUtils.range();
+            case "repeat" -> KarateJsUtils.repeat();
+            case "sizeOf" -> KarateJsUtils.sizeOf();
+            case "sort" -> KarateJsUtils.sort();
+            case "toBean" -> KarateJsUtils.toBean();
+            case "toBytes" -> KarateJsUtils.toBytes();
+            case "toCsv" -> KarateJsUtils.toCsv();
+            case "toJson" -> KarateJsUtils.toJson();
+            case "toString" -> KarateJsUtils.toStringValue();
+            case "toStringPretty" -> KarateJsUtils.pretty();
+            case "typeOf" -> KarateJsUtils.typeOf();
+            case "urlDecode" -> KarateJsUtils.urlDecode();
+            case "urlEncode" -> KarateJsUtils.urlEncode();
+            case "valuesOf" -> KarateJsUtils.valuesOf();
             // Stateful methods that need engine/providers
             case "abort" -> abort();
             case "call" -> call();
@@ -1940,14 +1269,12 @@ public class KarateJs implements SimpleObject {
             case "fail" -> fail();
             case "feature" -> getFeature();
             case "fork" -> fork();
-            case "fromString" -> fromString();
             case "get" -> get();
             case "http" -> http();
             case "info" -> getInfo();
             case "log" -> log();
             case "logger" -> getLogger();
             case "match" -> karateMatch();
-            case "os" -> getOsInfo();
             case "prevRequest" -> getPrevRequest();
             case "proceed" -> proceed();
             case "properties" -> getProperties();
@@ -1972,7 +1299,6 @@ public class KarateJs implements SimpleObject {
             case "tagValues" -> getTagValues();
             case "toAbsolutePath" -> toAbsolutePath();
             case "toJava" -> toJava();
-            case "toStringPretty" -> toStringPretty();
             case "waitForHttp" -> waitForHttp();
             case "waitForPort" -> waitForPort();
             case "write" -> write();
