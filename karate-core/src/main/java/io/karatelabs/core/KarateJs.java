@@ -713,9 +713,33 @@ public class KarateJs implements SimpleObject {
             if (args.length == 0) {
                 throw new RuntimeException("karate.call() requires at least one argument (feature path)");
             }
-            String path = args[0].toString();
-            Object arg = args.length > 1 ? args[1] : null;
-            return callProvider.apply(path, arg);
+            // V1 compatible signatures:
+            // call(path) - isolated scope
+            // call(path, arg) - isolated scope with arg
+            // call(sharedScope, path) - explicit scope
+            // call(sharedScope, path, arg) - explicit scope with arg
+            boolean sharedScope = false;
+            String path;
+            Object arg;
+            if (args[0] instanceof Boolean) {
+                sharedScope = (Boolean) args[0];
+                if (args.length < 2) {
+                    throw new RuntimeException("karate.call() with sharedScope requires a feature path");
+                }
+                path = args[1].toString();
+                arg = args.length > 2 ? args[2] : null;
+            } else {
+                path = args[0].toString();
+                arg = args.length > 1 ? args[1] : null;
+            }
+            Map<String, Object> result = callProvider.apply(path, arg);
+            if (sharedScope && result != null) {
+                // Merge result variables into current scope
+                for (var entry : result.entrySet()) {
+                    engine.put(entry.getKey(), entry.getValue());
+                }
+            }
+            return result;
         };
     }
 

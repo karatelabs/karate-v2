@@ -375,6 +375,57 @@ class StepCallTest {
     }
 
     @Test
+    void testKarateCallWithSharedScope() throws Exception {
+        // Tests karate.call(true, 'file') for shared scope
+        Path calledFeature = tempDir.resolve("called.feature");
+        Files.writeString(calledFeature, """
+            Feature: Called
+            Scenario:
+            * def sharedVar = 'from-called'
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Caller
+            Scenario:
+            * karate.call(true, 'called.feature')
+            * match sharedVar == 'from-called'
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "Shared scope call should merge variables: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testKarateCallIsolatedScope() throws Exception {
+        // Tests that karate.call('file') is isolated - variable should NOT be in scope
+        Path calledFeature = tempDir.resolve("called.feature");
+        Files.writeString(calledFeature, """
+            Feature: Called
+            Scenario:
+            * def isolatedVar = 'from-called'
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Caller
+            Scenario:
+            * def result = karate.call('called.feature')
+            * match result.isolatedVar == 'from-called'
+            * match karate.get('isolatedVar') == null
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "Isolated call should NOT merge variables: " + getFailureMessage(result));
+    }
+
+    @Test
     void testCallJsonPathOnParentVariable() throws Exception {
         // Tests that called feature can use JSONPath on variables from caller scope
         Path calledFeature = tempDir.resolve("called.feature");
