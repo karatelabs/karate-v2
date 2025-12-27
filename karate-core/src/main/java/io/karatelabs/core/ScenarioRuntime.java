@@ -61,6 +61,8 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
     private boolean aborted;
     private boolean skipBackground;
     private Throwable error;
+    private boolean hasIgnoredFailure;
+    private Throwable firstIgnoredError;
 
     // Signal/listen mechanism for async process integration
     private volatile Object listenResult;
@@ -758,9 +760,22 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
                 result.addStepResult(sr);
 
                 if (sr.isFailed()) {
-                    stopped = true;
-                    error = sr.getError();
+                    if (config.isContinueOnStepFailure()) {
+                        // Log the failure but continue execution
+                        if (!hasIgnoredFailure) {
+                            hasIgnoredFailure = true;
+                            firstIgnoredError = sr.getError();
+                        }
+                    } else {
+                        stopped = true;
+                        error = sr.getError();
+                    }
                 }
+            }
+
+            // If we have ignored failures and reached the end, fail the scenario
+            if (hasIgnoredFailure && error == null) {
+                error = firstIgnoredError;
             }
 
             // Evaluate backtick scenario name for reports (e.g., `result is ${1+1}`)
@@ -869,6 +884,18 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         if ("charset".equals(key) && value instanceof String) {
             karate.http.charset((String) value);
         }
+
+        // When continueOnStepFailure is set to false, check for deferred failures
+        if ("continueOnStepFailure".equals(key) && !toBoolean(value) && hasIgnoredFailure) {
+            stopped = true;
+            error = firstIgnoredError;
+        }
+    }
+
+    private static boolean toBoolean(Object value) {
+        if (value == null) return false;
+        if (value instanceof Boolean b) return b;
+        return Boolean.parseBoolean(value.toString());
     }
 
     public KarateConfig getConfig() {

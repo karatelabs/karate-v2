@@ -53,7 +53,7 @@ java-051,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineConfigJ
 java-052,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallSingleOutlineExampleByTag,,testCallSingleOutlineExampleByTag,root,passed,callSingle with tag selector works in parallel,io/karatelabs/core/parallel/ParallelTest,2025-12-21
 java-053,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallArg,,testCallArg,root,passed,runs call-arg.feature which passes,,2025-12-19
 java-054,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallArgNull,,testCallArgNull,root,passed,runs call-arg-null.feature which passes,,2025-12-19
-java-055,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testIgnoreStepFailure,,testIgnoreStepFailure,root,pending,,,
+java-055,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testIgnoreStepFailure,,testIgnoreStepFailure,root,passed,continueOnStepFailure implemented - V1 test expects failure and V2 correctly fails,io/karatelabs/core/StepMatchContinueTest,2025-12-27
 java-056,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateFork,,testKarateFork,root,passed,karate.fork() implemented,io/karatelabs/core/StepExecTest,2025-12-20
 java-057,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCsv,,testCsv,root,passed,runs csv.feature which passes,,2025-12-19
 java-058,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testXmlPretty,,testXmlPretty,root,passed,karate.prettyXml() implemented,io/karatelabs/core/StepXmlTest,2025-12-19
@@ -349,7 +349,7 @@ feature-055,feature,features/feature1.feature,,,feature1.feature,feature1.featur
 feature-056,feature,features/feature2.feature,,,feature2.feature,feature2.feature,features,pending,,,
 feature-057,feature,fork-listener.feature,,,fork-listener.feature,log listener example,root,passed,fork listener tested in ProcessHandleTest,io/karatelabs/process/ProcessHandleTest,2025-12-20
 feature-058,feature,fork.feature,,,fork.feature,fork.feature,root,passed,karate.fork() implemented,io/karatelabs/core/StepExecTest,2025-12-20
-feature-059,feature,ignore-step-failure.feature,,,ignore-step-failure.feature,continue on step failure keyword,root,pending,,,
+feature-059,feature,ignore-step-failure.feature,,,ignore-step-failure.feature,continue on step failure keyword,root,passed,continueOnStepFailure implemented - V1 expects failure and V2 correctly fails,io/karatelabs/core/StepMatchContinueTest,2025-12-27
 feature-060,feature,js-arrays.feature,,,js-arrays.feature,various javascript tests,root,passed,73/73 scenarios; tests in StepJsTest StepTableTest,io/karatelabs/core/StepJsTest io/karatelabs/core/StepTableTest,2025-12-18
 feature-061,feature,js-map-repeat.feature,,,js-map-repeat.feature,js-map-repeat.feature,root,passed,karate.map and karate.repeat with arrays,,2025-12-20
 feature-062,feature,jscall/dummy.feature,,,dummy.feature,dummy.feature,jscall,pending,,,
