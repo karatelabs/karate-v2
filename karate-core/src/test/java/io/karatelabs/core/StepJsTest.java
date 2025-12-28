@@ -496,18 +496,6 @@ class StepJsTest {
         assertPassed(sr);
     }
 
-    // ========== String Keyword ==========
-
-    @Test
-    void testStringKeyword() {
-        ScenarioRuntime sr = run("""
-            * def json = { 'sp ace': 'foo', 'hy-phen': 'bar', 'full.stop': 'baz' }
-            * string jsonString = json
-            * match jsonString == '{"sp ace":"foo","hy-phen":"bar","full.stop":"baz"}'
-            """);
-        assertPassed(sr);
-    }
-
     // ========== Get Keyword ==========
 
     @Test
@@ -566,17 +554,6 @@ class StepJsTest {
             * match foo[*].a == [1, 2]
             * match foo[*].a == $data[*].a
             * match foo[*].b == $data[*].b
-            """);
-        assertPassed(sr);
-    }
-
-    @Test
-    void testJsonPathOnStringAutoConvert() {
-        // V1 compatibility: JSONPath on a string should auto-convert if it looks like JSON
-        ScenarioRuntime sr = run("""
-            * def response = "{ foo: { hello: 'world' } }"
-            * def foo = $.foo
-            * match foo == { hello: 'world' }
             """);
         assertPassed(sr);
     }
@@ -1063,6 +1040,17 @@ class StepJsTest {
             * def list = new ArrayList()
             * list.add('hello')
             * match list.size() == 1
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testBigDecimalInJson() {
+        // Tests BigDecimal serialization in JSON (preserves precision for large numbers)
+        ScenarioRuntime sr = run("""
+            * def big = new java.math.BigDecimal(123123123123)
+            * string json = { num: '#(big)' }
+            * match json == '{"num":123123123123}'
             """);
         assertPassed(sr);
     }

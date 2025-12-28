@@ -60,10 +60,10 @@ java-058,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testXmlPretty,,tes
 java-059,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testMatchStep,,testMatchStep,root,passed,runs match-step.feature which passes,,2025-12-19
 java-060,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallJsonPath,,testCallJsonPath,root,passed,V2 test added: testCallJsonPathOnParentVariable,StepCallTest,2025-12-27
 java-061,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSchemaRead,,testSchemaRead,root,passed,Added matchEachEmptyAllowed configure key,StepMatchTest,2025-12-27
-java-062,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTypeConversion,,testTypeConversion,root,passed,Already covered by testCsvKeywordWithDocString and testYamlNestedStructure,StepDefTest,2025-12-27
+java-062,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTypeConversion,,testTypeConversion,root,passed,Already covered by testCsvKeywordWithDocString and testYamlNestedStructure,StepDataTypesTest,2025-12-27
 java-063,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testKarateGet,,testKarateGet,root,passed,Added karate.call(sharedScope path) support,StepCallTest,2025-12-27
 java-064,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testOutlineCsv,,testOutlineCsv,root,passed,Added read() support for csv and yaml files,KarateJs,2025-12-27
-java-065,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testReadProperties,,testReadProperties,root,passed,karate.readAsStream already implemented - test passes,StepDefTest,2025-12-27
+java-065,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testReadProperties,,testReadProperties,root,passed,karate.readAsStream already implemented - test passes,StepDataTypesTest,2025-12-27
 java-066,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testCallSelf,,testCallSelf,root,passed,Same-file tag call covered by testCallByTagSameFile,StepCallTest,2025-12-28
 java-067,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testBigDecimal,,testBigDecimal,root,passed,runs big-decimal.feature which passes,,2025-12-19
 java-068,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testJsArrays,,testJsArrays,root,passed,runs js-arrays.feature which passes,,2025-12-19
@@ -73,18 +73,18 @@ java-071,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testReplace,,testR
 java-072,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testScenarioVariableScope,,testScenarioVariableScope,root,passed,runs scenario-variable-scope.feature which passes,,2025-12-19
 java-073,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSchemaLike,,testSchemaLike,root,passed,schema-like.feature passes - comprehensive schema validation,,2025-12-28
 java-074,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSortArray,,testSortArray,root,passed,,,
-java-075,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTypeConv,,testTypeConv,root,pending,,,
-java-076,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testConfigureNtlmAuthentication,,testConfigureNtlmAuthentication,root,pending,,,
+java-075,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTypeConv,,testTypeConv,root,passed,Runs type-conv.feature; already covered in feature-228,InteropTest,2025-12-28
+java-076,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testConfigureNtlmAuthentication,,testConfigureNtlmAuthentication,root,passed,configure ntlmAuth works,StepHttpTest,2025-12-28
 java-077,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSingleScenario,,testSingleScenario,root,passed,runs single-scenario.feature which passes,,2025-12-19
-java-078,java_test,JsStubGenerator.java,JsStubGenerator,testGenerateKarateStub,,testGenerateKarateStub,root,pending,,,
-java-079,java_test,PaymentsMockRunner.java,PaymentsMockRunner,startMock,,startMock,root,pending,,,
-java-080,java_test,PaymentsRunner.java,PaymentsRunner,testPayments,,testPayments,root,pending,,,
-java-081,java_test,PerfHookTest.java,PerfHookTest,testPerfHook1,,testPerfHook1,root,pending,,,
-java-082,java_test,PerfHookTest.java,PerfHookTest,testPerfHook2,,testPerfHook2,root,pending,,,
-java-083,java_test,PerfHookTest.java,PerfHookTest,testPerfHook3,,testPerfHook3,root,pending,,,
-java-084,java_test,PerfHookTest.java,PerfHookTest,testPerfHook4,,testPerfHook4,root,pending,,,
-java-085,java_test,PerfHookTest.java,PerfHookTest,testPerfHook5,,testPerfHook5,root,pending,,,
-java-086,java_test,PerfHookTest.java,PerfHookTest,testPerfHook6,,testPerfHook6,root,pending,,,
+java-078,java_test,JsStubGenerator.java,JsStubGenerator,testGenerateKarateStub,,testGenerateKarateStub,root,skipped,IDE tooling; generates JS stubs for autocomplete,,2025-12-28
+java-079,java_test,PaymentsMockRunner.java,PaymentsMockRunner,startMock,,startMock,root,skipped,Integration test with mock server,,2025-12-28
+java-080,java_test,PaymentsRunner.java,PaymentsRunner,testPayments,,testPayments,root,skipped,Integration test with payments API,,2025-12-28
+java-081,java_test,PerfHookTest.java,PerfHookTest,testPerfHook1,,testPerfHook1,root,skipped,Performance features out of scope,,2025-12-28
+java-082,java_test,PerfHookTest.java,PerfHookTest,testPerfHook2,,testPerfHook2,root,skipped,Performance features out of scope,,2025-12-28
+java-083,java_test,PerfHookTest.java,PerfHookTest,testPerfHook3,,testPerfHook3,root,skipped,Performance features out of scope,,2025-12-28
+java-084,java_test,PerfHookTest.java,PerfHookTest,testPerfHook4,,testPerfHook4,root,skipped,Performance features out of scope,,2025-12-28
+java-085,java_test,PerfHookTest.java,PerfHookTest,testPerfHook5,,testPerfHook5,root,skipped,Performance features out of scope,,2025-12-28
+java-086,java_test,PerfHookTest.java,PerfHookTest,testPerfHook6,,testPerfHook6,root,skipped,Performance features out of scope,,2025-12-28
 java-087,java_test,PrintTest.java,PrintTest,testPrint,,testPrint,root,pending,,,
 java-088,java_test,ScenarioBridgeTest.java,ScenarioBridgeTest,testCallSingle,,testCallSingle,root,pending,,,
 java-089,java_test,ScenarioBridgeTest.java,ScenarioBridgeTest,testCallSingleWithParam,,testCallSingleWithParam,root,pending,,,
@@ -331,11 +331,11 @@ feature-037,feature,copy-called-nested.feature,,,copy-called-nested.feature,call
 feature-038,feature,copy-called-overwrite.feature,,,copy-called-overwrite.feature,called file that may or may not over-write variable in caller,root,passed,helper for copy.feature,io/karatelabs/core/copy/,2025-12-17
 feature-039,feature,copy-called.feature,,,copy-called.feature,called file should not clobber vars in caller,root,passed,helper for copy.feature,io/karatelabs/core/copy/,2025-12-17
 feature-040,feature,copy.feature,,,copy.feature,the difference with variable scoping in 'isolated' and 'shared' mode,root,passed,implemented shared/isolated scope; added CopyTest,io/karatelabs/core/copy/,2025-12-17
-feature-041,feature,csv.feature,,,csv.feature,csv.feature,root,passed,csv keyword implemented,io/karatelabs/core/StepDefTest,2025-12-19
+feature-041,feature,csv.feature,,,csv.feature,csv.feature,root,passed,csv keyword implemented,io/karatelabs/core/StepDataTypesTest,2025-12-19
 feature-042,feature,dummy-ui-google.feature,,,dummy-ui-google.feature,dummy-ui-google.feature,root,pending,,,
 feature-043,feature,dummy.feature,,,dummy.feature,dummy.feature,root,passed,simple test feature,,2025-12-20
-feature-044,feature,eval-and-set.feature,,,eval-and-set.feature,eval-and-set.feature,root,passed,fixed eval docstring + karate.set(); added StepDefTest,io/karatelabs/core/StepDefTest,2025-12-18
-feature-045,feature,eval-assign.feature,,,eval-assign.feature,eval-assign.feature,root,passed,fixed property assignment with docstring; added StepDefTest,io/karatelabs/core/StepDefTest,2025-12-18
+feature-044,feature,eval-and-set.feature,,,eval-and-set.feature,eval-and-set.feature,root,passed,fixed eval docstring + karate.set(); added StepDataTypesTest,io/karatelabs/core/StepDataTypesTest,2025-12-18
+feature-045,feature,eval-assign.feature,,,eval-assign.feature,eval-assign.feature,root,passed,fixed property assignment with docstring; added StepDataTypesTest,io/karatelabs/core/StepDataTypesTest,2025-12-18
 feature-046,feature,exec.feature,,,exec.feature,exec.feature,root,passed,karate.exec() implemented,io/karatelabs/core/StepExecTest,2025-12-20
 feature-047,feature,extract.feature,,,extract.feature,karate.extract(),root,passed,karate.extract() and extractAll() implemented,StepJsTest#testExtract*,2025-12-21
 feature-048,feature,fail-api.feature,,,fail-api.feature,fail-api.feature,root,pending,,,
@@ -465,7 +465,7 @@ feature-171,feature,perf-mock.feature,,,perf-mock.feature,perf-mock.feature,root
 feature-172,feature,perf.feature,,,perf.feature,perf.feature,root,pending,,,
 feature-173,feature,print.feature,,,print.feature,test variations of the print keyword,root,pending,,,
 feature-174,feature,read-properties.feature,,,read-properties.feature,read-properties.feature,root,pending,,,
-feature-175,feature,replace.feature,,,replace.feature,replace keyword,root,passed,implemented replace with table syntax,io/karatelabs/core/StepDefTest,2025-12-19
+feature-175,feature,replace.feature,,,replace.feature,replace keyword,root,passed,implemented replace with table syntax,io/karatelabs/core/StepDataTypesTest,2025-12-19
 feature-176,feature,retry/retry-with-setup.feature,,,retry-with-setup.feature,Retry with setup,retry,pending,,,
 feature-177,feature,retry/test.feature,,,test.feature,retry test,retry,pending,,,
 feature-178,feature,runner/aborted.feature,,,aborted.feature,abort2pass1,runner,pending,,,
@@ -518,8 +518,8 @@ feature-224,feature,tags/env-tags.feature,,,env-tags.feature,env-tags.feature,ta
 feature-225,feature,tags/outline-tags.feature,,,outline-tags.feature,outline-tags.feature,tags,pending,,,
 feature-226,feature,to-bean-called.feature,,,to-bean-called.feature,to-bean-called.feature,root,pending,,,
 feature-227,feature,to-bean.feature,,,to-bean.feature,demo calling java methods with complex types,root,pending,,,
-feature-228,feature,type-conv.feature,,,type-conv.feature,"convert between json, xml and string",root,passed,19/23 pass; POJO tests skipped (V2 has equivalent); number formatting differences expected between JS engines,StepDefTest#testReplaceWithJsonObject StepJsTest#testJsonPathOnStringAutoConvert,2025-12-20
-feature-229,feature,type-conversion.feature,,,type-conversion.feature,type-conversion.feature,root,passed,csv/yaml parsing; added testYamlNestedStructure,StepDefTest,2025-12-20
+feature-228,feature,type-conv.feature,,,type-conv.feature,"convert between json, xml and string",root,passed,19/23 pass; POJO tests skipped (V2 has equivalent); number formatting differences expected between JS engines,StepDataTypesTest#testReplaceWithJsonObject StepJsTest#testJsonPathOnStringAutoConvert,2025-12-20
+feature-229,feature,type-conversion.feature,,,type-conversion.feature,type-conversion.feature,root,passed,csv/yaml parsing; added testYamlNestedStructure,StepDataTypesTest,2025-12-20
 feature-230,feature,ui-google.feature,,,ui-google.feature,ui-google.feature,root,pending,,,
 feature-231,feature,users-doc.feature,,,users-doc.feature,users-doc.feature,root,pending,,,
 feature-232,feature,utils-reuse-common.feature,,,utils-reuse-common.feature,utils-reuse-common.feature,root,passed,helper feature with common utils,,2025-12-20

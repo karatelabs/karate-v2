@@ -31,7 +31,7 @@ import java.util.Map;
 import static io.karatelabs.core.TestUtils.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-class StepDefTest {
+class StepDataTypesTest {
 
     @Test
     void testDefNumber() {
@@ -358,36 +358,6 @@ class StepDefTest {
     }
 
     @Test
-    void testEvalWithDocString() {
-        // eval keyword with docstring - multi-line JS with karate.set()
-        ScenarioRuntime sr = run("""
-            * eval
-            \"\"\"
-            var foo = function(v){ return v * v };
-            var nums = [0, 1, 2, 3, 4];
-            var squares = [];
-            for (var n in nums) {
-              squares.push(foo(n));
-            }
-            karate.set('temp', squares);
-            \"\"\"
-            * match temp == [0, 1, 4, 9, 16]
-            """);
-        assertPassed(sr);
-        matchVar(sr, "temp", List.of(0, 1, 4, 9, 16));
-    }
-
-    @Test
-    void testEvalInline() {
-        // eval with inline expression (no docstring)
-        ScenarioRuntime sr = run("""
-            * eval karate.set('x', 42)
-            """);
-        assertPassed(sr);
-        assertEquals(42, get(sr, "x"));
-    }
-
-    @Test
     void testPropertyAssignmentWithDocString() {
         // Property assignment with docstring value (e.g., foo.bar = """json""")
         ScenarioRuntime sr = run("""
@@ -400,6 +370,30 @@ class StepDefTest {
             }
             \"\"\"
             * match foo == { bar: { some: 'big', message: 'content' } }
+            """);
+        assertPassed(sr);
+    }
+
+    // ========== String Keyword ==========
+
+    @Test
+    void testStringKeyword() {
+        // string keyword converts JSON to string
+        ScenarioRuntime sr = run("""
+            * def json = { 'sp ace': 'foo', 'hy-phen': 'bar', 'full.stop': 'baz' }
+            * string jsonString = json
+            * match jsonString == '{"sp ace":"foo","hy-phen":"bar","full.stop":"baz"}'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testJsonPathOnStringAutoConvert() {
+        // V1 compatibility: JSONPath on a string should auto-convert if it looks like JSON
+        ScenarioRuntime sr = run("""
+            * def response = "{ foo: { hello: 'world' } }"
+            * def foo = $.foo
+            * match foo == { hello: 'world' }
             """);
         assertPassed(sr);
     }

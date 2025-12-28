@@ -121,7 +121,7 @@ Follow `Step{Keyword}Test.java` convention:
 
 | Area | Test Class |
 |------|------------|
-| def, set, copy, table, replace, csv, yaml | `StepDefTest` |
+| def, set, copy, table, replace, csv, yaml, string | `StepDataTypesTest` |
 | match assertions | `StepMatchTest` |
 | HTTP keywords | `StepHttpTest` |
 | multipart | `StepMultipartTest` |
