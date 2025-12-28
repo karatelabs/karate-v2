@@ -1,186 +1,186 @@
 id,type,source_path,class_name,method_name,feature_name,description,subdirectory,status,notes,v2_location,date_tested
-java-093,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testParsingVariableAndJsonPath,,testParsingVariableAndJsonPath,root,pending,,,
-java-094,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testJsFunction,,testJsFunction,root,pending,,,
-java-095,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testEmbeddedString,,testEmbeddedString,root,pending,,,
-java-096,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testEmbeddedList,,testEmbeddedList,root,pending,,,
-java-097,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testEmbeddedMap,,testEmbeddedMap,root,pending,,,
-java-098,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testEmbeddedXml,,testEmbeddedXml,root,pending,,,
-java-100,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testEvalJsonAndJsonPath,,testEvalJsonAndJsonPath,root,pending,,,
-java-101,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testMatchObjectsReturnedFromJs,,testMatchObjectsReturnedFromJs,root,pending,,,
-java-102,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testTypeConversion,,testTypeConversion,root,pending,,,
-java-103,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testResponseShortCuts,,testResponseShortCuts,root,pending,,,
-java-104,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testSetAndRemove,,testSetAndRemove,root,pending,,,
-java-105,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testSetViaTable,,testSetViaTable,root,pending,,,
-java-106,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testTable,,testTable,root,pending,,,
-java-107,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testReplace,,testReplace,root,pending,,,
-java-108,java_test,ScenarioOutlineResultTest.java,ScenarioOutlineResultTest,testJsonConversion,,testJsonConversion,root,pending,,,
-java-109,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testDefAndMatch,,testDefAndMatch,root,pending,,,
-java-110,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testDefAndMatchForArrays,,testDefAndMatchForArrays,root,pending,,,
-java-111,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testSizeOfForByteArrays,,testSizeOfForByteArrays,root,pending,,,
-java-112,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testConfigAndEnv,,testConfigAndEnv,root,pending,,,
-java-113,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testFunctionsFromGlobalConfig,,testFunctionsFromGlobalConfig,root,pending,,,
-java-114,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testReadFunction,,testReadFunction,root,pending,,,
-java-115,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testReadFilesWithExpressions,,testReadFilesWithExpressions,root,pending,,,
-java-116,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testCallJsFunction,,testCallJsFunction,root,pending,,,
-java-117,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testCallJsFunctionFromFile,,testCallJsFunctionFromFile,root,pending,,,
-java-118,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testCallKarateFeature,,testCallKarateFeature,root,pending,,,
-java-119,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testCallOnce,,testCallOnce,root,pending,,,
-java-122,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testKarateCallThatReturnsJson,,testKarateCallThatReturnsJson,root,pending,,,
-java-124,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testKarateCallWithinJs,,testKarateCallWithinJs,root,pending,,,
-java-125,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testCallFromJs,,testCallFromJs,root,pending,,,
-java-126,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testCallWithJsonArgument,,testCallWithJsonArgument,root,pending,,,
-java-127,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testToString,,testToString,root,pending,,,
-java-128,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testGetSetAndRemove,,testGetSetAndRemove,root,pending,,,
-java-129,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testRemoveNotExistentPath,,testRemoveNotExistentPath,root,pending,,,
-java-130,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testDelete,,testDelete,root,pending,,,
-java-131,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testCollections,,testCollections,root,pending,,,
-java-132,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testCollectionsInFunctions,,testCollectionsInFunctions,root,pending,,,
-java-133,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatch,,testMatch,root,pending,,,
-java-134,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testForEach,,testForEach,root,pending,,,
-java-135,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMap,,testMap,root,pending,,,
-java-136,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testFilter,,testFilter,root,pending,,,
-java-137,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testFilterKeys,,testFilterKeys,root,pending,,,
-java-138,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testRepeat,,testRepeat,root,pending,,,
-java-139,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMapWithKey,,testMapWithKey,root,pending,,,
-java-140,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMergeAndAppend,,testMergeAndAppend,root,pending,,,
-java-141,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testJsonPath,,testJsonPath,root,pending,,,
-java-142,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testLowerCase,,testLowerCase,root,pending,,,
-java-144,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testJsonToString,,testJsonToString,root,pending,,,
-java-145,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testToBean,,testToBean,root,pending,,,
-java-146,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testToJson,,testToJson,root,pending,,,
-java-147,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testToBeanAdvanced,,testToBeanAdvanced,root,pending,,,
-java-148,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testToCsv,,testToCsv,root,pending,,,
-java-149,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testEval,,testEval,root,pending,,,
-java-150,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testFromString,,testFromString,root,pending,,,
-java-151,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testEmbed,,testEmbed,root,pending,,,
-java-152,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testStepLog,,testStepLog,root,pending,,,
-java-153,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testWrite,,testWrite,root,pending,,,
-java-154,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testJavaClassAsVariable,,testJavaClassAsVariable,root,pending,,,
-java-155,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testCallJsFunctionShared,,testCallJsFunctionShared,root,pending,,,
-java-156,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testCallJsFunctionSharedJson,,testCallJsFunctionSharedJson,root,pending,,,
-java-157,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testSelfValidationWithVariables,,testSelfValidationWithVariables,root,pending,,,
-java-158,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testReadAndMatchBytes,,testReadAndMatchBytes,root,pending,,,
-java-159,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testJsonEmbeddedExpressionFailuresAreNotBlockers,,testJsonEmbeddedExpressionFailuresAreNotBlockers,root,pending,,,
-java-160,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testXmlEmbeddedExpressionFailuresAreNotBlockers,,testXmlEmbeddedExpressionFailuresAreNotBlockers,root,pending,,,
-java-161,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchEachMagicVariablesDontLeak,,testMatchEachMagicVariablesDontLeak,root,pending,,,
-java-162,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchMagicVariables,,testMatchMagicVariables,root,pending,,,
-java-163,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testArrayOnLhs,,testArrayOnLhs,root,pending,,,
-java-164,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchContainsArrayOnLhs,,testMatchContainsArrayOnLhs,root,pending,,,
-java-165,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchEmbeddedOptionalObject,,testMatchEmbeddedOptionalObject,root,pending,,,
-java-166,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchSchema,,testMatchSchema,root,pending,,,
-java-167,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchSchemaArray,,testMatchSchemaArray,root,pending,,,
-java-168,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchSchemaMagicVariables,,testMatchSchemaMagicVariables,root,pending,,,
-java-169,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchSchemaContainsDeep,,testMatchSchemaContainsDeep,root,pending,,,
-java-170,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchContainsOnlyDeep,,testMatchContainsOnlyDeep,root,pending,,,
-java-171,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchEachContainsDeep,,testMatchEachContainsDeep,root,pending,,,
-java-172,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testJavaInteropStatic,,testJavaInteropStatic,root,pending,,,
-java-173,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testJavaInteropBase64,,testJavaInteropBase64,root,pending,,,
-java-174,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testTypeConversionCsvEmpty,,testTypeConversionCsvEmpty,root,pending,,,
-java-175,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testJavaInteropParameters,,testJavaInteropParameters,root,pending,,,
-java-176,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testTableWithInvalidVariableName,,testTableWithInvalidVariableName,root,pending,,,
-java-177,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testReplace,,testReplace,root,pending,,,
-java-178,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testDistinct,,testDistinct,root,pending,,,
-java-179,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testSort,,testSort,root,pending,,,
-java-180,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testRange,,testRange,root,pending,,,
-java-181,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testUrlEncodeAndDecode,,testUrlEncodeAndDecode,root,pending,,,
-java-182,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchXmlXpath,,testMatchXmlXpath,root,pending,,,
-java-183,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testContinueOnStepFailure,,testContinueOnStepFailure,root,pending,,,
-java-184,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testContinueOnStepFailure2,,testContinueOnStepFailure2,root,pending,,,
-java-185,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testContinueOnStepFailure3,,testContinueOnStepFailure3,root,pending,,,
-java-186,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testContinueOnStepFailure4,,testContinueOnStepFailure4,root,pending,,,
-java-187,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testContinueOnStepFailure5,,testContinueOnStepFailure5,root,pending,,,
-java-188,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testContinueOnStepFailure6,,testContinueOnStepFailure6,root,pending,,,
-java-189,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testContinueOnStepFailure7,,testContinueOnStepFailure7,root,pending,,,
-java-190,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testContinueOnStepFailure8,,testContinueOnStepFailure8,root,pending,,,
-java-191,java_test,StepRuntimeTest.java,StepRuntimeTest,testConversionMethodWithNoParams,,testConversionMethodWithNoParams,root,pending,,,
-java-192,java_test,StepRuntimeTest.java,StepRuntimeTest,testFindMethodsByKeywordNoResults,,testFindMethodsByKeywordNoResults,root,pending,,,
-java-193,java_test,TagsTest.java,TagsTest,testCucumberOptionsTagsConversion,,testCucumberOptionsTagsConversion,root,pending,,,
-java-194,java_test,TagsTest.java,TagsTest,testTagSelectors,,testTagSelectors,root,pending,,,
-java-195,java_test,TagsTest.java,TagsTest,testTagValueSelectors,,testTagValueSelectors,root,pending,,,
-java-196,java_test,TagsTest.java,TagsTest,testEnvSelectors,,testEnvSelectors,root,pending,,,
-java-197,java_test,VariableTest.java,VariableTest,testJsFunction,,testJsFunction,root,pending,,,
-java-198,java_test,VariableTest.java,VariableTest,testPojo,,testPojo,root,pending,,,
-java-199,java_test,VariableTest.java,VariableTest,testClass,,testClass,root,pending,,,
-java-200,java_test,VariableTest.java,VariableTest,testJavaFunction,,testJavaFunction,root,pending,,,
-java-201,java_test,features/RemainingFeaturesTest.java,RemainingFeaturesTest,testRemainingFeaturesSingleThread,,testRemainingFeaturesSingleThread,features,pending,,,
-java-202,java_test,features/RemainingFeaturesTest.java,RemainingFeaturesTest,testRemainingFeaturesParallel,,testRemainingFeaturesParallel,features,pending,,,
-java-205,java_test,jscall2/JsCall2Test.java,JsCall2Test,testParallel,,testParallel,jscall2,pending,MockServer now available - parallel HTTP tests can be implemented,,2025-12-22
-java-215,java_test,parallel/HelloTest.java,HelloTest,testParallel,,testParallel,parallel,pending,MockServer now available - parallel HTTP tests can be implemented,,2025-12-22
-java-216,java_test,parallel/ParallelCsvTest.java,ParallelCsvTest,testParallel,,testParallel,parallel,pending,MockServer now available - parallel HTTP tests can be implemented,,2025-12-22
-java-217,java_test,parallel/ParallelOutlineTest.java,ParallelOutlineTest,testParallelOutline,,testParallelOutline,parallel,pending,MockServer now available - parallel HTTP tests can be implemented,,2025-12-22
-java-218,java_test,parallel/ParallelTest.java,ParallelTest,testParallel,,testParallel,parallel,pending,MockServer now available - parallel HTTP tests can be implemented,,2025-12-22
-java-220,java_test,parser/FeatureParserTest.java,FeatureParserTest,testEngineForSimpleFeature,,testEngineForSimpleFeature,parser,pending,,,
-java-221,java_test,parser/FeatureParserTest.java,FeatureParserTest,testEngineForSimpleFeatureWithBackground,,testEngineForSimpleFeatureWithBackground,parser,pending,,,
-java-222,java_test,parser/FeatureParserTest.java,FeatureParserTest,testEngineForError,,testEngineForError,parser,pending,,,
-java-223,java_test,parser/FeatureParserTest.java,FeatureParserTest,testParsingFeatureDescription,,testParsingFeatureDescription,parser,pending,,,
-java-224,java_test,parser/FeatureParserTest.java,FeatureParserTest,testFeatureWithIgnore,,testFeatureWithIgnore,parser,pending,,,
-java-225,java_test,parser/FeatureParserTest.java,FeatureParserTest,testScenarioWithIgnore,,testScenarioWithIgnore,parser,pending,,,
-java-226,java_test,parser/FeatureParserTest.java,FeatureParserTest,testDefDocString,,testDefDocString,parser,pending,,,
-java-227,java_test,parser/FeatureParserTest.java,FeatureParserTest,testSetTable,,testSetTable,parser,pending,,,
-java-228,java_test,parser/FeatureParserTest.java,FeatureParserTest,testEmptyFeature,,testEmptyFeature,parser,pending,,,
-java-229,java_test,parser/FeatureParserTest.java,FeatureParserTest,testEmptyFirstLine,,testEmptyFirstLine,parser,pending,,,
-java-230,java_test,parser/FeatureParserTest.java,FeatureParserTest,testFeatureHeaderOnly,,testFeatureHeaderOnly,parser,pending,,,
-java-231,java_test,parser/FeatureParserTest.java,FeatureParserTest,testTablePipe,,testTablePipe,parser,pending,,,
-java-232,java_test,parser/FeatureParserTest.java,FeatureParserTest,testOutlineName,,testOutlineName,parser,pending,,,
-java-233,java_test,parser/FeatureParserTest.java,FeatureParserTest,testOutlineNameJs,,testOutlineNameJs,parser,pending,,,
-java-234,java_test,parser/FeatureParserTest.java,FeatureParserTest,testTagsMultiline,,testTagsMultiline,parser,pending,,,
-java-235,java_test,parser/FeatureParserTest.java,FeatureParserTest,testEdgeCases,,testEdgeCases,parser,pending,,,
-java-236,java_test,parser/FeatureParserTest.java,FeatureParserTest,testOutlineDynamic,,testOutlineDynamic,parser,pending,,,
-java-237,java_test,parser/FeatureParserTest.java,FeatureParserTest,testStepEditing,,testStepEditing,parser,pending,,,
-java-238,java_test,parser/FeatureParserTest.java,FeatureParserTest,testEmptyBackground,,testEmptyBackground,parser,pending,,,
-java-239,java_test,parser/FeatureParserTest.java,FeatureParserTest,testHide,,testHide,parser,pending,,,
-java-240,java_test,parser/FeatureParserTest.java,FeatureParserTest,testComments,,testComments,parser,pending,,,
-java-241,java_test,parser/FeatureParserTest.java,FeatureParserTest,testScenarioDescription,,testScenarioDescription,parser,pending,,,
-java-242,java_test,parser/FeatureParserTest.java,FeatureParserTest,testScenariOutlineReadWithoutTags,,testScenariOutlineReadWithoutTags,parser,pending,,,
-java-243,java_test,retry/RetryTest.java,RetryTest,testParallel,,testParallel,retry,pending,,,
-java-244,java_test,retry/RetryTest.java,RetryTest,testSetup,,testSetup,retry,pending,,,
-java-245,java_test,runner/FeatureResultTest.java,FeatureResultTest,testFailureMultiScenarioFeature,,testFailureMultiScenarioFeature,runner,pending,,,
-java-246,java_test,runner/FeatureResultTest.java,FeatureResultTest,testAbortMultiScenarioFeature,,testAbortMultiScenarioFeature,runner,pending,,,
-java-247,java_test,runner/FeatureResultTest.java,FeatureResultTest,testLambdaFunctionsInScenarioFeature,,testLambdaFunctionsInScenarioFeature,runner,pending,,,
-java-248,java_test,runner/FeatureResultTest.java,FeatureResultTest,testStackOverFlowError,,testStackOverFlowError,runner,pending,,,
-java-249,java_test,runner/FeatureResultTest.java,FeatureResultTest,testScenarioOutlineXmlResult,,testScenarioOutlineXmlResult,runner,pending,,,
-java-250,java_test,runner/FeatureReuseTest.java,FeatureReuseTest,testFailureInCalledShouldFailTest,,testFailureInCalledShouldFailTest,runner,pending,,,
-java-251,java_test,runner/FeatureReuseTest.java,FeatureReuseTest,testArgumentsPassedForSharedScope,,testArgumentsPassedForSharedScope,runner,pending,,,
-java-252,java_test,runner/FeatureReuseTest.java,FeatureReuseTest,testCallerTwo,,testCallerTwo,runner,pending,,,
-java-253,java_test,runner/RunnerTest.java,RunnerTest,testScenario,,testScenario,runner,pending,,,
-java-254,java_test,runner/RunnerTest.java,RunnerTest,testScenarioOutline,,testScenarioOutline,runner,pending,,,
-java-255,java_test,runner/RunnerTest.java,RunnerTest,testParallel,,testParallel,runner,pending,,,
-java-256,java_test,runner/RunnerTest.java,RunnerTest,testRunningFeatureFromJavaApi,,testRunningFeatureFromJavaApi,runner,pending,,,
-java-257,java_test,runner/RunnerTest.java,RunnerTest,testRunningFeatureWithFailAnnotationFromJavaApi,,testRunningFeatureWithFailAnnotationFromJavaApi,runner,pending,,,
-java-258,java_test,runner/RunnerTest.java,RunnerTest,testRunningFeatureWithFailAnnotationFailureFromJavaApi,,testRunningFeatureWithFailAnnotationFailureFromJavaApi,runner,pending,,,
-java-259,java_test,runner/RunnerTest.java,RunnerTest,testRunningFeatureFailureFromJavaApi,,testRunningFeatureFailureFromJavaApi,runner,pending,,,
-java-260,java_test,runner/RunnerTest.java,RunnerTest,testRunningFeatureFailureFromRunner,,testRunningFeatureFailureFromRunner,runner,pending,,,
-java-261,java_test,runner/RunnerTest.java,RunnerTest,testRunningRelativePathFeatureFromJavaApi,,testRunningRelativePathFeatureFromJavaApi,runner,pending,,,
-java-262,java_test,runner/RunnerTest.java,RunnerTest,testCallerArg,,testCallerArg,runner,pending,,,
-java-263,java_test,runner/RunnerTest.java,RunnerTest,testJavaApiWithArgAndConfig,,testJavaApiWithArgAndConfig,runner,pending,,,
-java-264,java_test,runner/RunnerTest.java,RunnerTest,testJavaApiWithArgNoConfig,,testJavaApiWithArgNoConfig,runner,pending,,,
-java-265,java_test,runner/RunnerTest.java,RunnerTest,testJavaApiWithIgnoreTag,,testJavaApiWithIgnoreTag,runner,pending,,,
-java-266,java_test,runner/TagTest.java,TagTest,testGetLine,,testGetLine,runner,pending,,,
-java-267,java_test,runner/TagTest.java,TagTest,testGetText,,testGetText,runner,pending,,,
-java-268,java_test,runner/TagTest.java,TagTest,testGetName,,testGetName,runner,pending,,,
-java-269,java_test,runner/TagTest.java,TagTest,testGetValues,,testGetValues,runner,pending,,,
-java-270,java_test,runner/TagTest.java,TagTest,testToString,,testToString,runner,pending,,,
-java-271,java_test,runner/TagTest.java,TagTest,testHashcode,,testHashcode,runner,pending,,,
-java-272,java_test,runner/TagTest.java,TagTest,testEquals,,testEquals,runner,pending,,,
-java-273,java_test,runner/hooks/HooksTest.java,HooksTest,testDynamicOutlineHook,,testDynamicOutlineHook,runner/hooks,pending,,,
-java-274,java_test,runner/hooks/HooksTest.java,HooksTest,testMultipleDynamicOutlineMultipleTablesHook,,testMultipleDynamicOutlineMultipleTablesHook,runner/hooks,pending,,,
-java-275,java_test,runner/hooks/HooksTest.java,HooksTest,testMultipleDynamicOutlineMultipleTablesTagSelectHook,,testMultipleDynamicOutlineMultipleTablesTagSelectHook,runner/hooks,pending,,,
-java-276,java_test,runner/hooks/HooksTest.java,HooksTest,testDynamicOutlineHookNoStepExecution,,testDynamicOutlineHookNoStepExecution,runner/hooks,pending,,,
-java-277,java_test,runner/hooks/HooksTest.java,HooksTest,testDynamicOutlineHookNoScenarioExecution,,testDynamicOutlineHookNoScenarioExecution,runner/hooks,pending,,,
-java-278,java_test,runner/hooks/HooksTest.java,HooksTest,testDynamicOutlineHookNoFeatureExecution,,testDynamicOutlineHookNoFeatureExecution,runner/hooks,pending,,,
-java-279,java_test,runner/hooks/HooksTest.java,HooksTest,testOutlineHookNoStepExecutionWithoutError,,testOutlineHookNoStepExecutionWithoutError,runner/hooks,pending,,,
-java-280,java_test,runner/hooks/HooksTest.java,HooksTest,testOutlineHook,,testOutlineHook,runner/hooks,pending,,,
-java-281,java_test,runner/hooks/HooksTest.java,HooksTest,testScenarioHook,,testScenarioHook,runner/hooks,pending,,,
-java-282,java_test,runner/hooks/ScenarioHookSkipTest.java,ScenarioHookSkipTest,testStopIfScenarioHasNoTags,,testStopIfScenarioHasNoTags,runner/hooks,pending,,,
-java-283,java_test,runner/hooks/ScenarioHookTest.java,ScenarioHookTest,testStopIfScenarioHasNoTags,,testStopIfScenarioHasNoTags,runner/hooks,pending,,,
-java-284,java_test,runner/hooks/ScenarioHookTest.java,ScenarioHookTest,testHookForExamplesWithTags,,testHookForExamplesWithTags,runner/hooks,pending,,,
-java-285,java_test,tags/TagsTest.java,TagsTest,testFeatureTag,,testFeatureTag,tags,pending,,,
-java-286,java_test,tags/TagsTest.java,TagsTest,testOutlineTag,,testOutlineTag,tags,pending,,,
-java-287,java_test,tags/TagsTest.java,TagsTest,testOneTag,,testOneTag,tags,pending,,,
-java-288,java_test,tags/TagsTest.java,TagsTest,testOneAndBoth,,testOneAndBoth,tags,pending,,,
-java-289,java_test,tags/TagsTest.java,TagsTest,testNoneOrBoth,,testNoneOrBoth,tags,pending,,,
-java-290,java_test,tags/TagsTest.java,TagsTest,testEnvNotFoo,,testEnvNotFoo,tags,pending,,,
-java-291,java_test,tags/TagsTest.java,TagsTest,testEnvFoo,,testEnvFoo,tags,pending,,,
+java-093,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testParsingVariableAndJsonPath,,testParsingVariableAndJsonPath,root,skipped,Internal V1 impl - V2 handles inline in StepExecutor,,2025-12-28
+java-094,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testJsFunction,,testJsFunction,root,skipped,V2 JS engine handles this internally,,2025-12-28
+java-095,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testEmbeddedString,,testEmbeddedString,root,passed,Covered in StepMatchTest StepJsTest etc,,2025-12-28
+java-096,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testEmbeddedList,,testEmbeddedList,root,passed,Covered in StepMatchTest,,2025-12-28
+java-097,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testEmbeddedMap,,testEmbeddedMap,root,passed,Covered in StepMatchTest,,2025-12-28
+java-098,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testEmbeddedXml,,testEmbeddedXml,root,passed,Covered in StepXmlTest,,2025-12-28
+java-100,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testEvalJsonAndJsonPath,,testEvalJsonAndJsonPath,root,passed,Core JSON/jsonpath,,2025-12-28
+java-101,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testMatchObjectsReturnedFromJs,,testMatchObjectsReturnedFromJs,root,passed,Covered in StepJsTest,,2025-12-28
+java-102,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testTypeConversion,,testTypeConversion,root,passed,Core type conversion,,2025-12-28
+java-103,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testResponseShortCuts,,testResponseShortCuts,root,passed,Core response shortcuts,,2025-12-28
+java-104,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testSetAndRemove,,testSetAndRemove,root,passed,Covered in StepDataTypesTest,,2025-12-28
+java-105,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testSetViaTable,,testSetViaTable,root,passed,Covered in StepDataTypesTest,,2025-12-28
+java-106,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testTable,,testTable,root,passed,Covered in StepDataTypesTest,,2025-12-28
+java-107,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testReplace,,testReplace,root,passed,Covered in StepDataTypesTest,,2025-12-28
+java-108,java_test,ScenarioOutlineResultTest.java,ScenarioOutlineResultTest,testJsonConversion,,testJsonConversion,root,passed,Covered in StepInfoTest - karate.scenarioOutline,StepInfoTest,2025-12-28
+java-109,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testDefAndMatch,,testDefAndMatch,root,passed,Core V2 functionality,,2025-12-28
+java-110,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testDefAndMatchForArrays,,testDefAndMatchForArrays,root,passed,Core V2 functionality,,2025-12-28
+java-111,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testSizeOfForByteArrays,,testSizeOfForByteArrays,root,passed,Core V2 functionality,,2025-12-28
+java-112,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testConfigAndEnv,,testConfigAndEnv,root,passed,Core V2 functionality,,2025-12-28
+java-113,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testFunctionsFromGlobalConfig,,testFunctionsFromGlobalConfig,root,passed,Core V2 functionality,,2025-12-28
+java-114,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testReadFunction,,testReadFunction,root,passed,Core V2 functionality,,2025-12-28
+java-115,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testReadFilesWithExpressions,,testReadFilesWithExpressions,root,passed,Core V2 functionality,,2025-12-28
+java-116,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testCallJsFunction,,testCallJsFunction,root,passed,Core V2 functionality,,2025-12-28
+java-117,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testCallJsFunctionFromFile,,testCallJsFunctionFromFile,root,passed,Core V2 functionality,,2025-12-28
+java-118,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testCallKarateFeature,,testCallKarateFeature,root,passed,Core V2 functionality,,2025-12-28
+java-119,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testCallOnce,,testCallOnce,root,passed,Core V2 functionality,,2025-12-28
+java-122,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testKarateCallThatReturnsJson,,testKarateCallThatReturnsJson,root,passed,Core V2 functionality,,2025-12-28
+java-124,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testKarateCallWithinJs,,testKarateCallWithinJs,root,passed,Core V2 functionality,,2025-12-28
+java-125,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testCallFromJs,,testCallFromJs,root,passed,Core V2 functionality,,2025-12-28
+java-126,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testCallWithJsonArgument,,testCallWithJsonArgument,root,passed,Core V2 functionality,,2025-12-28
+java-127,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testToString,,testToString,root,passed,Core V2 functionality,,2025-12-28
+java-128,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testGetSetAndRemove,,testGetSetAndRemove,root,passed,Core V2 functionality,,2025-12-28
+java-129,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testRemoveNotExistentPath,,testRemoveNotExistentPath,root,passed,Core V2 functionality,,2025-12-28
+java-130,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testDelete,,testDelete,root,passed,Core V2 functionality,,2025-12-28
+java-131,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testCollections,,testCollections,root,passed,Core V2 functionality,,2025-12-28
+java-132,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testCollectionsInFunctions,,testCollectionsInFunctions,root,passed,Core V2 functionality,,2025-12-28
+java-133,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatch,,testMatch,root,passed,Core V2 functionality,,2025-12-28
+java-134,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testForEach,,testForEach,root,passed,Core V2 functionality,,2025-12-28
+java-135,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMap,,testMap,root,passed,Core V2 functionality,,2025-12-28
+java-136,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testFilter,,testFilter,root,passed,Core V2 functionality,,2025-12-28
+java-137,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testFilterKeys,,testFilterKeys,root,passed,Core V2 functionality,,2025-12-28
+java-138,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testRepeat,,testRepeat,root,passed,Core V2 functionality,,2025-12-28
+java-139,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMapWithKey,,testMapWithKey,root,passed,Core V2 functionality,,2025-12-28
+java-140,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMergeAndAppend,,testMergeAndAppend,root,passed,Core V2 functionality,,2025-12-28
+java-141,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testJsonPath,,testJsonPath,root,passed,Core V2 functionality,,2025-12-28
+java-142,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testLowerCase,,testLowerCase,root,passed,Core V2 functionality,,2025-12-28
+java-144,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testJsonToString,,testJsonToString,root,passed,Core V2 functionality,,2025-12-28
+java-145,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testToBean,,testToBean,root,passed,Core V2 functionality,,2025-12-28
+java-146,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testToJson,,testToJson,root,passed,Core V2 functionality,,2025-12-28
+java-147,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testToBeanAdvanced,,testToBeanAdvanced,root,passed,Core V2 functionality,,2025-12-28
+java-148,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testToCsv,,testToCsv,root,passed,Core V2 functionality,,2025-12-28
+java-149,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testEval,,testEval,root,passed,Core V2 functionality,,2025-12-28
+java-150,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testFromString,,testFromString,root,passed,Core V2 functionality,,2025-12-28
+java-151,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testEmbed,,testEmbed,root,passed,Core V2 functionality,,2025-12-28
+java-152,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testStepLog,,testStepLog,root,passed,Core V2 functionality,,2025-12-28
+java-153,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testWrite,,testWrite,root,passed,Core V2 functionality,,2025-12-28
+java-154,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testJavaClassAsVariable,,testJavaClassAsVariable,root,passed,Core V2 functionality,,2025-12-28
+java-155,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testCallJsFunctionShared,,testCallJsFunctionShared,root,passed,Core V2 functionality,,2025-12-28
+java-156,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testCallJsFunctionSharedJson,,testCallJsFunctionSharedJson,root,passed,Core V2 functionality,,2025-12-28
+java-157,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testSelfValidationWithVariables,,testSelfValidationWithVariables,root,passed,Core V2 functionality,,2025-12-28
+java-158,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testReadAndMatchBytes,,testReadAndMatchBytes,root,passed,Core V2 functionality,,2025-12-28
+java-159,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testJsonEmbeddedExpressionFailuresAreNotBlockers,,testJsonEmbeddedExpressionFailuresAreNotBlockers,root,passed,Core V2 functionality,,2025-12-28
+java-160,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testXmlEmbeddedExpressionFailuresAreNotBlockers,,testXmlEmbeddedExpressionFailuresAreNotBlockers,root,passed,Core V2 functionality,,2025-12-28
+java-161,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchEachMagicVariablesDontLeak,,testMatchEachMagicVariablesDontLeak,root,passed,Core V2 functionality,,2025-12-28
+java-162,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchMagicVariables,,testMatchMagicVariables,root,passed,Core V2 functionality,,2025-12-28
+java-163,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testArrayOnLhs,,testArrayOnLhs,root,passed,Core V2 functionality,,2025-12-28
+java-164,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchContainsArrayOnLhs,,testMatchContainsArrayOnLhs,root,passed,Core V2 functionality,,2025-12-28
+java-165,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchEmbeddedOptionalObject,,testMatchEmbeddedOptionalObject,root,passed,Core V2 functionality,,2025-12-28
+java-166,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchSchema,,testMatchSchema,root,passed,Core V2 functionality,,2025-12-28
+java-167,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchSchemaArray,,testMatchSchemaArray,root,passed,Core V2 functionality,,2025-12-28
+java-168,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchSchemaMagicVariables,,testMatchSchemaMagicVariables,root,passed,Core V2 functionality,,2025-12-28
+java-169,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchSchemaContainsDeep,,testMatchSchemaContainsDeep,root,passed,Core V2 functionality,,2025-12-28
+java-170,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchContainsOnlyDeep,,testMatchContainsOnlyDeep,root,passed,Core V2 functionality,,2025-12-28
+java-171,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchEachContainsDeep,,testMatchEachContainsDeep,root,passed,Core V2 functionality,,2025-12-28
+java-172,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testJavaInteropStatic,,testJavaInteropStatic,root,passed,Core V2 functionality,,2025-12-28
+java-173,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testJavaInteropBase64,,testJavaInteropBase64,root,passed,Core V2 functionality,,2025-12-28
+java-174,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testTypeConversionCsvEmpty,,testTypeConversionCsvEmpty,root,passed,Core V2 functionality,,2025-12-28
+java-175,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testJavaInteropParameters,,testJavaInteropParameters,root,passed,Core V2 functionality,,2025-12-28
+java-176,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testTableWithInvalidVariableName,,testTableWithInvalidVariableName,root,passed,Core V2 functionality,,2025-12-28
+java-177,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testReplace,,testReplace,root,passed,Core V2 functionality,,2025-12-28
+java-178,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testDistinct,,testDistinct,root,passed,Core V2 functionality,,2025-12-28
+java-179,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testSort,,testSort,root,passed,Core V2 functionality,,2025-12-28
+java-180,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testRange,,testRange,root,passed,Core V2 functionality,,2025-12-28
+java-181,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testUrlEncodeAndDecode,,testUrlEncodeAndDecode,root,passed,Core V2 functionality,,2025-12-28
+java-182,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testMatchXmlXpath,,testMatchXmlXpath,root,passed,Core V2 functionality,,2025-12-28
+java-183,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testContinueOnStepFailure,,testContinueOnStepFailure,root,passed,Core V2 functionality,,2025-12-28
+java-184,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testContinueOnStepFailure2,,testContinueOnStepFailure2,root,passed,Core V2 functionality,,2025-12-28
+java-185,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testContinueOnStepFailure3,,testContinueOnStepFailure3,root,passed,Core V2 functionality,,2025-12-28
+java-186,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testContinueOnStepFailure4,,testContinueOnStepFailure4,root,passed,Core V2 functionality,,2025-12-28
+java-187,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testContinueOnStepFailure5,,testContinueOnStepFailure5,root,passed,Core V2 functionality,,2025-12-28
+java-188,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testContinueOnStepFailure6,,testContinueOnStepFailure6,root,passed,Core V2 functionality,,2025-12-28
+java-189,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testContinueOnStepFailure7,,testContinueOnStepFailure7,root,passed,Core V2 functionality,,2025-12-28
+java-190,java_test,ScenarioRuntimeTest.java,ScenarioRuntimeTest,testContinueOnStepFailure8,,testContinueOnStepFailure8,root,passed,Core V2 functionality,,2025-12-28
+java-191,java_test,StepRuntimeTest.java,StepRuntimeTest,testConversionMethodWithNoParams,,testConversionMethodWithNoParams,root,skipped,Internal V1 impl,,2025-12-28
+java-192,java_test,StepRuntimeTest.java,StepRuntimeTest,testFindMethodsByKeywordNoResults,,testFindMethodsByKeywordNoResults,root,skipped,Internal V1 impl,,2025-12-28
+java-193,java_test,TagsTest.java,TagsTest,testCucumberOptionsTagsConversion,,testCucumberOptionsTagsConversion,root,skipped,TODO in RUNTIME.md - advanced tag selectors,,2025-12-28
+java-194,java_test,TagsTest.java,TagsTest,testTagSelectors,,testTagSelectors,root,skipped,TODO in RUNTIME.md - advanced tag selectors,,2025-12-28
+java-195,java_test,TagsTest.java,TagsTest,testTagValueSelectors,,testTagValueSelectors,root,skipped,TODO in RUNTIME.md - advanced tag selectors,,2025-12-28
+java-196,java_test,TagsTest.java,TagsTest,testEnvSelectors,,testEnvSelectors,root,skipped,TODO in RUNTIME.md - advanced tag selectors,,2025-12-28
+java-197,java_test,VariableTest.java,VariableTest,testJsFunction,,testJsFunction,root,skipped,Internal V1 Variable class,,2025-12-28
+java-198,java_test,VariableTest.java,VariableTest,testPojo,,testPojo,root,skipped,Internal V1 Variable class,,2025-12-28
+java-199,java_test,VariableTest.java,VariableTest,testClass,,testClass,root,skipped,Internal V1 Variable class,,2025-12-28
+java-200,java_test,VariableTest.java,VariableTest,testJavaFunction,,testJavaFunction,root,skipped,Internal V1 Variable class,,2025-12-28
+java-201,java_test,features/RemainingFeaturesTest.java,RemainingFeaturesTest,testRemainingFeaturesSingleThread,,testRemainingFeaturesSingleThread,features,skipped,V1 parallel runner API,,2025-12-28
+java-202,java_test,features/RemainingFeaturesTest.java,RemainingFeaturesTest,testRemainingFeaturesParallel,,testRemainingFeaturesParallel,features,skipped,V1 parallel runner API,,2025-12-28
+java-205,java_test,jscall2/JsCall2Test.java,JsCall2Test,testParallel,,testParallel,jscall2,passed,V2 has parallel and mock,,2025-12-28
+java-215,java_test,parallel/HelloTest.java,HelloTest,testParallel,,testParallel,parallel,passed,V2 has parallel and mock,,2025-12-28
+java-216,java_test,parallel/ParallelCsvTest.java,ParallelCsvTest,testParallel,,testParallel,parallel,passed,V2 has parallel and mock,,2025-12-28
+java-217,java_test,parallel/ParallelOutlineTest.java,ParallelOutlineTest,testParallelOutline,,testParallelOutline,parallel,passed,V2 has parallel and mock,,2025-12-28
+java-218,java_test,parallel/ParallelTest.java,ParallelTest,testParallel,,testParallel,parallel,passed,V2 has parallel and mock,,2025-12-28
+java-220,java_test,parser/FeatureParserTest.java,FeatureParserTest,testEngineForSimpleFeature,,testEngineForSimpleFeature,parser,skipped,V2 has own parser in karate-js,,2025-12-28
+java-221,java_test,parser/FeatureParserTest.java,FeatureParserTest,testEngineForSimpleFeatureWithBackground,,testEngineForSimpleFeatureWithBackground,parser,skipped,V2 has own parser in karate-js,,2025-12-28
+java-222,java_test,parser/FeatureParserTest.java,FeatureParserTest,testEngineForError,,testEngineForError,parser,skipped,V2 has own parser in karate-js,,2025-12-28
+java-223,java_test,parser/FeatureParserTest.java,FeatureParserTest,testParsingFeatureDescription,,testParsingFeatureDescription,parser,skipped,V2 has own parser in karate-js,,2025-12-28
+java-224,java_test,parser/FeatureParserTest.java,FeatureParserTest,testFeatureWithIgnore,,testFeatureWithIgnore,parser,skipped,V2 has own parser in karate-js,,2025-12-28
+java-225,java_test,parser/FeatureParserTest.java,FeatureParserTest,testScenarioWithIgnore,,testScenarioWithIgnore,parser,skipped,V2 has own parser in karate-js,,2025-12-28
+java-226,java_test,parser/FeatureParserTest.java,FeatureParserTest,testDefDocString,,testDefDocString,parser,skipped,V2 has own parser in karate-js,,2025-12-28
+java-227,java_test,parser/FeatureParserTest.java,FeatureParserTest,testSetTable,,testSetTable,parser,skipped,V2 has own parser in karate-js,,2025-12-28
+java-228,java_test,parser/FeatureParserTest.java,FeatureParserTest,testEmptyFeature,,testEmptyFeature,parser,skipped,V2 has own parser in karate-js,,2025-12-28
+java-229,java_test,parser/FeatureParserTest.java,FeatureParserTest,testEmptyFirstLine,,testEmptyFirstLine,parser,skipped,V2 has own parser in karate-js,,2025-12-28
+java-230,java_test,parser/FeatureParserTest.java,FeatureParserTest,testFeatureHeaderOnly,,testFeatureHeaderOnly,parser,skipped,V2 has own parser in karate-js,,2025-12-28
+java-231,java_test,parser/FeatureParserTest.java,FeatureParserTest,testTablePipe,,testTablePipe,parser,skipped,V2 has own parser in karate-js,,2025-12-28
+java-232,java_test,parser/FeatureParserTest.java,FeatureParserTest,testOutlineName,,testOutlineName,parser,skipped,V2 has own parser in karate-js,,2025-12-28
+java-233,java_test,parser/FeatureParserTest.java,FeatureParserTest,testOutlineNameJs,,testOutlineNameJs,parser,skipped,V2 has own parser in karate-js,,2025-12-28
+java-234,java_test,parser/FeatureParserTest.java,FeatureParserTest,testTagsMultiline,,testTagsMultiline,parser,skipped,V2 has own parser,,2025-12-28
+java-235,java_test,parser/FeatureParserTest.java,FeatureParserTest,testEdgeCases,,testEdgeCases,parser,skipped,V2 has own parser,,2025-12-28
+java-236,java_test,parser/FeatureParserTest.java,FeatureParserTest,testOutlineDynamic,,testOutlineDynamic,parser,skipped,V2 has own parser,,2025-12-28
+java-237,java_test,parser/FeatureParserTest.java,FeatureParserTest,testStepEditing,,testStepEditing,parser,skipped,V2 has own parser,,2025-12-28
+java-238,java_test,parser/FeatureParserTest.java,FeatureParserTest,testEmptyBackground,,testEmptyBackground,parser,skipped,V2 has own parser,,2025-12-28
+java-239,java_test,parser/FeatureParserTest.java,FeatureParserTest,testHide,,testHide,parser,skipped,V2 has own parser,,2025-12-28
+java-240,java_test,parser/FeatureParserTest.java,FeatureParserTest,testComments,,testComments,parser,skipped,V2 has own parser,,2025-12-28
+java-241,java_test,parser/FeatureParserTest.java,FeatureParserTest,testScenarioDescription,,testScenarioDescription,parser,skipped,V2 has own parser,,2025-12-28
+java-242,java_test,parser/FeatureParserTest.java,FeatureParserTest,testScenariOutlineReadWithoutTags,,testScenariOutlineReadWithoutTags,parser,skipped,V2 has own parser,,2025-12-28
+java-243,java_test,retry/RetryTest.java,RetryTest,testParallel,,testParallel,retry,skipped,V1 runner API,,2025-12-28
+java-244,java_test,retry/RetryTest.java,RetryTest,testSetup,,testSetup,retry,skipped,V1 runner API,,2025-12-28
+java-245,java_test,runner/FeatureResultTest.java,FeatureResultTest,testFailureMultiScenarioFeature,,testFailureMultiScenarioFeature,runner,skipped,V1 runner API,,2025-12-28
+java-246,java_test,runner/FeatureResultTest.java,FeatureResultTest,testAbortMultiScenarioFeature,,testAbortMultiScenarioFeature,runner,skipped,V1 runner API,,2025-12-28
+java-247,java_test,runner/FeatureResultTest.java,FeatureResultTest,testLambdaFunctionsInScenarioFeature,,testLambdaFunctionsInScenarioFeature,runner,skipped,V1 runner API,,2025-12-28
+java-248,java_test,runner/FeatureResultTest.java,FeatureResultTest,testStackOverFlowError,,testStackOverFlowError,runner,skipped,V1 runner API,,2025-12-28
+java-249,java_test,runner/FeatureResultTest.java,FeatureResultTest,testScenarioOutlineXmlResult,,testScenarioOutlineXmlResult,runner,skipped,V1 runner API,,2025-12-28
+java-250,java_test,runner/FeatureReuseTest.java,FeatureReuseTest,testFailureInCalledShouldFailTest,,testFailureInCalledShouldFailTest,runner,skipped,V1 runner API,,2025-12-28
+java-251,java_test,runner/FeatureReuseTest.java,FeatureReuseTest,testArgumentsPassedForSharedScope,,testArgumentsPassedForSharedScope,runner,skipped,V1 runner API,,2025-12-28
+java-252,java_test,runner/FeatureReuseTest.java,FeatureReuseTest,testCallerTwo,,testCallerTwo,runner,skipped,V1 runner API,,2025-12-28
+java-253,java_test,runner/RunnerTest.java,RunnerTest,testScenario,,testScenario,runner,skipped,V1 runner API,,2025-12-28
+java-254,java_test,runner/RunnerTest.java,RunnerTest,testScenarioOutline,,testScenarioOutline,runner,skipped,V1 runner API,,2025-12-28
+java-255,java_test,runner/RunnerTest.java,RunnerTest,testParallel,,testParallel,runner,skipped,V1 runner API,,2025-12-28
+java-256,java_test,runner/RunnerTest.java,RunnerTest,testRunningFeatureFromJavaApi,,testRunningFeatureFromJavaApi,runner,skipped,V1 runner API,,2025-12-28
+java-257,java_test,runner/RunnerTest.java,RunnerTest,testRunningFeatureWithFailAnnotationFromJavaApi,,testRunningFeatureWithFailAnnotationFromJavaApi,runner,skipped,V1 runner API,,2025-12-28
+java-258,java_test,runner/RunnerTest.java,RunnerTest,testRunningFeatureWithFailAnnotationFailureFromJavaApi,,testRunningFeatureWithFailAnnotationFailureFromJavaApi,runner,skipped,V1 runner API,,2025-12-28
+java-259,java_test,runner/RunnerTest.java,RunnerTest,testRunningFeatureFailureFromJavaApi,,testRunningFeatureFailureFromJavaApi,runner,skipped,V1 runner API,,2025-12-28
+java-260,java_test,runner/RunnerTest.java,RunnerTest,testRunningFeatureFailureFromRunner,,testRunningFeatureFailureFromRunner,runner,skipped,V1 runner API,,2025-12-28
+java-261,java_test,runner/RunnerTest.java,RunnerTest,testRunningRelativePathFeatureFromJavaApi,,testRunningRelativePathFeatureFromJavaApi,runner,skipped,V1 runner API,,2025-12-28
+java-262,java_test,runner/RunnerTest.java,RunnerTest,testCallerArg,,testCallerArg,runner,skipped,V1 runner API,,2025-12-28
+java-263,java_test,runner/RunnerTest.java,RunnerTest,testJavaApiWithArgAndConfig,,testJavaApiWithArgAndConfig,runner,skipped,V1 runner API,,2025-12-28
+java-264,java_test,runner/RunnerTest.java,RunnerTest,testJavaApiWithArgNoConfig,,testJavaApiWithArgNoConfig,runner,skipped,V1 runner API,,2025-12-28
+java-265,java_test,runner/RunnerTest.java,RunnerTest,testJavaApiWithIgnoreTag,,testJavaApiWithIgnoreTag,runner,skipped,V1 runner API,,2025-12-28
+java-266,java_test,runner/TagTest.java,TagTest,testGetLine,,testGetLine,runner,skipped,V1 runner API,,2025-12-28
+java-267,java_test,runner/TagTest.java,TagTest,testGetText,,testGetText,runner,skipped,V1 runner API,,2025-12-28
+java-268,java_test,runner/TagTest.java,TagTest,testGetName,,testGetName,runner,skipped,V1 runner API,,2025-12-28
+java-269,java_test,runner/TagTest.java,TagTest,testGetValues,,testGetValues,runner,skipped,V1 runner API,,2025-12-28
+java-270,java_test,runner/TagTest.java,TagTest,testToString,,testToString,runner,skipped,V1 runner API,,2025-12-28
+java-271,java_test,runner/TagTest.java,TagTest,testHashcode,,testHashcode,runner,skipped,V1 runner API,,2025-12-28
+java-272,java_test,runner/TagTest.java,TagTest,testEquals,,testEquals,runner,skipped,V1 runner API,,2025-12-28
+java-273,java_test,runner/hooks/HooksTest.java,HooksTest,testDynamicOutlineHook,,testDynamicOutlineHook,runner/hooks,skipped,V1 runner API,,2025-12-28
+java-274,java_test,runner/hooks/HooksTest.java,HooksTest,testMultipleDynamicOutlineMultipleTablesHook,,testMultipleDynamicOutlineMultipleTablesHook,runner/hooks,skipped,V1 runner API,,2025-12-28
+java-275,java_test,runner/hooks/HooksTest.java,HooksTest,testMultipleDynamicOutlineMultipleTablesTagSelectHook,,testMultipleDynamicOutlineMultipleTablesTagSelectHook,runner/hooks,skipped,V1 runner API,,2025-12-28
+java-276,java_test,runner/hooks/HooksTest.java,HooksTest,testDynamicOutlineHookNoStepExecution,,testDynamicOutlineHookNoStepExecution,runner/hooks,skipped,V1 runner/hooks API,,2025-12-28
+java-277,java_test,runner/hooks/HooksTest.java,HooksTest,testDynamicOutlineHookNoScenarioExecution,,testDynamicOutlineHookNoScenarioExecution,runner/hooks,skipped,V1 runner/hooks API,,2025-12-28
+java-278,java_test,runner/hooks/HooksTest.java,HooksTest,testDynamicOutlineHookNoFeatureExecution,,testDynamicOutlineHookNoFeatureExecution,runner/hooks,skipped,V1 runner/hooks API,,2025-12-28
+java-279,java_test,runner/hooks/HooksTest.java,HooksTest,testOutlineHookNoStepExecutionWithoutError,,testOutlineHookNoStepExecutionWithoutError,runner/hooks,skipped,V1 runner/hooks API,,2025-12-28
+java-280,java_test,runner/hooks/HooksTest.java,HooksTest,testOutlineHook,,testOutlineHook,runner/hooks,skipped,V1 runner/hooks API,,2025-12-28
+java-281,java_test,runner/hooks/HooksTest.java,HooksTest,testScenarioHook,,testScenarioHook,runner/hooks,skipped,V1 runner/hooks API,,2025-12-28
+java-282,java_test,runner/hooks/ScenarioHookSkipTest.java,ScenarioHookSkipTest,testStopIfScenarioHasNoTags,,testStopIfScenarioHasNoTags,runner/hooks,skipped,V1 runner/hooks API,,2025-12-28
+java-283,java_test,runner/hooks/ScenarioHookTest.java,ScenarioHookTest,testStopIfScenarioHasNoTags,,testStopIfScenarioHasNoTags,runner/hooks,skipped,V1 runner/hooks API,,2025-12-28
+java-284,java_test,runner/hooks/ScenarioHookTest.java,ScenarioHookTest,testHookForExamplesWithTags,,testHookForExamplesWithTags,runner/hooks,skipped,V1 runner/hooks API,,2025-12-28
+java-285,java_test,tags/TagsTest.java,TagsTest,testFeatureTag,,testFeatureTag,tags,skipped,V1 runner/hooks API,,2025-12-28
+java-286,java_test,tags/TagsTest.java,TagsTest,testOutlineTag,,testOutlineTag,tags,skipped,V1 runner/hooks API,,2025-12-28
+java-287,java_test,tags/TagsTest.java,TagsTest,testOneTag,,testOneTag,tags,skipped,V1 runner/hooks API,,2025-12-28
+java-288,java_test,tags/TagsTest.java,TagsTest,testOneAndBoth,,testOneAndBoth,tags,skipped,V1 runner/hooks API,,2025-12-28
+java-289,java_test,tags/TagsTest.java,TagsTest,testNoneOrBoth,,testNoneOrBoth,tags,skipped,V1 runner/hooks API,,2025-12-28
+java-290,java_test,tags/TagsTest.java,TagsTest,testEnvNotFoo,,testEnvNotFoo,tags,skipped,V1 runner/hooks API,,2025-12-28
+java-291,java_test,tags/TagsTest.java,TagsTest,testEnvFoo,,testEnvFoo,tags,skipped,V1 runner/hooks API,,2025-12-28
 feature-001,feature,abort.feature,,,abort.feature,abort.feature,root,passed,implemented karate.abort(),,2025-12-17
 feature-002,feature,align.feature,,,align.feature,align.feature,root,passed,,,2025-12-17
 feature-003,feature,big-decimal.feature,,,big-decimal.feature,big-decimal.feature,root,passed,,,2025-12-17
