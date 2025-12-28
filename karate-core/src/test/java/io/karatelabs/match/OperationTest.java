@@ -84,4 +84,32 @@ class OperationTest {
         assertTrue(operation.execute());
     }
 
+    @Test
+    void testArrayContainsPartialMatch() {
+        // Test case from schema-like.feature: array contains element that contains partial object
+        String actual = "[ { a: 1, b: 'x' }, { a: 2, b: 'y' } ]";
+        Json part = Json.of("{ a: 1 }");
+        Engine engine = new Engine();
+        engine.put("part", part.asMap());
+        // #(^part) means: array contains an element that contains { a: 1 }
+        Operation operation = new Operation(engine, Match.Type.CONTAINS, value(actual), value("#(^part)"));
+        assertTrue(operation.execute(), "array should contain element that contains { a: 1 }");
+        // Also test with ^+ (contains deep) for comparison
+        operation = new Operation(engine, Match.Type.CONTAINS, value(actual), value("#(^+part)"));
+        assertTrue(operation.execute(), "array should contain element that contains deep { a: 1 }");
+    }
+
+    @Test
+    void testArrayContainsAnyPartialMatch() {
+        // Test case from schema-like.feature: array contains element that contains any of partial object
+        String actual = "[ { a: 1, b: 'x' }, { a: 2, b: 'y' } ]";
+        // mix has b: 'y' (matches second element) and c: true (matches none)
+        Json mix = Json.of("{ b: 'y', c: true }");
+        Engine engine = new Engine();
+        engine.put("mix", mix.asMap());
+        // #(^*mix) means: array contains an element that contains any of mix's keys
+        Operation operation = new Operation(engine, Match.Type.CONTAINS, value(actual), value("#(^*mix)"));
+        assertTrue(operation.execute(), "array should contain element that contains any of { b: 'y', c: true }");
+    }
+
 }

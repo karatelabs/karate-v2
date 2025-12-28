@@ -300,6 +300,22 @@ public class Operation {
                 Object evalResult = context.engine.eval(macro);
                 context.engine.remove("$");
                 context.engine.remove("_");
+                // For #(^expr), #(^*expr), etc. where actual is a list and evalResult is a Map,
+                // we need to check if any element in the list matches the expected value
+                // using the nestedType. This is different from "list contains exact element".
+                // When evalResult is also a List, we use normal list-contains-list logic.
+                if (actual.isList() && evalResult instanceof java.util.Map
+                        && (nestedType == Match.Type.CONTAINS || nestedType == Match.Type.CONTAINS_ANY)) {
+                    Value expectedValue = new Value(evalResult);
+                    for (int i = 0; i < actual.getListSize(); i++) {
+                        Value elem = new Value(actual.getListElement(i));
+                        Operation mo = new Operation(context.descend(i), nestedType, elem, expectedValue, matchEachEmptyAllowed);
+                        if (mo.execute()) {
+                            return true;
+                        }
+                    }
+                    return fail("no array element matches expected");
+                }
                 Operation mo = new Operation(context, nestedType, actual, new Value(evalResult), matchEachEmptyAllowed);
                 return mo.execute();
             } else if (macro.startsWith("[")) {

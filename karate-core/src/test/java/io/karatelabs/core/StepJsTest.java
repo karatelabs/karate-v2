@@ -1025,4 +1025,34 @@ class StepJsTest {
         assertEquals("TestEmbed", embed.getName());
     }
 
+    // ========== JS Exceptions ==========
+
+    @Test
+    void testJsExceptionFailsScenario() {
+        // Verify that JS runtime exceptions properly fail the scenario
+        ScenarioRuntime sr = run("""
+            * def result = karate.fail('intentional error')
+            """);
+        assertFailed(sr);
+    }
+
+    @Test
+    void testJsThrowFailsScenario() {
+        // Verify that JS throw statements properly fail the scenario
+        ScenarioRuntime sr = run("""
+            * eval throw new Error('thrown error')
+            """);
+        assertFailed(sr);
+    }
+
+    @Test
+    void testJsExceptionInFunctionFailsScenario() {
+        // Verify that exceptions from called functions propagate
+        ScenarioRuntime sr = run("""
+            * def fn = function() { throw new Error('error in function') }
+            * def result = fn()
+            """);
+        assertFailed(sr);
+    }
+
 }

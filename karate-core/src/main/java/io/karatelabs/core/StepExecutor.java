@@ -1431,6 +1431,11 @@ public class StepExecutor {
     private Object evalDollarPrefixedExpression(String expr) {
         String withoutDollar = expr.substring(1);
 
+        // Special case: bare $ means 'response' variable
+        if (withoutDollar.isEmpty()) {
+            return runtime.getVariable("response");
+        }
+
         // Special case: $[...] or $. means use 'response' variable for jsonpath
         if (withoutDollar.startsWith("[") || withoutDollar.startsWith(".")) {
             Object target = runtime.getVariable("response");
@@ -1567,9 +1572,11 @@ public class StepExecutor {
             return xpathResult == XPATH_NOT_PRESENT ? null : xpathResult;
         }
 
-        // Default: evaluate as JS with embedded expression processing
+        // Default: evaluate as JS
+        // Only process embedded expressions if original expression is a JSON/JS object literal
+        boolean isLiteral = expr.startsWith("{") || expr.startsWith("[");
         Object value = runtime.eval(expr);
-        if (value instanceof Map || value instanceof List) {
+        if (isLiteral && (value instanceof Map || value instanceof List)) {
             value = processEmbeddedExpressions(value);
         }
         return value;

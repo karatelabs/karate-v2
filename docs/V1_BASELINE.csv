@@ -506,7 +506,7 @@ feature-212,feature,runner/test-called-embedded.feature,,,test-called-embedded.f
 feature-213,feature,runner/test-called.feature,,,test-called.feature,test-called.feature,runner,pending,,,
 feature-214,feature,scenario-outline-result.feature,,,scenario-outline-result.feature,my feature,root,pending,,,
 feature-215,feature,scenario-variable-scope.feature,,,scenario-variable-scope.feature,scenario-variable-scope.feature,root,passed,variable scoping between scenarios,,2025-12-19
-feature-216,feature,schema-like.feature,,,schema-like.feature,json-schema like validation,root,pending,,,
+feature-216,feature,schema-like.feature,,,schema-like.feature,json-schema like validation,root,passed,,,2025-12-28
 feature-217,feature,schema-read.feature,,,schema-read.feature,schema-read.feature,root,pending,,,
 feature-218,feature,set-xml.feature,,,set-xml.feature,set-xml.feature,root,passed,XML table-based set with auto-build implemented,io/karatelabs/core/StepXmlTest,2025-12-19
 feature-219,feature,set.feature,,,set.feature,set.feature,root,passed,set keyword for setting json paths,,2025-12-19

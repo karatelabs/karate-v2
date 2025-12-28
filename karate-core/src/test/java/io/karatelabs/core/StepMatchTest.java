@@ -333,4 +333,69 @@ class StepMatchTest {
         assertPassed(sr);
     }
 
+    // Schema-like pattern tests from V1 compatibility
+
+    @Test
+    void testMatchContainsPartialMacro() {
+        // #(^part) - array contains element that contains part
+        ScenarioRuntime sr = run("""
+            * def actual = [{ a: 1, b: 'x' }, { a: 2, b: 'y' }]
+            * def part = { a: 1 }
+            * match actual contains '#(^part)'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMatchContainsAnyMacro() {
+        // #(^*mix) - array contains element that contains any of mix
+        ScenarioRuntime sr = run("""
+            * def actual = [{ a: 1, b: 'x' }, { a: 2, b: 'y' }]
+            * def mix = { b: 'y', c: true }
+            * match actual contains '#(^*mix)'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMatchContainsDeepMacro() {
+        // #(^+part) - array contains element that contains deep part
+        ScenarioRuntime sr = run("""
+            * def actual = [{ a: 1, b: 'x' }, { a: 2, b: 'y' }]
+            * def part = { a: 1 }
+            * match actual contains '#(^+part)'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMatchContainsOnlyMacro() {
+        // #(^^shuffled) - array contains only shuffled elements
+        ScenarioRuntime sr = run("""
+            * def actual = [{ a: 1, b: 'x' }, { a: 2, b: 'y' }]
+            * def shuffled = [{ a: 2, b: 'y' }, { b: 'x', a: 1 }]
+            * match actual == '#(^^shuffled)'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMatchSchemaValidation() {
+        // Full schema validation like schema-like.feature
+        ScenarioRuntime sr = run("""
+            * def actual = [{ a: 1, b: 'x' }, { a: 2, b: 'y' }]
+            * def schema = { a: '#number', b: '#string' }
+            * def partSchema = { a: '#number' }
+            * match actual[0] == schema
+            * match actual[0] == '#(schema)'
+            * match actual[0] contains partSchema
+            * match actual[0] == '#(^partSchema)'
+            * match each actual == schema
+            * match actual == '#[] schema'
+            * match each actual contains partSchema
+            * match actual == '#[] ^partSchema'
+            """);
+        assertPassed(sr);
+    }
+
 }
