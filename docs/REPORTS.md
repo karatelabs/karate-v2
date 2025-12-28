@@ -30,6 +30,18 @@ This document describes the reporting architecture for Karate v2, including the 
 | PROGRESS Events | Periodic progress updates and console display |
 | JSONL → FeatureResult | `FeatureResult.fromJson()` to reconstitute results from JSONL for offline report generation |
 
+### TODO: Report Rendering Test Cases
+
+Add the following test cases to `HtmlReportWriterTest.java` for nested call rendering:
+
+| Pattern | Description |
+|---------|-------------|
+| `karate.call()` from JS function | Test that `def fun = function(){ return karate.call('file.feature') }; call fun` shows nested call in report |
+| JS call in Background | Test that JS-initiated calls in Background section render correctly |
+| Nested call hierarchy | Test multi-level `call` → `karate.call()` → `call` chains render properly |
+
+Reference: V1 `call-js.feature` tests whether JS-initiated calls show up in the report.
+
 ---
 
 ## Overview

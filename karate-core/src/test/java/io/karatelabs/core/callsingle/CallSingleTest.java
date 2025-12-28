@@ -475,6 +475,84 @@ class CallSingleTest {
         assertTrue(elapsed < 150, "Expected single init in parallel execution, but took " + elapsed + "ms");
     }
 
+    // ========== Tests for callSingle with tag selector ==========
+
+    @Test
+    void testCallSingleWithTagSelector() throws Exception {
+        // Create a feature with multiple scenarios, each with a different tag
+        Path taggedFeature = tempDir.resolve("tagged.feature");
+        Files.writeString(taggedFeature, """
+            Feature: Tagged Scenarios
+
+            @admin
+            Scenario: Admin setup
+            * def role = 'admin'
+            * def token = 'admin-token-123'
+
+            @user
+            Scenario: User setup
+            * def role = 'user'
+            * def token = 'user-token-456'
+
+            @guest
+            Scenario: Guest setup
+            * def role = 'guest'
+            * def token = 'guest-token-789'
+            """);
+
+        // Create caller that uses callSingle with tag selector
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Caller with tag selector
+            Scenario: Use callSingle with @user tag
+            * def result = karate.callSingle('tagged.feature@user')
+            * match result.role == 'user'
+            * match result.token == 'user-token-456'
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "callSingle with tag selector should work: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testCallSingleWithTagSelectorCaching() throws Exception {
+        // Test that callSingle with different tag selectors use different cache keys
+        Path taggedFeature = tempDir.resolve("multi-tagged.feature");
+        Files.writeString(taggedFeature, """
+            Feature: Multi Tagged
+
+            @dev
+            Scenario: Dev setup
+            * def env = 'development'
+            * def timestamp = java.lang.System.currentTimeMillis()
+
+            @prod
+            Scenario: Prod setup
+            * def env = 'production'
+            * def timestamp = java.lang.System.currentTimeMillis()
+            """);
+
+        // Create caller that uses callSingle with different tags
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Caller
+            Scenario: Use callSingle with different tags
+            * def devResult = karate.callSingle('multi-tagged.feature@dev')
+            * def prodResult = karate.callSingle('multi-tagged.feature@prod')
+            * match devResult.env == 'development'
+            * match prodResult.env == 'production'
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "callSingle with different tags should return different results: " + getFailureMessage(result));
+    }
+
     // ========== Tests for callSingleCache (disk caching) ==========
 
     @Test

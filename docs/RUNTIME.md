@@ -232,6 +232,7 @@ Intentional deviations from V1 behavior:
 |---------|-----------|-------|
 | Java Function as callable | `Hello.sayHelloFactory()` returns `Function<String,String>` | JS engine needs to wrap `java.util.function.Function`, `Callable`, `Runnable`, `Predicate` as `JsCallable` |
 | callSingle returning Java fn | `karate.callSingle('file.js')` where JS returns Java Function | Depends on above |
+| Tagged Examples in call/callSingle | `call 'file.feature@tag'` with `@tag` on Examples section | Tag on Examples should filter which outline rows to execute. V1: `call-single-tag-called.feature` |
 
 ---
 

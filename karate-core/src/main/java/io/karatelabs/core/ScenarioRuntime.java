@@ -499,12 +499,22 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
 
     /**
      * Internal execution of callSingle - reads and evaluates the file.
-     * Supports ?suffix syntax for cache key differentiation (suffix is stripped for file read).
+     * Supports:
+     * - ?suffix syntax for cache key differentiation (suffix is stripped for file read)
+     * - @tag syntax for scenario selection (e.g., file.feature@tagname)
      */
     private Object executeCallSingleInternal(String path, Object arg) {
         // Strip ?suffix from path for file reading (suffix is only for cache key differentiation)
         // e.g., "get-token.feature?admin" -> read "get-token.feature", cache as "get-token.feature?admin"
         String filePath = path.contains("?") ? path.substring(0, path.indexOf('?')) : path;
+
+        // Parse @tag selector from path (e.g., "file.feature@tagname")
+        String tagSelector = null;
+        int tagPos = filePath.indexOf(".feature@");
+        if (tagPos != -1) {
+            tagSelector = "@" + filePath.substring(tagPos + 9);  // "@tagname"
+            filePath = filePath.substring(0, tagPos + 8);  // "file.feature"
+        }
 
         // Read the file using the engine (which has access to the read function)
         Object content = karate.engine.eval("read('" + filePath.replace("'", "\\'") + "')");
@@ -522,7 +532,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
                     this,
                     false,  // Isolated scope
                     callArg,
-                    null    // No tag selector
+                    tagSelector
             );
             FeatureResult fr = nestedFr.call();
 
