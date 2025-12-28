@@ -398,4 +398,49 @@ class StepDataTypesTest {
         assertPassed(sr);
     }
 
+    // ========== Variable Name Validation ==========
+
+    @Test
+    void testValidVariableNames() {
+        // V2 allows variable names starting with letter or underscore
+        // Note: V1 only allowed letter as first character, V2 is more permissive
+        ScenarioRuntime sr = run("""
+            * def foo = 1
+            * def foo_bar = 2
+            * def foo_ = 3
+            * def foo1 = 4
+            * def a = 5
+            * def a1 = 6
+            * def _foo = 7
+            * def _foo_ = 8
+            """);
+        assertPassed(sr);
+        assertEquals(1, get(sr, "foo"));
+        assertEquals(2, get(sr, "foo_bar"));
+        assertEquals(3, get(sr, "foo_"));
+        assertEquals(4, get(sr, "foo1"));
+        assertEquals(5, get(sr, "a"));
+        assertEquals(6, get(sr, "a1"));
+        assertEquals(7, get(sr, "_foo"));
+        assertEquals(8, get(sr, "_foo_"));
+    }
+
+    @Test
+    void testInvalidVariableNameLeadingDigit() {
+        // Variable names cannot start with a digit
+        ScenarioRuntime sr = run("""
+            * def 2foo = 1
+            """);
+        assertFailed(sr);
+    }
+
+    @Test
+    void testInvalidVariableNameReservedKarate() {
+        // 'karate' is a reserved variable name
+        ScenarioRuntime sr = run("""
+            * def karate = 1
+            """);
+        assertFailed(sr);
+    }
+
 }

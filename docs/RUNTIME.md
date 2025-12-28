@@ -119,6 +119,16 @@ SuiteResult result = Runner.path("src/test/resources")
 
 ---
 
+## V1 Differences
+
+Intentional deviations from V1 behavior:
+
+| Feature | V1 Behavior | V2 Behavior | Rationale |
+|---------|-------------|-------------|-----------|
+| Variable names | Must start with letter (`[a-zA-Z]`) | Can start with letter or underscore (`[a-zA-Z_]`) | More permissive, aligns with JavaScript conventions |
+
+---
+
 ## karate.* API
 
 ### Implemented

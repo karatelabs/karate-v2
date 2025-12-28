@@ -233,6 +233,7 @@ public class StepExecutor {
             throw new RuntimeException("def requires '=' assignment: " + text);
         }
         String name = text.substring(0, eqIndex).trim();
+        validateVariableName(name);
         String expr = text.substring(eqIndex + 1).trim();
 
         // Handle docstring if expression is empty
@@ -1525,10 +1526,23 @@ public class StepExecutor {
 
     /**
      * Checks if a string is a valid variable name.
+     * V2 allows underscore as first character (differs from V1 which only allows letters).
      */
     private boolean isValidVariableName(String name) {
-        return name != null && !name.isEmpty() && !name.contains(" ")
+        return name != null && !name.isEmpty()
                 && name.matches("[a-zA-Z_][a-zA-Z0-9_]*");
+    }
+
+    /**
+     * Validates a variable name and throws if invalid.
+     */
+    private void validateVariableName(String name) {
+        if (!isValidVariableName(name)) {
+            throw new RuntimeException("invalid variable name: " + name);
+        }
+        if ("karate".equals(name)) {
+            throw new RuntimeException("'karate' is a reserved name");
+        }
     }
 
     /**

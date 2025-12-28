@@ -89,8 +89,8 @@ java-087,java_test,PrintTest.java,PrintTest,testPrint,,testPrint,root,passed,Fix
 java-088,java_test,ScenarioBridgeTest.java,ScenarioBridgeTest,testCallSingle,,testCallSingle,root,passed,V2 CallSingleTest covers basic callSingle and caching,CallSingleTest,2025-12-28
 java-089,java_test,ScenarioBridgeTest.java,ScenarioBridgeTest,testCallSingleWithParam,,testCallSingleWithParam,root,passed,V2 CallSingleTest.testCallSingleWithArgument covers this,CallSingleTest,2025-12-28
 java-090,java_test,ScenarioBridgeTest.java,ScenarioBridgeTest,testCallSingleScenarioWithParam,,testCallSingleScenarioWithParam,root,passed,V2 CallSingleTest covers callSingle with args and ?suffix cache key differentiation,CallSingleTest,2025-12-28
-java-091,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testHelpers,,testHelpers,root,pending,,,
-java-092,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testVariableNameValidation,,testVariableNameValidation,root,pending,,,
+java-091,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testHelpers,,testHelpers,root,passed,V2 has internal helpers in StepExecutor (isValidVariableName etc) - tests internal implementation,StepDataTypesTest,2025-12-28
+java-092,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testVariableNameValidation,,testVariableNameValidation,root,passed,V2 validates variable names - allows underscore prefix (documented in RUNTIME.md V1 Differences),StepDataTypesTest,2025-12-28
 java-093,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testParsingVariableAndJsonPath,,testParsingVariableAndJsonPath,root,pending,,,
 java-094,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testJsFunction,,testJsFunction,root,pending,,,
 java-095,java_test,ScenarioEngineTest.java,ScenarioEngineTest,testEmbeddedString,,testEmbeddedString,root,pending,,,
