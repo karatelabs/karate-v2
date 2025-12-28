@@ -44,10 +44,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 
 import java.io.File;
-import java.net.Socket;
-import java.net.URI;
 import java.nio.file.Files;
-import java.time.Duration;
 import java.util.*;
 import java.util.function.Consumer;
 
@@ -56,7 +53,7 @@ import java.util.function.Consumer;
  * <p>
  * This class contains methods that require stateful access to:
  * - The JavaScript engine (for variable lookup and evaluation)
- * - Provider callbacks (scenario, feature, config, call, etc.)
+ * - Runtime context via {@link KarateJsContext} (scenario, feature, config)
  * - HTTP client and resource resolution
  * - Mock handler context
  * <p>
@@ -65,6 +62,7 @@ import java.util.function.Consumer;
  *
  * @see KarateJsUtils for pure utility functions
  * @see KarateJsBase for state management and initialization
+ * @see KarateJsContext for runtime context interface
  */
 public class KarateJs extends KarateJsBase {
 
@@ -186,8 +184,7 @@ public class KarateJs extends KarateJsBase {
             Resource resource;
             if (path.startsWith("this:")) {
                 path = path.substring(5);
-                Resource currentResource = currentResourceProvider != null ? currentResourceProvider.get() : null;
-                resource = currentResource != null ? currentResource.resolve(path) : root.resolve(path);
+                resource = getCurrentResource().resolve(path);
             } else {
                 resource = root.resolve(path);
             }
@@ -401,13 +398,7 @@ public class KarateJs extends KarateJsBase {
                 throw new RuntimeException("readAsBytes() needs at least one argument");
             }
             String path = args[0] + "";
-            // Support currentResource-relative paths via provider
-            Resource resource;
-            if (currentResourceProvider != null && currentResourceProvider.get() != null) {
-                resource = currentResourceProvider.get().resolve(path);
-            } else {
-                resource = root.resolve(path);
-            }
+            Resource resource = getCurrentResource().resolve(path);
             try (java.io.InputStream is = resource.getStream()) {
                 return is.readAllBytes();
             } catch (java.io.IOException e) {
@@ -575,7 +566,8 @@ public class KarateJs extends KarateJsBase {
 
     private Invokable call() {
         return args -> {
-            if (callProvider == null) {
+            ScenarioRuntime rt = getRuntime();
+            if (rt == null) {
                 throw new RuntimeException("karate.call() is not available in this context");
             }
             if (args.length == 0) {
@@ -600,7 +592,7 @@ public class KarateJs extends KarateJsBase {
                 path = args[0].toString();
                 arg = args.length > 1 ? args[1] : null;
             }
-            Map<String, Object> result = callProvider.apply(path, arg);
+            Map<String, Object> result = rt.executeJsCall(path, arg);
             if (sharedScope && result != null) {
                 // Merge result variables into current scope
                 for (var entry : result.entrySet()) {
@@ -617,18 +609,6 @@ public class KarateJs extends KarateJsBase {
                 throw new RuntimeException("eval() needs one argument");
             }
             return engine.eval(args[0].toString());
-        };
-    }
-
-    // ========== Type Utilities ==========
-
-    private Invokable toJava() {
-        return args -> {
-            logger.warn("karate.toJava() is deprecated and a no-op in V2 - JavaScript arrays work directly with Java");
-            if (args.length < 1) {
-                return null;
-            }
-            return args[0]; // no-op, just return the input
         };
     }
 
@@ -650,29 +630,6 @@ public class KarateJs extends KarateJsBase {
                 map.remove(path);
             }
             return null;
-        };
-    }
-
-    private Invokable xmlPath() {
-        return args -> {
-            if (args.length < 2) {
-                throw new RuntimeException("xmlPath() needs two arguments: xml and path");
-            }
-            Object xmlObj = args[0];
-            String path = args[1].toString();
-            Node doc;
-            if (xmlObj instanceof Node) {
-                doc = (Node) xmlObj;
-            } else if (xmlObj instanceof String) {
-                doc = Xml.toXmlDoc((String) xmlObj);
-            } else {
-                throw new RuntimeException("xmlPath() first argument must be XML node or string, but was: " + (xmlObj == null ? "null" : xmlObj.getClass()));
-            }
-            try {
-                return KarateJsUtils.evalXmlPath(doc, path);
-            } catch (Exception e) {
-                throw new RuntimeException("xmlPath failed for path: " + path + " - " + e.getMessage(), e);
-            }
         };
     }
 
@@ -812,8 +769,9 @@ public class KarateJs extends KarateJsBase {
             ProcessHandle handle = ProcessHandle.create(builder.build());
 
             // Wire signal consumer for listen/listenResult integration
-            if (signalConsumer != null) {
-                handle.setSignalConsumer(signalConsumer);
+            ScenarioRuntime rt = getRuntime();
+            if (rt != null) {
+                handle.setSignalConsumer(rt::setListenResult);
             }
 
             if (autoStart) {
@@ -978,12 +936,7 @@ public class KarateJs extends KarateJsBase {
                 throw new RuntimeException("readAsStream() needs at least one argument");
             }
             String path = args[0] + "";
-            Resource resource;
-            if (currentResourceProvider != null && currentResourceProvider.get() != null) {
-                resource = currentResourceProvider.get().resolve(path);
-            } else {
-                resource = root.resolve(path);
-            }
+            Resource resource = getCurrentResource().resolve(path);
             try {
                 return resource.getStream();
             } catch (Exception e) {
@@ -1020,41 +973,6 @@ public class KarateJs extends KarateJsBase {
     }
 
     /**
-     * karate.stop(port) - Debugging breakpoint that pauses test execution.
-     * Opens a server socket and waits for a connection (e.g., curl or browser).
-     * Prints instructions to console. NEVER forget to remove after debugging!
-     */
-    private Invokable stop() {
-        return args -> {
-            int port = 0; // 0 means pick any available port
-            if (args.length > 0 && args[0] != null) {
-                if (args[0] instanceof Number) {
-                    port = ((Number) args[0]).intValue();
-                } else {
-                    port = Integer.parseInt(args[0].toString());
-                }
-            }
-            try (java.net.ServerSocket serverSocket = new java.net.ServerSocket(port, 1,
-                    java.net.InetAddress.getByName("127.0.0.1"))) {
-                int actualPort = serverSocket.getLocalPort();
-                System.out.println("*** waiting for socket, type the command below:\ncurl http://localhost:"
-                        + actualPort + "\nin a new terminal (or open the URL in a web-browser) to proceed ...");
-                // Block until a connection is received
-                try (Socket clientSocket = serverSocket.accept()) {
-                    // Send a simple HTTP response
-                    java.io.OutputStream out = clientSocket.getOutputStream();
-                    out.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK".getBytes());
-                    out.flush();
-                }
-                logger.info("*** exited socket wait successfully");
-                return true;
-            } catch (Exception e) {
-                throw new RuntimeException("stop() failed: " + e.getMessage(), e);
-            }
-        };
-    }
-
-    /**
      * karate.toAbsolutePath(path) - Convert a relative path to absolute.
      * Resolves relative to the current feature file's directory.
      */
@@ -1064,112 +982,12 @@ public class KarateJs extends KarateJsBase {
                 throw new RuntimeException("toAbsolutePath() needs a path argument");
             }
             String path = args[0] + "";
-            Resource resource;
-            if (currentResourceProvider != null && currentResourceProvider.get() != null) {
-                resource = currentResourceProvider.get().resolve(path);
-            } else {
-                resource = root.resolve(path);
-            }
+            Resource resource = getCurrentResource().resolve(path);
             if (resource.isFile() && resource.getPath() != null) {
                 return resource.getPath().toAbsolutePath().toString();
             }
             // For classpath resources, return the prefixed path
             return resource.getPrefixedPath();
-        };
-    }
-
-    /**
-     * karate.waitForHttp(url) - Wait for an HTTP endpoint to become available.
-     * Polls until a successful response (2xx or 3xx) is received.
-     */
-    private Invokable waitForHttp() {
-        return args -> {
-            if (args.length == 0) {
-                throw new RuntimeException("waitForHttp() needs a URL argument");
-            }
-            String url = args[0] + "";
-            int timeoutMs = 30000;
-            int pollMs = 250;
-            if (args.length > 1 && args[1] instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> options = (Map<String, Object>) args[1];
-                if (options.containsKey("timeout")) {
-                    timeoutMs = ((Number) options.get("timeout")).intValue();
-                }
-                if (options.containsKey("interval")) {
-                    pollMs = ((Number) options.get("interval")).intValue();
-                }
-            }
-            long deadline = System.currentTimeMillis() + timeoutMs;
-            java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofMillis(pollMs))
-                    .build();
-            while (System.currentTimeMillis() < deadline) {
-                try {
-                    java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
-                            .uri(URI.create(url))
-                            .timeout(Duration.ofMillis(pollMs))
-                            .GET()
-                            .build();
-                    var response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.discarding());
-                    int status = response.statusCode();
-                    if (status >= 200 && status < 400) {
-                        return true;
-                    }
-                } catch (Exception e) {
-                    // Connection failed, continue polling
-                }
-                try {
-                    Thread.sleep(pollMs);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    return false;
-                }
-            }
-            throw new RuntimeException("HTTP endpoint not available: " + url);
-        };
-    }
-
-    /**
-     * karate.waitForPort(host, port) - Wait for a TCP port to become available.
-     * Polls until a TCP connection can be established.
-     */
-    private Invokable waitForPort() {
-        return args -> {
-            if (args.length < 2) {
-                throw new RuntimeException("waitForPort() needs host and port arguments");
-            }
-            String host = args[0] + "";
-            int port;
-            if (args[1] instanceof Number) {
-                port = ((Number) args[1]).intValue();
-            } else {
-                port = Integer.parseInt(args[1].toString());
-            }
-            int timeoutMs = 30000;
-            int pollMs = 250;
-            if (args.length > 2 && args[2] instanceof Number) {
-                timeoutMs = ((Number) args[2]).intValue();
-            }
-            if (args.length > 3 && args[3] instanceof Number) {
-                pollMs = ((Number) args[3]).intValue();
-            }
-            long deadline = System.currentTimeMillis() + timeoutMs;
-            while (System.currentTimeMillis() < deadline) {
-                try (Socket socket = new Socket(host, port)) {
-                    // Port is open, success
-                    return true;
-                } catch (Exception e) {
-                    // Port not available, continue polling
-                }
-                try {
-                    Thread.sleep(pollMs);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    return false;
-                }
-            }
-            throw new RuntimeException("Port " + host + ":" + port + " not available within timeout");
         };
     }
 
@@ -1186,12 +1004,7 @@ public class KarateJs extends KarateJsBase {
             String path = args[1] + "";
 
             // Get output directory
-            String outputDir;
-            if (outputDirProvider != null) {
-                outputDir = outputDirProvider.get();
-            } else {
-                outputDir = "target";  // Default fallback
-            }
+            String outputDir = getOutputDir();
 
             // Create the full path
             File file = new File(outputDir, path);
@@ -1249,7 +1062,6 @@ public class KarateJs extends KarateJsBase {
             case "toCsv" -> KarateJsUtils.toCsv();
             case "toJson" -> KarateJsUtils.toJson();
             case "toString" -> KarateJsUtils.toStringValue();
-            case "toStringPretty" -> KarateJsUtils.pretty();
             case "typeOf" -> KarateJsUtils.typeOf();
             case "urlDecode" -> KarateJsUtils.urlDecode();
             case "urlEncode" -> KarateJsUtils.urlEncode();
@@ -1266,8 +1078,8 @@ public class KarateJs extends KarateJsBase {
             case "env" -> env;
             case "eval" -> eval();
             case "exec" -> exec();
-            case "fail" -> fail();
-            case "feature" -> getFeature();
+            case "fail" -> KarateJsUtils.fail();
+            case "feature" -> getFeatureData();
             case "fork" -> fork();
             case "get" -> get();
             case "http" -> http();
@@ -1286,23 +1098,23 @@ public class KarateJs extends KarateJsBase {
             case "render" -> render();
             case "request" -> getRequest();
             case "response" -> getResponse();
-            case "scenario" -> getScenario();
-            case "scenarioOutline" -> getScenarioOutline();
+            case "scenario" -> getScenarioData();
+            case "scenarioOutline" -> getScenarioOutlineData();
             case "set" -> set();
             case "setup" -> setup();
             case "setupOnce" -> setupOnce();
             case "setXml" -> setXml();
             case "signal" -> signal();
             case "start" -> start();
-            case "stop" -> stop();
+            case "stop" -> KarateJsUtils.stop();
             case "tags" -> getTags();
             case "tagValues" -> getTagValues();
             case "toAbsolutePath" -> toAbsolutePath();
-            case "toJava" -> toJava();
-            case "waitForHttp" -> waitForHttp();
-            case "waitForPort" -> waitForPort();
+            case "toJava" -> KarateJsUtils.toJava();
+            case "waitForHttp" -> KarateJsUtils.waitForHttp();
+            case "waitForPort" -> KarateJsUtils.waitForPort();
             case "write" -> write();
-            case "xmlPath" -> xmlPath();
+            case "xmlPath" -> KarateJsUtils.xmlPath();
             default -> null;
         };
     }

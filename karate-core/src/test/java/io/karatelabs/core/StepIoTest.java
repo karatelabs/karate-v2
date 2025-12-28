@@ -229,7 +229,7 @@ class StepIoTest {
         io.karatelabs.gherkin.Scenario scenario = feature.getSections().getFirst().getScenario();
         io.karatelabs.common.Resource root = io.karatelabs.common.Resource.path("src/test/resources");
         KarateJs karate = new KarateJs(root, new InMemoryHttpClient());
-        karate.setOutputDirProvider(outputDir::toString);
+        karate.setOutputDir(outputDir.toString());
         ScenarioRuntime sr = new ScenarioRuntime(karate, scenario);
         sr.call();
         return sr;

@@ -36,9 +36,12 @@ import org.w3c.dom.Node;
 
 import com.jayway.jsonpath.JsonPath;
 
+import java.net.Socket;
+import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -53,7 +56,7 @@ import java.util.regex.Pattern;
  * <p>
  * Contains pure functions that don't require access to:
  * - The JavaScript engine or variable scope
- * - Provider callbacks (scenario, feature, config, etc.)
+ * - Runtime context ({@link KarateJsContext})
  * - HTTP client or resource resolution
  * <p>
  * Methods here operate only on their input arguments and return results.
@@ -61,6 +64,7 @@ import java.util.regex.Pattern;
  *
  * @see KarateJs for stateful methods that require engine access
  * @see KarateJsBase for shared state and infrastructure
+ * @see KarateJsContext for runtime context interface
  */
 public class KarateJsUtils {
 
@@ -886,6 +890,197 @@ public class KarateJsUtils {
             return Xml.toString((Node) value, false);
         }
         return value.toString();
+    }
+
+    // ========== XML Utilities (Invokable) ==========
+
+    /**
+     * karate.xmlPath(xml, path) - Evaluate XPath on XML.
+     * First argument can be XML Node or String.
+     */
+    static Invokable xmlPath() {
+        return args -> {
+            if (args.length < 2) {
+                throw new RuntimeException("xmlPath() needs two arguments: xml and path");
+            }
+            Object xmlObj = args[0];
+            String path = args[1].toString();
+            Node doc;
+            if (xmlObj instanceof Node) {
+                doc = (Node) xmlObj;
+            } else if (xmlObj instanceof String) {
+                doc = Xml.toXmlDoc((String) xmlObj);
+            } else {
+                throw new RuntimeException("xmlPath() first argument must be XML node or string, but was: " + (xmlObj == null ? "null" : xmlObj.getClass()));
+            }
+            try {
+                return evalXmlPath(doc, path);
+            } catch (Exception e) {
+                throw new RuntimeException("xmlPath failed for path: " + path + " - " + e.getMessage(), e);
+            }
+        };
+    }
+
+    // ========== Control Flow Utilities ==========
+
+    /**
+     * karate.fail(message) - Explicitly fail the scenario with a message.
+     */
+    static Invokable fail() {
+        return args -> {
+            String message = args.length > 0 && args[0] != null ? args[0].toString() : "karate.fail() called";
+            throw new RuntimeException(message);
+        };
+    }
+
+    // ========== Type Conversion Utilities (Invokable) ==========
+
+    /**
+     * karate.toJava() - Deprecated no-op for V1 compatibility.
+     * In V2, JavaScript arrays work directly with Java, so this is unnecessary.
+     */
+    static Invokable toJava() {
+        return args -> {
+            logger.warn("karate.toJava() is deprecated and a no-op in V2 - JavaScript arrays work directly with Java");
+            if (args.length < 1) {
+                return null;
+            }
+            return args[0]; // no-op, just return the input
+        };
+    }
+
+    // ========== Debugging Utilities ==========
+
+    /**
+     * karate.stop(port) - Debugging breakpoint that pauses test execution.
+     * Opens a server socket and waits for a connection (e.g., curl or browser).
+     * Prints instructions to console. NEVER forget to remove after debugging!
+     */
+    static Invokable stop() {
+        return args -> {
+            int port = 0; // 0 means pick any available port
+            if (args.length > 0 && args[0] != null) {
+                if (args[0] instanceof Number) {
+                    port = ((Number) args[0]).intValue();
+                } else {
+                    port = Integer.parseInt(args[0].toString());
+                }
+            }
+            try (java.net.ServerSocket serverSocket = new java.net.ServerSocket(port, 1,
+                    java.net.InetAddress.getByName("127.0.0.1"))) {
+                int actualPort = serverSocket.getLocalPort();
+                System.out.println("*** waiting for socket, type the command below:\ncurl http://localhost:"
+                        + actualPort + "\nin a new terminal (or open the URL in a web-browser) to proceed ...");
+                // Block until a connection is received
+                try (Socket clientSocket = serverSocket.accept()) {
+                    // Send a simple HTTP response
+                    java.io.OutputStream out = clientSocket.getOutputStream();
+                    out.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK".getBytes());
+                    out.flush();
+                }
+                logger.info("*** exited socket wait successfully");
+                return true;
+            } catch (Exception e) {
+                throw new RuntimeException("stop() failed: " + e.getMessage(), e);
+            }
+        };
+    }
+
+    // ========== Wait Utilities ==========
+
+    /**
+     * karate.waitForHttp(url) - Wait for an HTTP endpoint to become available.
+     * Polls until a successful response (2xx or 3xx) is received.
+     */
+    static Invokable waitForHttp() {
+        return args -> {
+            if (args.length == 0) {
+                throw new RuntimeException("waitForHttp() needs a URL argument");
+            }
+            String url = args[0] + "";
+            int timeoutMs = 30000;
+            int pollMs = 250;
+            if (args.length > 1 && args[1] instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> options = (Map<String, Object>) args[1];
+                if (options.containsKey("timeout")) {
+                    timeoutMs = ((Number) options.get("timeout")).intValue();
+                }
+                if (options.containsKey("interval")) {
+                    pollMs = ((Number) options.get("interval")).intValue();
+                }
+            }
+            long deadline = System.currentTimeMillis() + timeoutMs;
+            java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofMillis(pollMs))
+                    .build();
+            while (System.currentTimeMillis() < deadline) {
+                try {
+                    java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                            .uri(URI.create(url))
+                            .timeout(Duration.ofMillis(pollMs))
+                            .GET()
+                            .build();
+                    var response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.discarding());
+                    int status = response.statusCode();
+                    if (status >= 200 && status < 400) {
+                        return true;
+                    }
+                } catch (Exception e) {
+                    // Connection failed, continue polling
+                }
+                try {
+                    Thread.sleep(pollMs);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return false;
+                }
+            }
+            throw new RuntimeException("HTTP endpoint not available: " + url);
+        };
+    }
+
+    /**
+     * karate.waitForPort(host, port) - Wait for a TCP port to become available.
+     * Polls until a TCP connection can be established.
+     */
+    static Invokable waitForPort() {
+        return args -> {
+            if (args.length < 2) {
+                throw new RuntimeException("waitForPort() needs host and port arguments");
+            }
+            String host = args[0] + "";
+            int port;
+            if (args[1] instanceof Number) {
+                port = ((Number) args[1]).intValue();
+            } else {
+                port = Integer.parseInt(args[1].toString());
+            }
+            int timeoutMs = 30000;
+            int pollMs = 250;
+            if (args.length > 2 && args[2] instanceof Number) {
+                timeoutMs = ((Number) args[2]).intValue();
+            }
+            if (args.length > 3 && args[3] instanceof Number) {
+                pollMs = ((Number) args[3]).intValue();
+            }
+            long deadline = System.currentTimeMillis() + timeoutMs;
+            while (System.currentTimeMillis() < deadline) {
+                try (Socket socket = new Socket(host, port)) {
+                    // Port is open, success
+                    return true;
+                } catch (Exception e) {
+                    // Port not available, continue polling
+                }
+                try {
+                    Thread.sleep(pollMs);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return false;
+                }
+            }
+            throw new RuntimeException("Port " + host + ":" + port + " not available within timeout");
+        };
     }
 
 }

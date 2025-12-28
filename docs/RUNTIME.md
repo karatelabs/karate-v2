@@ -27,7 +27,9 @@ Suite → FeatureRuntime → ScenarioRuntime → StepExecutor
 | `ScenarioRuntime` | Scenario execution, variable scope |
 | `StepExecutor` | Keyword-based step dispatch |
 | `KarateJs` | JS engine bridge, `karate.*` methods |
-| `KarateJsApi` | Stateless utility methods for `karate.*` API |
+| `KarateJsBase` | Shared state and infrastructure for KarateJs |
+| `KarateJsUtils` | Stateless utility methods for `karate.*` API |
+| `KarateJsContext` | Runtime context interface (implemented by ScenarioRuntime) |
 | `Runner` | Fluent API for test execution |
 | `RuntimeHook` | Lifecycle callbacks for test execution interception (see [EVENTS.md](./EVENTS.md) for new API) |
 | `ResultListener` | Observation interface for reporting |
@@ -124,52 +126,52 @@ SuiteResult result = Runner.path("src/test/resources")
 | Method | Location | Description |
 |--------|----------|-------------|
 | `abort()` | KarateJs | Abort scenario execution |
-| `append(list, items...)` | KarateJsApi | Append items to list (returns new list) |
-| `appendTo(list, items...)` | KarateJsApi | Append items to list (mutates) |
+| `append(list, items...)` | KarateJsUtils | Append items to list (returns new list) |
+| `appendTo(list, items...)` | KarateJsUtils | Append items to list (mutates) |
 | `call(path, arg?)` | KarateJs | Call feature file |
 | `callonce(path, arg?)` | KarateJs | Call feature once per feature |
 | `callSingle(path, arg?)` | KarateJs | Call once per suite (cached) |
 | `config` | KarateJs | Get config object |
 | `configure(key, value)` | KarateJs | Set configuration |
-| `distinct(list)` | KarateJsApi | Remove duplicates |
+| `distinct(list)` | KarateJsUtils | Remove duplicates |
 | `doc(template)` | KarateJs | Render HTML template |
 | `embed(data, [mimeType], [name])` | KarateJs | Embed content in report (auto-detects type) |
 | `env` | KarateJs | Get karate.env value |
 | `eval(expression)` | KarateJs | Evaluate JS expression |
 | `feature` | KarateJs | Get feature info (name, description, prefixedPath, fileName, parentDir) |
 | `exec(command)` | KarateJs | Execute system command |
-| `extract(text, regex, group)` | KarateJsApi | Extract regex match |
-| `extractAll(text, regex, group)` | KarateJsApi | Extract all regex matches |
-| `fail(message)` | KarateJs | Fail scenario with message |
-| `filter(list, fn)` | KarateJsApi | Filter list by predicate |
-| `filterKeys(map, keys)` | KarateJsApi | Filter map by keys |
-| `forEach(collection, fn)` | KarateJsApi | Iterate collection |
+| `extract(text, regex, group)` | KarateJsUtils | Extract regex match |
+| `extractAll(text, regex, group)` | KarateJsUtils | Extract all regex matches |
+| `fail(message)` | KarateJsUtils | Fail scenario with message |
+| `filter(list, fn)` | KarateJsUtils | Filter list by predicate |
+| `filterKeys(map, keys)` | KarateJsUtils | Filter map by keys |
+| `forEach(collection, fn)` | KarateJsUtils | Iterate collection |
 | `fork(options)` | KarateJs | Fork background process |
-| `fromJson(string)` | KarateJsApi | Parse JSON string |
+| `fromJson(string)` | KarateJsUtils | Parse JSON string |
 | `fromString(text)` | KarateJs | Parse as JSON/XML or return string |
 | `get(name, path?)` | KarateJs | Get variable value |
 | `http(url)` | KarateJs | Create HTTP client |
 | `info` | KarateJs | Get scenario info |
-| `jsonPath(obj, path)` | KarateJsApi | Apply JSONPath expression |
-| `keysOf(map)` | KarateJsApi | Get map keys |
+| `jsonPath(obj, path)` | KarateJsUtils | Apply JSONPath expression |
+| `keysOf(map)` | KarateJsUtils | Get map keys |
 | `log(args...)` | KarateJs | Log message |
-| `lowerCase(value)` | KarateJsApi | Lowercase string/JSON/XML |
-| `map(list, fn)` | KarateJsApi | Transform list |
-| `mapWithKey(list, key)` | KarateJsApi | Wrap list items in maps |
+| `lowerCase(value)` | KarateJsUtils | Lowercase string/JSON/XML |
+| `map(list, fn)` | KarateJsUtils | Transform list |
+| `mapWithKey(list, key)` | KarateJsUtils | Wrap list items in maps |
 | `match(actual, expected)` | KarateJs | Match assertion |
-| `merge(maps...)` | KarateJsApi | Merge maps |
+| `merge(maps...)` | KarateJsUtils | Merge maps |
 | `os` | KarateJs | Get OS info |
-| `pause(ms)` | KarateJsApi | Sleep for milliseconds |
-| `pretty(value)` | KarateJsApi | Format as pretty JSON/XML |
-| `prettyXml(value)` | KarateJsApi | Format as pretty XML |
+| `pause(ms)` | KarateJsUtils | Sleep for milliseconds |
+| `pretty(value)` | KarateJsUtils | Format as pretty JSON/XML |
+| `prettyXml(value)` | KarateJsUtils | Format as pretty XML |
 | `proceed()` | KarateJs | Proceed in mock (passthrough) |
 | `properties` | KarateJs | Get system properties |
-| `range(start, end, step?)` | KarateJsApi | Generate number range |
+| `range(start, end, step?)` | KarateJsUtils | Generate number range |
 | `read(path)` | KarateJs | Read file content |
 | `readAsBytes(path)` | KarateJs | Read file as bytes |
 | `readAsString(path)` | KarateJs | Read file as string |
 | `remove(name, path)` | KarateJs | Remove from variable |
-| `repeat(count, fn)` | KarateJsApi | Generate list by repeating function |
+| `repeat(count, fn)` | KarateJsUtils | Generate list by repeating function |
 | `scenario` | KarateJs | Get scenario info (name, description, line, sectionIndex, exampleIndex, exampleData) |
 | `scenarioOutline` | KarateJs | Get scenario outline info (null if not in outline) |
 | `set(name, path?, value)` | KarateJs | Set variable value |
@@ -177,33 +179,32 @@ SuiteResult result = Runner.path("src/test/resources")
 | `setupOnce()` | KarateJs | Get cached setup result |
 | `setXml(name, path, value)` | KarateJs | Set XML value |
 | `signal(value)` | KarateJs | Signal to listener |
-| `sizeOf(value)` | KarateJsApi | Get size of list/map/string |
-| `sort(list, fn)` | KarateJsApi | Sort list by key function |
+| `sizeOf(value)` | KarateJsUtils | Get size of list/map/string |
+| `sort(list, fn)` | KarateJsUtils | Sort list by key function |
 | `start(options)` | KarateJs | Start mock server |
 | `tags` | KarateJs | Get effective tags list (feature + scenario) |
 | `tagValues` | KarateJs | Get tag values map (tag name → list of values) |
-| `toBean(obj, className)` | KarateJsApi | Convert to Java bean |
-| `toBytes(list)` | KarateJsApi | Convert number list to byte[] |
-| `toCsv(list)` | KarateJsApi | Convert list of maps to CSV |
-| `toJava(value)` | KarateJs | No-op (V1 compat) |
-| `toJson(value, removeNulls?)` | KarateJsApi | Convert to JSON |
-| `toString(value)` | KarateJsApi | Convert to string (JSON/XML aware) |
-| `toStringPretty(value)` | KarateJs | Pretty format value |
-| `typeOf(value)` | KarateJsApi | Get Karate type name |
-| `urlDecode(string)` | KarateJsApi | URL decode |
-| `urlEncode(string)` | KarateJsApi | URL encode |
-| `valuesOf(map)` | KarateJsApi | Get map values |
-| `xmlPath(xml, path)` | KarateJs | Apply XPath expression |
+| `toBean(obj, className)` | KarateJsUtils | Convert to Java bean |
+| `toBytes(list)` | KarateJsUtils | Convert number list to byte[] |
+| `toCsv(list)` | KarateJsUtils | Convert list of maps to CSV |
+| `toJava(value)` | KarateJsUtils | No-op (V1 compat) |
+| `toJson(value, removeNulls?)` | KarateJsUtils | Convert to JSON |
+| `toString(value)` | KarateJsUtils | Convert to string (JSON/XML aware) |
+| `typeOf(value)` | KarateJsUtils | Get Karate type name |
+| `urlDecode(string)` | KarateJsUtils | URL decode |
+| `urlEncode(string)` | KarateJsUtils | URL encode |
+| `valuesOf(map)` | KarateJsUtils | Get map values |
+| `xmlPath(xml, path)` | KarateJsUtils | Apply XPath expression |
 | `logger` | KarateJs | Log facade (debug/info/warn/error via LogContext) |
 | `prevRequest` | KarateJs | Get previous HTTP request (method, url, headers, body) |
 | `request` | KarateJs | Get current request body (mock context only) |
 | `response` | KarateJs | Get current response (mock context only) |
 | `readAsStream(path)` | KarateJs | Read file as InputStream |
 | `render(template)` | KarateJs | Render HTML template (returns string) |
-| `stop(port)` | KarateJs | Debug breakpoint - pauses until connection received |
+| `stop(port)` | KarateJsUtils | Debug breakpoint - pauses until connection received |
 | `toAbsolutePath(path)` | KarateJs | Convert relative path to absolute |
-| `waitForHttp(url, options)` | KarateJs | Poll HTTP endpoint until available |
-| `waitForPort(host, port)` | KarateJs | Wait for TCP port to become available |
+| `waitForHttp(url, options)` | KarateJsUtils | Poll HTTP endpoint until available |
+| `waitForPort(host, port)` | KarateJsUtils | Wait for TCP port to become available |
 | `write(value, path)` | KarateJs | Write content to file in output directory |
 
 ### Out of Scope (UI/Extensions)

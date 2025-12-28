@@ -26,6 +26,11 @@ package io.karatelabs.core;
 import io.karatelabs.common.Resource;
 import io.karatelabs.common.StringUtils;
 import io.karatelabs.common.Xml;
+import io.karatelabs.gherkin.Feature;
+import io.karatelabs.gherkin.FeatureSection;
+import io.karatelabs.gherkin.Scenario;
+import io.karatelabs.gherkin.ScenarioOutline;
+import io.karatelabs.gherkin.Tag;
 import io.karatelabs.http.HttpClient;
 import io.karatelabs.http.HttpRequestBuilder;
 import io.karatelabs.js.*;
@@ -36,24 +41,28 @@ import io.karatelabs.output.LogContext;
 import org.slf4j.Logger;
 import org.w3c.dom.Node;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
  * Base class holding shared state and infrastructure for the karate.* API.
  * <p>
  * This abstract class provides:
- * - Core state fields (engine, client, providers, handlers)
- * - Dependency injection via setter methods
+ * - Core state fields (engine, client, context, handlers)
+ * - Runtime context access via {@link KarateJsContext}
  * - Initialization of the JavaScript engine and built-in functions
- * - XML expression processing for embedded #(expr) patterns
+ * - Helper methods for deriving scenario/feature data from context
  * <p>
  * Subclasses (like {@link KarateJs}) implement the actual API methods
  * that use this infrastructure.
  *
  * @see KarateJs for the main API implementation
  * @see KarateJsUtils for stateless utility methods
+ * @see KarateJsContext for runtime context interface
  */
 abstract class KarateJsBase implements SimpleObject {
 
@@ -68,26 +77,10 @@ abstract class KarateJsBase implements SimpleObject {
     Markup _markup;
     Consumer<String> onDoc;
     BiConsumer<Context, Result> onMatch;
-    Function<String, Map<String, Object>> setupProvider;
-    Function<String, Map<String, Object>> setupOnceProvider;
-    Runnable abortHandler;
-    BiFunction<String, Object, Map<String, Object>> callProvider;
-    BiFunction<String, Object, Map<String, Object>> callOnceProvider;
-    BiFunction<String, Object, Object> callSingleProvider;
-    Supplier<Map<String, Object>> infoProvider;
-    Supplier<Map<String, Object>> scenarioProvider;
-    Supplier<Map<String, Object>> featureProvider;
-    Supplier<List<String>> tagsProvider;
-    Supplier<Map<String, List<String>>> tagValuesProvider;
-    Supplier<Map<String, Object>> scenarioOutlineProvider;
-    Consumer<Object> signalConsumer;
-    BiConsumer<String, Object> configureHandler;
-    Supplier<KarateConfig> configProvider;
-    Supplier<Resource> currentResourceProvider;
-    Supplier<Map<String, String>> propertiesProvider;
+    KarateJsContext context; // provides access to ScenarioRuntime, Config, WorkingDir
     String env;
+    String overrideOutputDir; // for tests to override output directory
     MockHandler mockHandler; // non-null only in mock context
-    Supplier<String> outputDirProvider; // for karate.write()
     io.karatelabs.http.HttpRequest prevRequest; // tracks previous HTTP request
     KarateJsLog logFacade; // lazy-initialized
 
@@ -115,129 +108,190 @@ abstract class KarateJsBase implements SimpleObject {
         this.onMatch = onMatch;
     }
 
-    public void setSetupProvider(Function<String, Map<String, Object>> provider) {
-        this.setupProvider = provider;
-    }
-
-    public void setSetupOnceProvider(Function<String, Map<String, Object>> provider) {
-        this.setupOnceProvider = provider;
-    }
-
-    public void setAbortHandler(Runnable handler) {
-        this.abortHandler = handler;
-    }
-
-    public void setCallProvider(BiFunction<String, Object, Map<String, Object>> provider) {
-        this.callProvider = provider;
-    }
-
-    public void setCallOnceProvider(BiFunction<String, Object, Map<String, Object>> provider) {
-        this.callOnceProvider = provider;
-    }
-
-    public void setCallSingleProvider(BiFunction<String, Object, Object> provider) {
-        this.callSingleProvider = provider;
-    }
-
-    public void setInfoProvider(Supplier<Map<String, Object>> provider) {
-        this.infoProvider = provider;
-    }
-
-    public void setScenarioProvider(Supplier<Map<String, Object>> provider) {
-        this.scenarioProvider = provider;
-    }
-
-    public void setFeatureProvider(Supplier<Map<String, Object>> provider) {
-        this.featureProvider = provider;
-    }
-
-    public void setTagsProvider(Supplier<List<String>> provider) {
-        this.tagsProvider = provider;
-    }
-
-    public void setTagValuesProvider(Supplier<Map<String, List<String>>> provider) {
-        this.tagValuesProvider = provider;
-    }
-
-    public void setScenarioOutlineProvider(Supplier<Map<String, Object>> provider) {
-        this.scenarioOutlineProvider = provider;
+    public void setContext(KarateJsContext context) {
+        this.context = context;
     }
 
     public void setEnv(String env) {
         this.env = env;
     }
 
-    public void setSignalConsumer(Consumer<Object> consumer) {
-        this.signalConsumer = consumer;
-    }
-
-    public void setConfigureHandler(BiConsumer<String, Object> handler) {
-        this.configureHandler = handler;
-    }
-
-    public void setConfigProvider(Supplier<KarateConfig> provider) {
-        this.configProvider = provider;
-    }
-
-    public void setCurrentResourceProvider(Supplier<Resource> provider) {
-        this.currentResourceProvider = provider;
-    }
-
-    public void setPropertiesProvider(Supplier<Map<String, String>> provider) {
-        this.propertiesProvider = provider;
-    }
-
     public void setMockHandler(MockHandler handler) {
         this.mockHandler = handler;
     }
 
-    public void setOutputDirProvider(Supplier<String> provider) {
-        this.outputDirProvider = provider;
+    public void setOutputDir(String outputDir) {
+        this.overrideOutputDir = outputDir;
+    }
+
+    // ========== Helper Methods for Context Access ==========
+
+    ScenarioRuntime getRuntime() {
+        return context != null ? context.getRuntime() : null;
+    }
+
+    Scenario getScenario() {
+        ScenarioRuntime rt = getRuntime();
+        return rt != null ? rt.getScenario() : null;
+    }
+
+    Resource getCurrentResource() {
+        ScenarioRuntime rt = getRuntime();
+        return rt != null && rt.getFeatureRuntime() != null
+                ? rt.getFeatureRuntime().getFeature().getResource()
+                : root;
+    }
+
+    String getOutputDir() {
+        if (overrideOutputDir != null) {
+            return overrideOutputDir;
+        }
+        ScenarioRuntime rt = getRuntime();
+        if (rt != null && rt.getFeatureRuntime() != null && rt.getFeatureRuntime().getSuite() != null) {
+            return rt.getFeatureRuntime().getSuite().getOutputDir();
+        }
+        return "target";  // Default fallback
     }
 
     // ========== Scenario Lifecycle Methods ==========
-    // These methods use providers/handlers but not the JS engine directly.
+    // These methods derive data from the Scenario/ScenarioRuntime via context.
 
+    /**
+     * Returns scenario info map for karate.info.
+     * Contains: scenarioName, scenarioDescription, featureDir, featureFileName, errorMessage
+     */
     Map<String, Object> getInfo() {
-        if (infoProvider != null) {
-            return infoProvider.get();
+        Scenario s = getScenario();
+        if (s == null) return Map.of();
+        Map<String, Object> info = new LinkedHashMap<>();
+        Resource featureResource = s.getFeature().getResource();
+        if (featureResource.isFile() && featureResource.getPath() != null) {
+            info.put("featureDir", featureResource.getPath().getParent().toString());
+            info.put("featureFileName", featureResource.getPath().getFileName().toString());
         }
-        return Map.of();
+        info.put("scenarioName", s.getName());
+        info.put("scenarioDescription", s.getDescription());
+        ScenarioRuntime rt = getRuntime();
+        String errorMessage = rt != null && rt.getError() != null ? rt.getError().getMessage() : null;
+        info.put("errorMessage", errorMessage);
+        return info;
     }
 
-    Map<String, Object> getScenario() {
-        if (scenarioProvider != null) {
-            return scenarioProvider.get();
+    /**
+     * Returns scenario data map for karate.scenario.
+     * V1 compatible fields: name, sectionIndex, exampleIndex, exampleData, line, description
+     */
+    Map<String, Object> getScenarioData() {
+        Scenario s = getScenario();
+        if (s == null) return Map.of();
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("name", s.getName());
+        data.put("description", s.getDescription());
+        data.put("line", s.getLine());
+        data.put("sectionIndex", s.getSection().getIndex());
+        data.put("exampleIndex", s.getExampleIndex());
+        Map<String, Object> exampleData = s.getExampleData();
+        if (exampleData != null) {
+            data.put("exampleData", exampleData);
         }
-        return Map.of();
+        return data;
     }
 
-    Map<String, Object> getFeature() {
-        if (featureProvider != null) {
-            return featureProvider.get();
+    /**
+     * Returns feature data map for karate.feature.
+     * V1 compatible fields: name, description, prefixedPath, fileName, parentDir
+     */
+    Map<String, Object> getFeatureData() {
+        Scenario s = getScenario();
+        if (s == null) return Map.of();
+        Feature feature = s.getFeature();
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("name", feature.getName());
+        data.put("description", feature.getDescription());
+        Resource resource = feature.getResource();
+        data.put("prefixedPath", resource.getPrefixedPath());
+        if (resource.isFile() && resource.getPath() != null) {
+            data.put("fileName", resource.getPath().getFileName().toString());
+            data.put("parentDir", resource.getPath().getParent().toString());
         }
-        return Map.of();
+        return data;
     }
 
+    /**
+     * Returns the effective tags (scenario + feature) as a List of tag names.
+     * V1 compatible: returns tag text without '@' prefix.
+     */
     List<String> getTags() {
-        if (tagsProvider != null) {
-            return tagsProvider.get();
+        Scenario s = getScenario();
+        if (s == null) return List.of();
+        List<String> result = new ArrayList<>();
+        // Feature-level tags first
+        List<Tag> featureTags = s.getFeature().getTags();
+        if (featureTags != null) {
+            for (Tag tag : featureTags) {
+                result.add(tag.getText());
+            }
         }
-        return List.of();
+        // Scenario-level tags
+        List<Tag> scenarioTags = s.getTags();
+        if (scenarioTags != null) {
+            for (Tag tag : scenarioTags) {
+                if (!result.contains(tag.getText())) {
+                    result.add(tag.getText());
+                }
+            }
+        }
+        return result;
     }
 
+    /**
+     * Returns tag values map for karate.tagValues.
+     * V1 compatible: Map<String, List<String>> where key is tag name, value is list of values.
+     */
     Map<String, List<String>> getTagValues() {
-        if (tagValuesProvider != null) {
-            return tagValuesProvider.get();
+        Scenario s = getScenario();
+        if (s == null) return Map.of();
+        Map<String, List<String>> result = new LinkedHashMap<>();
+        // Feature-level tags first
+        List<Tag> featureTags = s.getFeature().getTags();
+        if (featureTags != null) {
+            for (Tag tag : featureTags) {
+                result.put(tag.getName(), tag.getValues());
+            }
         }
-        return Map.of();
+        // Scenario-level tags (override feature-level)
+        List<Tag> scenarioTags = s.getTags();
+        if (scenarioTags != null) {
+            for (Tag tag : scenarioTags) {
+                result.put(tag.getName(), tag.getValues());
+            }
+        }
+        return result;
     }
 
-    Map<String, Object> getScenarioOutline() {
-        if (scenarioOutlineProvider != null) {
-            return scenarioOutlineProvider.get();
+    /**
+     * Returns scenario outline data for karate.scenarioOutline.
+     * Returns null if not in a scenario outline.
+     */
+    Map<String, Object> getScenarioOutlineData() {
+        Scenario s = getScenario();
+        if (s == null || !s.isOutlineExample()) {
+            return null;  // V1 returns null when not in an outline
         }
-        return null;  // V1 returns null when not in an outline
+        FeatureSection section = s.getSection();
+        if (!section.isOutline()) {
+            return null;
+        }
+        ScenarioOutline outline = section.getScenarioOutline();
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("name", outline.getName());
+        data.put("description", outline.getDescription());
+        data.put("line", outline.getLine());
+        data.put("sectionIndex", section.getIndex());
+        data.put("exampleTableCount", outline.getNumExampleTables());
+        data.put("exampleTables", outline.getAllExampleData());
+        data.put("numScenariosToExecute", outline.getNumScenarios());
+        return data;
     }
 
     /**
@@ -245,45 +299,44 @@ abstract class KarateJsBase implements SimpleObject {
      * Returns a copy to prevent mutation from JavaScript.
      */
     KarateConfig getConfig() {
-        if (configProvider != null) {
-            return configProvider.get().copy();
+        if (context != null) {
+            KarateConfig cfg = context.getConfig();
+            if (cfg != null) {
+                return cfg.copy();
+            }
         }
         return new KarateConfig();
     }
 
     Invokable abort() {
         return args -> {
-            if (abortHandler != null) {
-                abortHandler.run();
+            ScenarioRuntime rt = getRuntime();
+            if (rt != null) {
+                rt.abort();
             }
             return null;
         };
     }
 
-    Invokable fail() {
-        return args -> {
-            String message = args.length > 0 && args[0] != null ? args[0].toString() : "karate.fail() called";
-            throw new RuntimeException(message);
-        };
-    }
-
     Invokable setup() {
         return args -> {
-            if (setupProvider == null) {
+            ScenarioRuntime rt = getRuntime();
+            if (rt == null) {
                 throw new RuntimeException("karate.setup() is not available in this context");
             }
             String name = args.length > 0 && args[0] != null ? args[0].toString() : null;
-            return setupProvider.apply(name);
+            return rt.executeSetup(name);
         };
     }
 
     Invokable setupOnce() {
         return args -> {
-            if (setupOnceProvider == null) {
+            ScenarioRuntime rt = getRuntime();
+            if (rt == null) {
                 throw new RuntimeException("karate.setupOnce() is not available in this context");
             }
             String name = args.length > 0 && args[0] != null ? args[0].toString() : null;
-            return setupOnceProvider.apply(name);
+            return rt.executeSetupOnce(name);
         };
     }
 
@@ -292,7 +345,8 @@ abstract class KarateJsBase implements SimpleObject {
      */
     Invokable callonce() {
         return args -> {
-            if (callOnceProvider == null) {
+            ScenarioRuntime rt = getRuntime();
+            if (rt == null) {
                 throw new RuntimeException("karate.callonce() is not available in this context");
             }
             if (args.length == 0) {
@@ -300,7 +354,7 @@ abstract class KarateJsBase implements SimpleObject {
             }
             String path = args[0].toString();
             Object arg = args.length > 1 ? args[1] : null;
-            return callOnceProvider.apply(path, arg);
+            return rt.executeJsCallOnce(path, arg);
         };
     }
 
@@ -309,7 +363,8 @@ abstract class KarateJsBase implements SimpleObject {
      */
     Invokable callSingle() {
         return args -> {
-            if (callSingleProvider == null) {
+            ScenarioRuntime rt = getRuntime();
+            if (rt == null) {
                 throw new RuntimeException("karate.callSingle() is not available in this context");
             }
             if (args.length == 0) {
@@ -317,7 +372,7 @@ abstract class KarateJsBase implements SimpleObject {
             }
             String path = args[0].toString();
             Object arg = args.length > 1 ? args[1] : null;
-            return callSingleProvider.apply(path, arg);
+            return rt.executeCallSingle(path, arg);
         };
     }
 
@@ -331,8 +386,9 @@ abstract class KarateJsBase implements SimpleObject {
             }
             String key = args[0].toString();
             Object value = args[1];
-            if (configureHandler != null) {
-                configureHandler.accept(key, value);
+            ScenarioRuntime rt = getRuntime();
+            if (rt != null) {
+                rt.configure(key, value);
             }
             return null;
         };
@@ -342,10 +398,11 @@ abstract class KarateJsBase implements SimpleObject {
      * Returns system properties available via karate.properties['key'].
      */
     Map<String, String> getProperties() {
-        if (propertiesProvider != null) {
-            return propertiesProvider.get();
+        ScenarioRuntime rt = getRuntime();
+        if (rt != null && rt.getFeatureRuntime() != null && rt.getFeatureRuntime().getSuite() != null) {
+            return rt.getFeatureRuntime().getSuite().getSystemProperties();
         }
-        Map<String, String> props = new java.util.LinkedHashMap<>();
+        Map<String, String> props = new LinkedHashMap<>();
         System.getProperties().forEach((k, v) -> props.put(k.toString(), v.toString()));
         return props;
     }
@@ -394,8 +451,9 @@ abstract class KarateJsBase implements SimpleObject {
      */
     Invokable signal() {
         return args -> {
-            if (signalConsumer != null && args.length > 0) {
-                signalConsumer.accept(args[0]);
+            ScenarioRuntime rt = getRuntime();
+            if (rt != null && args.length > 0) {
+                rt.setListenResult(args[0]);
             }
             return null;
         };

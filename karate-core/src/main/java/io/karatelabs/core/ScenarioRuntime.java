@@ -45,7 +45,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class ScenarioRuntime implements Callable<ScenarioResult> {
+public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContext {
 
     private static final Logger logger = LogContext.RUNTIME_LOGGER;
 
@@ -94,45 +94,17 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         this.result = new ScenarioResult(scenario);
         this.config = new KarateConfig();
 
-        // Wire up karate.abort() for standalone execution
-        karate.setAbortHandler(this::abort);
-        karate.setConfigureHandler(this::configure);
-        karate.setConfigProvider(() -> config);
-        // Wire up info providers (these just read from scenario, don't need FeatureRuntime)
-        karate.setInfoProvider(this::getScenarioInfo);
-        karate.setScenarioProvider(this::getScenarioData);
-        karate.setFeatureProvider(this::getFeatureData);
-        karate.setTagsProvider(this::getTagsList);
-        karate.setTagValuesProvider(this::getTagValuesMap);
-        karate.setScenarioOutlineProvider(this::getScenarioOutlineData);
+        // Wire up KarateJsContext - all karate.* API methods use this
+        karate.setContext(this);
     }
 
     private void initEngine() {
-        // Wire up karate.* functions FIRST so they're available during config evaluation
-        karate.setSetupProvider(this::executeSetup);
-        karate.setSetupOnceProvider(this::executeSetupOnce);
-        karate.setAbortHandler(this::abort);
-        karate.setCallProvider(this::executeJsCall);
-        karate.setCallOnceProvider(this::executeJsCallOnce);
-        karate.setCallSingleProvider(this::executeCallSingle);
-        karate.setInfoProvider(this::getScenarioInfo);
-        karate.setScenarioProvider(this::getScenarioData);
-        karate.setFeatureProvider(this::getFeatureData);
-        karate.setTagsProvider(this::getTagsList);
-        karate.setTagValuesProvider(this::getTagValuesMap);
-        karate.setScenarioOutlineProvider(this::getScenarioOutlineData);
-        karate.setSignalConsumer(this::setListenResult);
-        karate.setConfigureHandler(this::configure);
-        karate.setConfigProvider(() -> config);
-        karate.setCurrentResourceProvider(this::getCurrentResource);
+        // Wire up KarateJsContext - all karate.* API methods use this
+        karate.setContext(this);
 
         // Set karate.env before config evaluation
         if (featureRuntime != null && featureRuntime.getSuite() != null) {
             karate.setEnv(featureRuntime.getSuite().getEnv());
-            // Set karate.properties provider
-            karate.setPropertiesProvider(() -> featureRuntime.getSuite().getSystemProperties());
-            // Set output directory provider for karate.write()
-            karate.setOutputDirProvider(() -> featureRuntime.getSuite().getOutputDir());
         }
 
         // Evaluate config (only for top-level scenarios, not called features)
@@ -241,138 +213,9 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
     }
 
     /**
-     * Returns scenario info map for karate.info.
-     * Contains: scenarioName, scenarioDescription, featureDir, featureFileName, errorMessage
-     */
-    private Map<String, Object> getScenarioInfo() {
-        Map<String, Object> info = new LinkedHashMap<>();
-        Resource featureResource = scenario.getFeature().getResource();
-        if (featureResource.isFile() && featureResource.getPath() != null) {
-            info.put("featureDir", featureResource.getPath().getParent().toString());
-            info.put("featureFileName", featureResource.getPath().getFileName().toString());
-        }
-        info.put("scenarioName", scenario.getName());
-        info.put("scenarioDescription", scenario.getDescription());
-        String errorMessage = error == null ? null : error.getMessage();
-        info.put("errorMessage", errorMessage);
-        return info;
-    }
-
-    /**
-     * Returns scenario data map for karate.scenario.
-     * V1 compatible fields: name, sectionIndex, exampleIndex, exampleData, line, description
-     */
-    private Map<String, Object> getScenarioData() {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("name", scenario.getName());
-        data.put("description", scenario.getDescription());
-        data.put("line", scenario.getLine());
-        // Section index: position of this scenario in the feature
-        data.put("sectionIndex", scenario.getSection().getIndex());
-        // Example index: -1 if not a scenario outline, otherwise the example row index
-        data.put("exampleIndex", scenario.getExampleIndex());
-        Map<String, Object> exampleData = scenario.getExampleData();
-        if (exampleData != null) {
-            data.put("exampleData", exampleData);
-        }
-        return data;
-    }
-
-    /**
-     * Returns feature data map for karate.feature.
-     * V1 compatible fields: name, description, prefixedPath, fileName, parentDir
-     */
-    private Map<String, Object> getFeatureData() {
-        Map<String, Object> data = new LinkedHashMap<>();
-        Feature feature = scenario.getFeature();
-        data.put("name", feature.getName());
-        data.put("description", feature.getDescription());
-        Resource resource = feature.getResource();
-        data.put("prefixedPath", resource.getPrefixedPath());
-        if (resource.isFile() && resource.getPath() != null) {
-            data.put("fileName", resource.getPath().getFileName().toString());
-            data.put("parentDir", resource.getPath().getParent().toString());
-        }
-        return data;
-    }
-
-    /**
-     * Returns the effective tags (scenario + feature) as a List of tag names.
-     * V1 compatible: returns tag text without '@' prefix.
-     */
-    private List<String> getTagsList() {
-        List<String> result = new ArrayList<>();
-        // Feature-level tags first
-        List<Tag> featureTags = scenario.getFeature().getTags();
-        if (featureTags != null) {
-            for (Tag tag : featureTags) {
-                result.add(tag.getText());
-            }
-        }
-        // Scenario-level tags
-        List<Tag> scenarioTags = scenario.getTags();
-        if (scenarioTags != null) {
-            for (Tag tag : scenarioTags) {
-                if (!result.contains(tag.getText())) {
-                    result.add(tag.getText());
-                }
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Returns tag values map for karate.tagValues.
-     * V1 compatible: Map<String, List<String>> where key is tag name, value is list of comma-separated values.
-     */
-    private Map<String, List<String>> getTagValuesMap() {
-        Map<String, List<String>> result = new LinkedHashMap<>();
-        // Feature-level tags first
-        List<Tag> featureTags = scenario.getFeature().getTags();
-        if (featureTags != null) {
-            for (Tag tag : featureTags) {
-                result.put(tag.getName(), tag.getValues());
-            }
-        }
-        // Scenario-level tags (override feature-level)
-        List<Tag> scenarioTags = scenario.getTags();
-        if (scenarioTags != null) {
-            for (Tag tag : scenarioTags) {
-                result.put(tag.getName(), tag.getValues());
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Returns scenario outline data for karate.scenarioOutline.
-     * Returns null if not in a scenario outline.
-     * V1 compatible fields: name, description, line, sectionIndex, exampleTableCount, exampleTables, numScenariosToExecute
-     */
-    private Map<String, Object> getScenarioOutlineData() {
-        if (!scenario.isOutlineExample()) {
-            return null;
-        }
-        FeatureSection section = scenario.getSection();
-        if (!section.isOutline()) {
-            return null;
-        }
-        ScenarioOutline outline = section.getScenarioOutline();
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("name", outline.getName());
-        data.put("description", outline.getDescription());
-        data.put("line", outline.getLine());
-        data.put("sectionIndex", section.getIndex());
-        data.put("exampleTableCount", outline.getNumExampleTables());
-        data.put("exampleTables", outline.getAllExampleData());
-        data.put("numScenariosToExecute", outline.getNumScenarios());
-        return data;
-    }
-
-    /**
      * Execute the @setup scenario and return all its variables.
      */
-    private Map<String, Object> executeSetup(String name) {
+    public Map<String, Object> executeSetup(String name) {
         if (featureRuntime == null) {
             throw new RuntimeException("karate.setup() requires a feature context");
         }
@@ -395,7 +238,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
      * Execute the @setup scenario with caching (only runs once per feature).
      */
     @SuppressWarnings("unchecked")
-    private Map<String, Object> executeSetupOnce(String name) {
+    public Map<String, Object> executeSetupOnce(String name) {
         if (featureRuntime == null) {
             throw new RuntimeException("karate.setupOnce() requires a feature context");
         }
@@ -426,7 +269,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
      * - call('@tagname') - call scenario in same file by tag
      */
     @SuppressWarnings("unchecked")
-    private Map<String, Object> executeJsCall(String path, Object arg) {
+    public Map<String, Object> executeJsCall(String path, Object arg) {
         if (featureRuntime == null) {
             throw new RuntimeException("karate.call() requires a feature context");
         }
@@ -494,7 +337,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
      * Uses the same cache as the callonce keyword.
      */
     @SuppressWarnings("unchecked")
-    private Map<String, Object> executeJsCallOnce(String path, Object arg) {
+    public Map<String, Object> executeJsCallOnce(String path, Object arg) {
         if (featureRuntime == null) {
             throw new RuntimeException("karate.callonce() requires a feature context");
         }
@@ -536,7 +379,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
      *
      * Exceptions are cached and re-thrown on subsequent calls.
      */
-    private Object executeCallSingle(String path, Object arg) {
+    public Object executeCallSingle(String path, Object arg) {
         if (featureRuntime == null || featureRuntime.getSuite() == null) {
             throw new RuntimeException("karate.callSingle() requires a Suite context");
         }
@@ -898,8 +741,21 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
         return Boolean.parseBoolean(value.toString());
     }
 
+    // ========== KarateJsContext Interface ==========
+
+    @Override
+    public ScenarioRuntime getRuntime() {
+        return this;
+    }
+
+    @Override
     public KarateConfig getConfig() {
         return config;
+    }
+
+    @Override
+    public Resource getWorkingDir() {
+        return scenario.getFeature().getResource();
     }
 
     // ========== State Access ==========
@@ -910,10 +766,6 @@ public class ScenarioRuntime implements Callable<ScenarioResult> {
 
     public FeatureRuntime getFeatureRuntime() {
         return featureRuntime;
-    }
-
-    private Resource getCurrentResource() {
-        return featureRuntime != null ? featureRuntime.getFeature().getResource() : null;
     }
 
     public ScenarioResult getResult() {
