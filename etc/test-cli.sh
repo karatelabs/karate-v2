@@ -39,9 +39,14 @@ else
     JAR="karate-core/target/karate-core-2.0.0.RC1.jar"
     TEST_CLASSES="karate-core/target/test-classes"
 
+    # Add logback for proper logging (same as fatjar profile)
+    LOGBACK_VERSION="1.5.23"
+    M2_REPO="${HOME}/.m2/repository"
+    LOGBACK="$M2_REPO/ch/qos/logback/logback-classic/$LOGBACK_VERSION/logback-classic-$LOGBACK_VERSION.jar:$M2_REPO/ch/qos/logback/logback-core/$LOGBACK_VERSION/logback-core-$LOGBACK_VERSION.jar"
+
     echo "Running: java -cp ... io.karatelabs.Main $@"
     echo "---"
 
     # Include test-classes for Java.type() access to test POJOs
-    java -cp "$JAR:$TEST_CLASSES:$CP" io.karatelabs.Main "$@"
+    java -cp "$JAR:$TEST_CLASSES:$LOGBACK:$CP" io.karatelabs.Main "$@"
 fi
