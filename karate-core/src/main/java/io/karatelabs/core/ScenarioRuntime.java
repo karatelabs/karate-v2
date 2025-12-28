@@ -23,7 +23,9 @@
  */
 package io.karatelabs.core;
 
+import io.karatelabs.common.Json;
 import io.karatelabs.common.Resource;
+import io.karatelabs.common.StringUtils;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.FeatureSection;
 import io.karatelabs.gherkin.Scenario;
@@ -35,11 +37,15 @@ import io.karatelabs.output.LogContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -371,11 +377,17 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
      * Uses Suite-level locking to ensure thread-safe execution in parallel scenarios.
      *
      * Flow:
-     * 1. Check cache (lock-free for fast path)
-     * 2. If not cached, acquire Suite lock
-     * 3. Double-check cache (another thread may have cached while waiting)
-     * 4. Execute and cache result
-     * 5. Return deep copy to prevent cross-thread mutation
+     * 1. Check in-memory cache (lock-free for fast path)
+     * 2. If callSingleCache is configured, check disk cache
+     * 3. If not cached, acquire Suite lock
+     * 4. Double-check cache (another thread may have cached while waiting)
+     * 5. Execute and cache result (in-memory and optionally to disk)
+     * 6. Return deep copy to prevent cross-thread mutation
+     *
+     * Disk caching (configure callSingleCache):
+     * - { minutes: 15 } - cache to disk for 15 minutes (default dir: target)
+     * - { minutes: 15, dir: 'some/folder' } - custom cache directory
+     * - Only JSON-like results (Map/List) are persisted to disk
      *
      * Exceptions are cached and re-thrown on subsequent calls.
      */
@@ -388,9 +400,16 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         Map<String, Object> cache = suite.getCallSingleCache();
         ReentrantLock lock = suite.getCallSingleLock();
 
-        // Fast path: check if already cached (no locking needed)
+        // Get disk cache settings from config
+        int cacheMinutes = config.getCallSingleCacheMinutes();
+        String cacheDir = config.getCallSingleCacheDir();
+        if (cacheDir == null || cacheDir.isEmpty()) {
+            cacheDir = "target";  // Default cache directory
+        }
+
+        // Fast path: check if already in memory cache (no locking needed)
         if (cache.containsKey(path)) {
-            logger.trace("[callSingle] cache hit: {}", path);
+            logger.trace("[callSingle] memory cache hit: {}", path);
             return unwrapCachedResult(cache.get(path));
         }
 
@@ -402,28 +421,75 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
             // Double-check: another thread may have cached while we waited
             if (cache.containsKey(path)) {
                 long waitTime = System.currentTimeMillis() - startWait;
-                logger.info("[callSingle] lock acquired after {}ms, cache hit: {}", waitTime, path);
+                logger.info("[callSingle] lock acquired after {}ms, memory cache hit: {}", waitTime, path);
                 return unwrapCachedResult(cache.get(path));
             }
 
-            // This thread is the winner - execute the call
-            logger.info("[callSingle] >> executing: {}", path);
-            long startExec = System.currentTimeMillis();
+            Object result = null;
+            File cacheFile = null;
 
-            Object result;
-            try {
-                result = executeCallSingleInternal(path, arg);
-            } catch (Exception e) {
-                // Cache the exception so subsequent calls also fail fast
-                logger.warn("[callSingle] caching exception for: {} - {}", path, e.getMessage());
-                cache.put(path, new CallSingleException(e));
-                throw e;
+            // Check disk cache if configured
+            if (cacheMinutes > 0) {
+                String cleanedName = StringUtils.toIdString(path);
+                cacheFile = new File(cacheDir, cleanedName + ".txt");
+                long staleThreshold = System.currentTimeMillis() - (cacheMinutes * 60L * 1000L);
+
+                if (cacheFile.exists()) {
+                    long lastModified = cacheFile.lastModified();
+                    if (lastModified > staleThreshold) {
+                        try {
+                            String json = Files.readString(cacheFile.toPath());
+                            result = Json.parseLenient(json);
+                            logger.info("[callSingle] disk cache hit: {}", cacheFile);
+                        } catch (IOException e) {
+                            logger.warn("[callSingle] disk cache read failed: {} - {}", cacheFile, e.getMessage());
+                        }
+                    } else {
+                        logger.info("[callSingle] disk cache stale: {} (modified {}ms ago, threshold {}min)",
+                                cacheFile, System.currentTimeMillis() - lastModified, cacheMinutes);
+                    }
+                } else {
+                    logger.debug("[callSingle] disk cache miss, will create: {}", cacheFile);
+                }
             }
 
-            // Cache the result
+            // Execute if not found in disk cache
+            if (result == null) {
+                logger.info("[callSingle] >> executing: {}", path);
+                long startExec = System.currentTimeMillis();
+
+                try {
+                    result = executeCallSingleInternal(path, arg);
+                } catch (Exception e) {
+                    // Cache the exception so subsequent calls also fail fast
+                    logger.warn("[callSingle] caching exception for: {} - {}", path, e.getMessage());
+                    cache.put(path, new CallSingleException(e));
+                    throw e;
+                }
+
+                long execTime = System.currentTimeMillis() - startExec;
+                logger.info("[callSingle] << executed in {}ms: {}", execTime, path);
+
+                // Write to disk cache if configured and result is JSON-like
+                if (cacheMinutes > 0 && cacheFile != null) {
+                    if (Json.isMapOrList(result)) {
+                        try {
+                            cacheFile.getParentFile().mkdirs();
+                            String json = StringUtils.formatJson(result, false, false, false);
+                            Files.writeString(cacheFile.toPath(), json);
+                            logger.info("[callSingle] disk cache write: {}", cacheFile);
+                        } catch (IOException e) {
+                            logger.warn("[callSingle] disk cache write failed: {} - {}", cacheFile, e.getMessage());
+                        }
+                    } else {
+                        logger.warn("[callSingle] disk cache skipped (not JSON-like): {}", path);
+                    }
+                }
+            }
+
+            // Cache in memory
             cache.put(path, result);
-            long execTime = System.currentTimeMillis() - startExec;
-            logger.info("[callSingle] << cached in {}ms: {}", execTime, path);
+            logger.debug("[callSingle] memory cached: {}", path);
 
             return deepCopy(result);
         } finally {
@@ -433,10 +499,15 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
 
     /**
      * Internal execution of callSingle - reads and evaluates the file.
+     * Supports ?suffix syntax for cache key differentiation (suffix is stripped for file read).
      */
     private Object executeCallSingleInternal(String path, Object arg) {
+        // Strip ?suffix from path for file reading (suffix is only for cache key differentiation)
+        // e.g., "get-token.feature?admin" -> read "get-token.feature", cache as "get-token.feature?admin"
+        String filePath = path.contains("?") ? path.substring(0, path.indexOf('?')) : path;
+
         // Read the file using the engine (which has access to the read function)
-        Object content = karate.engine.eval("read('" + path.replace("'", "\\'") + "')");
+        Object content = karate.engine.eval("read('" + filePath.replace("'", "\\'") + "')");
 
         if (content instanceof Feature) {
             // Feature file - execute it
@@ -693,8 +764,25 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         return karate.engine.get(name);
     }
 
+    /**
+     * Built-in variable names that should be excluded from getAllVariables().
+     * These are set up by KarateJs and karate-config.js, not user-defined.
+     */
+    private static final Set<String> BUILT_IN_VARS = Set.of(
+            "karate", "read", "match",  // KarateJs built-ins
+            "fn",                        // karate-config.js function
+            "__arg", "__row", "__num"    // Special variables for call args and examples
+    );
+
     public Map<String, Object> getAllVariables() {
-        return karate.engine.getBindings();
+        Map<String, Object> bindings = karate.engine.getBindings();
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (Map.Entry<String, Object> entry : bindings.entrySet()) {
+            if (!BUILT_IN_VARS.contains(entry.getKey())) {
+                result.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return result;
     }
 
     public io.karatelabs.js.Engine getEngine() {

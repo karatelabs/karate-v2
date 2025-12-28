@@ -228,7 +228,7 @@ SuiteResult result = Runner.path("src/test/resources")
 ## Configure Keys
 
 ### Implemented
-`ssl`, `proxy`, `readTimeout`, `connectTimeout`, `followRedirects`, `headers`, `cookies`, `charset`
+`ssl`, `proxy`, `readTimeout`, `connectTimeout`, `followRedirects`, `headers`, `cookies`, `charset`, `retry`, `report`, `ntlmAuth`, `callSingleCache`, `continueOnStepFailure`, `httpRetryEnabled`
 
 ### TODO
 | Key | Priority |
@@ -237,13 +237,7 @@ SuiteResult result = Runner.path("src/test/resources")
 | `lowerCaseResponseHeaders` | Medium |
 | `logPrettyRequest/Response` | Medium |
 | `printEnabled` | Medium |
-| `retry` | Medium |
-| `report` | Medium |
-| `httpRetryEnabled` | Low |
 | `localAddress` | Low |
-| `ntlmAuth` | Low |
-| `callSingleCache` | Low |
-| `continueOnStepFailure` | Low |
 
 ### Out of Scope
 `driver`, `robot`, `driverTarget`, `kafka`, `grpc`, `websocket`, `webhook`, `responseHeaders`, `responseDelay`, `cors`
@@ -393,6 +387,38 @@ Anonymous daily usage ping from `Suite.run()`:
 **Storage:** `~/.karate/uuid.txt`, `~/.karate/telemetry.json`
 
 **Opt-out:** `export KARATE_TELEMETRY=false`
+
+---
+
+### TODO: Private Variables in JS Engine
+
+Currently, built-in variables (`karate`, `read`, `match`, `fn`, `__arg`, `__row`, `__num`) are stored in the JS engine bindings alongside user-defined variables. `ScenarioRuntime.getAllVariables()` filters these out using a hardcoded `BUILT_IN_VARS` set.
+
+**Problem:** This approach requires maintaining a list of built-in names and doesn't scale well when adding new internal variables. It also complicates debugging tools that need to distinguish between user and system variables.
+
+**Proposed Solution:** Add a "private" variable storage mechanism to the JS engine:
+
+```java
+// In Engine.java
+private final Map<String, Object> privateBindings = new LinkedHashMap<>();
+
+public void putPrivate(String name, Object value) {
+    privateBindings.put(name, value);
+}
+
+public Object getPrivate(String name) {
+    return privateBindings.get(name);
+}
+
+// get() checks both, getBindings() returns only public
+```
+
+This would allow:
+- Built-ins stored via `putPrivate()` - invisible to `getAllVariables()`
+- User variables stored via `put()` - visible normally
+- Debugging tools can access both via separate methods
+
+**Impact:** `KarateJs` constructor would use `putPrivate()` for `karate`, `read`, `match`. Config evaluation would use `putPrivate()` for `fn`. The `BUILT_IN_VARS` filter in `ScenarioRuntime` could then be removed.
 
 ---
 

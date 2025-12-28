@@ -24,15 +24,16 @@
 package io.karatelabs.core.callsingle;
 
 import io.karatelabs.core.FeatureResult;
+import io.karatelabs.core.Runner;
 import io.karatelabs.core.ScenarioResult;
 import io.karatelabs.core.Suite;
 import io.karatelabs.core.SuiteResult;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -270,6 +271,65 @@ class CallSingleTest {
         assertTrue(result.isPassed(), "callSingle with multiple paths should work: " + getFailureMessage(result));
     }
 
+    @Test
+    void testCallSingleCacheKeyDifferentiation() throws Exception {
+        // Create a feature that uses the passed argument
+        Path tokenFeature = tempDir.resolve("get-token.feature");
+        Files.writeString(tokenFeature, """
+            Feature: Get Token
+            Scenario:
+            * def token = 'token-for-' + username
+            """);
+
+        // Create caller that uses ?suffix for cache key differentiation
+        // Same feature file, different args, different cache keys
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Caller
+            Scenario: Use callSingle with cache key suffix
+            * def adminResult = karate.callSingle('get-token.feature?admin', { username: 'admin' })
+            * def userResult = karate.callSingle('get-token.feature?user', { username: 'user' })
+            * match adminResult.token == 'token-for-admin'
+            * match userResult.token == 'token-for-user'
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "callSingle with ?suffix cache keys should work: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testCallSingleWithoutSuffixSharesCache() throws Exception {
+        // Create a feature that uses the passed argument
+        Path tokenFeature = tempDir.resolve("get-token.feature");
+        Files.writeString(tokenFeature, """
+            Feature: Get Token
+            Scenario:
+            * def token = 'token-for-' + username
+            """);
+
+        // Create caller WITHOUT ?suffix - both calls share same cache
+        // Second call returns cached result from first call (admin's token)
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Caller
+            Scenario: Without suffix, cache is shared
+            * def adminResult = karate.callSingle('get-token.feature', { username: 'admin' })
+            * def userResult = karate.callSingle('get-token.feature', { username: 'user' })
+            # Both return admin's token because cache is shared
+            * match adminResult.token == 'token-for-admin'
+            * match userResult.token == 'token-for-admin'
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "callSingle without suffix should share cache: " + getFailureMessage(result));
+    }
+
     // ========== Tests for callSingle from karate-config.js ==========
 
     @Test
@@ -413,6 +473,34 @@ class CallSingleTest {
         // If callSingle works correctly, init should only happen once (~50ms)
         // not 4 times (200ms+)
         assertTrue(elapsed < 150, "Expected single init in parallel execution, but took " + elapsed + "ms");
+    }
+
+    // ========== Tests for callSingleCache (disk caching) ==========
+
+    @Test
+    void testCallSingleCacheToDisk() {
+        // Clean up any existing cache file first
+        File cacheDir = new File("target/callsingle-cache");
+        if (cacheDir.exists()) {
+            File[] files = cacheDir.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    f.delete();
+                }
+            }
+        }
+
+        SuiteResult result = Runner.path("classpath:io/karatelabs/core/callsingle/cache/cache-test.feature")
+                .configDir("classpath:io/karatelabs/core/callsingle/cache")
+                .outputConsoleSummary(false)
+                .parallel(1);
+
+        assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
+
+        // Verify cache file was created
+        File[] cacheFiles = cacheDir.listFiles((dir, name) -> name.endsWith(".txt"));
+        assertNotNull(cacheFiles, "Cache directory should contain files");
+        assertTrue(cacheFiles.length > 0, "Should have at least one cache file");
     }
 
     private String getFailureMessage(SuiteResult result) {
