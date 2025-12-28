@@ -239,7 +239,16 @@ class JsProperty {
             // covers ObjectLike (JsObject, JsArray, etc.), List, and primitives (String, Number, etc.)
             ObjectLike ol = Terms.toObjectLike(object);
             if (ol != null) {
-                return ol.get(name);
+                Object result = ol.get(name);
+                if (result != null && result != Terms.UNDEFINED) {
+                    return result;
+                }
+                // For Java collections (List, Map), fall through to external bridge
+                // for Java method access (e.g., ArrayList.add())
+                // For other types (like XML nodes), return undefined
+                if (!(object instanceof List || object instanceof Map)) {
+                    return Terms.UNDEFINED;
+                }
             }
         }
         if (object instanceof JsCallable callable) {

@@ -451,6 +451,246 @@ class StepCallTest {
         assertTrue(result.isPassed(), "JSONPath on parent variable should work: " + getFailureMessage(result));
     }
 
+    @Test
+    void testCallReadJsFunction() throws Exception {
+        // Tests calling a JS function returned by read('file.js')
+        Path jsFile = tempDir.resolve("double.js");
+        Files.writeString(jsFile, """
+            function(x) {
+              return x * 2;
+            }
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Caller
+            Scenario:
+            * def result = call read('double.js') 5
+            * match result == 10
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "call read('file.js') should work: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testCallReadJsNamedFunction() throws Exception {
+        // Tests calling a named JS function returned by read('file.js')
+        Path jsFile = tempDir.resolve("helper.js");
+        Files.writeString(jsFile, """
+            function fn(x) {
+              return { doubled: x * 2 };
+            }
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Caller
+            Scenario:
+            * def result = call read('helper.js') 7
+            * match result == { doubled: 14 }
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "call read('file.js') with named function should work: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testCallReadJsWithMultipleLines() throws Exception {
+        // Tests calling a JS function with multiple lines and var declarations
+        Path jsFile = tempDir.resolve("multi-line.js");
+        Files.writeString(jsFile, """
+            function fn(x) {
+              var result = x + 1;
+              return result;
+            }
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Multi-line JS function
+            Scenario:
+            * def result = call read('multi-line.js') 5
+            * match result == 6
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "Multi-line JS function should work: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testCallReadJsWithJavaType() throws Exception {
+        // Tests calling a JS function that uses Java.type()
+        Path jsFile = tempDir.resolve("java-type.js");
+        Files.writeString(jsFile, """
+            function fn() {
+              var ArrayList = Java.type('java.util.ArrayList');
+              var list = new ArrayList();
+              list.add('hello');
+              return list.size();
+            }
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: JS with Java.type
+            Scenario:
+            * def result = call read('java-type.js')
+            * match result == 1
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "JS function with Java.type should work: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testCallReadJsWithJavaSort() throws Exception {
+        // Tests calling a JS function that uses Java Collections.sort (V1 sort-array.feature pattern)
+        Path jsFile = tempDir.resolve("sort-array.js");
+        Files.writeString(jsFile, """
+            function fn(array) {
+              var ArrayList = Java.type('java.util.ArrayList');
+              var Collections = Java.type('java.util.Collections');
+              var list = new ArrayList();
+              for (var i = 0; i < array.length; i++) {
+                list.add(array[i]);
+              }
+              Collections.sort(list, java.lang.String.CASE_INSENSITIVE_ORDER);
+              return list;
+            }
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Case insensitive sort
+            Scenario:
+            * def actual = ['C', 'b', 'A']
+            * def sorted = call read('sort-array.js') actual
+            * match sorted == ['A', 'b', 'C']
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "JS function with Java sort should work: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testCallFeatureWithEmbeddedExpression() throws Exception {
+        // Tests that embedded expressions like #(variable) are properly evaluated
+        Path calledFeature = tempDir.resolve("called.feature");
+        Files.writeString(calledFeature, """
+            Feature: Called
+            Scenario:
+            * def result = data
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Caller
+            Scenario:
+            * def myData = { name: 'test', value: 42 }
+            * def response = call read('called.feature') { data: '#(myData)' }
+            * match response.result == { name: 'test', value: 42 }
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "Embedded expressions should be evaluated: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testCallReadJsWithSpacesInPath() throws Exception {
+        // Tests that paths with spaces work correctly
+        Path jsFile = tempDir.resolve("my function.js");
+        Files.writeString(jsFile, """
+            function fn(x) {
+              return x * 3;
+            }
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Caller
+            Scenario:
+            * def result = call read('my function.js') 7
+            * match result == 21
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "Path with spaces should work: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testCallReadWithVariable() throws Exception {
+        // Tests call read(variable) where variable holds the path
+        Path jsFile = tempDir.resolve("add.js");
+        Files.writeString(jsFile, """
+            function fn(x) {
+              return x + 10;
+            }
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Caller
+            Scenario:
+            * def path = 'add.js'
+            * def result = call read(path) 5
+            * match result == 15
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "call read(variable) should work: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testCallReadFeatureWithVariable() throws Exception {
+        // Tests call read(variable) where variable holds a feature path
+        Path calledFeature = tempDir.resolve("target.feature");
+        Files.writeString(calledFeature, """
+            Feature: Target
+            Scenario:
+            * def output = input * 2
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Caller
+            Scenario:
+            * def path = 'target.feature'
+            * def response = call read(path) { input: 21 }
+            * match response.output == 42
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "call read(variable) for feature should work: " + getFailureMessage(result));
+    }
+
     private String getFailureMessage(SuiteResult result) {
         if (result.isPassed()) return "none";
         for (FeatureResult fr : result.getFeatureResults()) {

@@ -262,12 +262,17 @@ public class StepExecutor {
     private void executeCallWithResult(String callExpr, String resultVar) {
         // Try to evaluate the first token to see if it's a JS function or Feature
         // Syntax: "fun" or "fun arg" where fun is a JS function variable or Feature
-        int spaceIdx = callExpr.indexOf(' ');
+        // Note: read('file.js') returns a JS function, read('file.feature') returns a Feature
+        int spaceIdx = findCallArgSeparator(callExpr);
         String firstToken = spaceIdx > 0 ? callExpr.substring(0, spaceIdx) : callExpr;
 
-        // Check if it's a read() call - that's definitely a feature call
-        if (!callExpr.startsWith("read(")) {
-            // Try to evaluate as a JS expression
+        // Check if it's a read() call for a literal feature file path - use parseCallExpression
+        // which properly handles embedded expressions like #(nodes)
+        // For read(variable) or read('file.js'), we evaluate to determine the type
+        if (isLiteralFeatureRead(callExpr)) {
+            // Fall through to standard feature call handling
+        } else {
+            // Try to evaluate as a JS expression (handles variables, read('file.js'), etc.)
             try {
                 Object evaluated = runtime.eval(firstToken);
                 if (evaluated instanceof JsCallable) {
@@ -2019,12 +2024,17 @@ public class StepExecutor {
 
         // Try to evaluate the first token to see if it's a JS function
         // Syntax: "call fun" or "call fun arg" where fun is a JS function variable
-        int spaceIdx = text.indexOf(' ');
+        // Note: read('file.js') returns a JS function, read('file.feature') returns a Feature
+        int spaceIdx = findCallArgSeparator(text);
         String firstToken = spaceIdx > 0 ? text.substring(0, spaceIdx) : text;
 
-        // Check if it's a read() call - that's definitely a feature call
-        if (!text.startsWith("read(")) {
-            // Try to evaluate as a JS expression
+        // Check if it's a read() call for a literal feature file path - use parseCallExpression
+        // which properly handles embedded expressions like #(nodes)
+        // For read(variable) or read('file.js'), we evaluate to determine the type
+        if (isLiteralFeatureRead(text)) {
+            // Fall through to standard feature call handling
+        } else {
+            // Try to evaluate as a JS expression (handles variables, read('file.js'), etc.)
             try {
                 Object evaluated = runtime.eval(firstToken);
                 if (evaluated instanceof JsCallable) {
@@ -2346,6 +2356,65 @@ public class StepExecutor {
                 expr.path = rawPath;
             }
         }
+    }
+
+    /**
+     * Find the separator between the call target and arguments.
+     * Handles quoted strings in read() calls, e.g., read('foo bar.js') arg
+     * Similar to V1's parseCallArgs but finds position instead of splitting.
+     */
+    private int findCallArgSeparator(String text) {
+        // If it's a read() call, find the closing paren first
+        if (text.startsWith("read(")) {
+            int parenDepth = 0;
+            boolean inSingleQuote = false;
+            boolean inDoubleQuote = false;
+            for (int i = 0; i < text.length(); i++) {
+                char c = text.charAt(i);
+                if (c == '\'' && !inDoubleQuote) {
+                    inSingleQuote = !inSingleQuote;
+                } else if (c == '"' && !inSingleQuote) {
+                    inDoubleQuote = !inDoubleQuote;
+                }
+                if (inSingleQuote || inDoubleQuote) continue;
+                if (c == '(') parenDepth++;
+                else if (c == ')') {
+                    parenDepth--;
+                    if (parenDepth == 0) {
+                        // Found closing paren, look for space after it
+                        int spacePos = text.indexOf(' ', i + 1);
+                        return spacePos;
+                    }
+                }
+            }
+            return -1;
+        }
+        // For non-read() calls, just find first space
+        return text.indexOf(' ');
+    }
+
+    /**
+     * Check if a call expression is a read() call for a literal feature file path.
+     * Returns true only for read('...feature') or read("...feature") with literal string paths.
+     * Returns false for read(variable) or read('file.js') - these should be evaluated to determine type.
+     */
+    private boolean isLiteralFeatureRead(String text) {
+        if (!text.startsWith("read(")) return false;
+        // Only handle literal string paths, not variable references
+        int openParen = text.indexOf('(');
+        if (openParen == -1) return false;
+        int nextChar = openParen + 1;
+        if (nextChar >= text.length()) return false;
+        char c = text.charAt(nextChar);
+        // Must start with quote for literal path
+        if (c != '\'' && c != '"') return false;
+        // Extract the path from read('path') or read("path")
+        char quote = c;
+        int start = nextChar;
+        int end = text.indexOf(quote, start + 1);
+        if (end == -1) return false;
+        String path = text.substring(start + 1, end);
+        return path.endsWith(".feature");
     }
 
     private static class CallExpression {

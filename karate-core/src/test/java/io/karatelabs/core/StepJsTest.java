@@ -1055,4 +1055,16 @@ class StepJsTest {
         assertFailed(sr);
     }
 
+    @Test
+    void testJavaTypeInGherkin() {
+        // Tests using Java.type() directly in Gherkin with method calls
+        ScenarioRuntime sr = run("""
+            * def ArrayList = Java.type('java.util.ArrayList')
+            * def list = new ArrayList()
+            * list.add('hello')
+            * match list.size() == 1
+            """);
+        assertPassed(sr);
+    }
+
 }

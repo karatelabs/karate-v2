@@ -199,6 +199,59 @@ class ExternalBridgeTest extends EvalBase {
         assertEquals("aGVsbG8=", eval("var Base64 = Java.type('java.util.Base64'); Base64.getEncoder().encodeToString('hello'.getBytes())"));
     }
 
+    @Test
+    void testJavaInteropArrayListMethodCall() {
+        // This replicates the pattern used in V1's sort-array.js
+        // Test with fully qualified name (like Properties test above)
+        eval("var list = new java.util.ArrayList(); list.add('hello'); var size = list.size()");
+        assertEquals(1, get("size"));
+    }
+
+    @Test
+    void testJavaInteropArrayListViaJavaType() {
+        // Test with Java.type pattern (this is what V1's sort-array.js uses)
+        eval("var ArrayList = Java.type('java.util.ArrayList'); var list = new ArrayList(); list.add('hello'); var size = list.size()");
+        assertEquals(1, get("size"));
+    }
+
+    @Test
+    void testJavaInteropHashMapMethodCall() {
+        // Test Java method calls on HashMap - ensures Map types also fall through to external bridge
+        eval("var HashMap = Java.type('java.util.HashMap'); var map = new HashMap(); map.put('key', 'value'); var size = map.size()");
+        assertEquals(1, get("size"));
+    }
+
+    @Test
+    void testJavaInteropLinkedHashMapMethodCall() {
+        // Test with LinkedHashMap to ensure the external bridge works for Java Map implementations
+        eval("var map = new java.util.LinkedHashMap(); map.put('a', 1); map.put('b', 2); var size = map.size()");
+        assertEquals(2, get("size"));
+    }
+
+    @Test
+    void testEvalFunctionWithJavaType() {
+        // Replicates what happens with call read('file.js') for a JS file containing Java.type
+        // First, evaluate the function definition (like read() does)
+        String jsFileContent = """
+            function fn(array) {
+              var ArrayList = Java.type('java.util.ArrayList');
+              var list = new ArrayList();
+              for (var i = 0; i < array.length; i++) {
+                list.add(array[i]);
+              }
+              return list.size();
+            }
+            """;
+        Object fn = eval(jsFileContent);
+        assertNotNull(fn, "Function should be returned from eval");
+        assertTrue(fn instanceof JsCallable, "Should be callable");
+
+        // Now call the function with an argument
+        JsCallable callable = (JsCallable) fn;
+        Object result = callable.call(null, List.of("a", "b", "c"));
+        assertEquals(3, result);
+    }
+
     // =================================================================================================================
     // Java → JS Type Conversion Tests
     // =================================================================================================================

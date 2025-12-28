@@ -71,8 +71,8 @@ java-069,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testLowerCase,,tes
 java-070,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testNotEquals,,testNotEquals,root,passed,runs not-equals.feature which passes,,2025-12-19
 java-071,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testReplace,,testReplace,root,passed,runs replace.feature which passes,,2025-12-19
 java-072,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testScenarioVariableScope,,testScenarioVariableScope,root,passed,runs scenario-variable-scope.feature which passes,,2025-12-19
-java-073,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSchemaLike,,testSchemaLike,root,pending,,,
-java-074,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSortArray,,testSortArray,root,pending,,,
+java-073,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSchemaLike,,testSchemaLike,root,passed,schema-like.feature passes - comprehensive schema validation,,2025-12-28
+java-074,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSortArray,,testSortArray,root,passed,,,
 java-075,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testTypeConv,,testTypeConv,root,pending,,,
 java-076,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testConfigureNtlmAuthentication,,testConfigureNtlmAuthentication,root,pending,,,
 java-077,java_test,FeatureRuntimeTest.java,FeatureRuntimeTest,testSingleScenario,,testSingleScenario,root,passed,runs single-scenario.feature which passes,,2025-12-19
