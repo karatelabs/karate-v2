@@ -508,13 +508,10 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         // e.g., "get-token.feature?admin" -> read "get-token.feature", cache as "get-token.feature?admin"
         String filePath = path.contains("?") ? path.substring(0, path.indexOf('?')) : path;
 
-        // Parse @tag selector from path (e.g., "file.feature@tagname")
-        String tagSelector = null;
-        int tagPos = filePath.indexOf(".feature@");
-        if (tagPos != -1) {
-            tagSelector = "@" + filePath.substring(tagPos + 9);  // "@tagname"
-            filePath = filePath.substring(0, tagPos + 8);  // "file.feature"
-        }
+        // Parse @tag selector from path using shared utility
+        StepExecutor.ParsedFeaturePath parsed = StepExecutor.parseFeaturePath(filePath);
+        filePath = parsed.path() != null ? parsed.path() : filePath;
+        String tagSelector = parsed.tagSelector();
 
         // Read the file using the engine (which has access to the read function)
         Object content = karate.engine.eval("read('" + filePath.replace("'", "\\'") + "')");

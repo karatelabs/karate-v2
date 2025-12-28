@@ -2366,22 +2366,42 @@ public class StepExecutor {
      * - @tag - call scenario in same file by tag
      */
     private void parsePathAndTag(String rawPath, CallExpression expr) {
+        ParsedFeaturePath parsed = parseFeaturePath(rawPath);
+        expr.path = parsed.path;
+        expr.tagSelector = parsed.tagSelector;
+        expr.sameFile = parsed.sameFile;
+    }
+
+    /**
+     * Parsed result of a feature path with optional tag selector.
+     * Used by both StepExecutor (call keyword) and ScenarioRuntime (callSingle).
+     */
+    public record ParsedFeaturePath(String path, String tagSelector, boolean sameFile) {}
+
+    /**
+     * Parse a feature path into path and tag selector components.
+     * Supports:
+     * - file.feature@tag - call specific scenario by tag
+     * - @tag - call scenario in same file by tag
+     * - file.feature - normal call without tag
+     *
+     * @param rawPath the raw path string (may contain @tag suffix)
+     * @return ParsedFeaturePath with separated path and tag components
+     */
+    public static ParsedFeaturePath parseFeaturePath(String rawPath) {
         if (rawPath.startsWith("@")) {
             // Same-file tag call: @tagname
-            expr.sameFile = true;
-            expr.tagSelector = rawPath;  // Keep the @ prefix
-            expr.path = null;
-        } else {
-            // Check for tag suffix: file.feature@tag
-            int tagPos = rawPath.indexOf(".feature@");
-            if (tagPos != -1) {
-                expr.path = rawPath.substring(0, tagPos + 8);  // "file.feature"
-                expr.tagSelector = "@" + rawPath.substring(tagPos + 9);  // "@tag"
-            } else {
-                // No tag - normal call
-                expr.path = rawPath;
-            }
+            return new ParsedFeaturePath(null, rawPath, true);
         }
+        // Check for tag suffix: file.feature@tag
+        int tagPos = rawPath.indexOf(".feature@");
+        if (tagPos != -1) {
+            String path = rawPath.substring(0, tagPos + 8);  // "file.feature"
+            String tag = "@" + rawPath.substring(tagPos + 9);  // "@tag"
+            return new ParsedFeaturePath(path, tag, false);
+        }
+        // No tag - normal call
+        return new ParsedFeaturePath(rawPath, null, false);
     }
 
     /**
