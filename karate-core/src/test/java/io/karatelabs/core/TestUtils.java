@@ -148,4 +148,50 @@ public class TestUtils {
                 "Expected failure message to contain '" + messageContains + "' but was: " + msg);
     }
 
+    // ========== Log Utilities ==========
+
+    /**
+     * Get all logs from scenario execution (concatenated from all steps).
+     * Line endings are normalized to \n for cross-platform consistency.
+     */
+    public static String getLogs(ScenarioRuntime sr) {
+        StringBuilder sb = new StringBuilder();
+        for (StepResult step : sr.getResult().getStepResults()) {
+            String log = step.getLog();
+            if (log != null && !log.isEmpty()) {
+                sb.append(log);
+            }
+        }
+        return normalizeLineEndings(sb.toString());
+    }
+
+    /**
+     * Get log from a specific step (0-indexed).
+     * Line endings are normalized to \n for cross-platform consistency.
+     */
+    public static String getStepLog(ScenarioRuntime sr, int stepIndex) {
+        java.util.List<StepResult> steps = sr.getResult().getStepResults();
+        if (stepIndex < 0 || stepIndex >= steps.size()) {
+            return "";
+        }
+        String log = steps.get(stepIndex).getLog();
+        return log == null ? "" : normalizeLineEndings(log);
+    }
+
+    /**
+     * Assert that scenario logs contain expected text.
+     */
+    public static void assertLogContains(ScenarioRuntime sr, String expected) {
+        String logs = getLogs(sr);
+        assertTrue(logs.contains(expected),
+                "Expected log to contain '" + expected + "' but was:\n" + logs);
+    }
+
+    /**
+     * Normalize line endings to \n (for Windows compatibility).
+     */
+    public static String normalizeLineEndings(String text) {
+        return text == null ? "" : text.replace("\r\n", "\n").replace("\r", "\n");
+    }
+
 }

@@ -25,8 +25,6 @@ package io.karatelabs.core;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-
 import static io.karatelabs.core.TestUtils.*;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -38,12 +36,7 @@ class StepPrintTest {
             * print 'hello world'
             """);
         assertPassed(sr);
-        // Check that print output was captured in step logs
-        List<StepResult> steps = sr.getResult().getStepResults();
-        assertFalse(steps.isEmpty());
-        String log = steps.getFirst().getLog();
-        assertNotNull(log);
-        assertTrue(log.contains("hello world"));
+        assertLogContains(sr, "hello world");
     }
 
     @Test
@@ -53,11 +46,8 @@ class StepPrintTest {
             * print name
             """);
         assertPassed(sr);
-        List<StepResult> steps = sr.getResult().getStepResults();
-        // The print step is the second one
-        assertTrue(steps.size() >= 2);
-        String log = steps.get(1).getLog();
-        assertTrue(log.contains("test"));
+        String log = getStepLog(sr, 1);
+        assertTrue(log.contains("test"), "expected 'test' in: " + log);
     }
 
     @Test
@@ -67,11 +57,8 @@ class StepPrintTest {
             * print data
             """);
         assertPassed(sr);
-        List<StepResult> steps = sr.getResult().getStepResults();
-        assertTrue(steps.size() >= 2);
-        String log = steps.get(1).getLog();
-        // JSON should be printed
-        assertTrue(log.contains("john") || log.contains("name"));
+        String log = getStepLog(sr, 1);
+        assertTrue(log.contains("john") && log.contains("name"));
     }
 
     @Test
@@ -81,6 +68,64 @@ class StepPrintTest {
             * print 'x squared is:', x * x
             """);
         assertPassed(sr);
+        assertLogContains(sr, "x squared is:");
+        assertLogContains(sr, "100");
+    }
+
+    @Test
+    void testPrintMultipleLiterals() {
+        ScenarioRuntime sr = run("""
+            * print 'foo', 'bar'
+            """);
+        assertPassed(sr);
+        String log = getStepLog(sr, 0);
+        assertTrue(log.contains("foo"), "expected 'foo' in: " + log);
+        assertTrue(log.contains("bar"), "expected 'bar' in: " + log);
+    }
+
+    @Test
+    void testPrintXml() {
+        ScenarioRuntime sr = run("""
+            * def foo = <bar><baz>1</baz></bar>
+            * print foo
+            """);
+        assertPassed(sr);
+        String log = getStepLog(sr, 1);
+        assertTrue(log.contains("bar") && log.contains("baz"));
+    }
+
+    @Test
+    void testPrintWithCommasInString() {
+        ScenarioRuntime sr = run("""
+            * def foo = { bar: 1 }
+            * print 'the value, of foo, is:', foo
+            """);
+        assertPassed(sr);
+        String log = getStepLog(sr, 1);
+        assertTrue(log.contains("the value, of foo, is:"));
+    }
+
+    @Test
+    void testPrintMultiExpression() {
+        ScenarioRuntime sr = run("""
+            * def foo = 'bar'
+            * print foo, 1
+            """);
+        assertPassed(sr);
+        String log = getStepLog(sr, 1);
+        assertTrue(log.contains("bar"), "expected 'bar' in: " + log);
+        assertTrue(log.contains("1"), "expected '1' in: " + log);
+    }
+
+    @Test
+    void testPrintJsonMultiExpression() {
+        ScenarioRuntime sr = run("""
+            * def foo = { bar: 1 }
+            * print foo, foo.bar
+            """);
+        assertPassed(sr);
+        String log = getStepLog(sr, 1);
+        assertTrue(log.contains("bar"), "expected 'bar' in: " + log);
     }
 
 }

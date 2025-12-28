@@ -1599,9 +1599,21 @@ public class StepExecutor {
     }
 
     private void executePrint(Step step) {
-        Object value = runtime.eval(step.getText());
-        String output = stringify(value);
-        LogContext.get().log(output);
+        // Wrap in array to handle comma-separated expressions like: print 'foo', 'bar'
+        // Without wrapping, JS comma operator would return only the last value
+        Object value = runtime.eval("[" + step.getText() + "]");
+        if (value instanceof List<?> list) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < list.size(); i++) {
+                if (i > 0) {
+                    sb.append(' ');
+                }
+                sb.append(stringify(list.get(i)));
+            }
+            LogContext.get().log(sb.toString());
+        } else {
+            LogContext.get().log(stringify(value));
+        }
     }
 
     // ========== HTTP ==========

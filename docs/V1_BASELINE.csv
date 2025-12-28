@@ -85,7 +85,7 @@ java-083,java_test,PerfHookTest.java,PerfHookTest,testPerfHook3,,testPerfHook3,r
 java-084,java_test,PerfHookTest.java,PerfHookTest,testPerfHook4,,testPerfHook4,root,skipped,Performance features out of scope,,2025-12-28
 java-085,java_test,PerfHookTest.java,PerfHookTest,testPerfHook5,,testPerfHook5,root,skipped,Performance features out of scope,,2025-12-28
 java-086,java_test,PerfHookTest.java,PerfHookTest,testPerfHook6,,testPerfHook6,root,skipped,Performance features out of scope,,2025-12-28
-java-087,java_test,PrintTest.java,PrintTest,testPrint,,testPrint,root,pending,,,
+java-087,java_test,PrintTest.java,PrintTest,testPrint,,testPrint,root,passed,Fixed multi-arg print; added log utilities to TestUtils,StepPrintTest,2025-12-28
 java-088,java_test,ScenarioBridgeTest.java,ScenarioBridgeTest,testCallSingle,,testCallSingle,root,pending,,,
 java-089,java_test,ScenarioBridgeTest.java,ScenarioBridgeTest,testCallSingleWithParam,,testCallSingleWithParam,root,pending,,,
 java-090,java_test,ScenarioBridgeTest.java,ScenarioBridgeTest,testCallSingleScenarioWithParam,,testCallSingleScenarioWithParam,root,pending,,,
