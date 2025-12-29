@@ -286,55 +286,6 @@ proc.close()
 
 ---
 
-### Priority 8: Advanced Tag Selectors
-
-V2 currently supports basic tag matching (`@tag`, `@tag=value`, `~@tag`). V1 has a richer tag selection syntax that should be implemented:
-
-**V1 Tag Selector Syntax:**
-```java
-// Boolean combinators
-anyOf('@foo', '@bar')     // Match if any tag present
-allOf('@foo', '@bar')     // Match if all tags present
-not('@ignore')            // Exclude tag
-anyOf('@foo') && !anyOf('@ignore')  // Compound expressions
-
-// Tag value selectors
-valuesFor('@id').isPresent         // Tag has values
-valuesFor('@id').isOnly(1)         // Exact match
-valuesFor('@id').isAnyOf(1, 2)     // Any value matches
-valuesFor('@id').isAllOf(1, 2)     // All values present
-valuesFor('@id').isEach(s => s.startsWith('1'))  // Predicate on values
-
-// Environment selectors (special tags)
-@env=foo                  // Run only when karate.env == 'foo'
-@envnot=foo               // Skip when karate.env == 'foo'
-```
-
-**Implementation:**
-
-1. **Create `TagSelector` class** in `io.karatelabs.core`:
-   - Parse tag selector expressions
-   - Evaluate against `List<Tag>` and `karate.env`
-   - Support JS predicates for `isEach()`
-
-2. **Update `FeatureRuntime.matchesTags()`**:
-   - Currently handles only simple patterns
-   - Delegate to `TagSelector.evaluate()` for complex expressions
-
-3. **Update `Suite.tags()`**:
-   - Accept V1-style expressions
-   - Convert cucumber-style tags (`@foo, @bar`) to `anyOf('@foo','@bar')`
-
-**V1 Tests to Port (from `com.intuit.karate.core.TagsTest`):**
-- `testCucumberOptionsTagsConversion` - `Tags.fromKarateOptionsTags()`
-- `testTagSelectors` - `anyOf`, `allOf`, `not` combinations
-- `testTagValueSelectors` - `valuesFor('@id')` methods
-- `testEnvSelectors` - `@env=`, `@envnot=` special handling
-
-**V1 Reference:** `karate-core/src/main/java/com/intuit/karate/core/Tags.java`
-
----
-
 ### Priority 9: Configure Report
 
 ```cucumber
@@ -499,3 +450,4 @@ This would allow:
 | `OutlineTest` | Scenario outline, dynamic |
 | `CallSingleTest` | karate.callSingle() |
 | `DataUtilsTest` | CSV/YAML parsing |
+| `TagSelectorTest` | Tag selectors: anyOf, allOf, not, valuesFor, @env |

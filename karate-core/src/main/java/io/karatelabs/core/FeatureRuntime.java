@@ -406,7 +406,7 @@ public class FeatureRuntime implements Callable<FeatureResult> {
             // Apply call-level tag filter if specified (takes precedence)
             // This allows calling specific @ignore scenarios by tag
             if (callTagSelector != null) {
-                return matchesTags(scenario, callTagSelector);
+                return matchesCallTag(scenario, callTagSelector);
             }
 
             // For called features (caller != null), don't filter by @ignore
@@ -415,26 +415,22 @@ public class FeatureRuntime implements Callable<FeatureResult> {
                 return true;
             }
 
-            // Check for @ignore tag on scenario OR feature (top-level only)
-            if (scenario.isIgnore()) {
-                return false;
-            }
-
-            // Apply suite tag filter if configured
-            if (suite != null && suite.getTagSelector() != null) {
-                return matchesTags(scenario, suite.getTagSelector());
-            }
-
-            return true;
+            // Use TagSelector for suite-level filtering
+            // This handles @ignore, @setup, @env, and complex expressions like anyOf(), allOf()
+            List<Tag> tags = scenario.getTagsEffective();
+            TagSelector selector = new TagSelector(tags);
+            String karateEnv = suite != null ? suite.getEnv() : null;
+            return selector.evaluate(suite != null ? suite.getTagSelector() : null, karateEnv);
         }
 
-        private boolean matchesTags(Scenario scenario, String tagSelector) {
-            // Tag matching for call-by-tag syntax
-            // Supports: @tagname, @name=value
-            // Uses effective tags (feature + scenario merged)
+        /**
+         * Simple tag matching for call-by-tag syntax (e.g., call read('file.feature@tagname')).
+         * Supports: @tagname, @name=value, ~@tagname (negation)
+         * Does NOT filter by @ignore - allows calling @ignore scenarios explicitly.
+         */
+        private boolean matchesCallTag(Scenario scenario, String tagSelector) {
             List<Tag> tags = scenario.getTagsEffective();
             if (tags.isEmpty()) {
-                // Scenario has no tags - doesn't match if selector requires tags
                 return !tagSelector.startsWith("@");
             }
 

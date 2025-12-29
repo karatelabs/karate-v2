@@ -230,6 +230,9 @@ class JsParserTest {
         expr("(a) => true", "[['(',$a,')'],'=>',true]");
         expr("(a, b) => true", "[['(',[$a,','],$b,')'],'=>',true]");
         expr("a => { return true }", "[$a,'=>',['{',['return',true],'}']]");
+        // arrow function with regex body - regex must be recognized after =>
+        expr("s => /test/.test(s)", "[$s,'=>',[['/test/','.',$test],'(',$s,')']]");
+        expr("s => /^1.*/.test(s)", "[$s,'=>',[['/^1.*/','.',$test],'(',$s,')']]");
     }
 
     @Test

@@ -142,6 +142,30 @@ class JsRegexTest extends EvalBase {
     }
 
     @Test
+    void testRegexInArrowFunction() {
+        // Arrow function body starting with regex literal
+        // The parser must recognize that after =>, a / starts a regex (not division)
+        eval("var fn = s => /^test/.test(s); var r1 = fn('testing'); var r2 = fn('no match')");
+        assertEquals(true, get("r1"));
+        assertEquals(false, get("r2"));
+
+        // More complex regex pattern
+        eval("var startsWithDigit = s => /^\\d/.test(s); var r1 = startsWithDigit('123abc'); var r2 = startsWithDigit('abc123')");
+        assertEquals(true, get("r1"));
+        assertEquals(false, get("r2"));
+
+        // Arrow function with regex containing special chars
+        eval("var matchPattern = s => /^1.*/.test(s); var r1 = matchPattern('100'); var r2 = matchPattern('1000'); var r3 = matchPattern('200')");
+        assertEquals(true, get("r1"));
+        assertEquals(true, get("r2"));
+        assertEquals(false, get("r3"));
+
+        // Used in higher-order function context (like isEach in TagSelector)
+        eval("var items = ['100', '1000', '10']; var allMatch = items.every(s => /^1/.test(s))");
+        assertEquals(true, get("allMatch"));
+    }
+
+    @Test
     void testInvalidRegex() {
         try {
             eval("var re = /(/;"); // Unbalanced parenthesis

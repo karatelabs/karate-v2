@@ -175,7 +175,7 @@ public enum TokenType {
                  GT_EQ, PLUS, PLUS_EQ, MINUS, MINUS_EQ, STAR, STAR_EQ, STAR_STAR, STAR_STAR_EQ, SLASH_EQ, PERCENT,
                  PERCENT_EQ, AMP, AMP_EQ, AMP_AMP, AMP_AMP_EQ, PIPE, PIPE_EQ, PIPE_PIPE, PIPE_PIPE_EQ, CARET, CARET_EQ,
                  QUES, QUES_QUES, TILDE, NOT, RETURN, TYPEOF, DELETE, INSTANCEOF, IN, DO, IF, ELSE, CASE, DEFAULT,
-                 THROW -> true;
+                 THROW, EQ_GT -> true;
             // after these tokens, a regex literal is not allowed
             case R_PAREN, R_BRACKET, R_CURLY, IDENT, NUMBER, S_STRING, D_STRING, TRUE, FALSE, NULL -> false;
             // for other tokens, keep the current value of regexAllowed

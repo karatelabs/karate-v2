@@ -158,8 +158,29 @@ public class Suite {
         return this;
     }
 
+    /**
+     * Set tag selector expression. Supports both V1-style JS expressions and cucumber-style tags.
+     * <p>
+     * Examples:
+     * <ul>
+     *   <li>JS-style: "anyOf('@foo', '@bar') && not('@ignore')"</li>
+     *   <li>Cucumber-style: "@foo" (converted to "anyOf('@foo')")</li>
+     *   <li>Cucumber OR: "@foo, @bar" (converted to "anyOf('@foo','@bar')")</li>
+     * </ul>
+     */
     public Suite tags(String tagExpression) {
-        this.tagSelector = tagExpression;
+        this.tagSelector = TagSelector.fromKarateOptionsTags(tagExpression);
+        return this;
+    }
+
+    /**
+     * Set tag selector from multiple expressions (cucumber-style AND).
+     * Each expression is ANDed together.
+     * <p>
+     * Example: tags("@foo", "@bar") becomes "anyOf('@foo') && anyOf('@bar')"
+     */
+    public Suite tags(String... tagExpressions) {
+        this.tagSelector = TagSelector.fromKarateOptionsTags(tagExpressions);
         return this;
     }
 
