@@ -248,27 +248,27 @@ feature-064,feature,jscall/js-called.feature,,,js-called.feature,js-called.featu
 feature-065,feature,jscall/js-callonce.feature,,,js-callonce.feature,js-callonce.feature,jscall,skipped,Uses classpath: paths - test setup dependency,,2025-12-29
 feature-066,feature,jscall/utils.feature,,,utils.feature,utils.feature,jscall,skipped,Uses classpath: paths - test setup dependency,,2025-12-29
 feature-067,feature,jscall2/all.feature,,,all.feature,responseStatus variable tests,jscall2,skipped,Requires live server - responseStatus covered in MockE2eTest,,2025-12-29
-feature-068,feature,jscall2/call-once.feature,,,call-once.feature,: common setup,jscall2,pending,,,
-feature-069,feature,jscall2/call-single.feature,,,call-single.feature,: common setup,jscall2,pending,,,
-feature-070,feature,jscall2/call.feature,,,call.feature,: common setup,jscall2,pending,,,
-feature-071,feature,jscall2/local.feature,,,local.feature,responseStatus callOnce test,jscall2,pending,,,
-feature-072,feature,jscall2/mock.feature,,,mock.feature,mock.feature,jscall2,pending,,,
+feature-068,feature,jscall2/call-once.feature,,,call-once.feature,: common setup,jscall2,passed,JS function definition in docstring,,2025-12-29
+feature-069,feature,jscall2/call-single.feature,,,call-single.feature,: common setup,jscall2,passed,JS function definition in docstring,,2025-12-29
+feature-070,feature,jscall2/call.feature,,,call.feature,: common setup,jscall2,passed,JS function definition in docstring,,2025-12-29
+feature-071,feature,jscall2/local.feature,,,local.feature,responseStatus callOnce test,jscall2,skipped,Requires live server and classpath: paths - covered in MockE2eTest,,2025-12-29
+feature-072,feature,jscall2/mock.feature,,,mock.feature,mock.feature,jscall2,passed,Simple response def,,2025-12-29
 feature-073,feature,jsread/js-read-2.feature,,,js-read-2.feature,js-read-2.feature,jsread,passed,Fixed NPE in Scenario.replace() for unnamed scenario outlines,OutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
 feature-074,feature,jsread/js-read-3.feature,,,js-read-3.feature,js-read-3.feature,jsread,passed,Same fix as feature-073,OutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
 feature-075,feature,jsread/js-read-4.feature,,,js-read-4.feature,js-read-4.feature,jsread,passed,Same fix as feature-073,OutlineTest#testDynamicOutlineWithUnnamedScenario,2025-12-21
-feature-076,feature,jsread/js-read-called-2.feature,,,js-read-called-2.feature,js-read-called-2.feature,jsread,pending,,,
-feature-077,feature,jsread/js-read-called-3.feature,,,js-read-called-3.feature,js-read-called-3.feature,jsread,pending,,,
-feature-078,feature,jsread/js-read-called.feature,,,js-read-called.feature,js-read-called.feature,jsread,pending,,,
-feature-079,feature,jsread/js-read-reuse-2.feature,,,js-read-reuse-2.feature,js-read-reuse-2.feature,jsread,pending,,,
-feature-080,feature,jsread/js-read-reuse-only-background.feature,,,js-read-reuse-only-background.feature,js-read-reuse-only-background.feature,jsread,pending,,,
-feature-081,feature,jsread/js-read-reuse.feature,,,js-read-reuse.feature,js-read-reuse.feature,jsread,pending,,,
+feature-076,feature,jsread/js-read-called-2.feature,,,js-read-called-2.feature,js-read-called-2.feature,jsread,skipped,Called feature - tested via js-read.feature,,2025-12-29
+feature-077,feature,jsread/js-read-called-3.feature,,,js-read-called-3.feature,js-read-called-3.feature,jsread,skipped,Called feature - tested via js-read.feature,,2025-12-29
+feature-078,feature,jsread/js-read-called.feature,,,js-read-called.feature,js-read-called.feature,jsread,skipped,Called feature - tested via js-read.feature,,2025-12-29
+feature-079,feature,jsread/js-read-reuse-2.feature,,,js-read-reuse-2.feature,js-read-reuse-2.feature,jsread,skipped,Called feature - tested via js-read.feature,,2025-12-29
+feature-080,feature,jsread/js-read-reuse-only-background.feature,,,js-read-reuse-only-background.feature,js-read-reuse-only-background.feature,jsread,skipped,Called feature - tested via js-read.feature,,2025-12-29
+feature-081,feature,jsread/js-read-reuse.feature,,,js-read-reuse.feature,js-read-reuse.feature,jsread,skipped,Called feature - tested via js-read.feature,,2025-12-29
 feature-082,feature,jsread/js-read.feature,,,js-read.feature,js-read.feature,jsread,passed,call read shorthand and this: prefix implemented,,2025-12-21
-feature-083,feature,karate-config-fn.feature,,,karate-config-fn.feature,feature reuse from karate-config.js,root,pending,,,
+feature-083,feature,karate-config-fn.feature,,,karate-config-fn.feature,feature reuse from karate-config.js,root,passed,karate.call from config works - adapted classpath: to relative path,,2025-12-29
 feature-084,feature,karate-config-frombase.feature,,,karate-config-frombase.feature,karate-config-frombase.feature,root,passed,karate-base.js implemented - covered by java-026 and unit tests,ScenarioConfigTest#testKarateBaseJs*,2025-12-21
-feature-085,feature,karate-config-getscenario.feature,,,karate-config-getscenario.feature,karate-config-getscenario.feature,root,pending,,,
-feature-086,feature,karate-config-utils.feature,,,karate-config-utils.feature,karate-config-utils.feature,root,pending,,,
-feature-087,feature,karate-get-called.feature,,,karate-get-called.feature,karate-get-called.feature,root,pending,,,
-feature-088,feature,karate-get.feature,,,karate-get.feature,karate-get.feature,root,pending,,,
+feature-085,feature,karate-config-getscenario.feature,,,karate-config-getscenario.feature,karate-config-getscenario.feature,root,passed,karate.scenario available in config - needs feature-specific config,,2025-12-29
+feature-086,feature,karate-config-utils.feature,,,karate-config-utils.feature,karate-config-utils.feature,root,skipped,@ignore feature - called by karate-config.js - tested via karate-config-fn,,2025-12-29
+feature-087,feature,karate-get-called.feature,,,karate-get-called.feature,karate-get-called.feature,root,passed,karate.get works in called features,,2025-12-29
+feature-088,feature,karate-get.feature,,,karate-get.feature,karate-get.feature,root,passed,karate.get works with default values and called features,,2025-12-29
 feature-089,feature,lower-case.feature,,,lower-case.feature,lower case helper method,root,passed,karate.lowerCase - JSON passes (XML literal parsing separate issue),io/karatelabs/core/StepJsTest,2025-12-19
 feature-090,feature,match-each-magic-variables.feature,,,match-each-magic-variables.feature,match-each-magic-variables.feature,root,passed,_$ and _$$ magic variables,,2025-12-19
 feature-091,feature,match-step.feature,,,match-step.feature,an edge case for com.intuit.karate.MatchStep,root,passed,match step parsing edge case,,2025-12-19
@@ -301,9 +301,9 @@ feature-117,feature,mock/upload.feature,,,upload.feature,upload file,mock,passed
 feature-118,feature,mock/url-encoding.feature,,,url-encoding.feature,url encoding,mock,passed,URL encoding covered by MockE2eTest.testUrlEncodingSpecialChars,io/karatelabs/core/mock/MockE2eTest,2025-12-22
 feature-119,feature,mock/white-space.feature,,,white-space.feature,white space edge cases,mock,passed,Whitespace covered by MockE2eTest.testJsonWithLeadingLinefeed,io/karatelabs/core/mock/MockE2eTest,2025-12-22
 feature-120,feature,not-equals.feature,,,not-equals.feature,not equals tests,root,passed,match not equals syntax,,2025-12-19
-feature-121,feature,ntlm-authentication.feature,,,ntlm-authentication.feature,ntlm authentication,root,pending,,,
+feature-121,feature,ntlm-authentication.feature,,,ntlm-authentication.feature,ntlm authentication,root,passed,NTLM auth config works (deprecated in HttpClient 5),,2025-12-29
 feature-122,feature,outline-background.feature,,,outline-background.feature,outline-background.feature,root,passed,@setup with table - covered in OutlineTest.testDynamicOutlineWithTableKeyword,OutlineTest,2025-12-29
-feature-123,feature,outline-config-js.feature,,,outline-config-js.feature,outline-config-js.feature,root,pending,,,
+feature-123,feature,outline-config-js.feature,,,outline-config-js.feature,outline-config-js.feature,root,passed,JS expressions in outline examples work,,2025-12-29
 feature-124,feature,outline-csv.feature,,,outline-csv.feature,outline-csv.feature,root,passed,CSV-based dynamic outline works,,2025-12-29
 feature-125,feature,outline-dynamic-fail.feature,,,outline-dynamic-fail.feature,outline-dynamic-fail.feature,root,passed,Missing @setup error - covered in OutlineTest.testMissingSetupScenario,OutlineTest,2025-12-29
 feature-126,feature,outline-dynamic.feature,,,outline-dynamic.feature,outline-dynamic.feature,root,passed,Dynamic outline - covered in OutlineTest,OutlineTest,2025-12-29
@@ -313,18 +313,18 @@ feature-129,feature,outline.feature,,,outline.feature,advanced scenario outline 
 feature-130,feature,parajava/parallel-java1.feature,,,parallel-java1.feature,parallel-java1.feature,parajava,skipped,Out of scope - legacy parallel runner,,
 feature-131,feature,parajava/parallel-java2.feature,,,parallel-java2.feature,parallel-java2.feature,parajava,skipped,Out of scope - legacy parallel runner,,
 feature-132,feature,parajava/setup.feature,,,setup.feature,setup.feature,parajava,skipped,Out of scope - legacy parallel runner,,
-feature-133,feature,parallel/call-once-from-feature.feature,,,call-once-from-feature.feature,call-once-from-feature.feature,parallel,pending,,,
-feature-134,feature,parallel/call-single-from-config.feature,,,call-single-from-config.feature,call-single-from-config.feature,parallel,pending,,,
-feature-135,feature,parallel/call-single-from-config2.feature,,,call-single-from-config2.feature,call-single-from-config2.feature,parallel,pending,,,
-feature-136,feature,parallel/call-single-from-feature.feature,,,call-single-from-feature.feature,call-single-from-feature.feature,parallel,pending,,,
-feature-137,feature,parallel/called.feature,,,called.feature,called.feature,parallel,pending,,,
-feature-138,feature,parallel/hello.feature,,,hello.feature,hello.feature,parallel,pending,,,
-feature-139,feature,parallel/mock.feature,,,mock.feature,mock.feature,parallel,pending,,,
-feature-140,feature,parallel/parallel-csv.feature,,,parallel-csv.feature,parallel-csv.feature,parallel,pending,,,
-feature-141,feature,parallel/parallel-outline-1.feature,,,parallel-outline-1.feature,parallel-outline-1.feature,parallel,pending,,,
-feature-142,feature,parallel/parallel-outline-2.feature,,,parallel-outline-2.feature,parallel-outline-2.feature,parallel,pending,,,
-feature-143,feature,parallel/parallel-outline-call-api.feature,,,parallel-outline-call-api.feature,parallel-outline-call-api.feature,parallel,pending,,,
-feature-144,feature,parallel/parallel.feature,,,parallel.feature,parallel.feature,parallel,pending,,,
+feature-133,feature,parallel/call-once-from-feature.feature,,,call-once-from-feature.feature,call-once-from-feature.feature,parallel,skipped,Parallel runner tests - V2 runner differs,,2025-12-29
+feature-134,feature,parallel/call-single-from-config.feature,,,call-single-from-config.feature,call-single-from-config.feature,parallel,skipped,Parallel runner tests - V2 runner differs,,2025-12-29
+feature-135,feature,parallel/call-single-from-config2.feature,,,call-single-from-config2.feature,call-single-from-config2.feature,parallel,skipped,Parallel runner tests - V2 runner differs,,2025-12-29
+feature-136,feature,parallel/call-single-from-feature.feature,,,call-single-from-feature.feature,call-single-from-feature.feature,parallel,skipped,Parallel runner tests - V2 runner differs,,2025-12-29
+feature-137,feature,parallel/called.feature,,,called.feature,called.feature,parallel,skipped,Parallel runner tests - V2 runner differs,,2025-12-29
+feature-138,feature,parallel/hello.feature,,,hello.feature,hello.feature,parallel,skipped,Parallel runner tests - V2 runner differs,,2025-12-29
+feature-139,feature,parallel/mock.feature,,,mock.feature,mock.feature,parallel,skipped,Parallel runner tests - V2 runner differs,,2025-12-29
+feature-140,feature,parallel/parallel-csv.feature,,,parallel-csv.feature,parallel-csv.feature,parallel,skipped,Parallel runner tests - V2 runner differs,,2025-12-29
+feature-141,feature,parallel/parallel-outline-1.feature,,,parallel-outline-1.feature,parallel-outline-1.feature,parallel,skipped,Parallel runner tests - V2 runner differs,,2025-12-29
+feature-142,feature,parallel/parallel-outline-2.feature,,,parallel-outline-2.feature,parallel-outline-2.feature,parallel,skipped,Parallel runner tests - V2 runner differs,,2025-12-29
+feature-143,feature,parallel/parallel-outline-call-api.feature,,,parallel-outline-call-api.feature,parallel-outline-call-api.feature,parallel,skipped,Parallel runner tests - V2 runner differs,,2025-12-29
+feature-144,feature,parallel/parallel.feature,,,parallel.feature,parallel.feature,parallel,skipped,Parallel runner tests - V2 runner differs,,2025-12-29
 feature-145,feature,parasimple/headers.feature,,,headers.feature,headers.feature,parasimple,skipped,Out of scope - legacy parallel runner,,
 feature-146,feature,parasimple/parallel-outline-simple.feature,,,parallel-outline-simple.feature,parallel-outline-simple.feature,parasimple,skipped,Out of scope - legacy parallel runner,,
 feature-147,feature,parser/test-comments.feature,,,test-comments.feature,test-comments.feature,parser,passed,Parses correctly - ParserV1CompatTest,ParserV1CompatTest,2025-12-29
@@ -349,72 +349,72 @@ feature-165,feature,parser/test-simple-background.feature,,,test-simple-backgrou
 feature-166,feature,parser/test-simple.feature,,,test-simple.feature,the first line,parser,passed,Parses correctly - ParserV1CompatTest,ParserV1CompatTest,2025-12-29
 feature-167,feature,parser/test-table-pipe.feature,,,test-table-pipe.feature,test-table-pipe.feature,parser,passed,Parses correctly - ParserV1CompatTest,ParserV1CompatTest,2025-12-29
 feature-168,feature,parser/test-tags-multiline.feature,,,test-tags-multiline.feature,test-tags-multiline.feature,parser,passed,Parses correctly - ParserV1CompatTest,ParserV1CompatTest,2025-12-29
-feature-169,feature,payments-mock.feature,,,payments-mock.feature,payments-mock.feature,root,pending,,,
-feature-170,feature,payments.feature,,,payments.feature,payments.feature,root,pending,,,
-feature-171,feature,perf-mock.feature,,,perf-mock.feature,perf-mock.feature,root,pending,,,
-feature-172,feature,perf.feature,,,perf.feature,perf.feature,root,pending,,,
-feature-173,feature,print.feature,,,print.feature,test variations of the print keyword,root,pending,,,
-feature-174,feature,read-properties.feature,,,read-properties.feature,read-properties.feature,root,pending,,,
+feature-169,feature,payments-mock.feature,,,payments-mock.feature,payments-mock.feature,root,skipped,Mock feature - covered by MockE2eTest,,2025-12-29
+feature-170,feature,payments.feature,,,payments.feature,payments.feature,root,skipped,Requires live payments mock - covered by MockE2eTest,,2025-12-29
+feature-171,feature,perf-mock.feature,,,perf-mock.feature,perf-mock.feature,root,skipped,Perf mock - not in V2 scope,,2025-12-29
+feature-172,feature,perf.feature,,,perf.feature,perf.feature,root,skipped,Perf test - not in V2 scope,,2025-12-29
+feature-173,feature,print.feature,,,print.feature,test variations of the print keyword,root,skipped,Uses V1 TestLogAppender - print keyword tested elsewhere,,2025-12-29
+feature-174,feature,read-properties.feature,,,read-properties.feature,read-properties.feature,root,passed,karate.readAsStream works for properties files,,2025-12-29
 feature-175,feature,replace.feature,,,replace.feature,replace keyword,root,passed,implemented replace with table syntax,io/karatelabs/core/StepDataTypesTest,2025-12-19
 feature-176,feature,retry/retry-with-setup.feature,,,retry-with-setup.feature,Retry with setup,retry,pending,,,
 feature-177,feature,retry/test.feature,,,test.feature,retry test,retry,pending,,,
-feature-178,feature,runner/aborted.feature,,,aborted.feature,abort2pass1,runner,pending,,,
-feature-179,feature,runner/called-arg-loop.feature,,,called-arg-loop.feature,called-arg-loop.feature,runner,pending,,,
-feature-180,feature,runner/called-arg-null.feature,,,called-arg-null.feature,called-arg-null.feature,runner,pending,,,
-feature-181,feature,runner/called-arg-single.feature,,,called-arg-single.feature,called-arg-single.feature,runner,pending,,,
-feature-182,feature,runner/called-shared.feature,,,called-shared.feature,called-shared.feature,runner,pending,,,
-feature-183,feature,runner/called-shared2.feature,,,called-shared2.feature,called-shared2.feature,runner,pending,,,
-feature-184,feature,runner/called.feature,,,called.feature,called feature,runner,pending,,,
-feature-185,feature,runner/called_2.feature,,,called_2.feature,called_2.feature,runner,pending,,,
-feature-186,feature,runner/caller-arg.feature,,,caller-arg.feature,caller-arg.feature,runner,pending,,,
-feature-187,feature,runner/caller-shared.feature,,,caller-shared.feature,caller-shared.feature,runner,pending,,,
-feature-188,feature,runner/caller-with-lambda-arg.feature,,,caller-with-lambda-arg.feature,caller-with-lambda-arg.feature,runner,pending,,,
-feature-189,feature,runner/caller.feature,,,caller.feature,caller.feature,runner,pending,,,
-feature-190,feature,runner/caller_2.feature,,,caller_2.feature,caller_2.feature,runner,pending,,,
-feature-191,feature,runner/failed.feature,,,failed.feature,fail2pass1,runner,pending,,,
-feature-192,feature,runner/hooks/hook-dynamic-outline.feature,,,hook-dynamic-outline.feature,Test Hook Feature,runner/hooks,pending,,,
-feature-193,feature,runner/hooks/hook-multiple-dynamic-outline.feature,,,hook-multiple-dynamic-outline.feature,Test Hook Feature,runner/hooks,pending,,,
-feature-194,feature,runner/hooks/hook-multiple-outlines.feature,,,hook-multiple-outlines.feature,Test Hook Feature,runner/hooks,pending,,,
-feature-195,feature,runner/hooks/hook-outline.feature,,,hook-outline.feature,Test Hook Feature,runner/hooks,pending,,,
-feature-196,feature,runner/hooks/hook-scenario.feature,,,hook-scenario.feature,Test Hook Feature,runner/hooks,pending,,,
-feature-197,feature,runner/hooks/test-hook-multiexample.feature,,,test-hook-multiexample.feature,Tag Filter multi-scenario-outline feature.,runner/hooks,pending,,,
-feature-198,feature,runner/hooks/test-hook-notags.feature,,,test-hook-notags.feature,no tags feature,runner/hooks,pending,,,
-feature-199,feature,runner/hooks/test-hook-skip.feature,,,test-hook-skip.feature,test-hook-skip.feature,runner/hooks,pending,,,
-feature-200,feature,runner/multi-scenario-fail.feature,,,multi-scenario-fail.feature,multi scenario,runner,pending,,,
-feature-201,feature,runner/multi-scenario.feature,,,multi-scenario.feature,multi scenario,runner,pending,,,
-feature-202,feature,runner/no-scenario-name.feature,,,no-scenario-name.feature,no-scenario-name.feature,runner,pending,,,
-feature-203,feature,runner/notEqualMatch.feature,,,notEqualMatch.feature,not equal match test file,runner,pending,,,
-feature-204,feature,runner/outline.feature,,,outline.feature,simple feature file,runner,pending,,,
-feature-205,feature,runner/run-arg.feature,,,run-arg.feature,run-arg.feature,runner,pending,,,
-feature-206,feature,runner/run-ignore.feature,,,run-ignore.feature,run-ignore.feature,runner,pending,,,
-feature-207,feature,runner/scenario.feature,,,scenario.feature,simple feature file,runner,pending,,,
-feature-208,feature,runner/signin.feature,,,signin.feature,signin.feature,runner,pending,,,
-feature-209,feature,runner/stackoverflow-error.feature,,,stackoverflow-error.feature,stackoverflow-error.feature,runner,pending,,,
-feature-210,feature,runner/table.feature,,,table.feature,table.feature,runner,pending,,,
-feature-211,feature,runner/test-called-embedded-file.feature,,,test-called-embedded-file.feature,test-called-embedded-file.feature,runner,pending,,,
-feature-212,feature,runner/test-called-embedded.feature,,,test-called-embedded.feature,test-called-embedded.feature,runner,pending,,,
-feature-213,feature,runner/test-called.feature,,,test-called.feature,test-called.feature,runner,pending,,,
-feature-214,feature,scenario-outline-result.feature,,,scenario-outline-result.feature,my feature,root,pending,,,
+feature-178,feature,runner/aborted.feature,,,aborted.feature,abort2pass1,runner,passed,karate.abort works,,2025-12-29
+feature-179,feature,runner/called-arg-loop.feature,,,called-arg-loop.feature,called-arg-loop.feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-180,feature,runner/called-arg-null.feature,,,called-arg-null.feature,called-arg-null.feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-181,feature,runner/called-arg-single.feature,,,called-arg-single.feature,called-arg-single.feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-182,feature,runner/called-shared.feature,,,called-shared.feature,called-shared.feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-183,feature,runner/called-shared2.feature,,,called-shared2.feature,called-shared2.feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-184,feature,runner/called.feature,,,called.feature,called feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-185,feature,runner/called_2.feature,,,called_2.feature,called_2.feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-186,feature,runner/caller-arg.feature,,,caller-arg.feature,caller-arg.feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-187,feature,runner/caller-shared.feature,,,caller-shared.feature,caller-shared.feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-188,feature,runner/caller-with-lambda-arg.feature,,,caller-with-lambda-arg.feature,caller-with-lambda-arg.feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-189,feature,runner/caller.feature,,,caller.feature,caller.feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-190,feature,runner/caller_2.feature,,,caller_2.feature,caller_2.feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-191,feature,runner/failed.feature,,,failed.feature,fail2pass1,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-192,feature,runner/hooks/hook-dynamic-outline.feature,,,hook-dynamic-outline.feature,Test Hook Feature,runner/hooks,skipped,Runner hooks tests - V2 runner differs,,2025-12-29
+feature-193,feature,runner/hooks/hook-multiple-dynamic-outline.feature,,,hook-multiple-dynamic-outline.feature,Test Hook Feature,runner/hooks,skipped,Runner hooks tests - V2 runner differs,,2025-12-29
+feature-194,feature,runner/hooks/hook-multiple-outlines.feature,,,hook-multiple-outlines.feature,Test Hook Feature,runner/hooks,skipped,Runner hooks tests - V2 runner differs,,2025-12-29
+feature-195,feature,runner/hooks/hook-outline.feature,,,hook-outline.feature,Test Hook Feature,runner/hooks,skipped,Runner hooks tests - V2 runner differs,,2025-12-29
+feature-196,feature,runner/hooks/hook-scenario.feature,,,hook-scenario.feature,Test Hook Feature,runner/hooks,skipped,Runner hooks tests - V2 runner differs,,2025-12-29
+feature-197,feature,runner/hooks/test-hook-multiexample.feature,,,test-hook-multiexample.feature,Tag Filter multi-scenario-outline feature.,runner/hooks,skipped,Runner hooks tests - V2 runner differs,,2025-12-29
+feature-198,feature,runner/hooks/test-hook-notags.feature,,,test-hook-notags.feature,no tags feature,runner/hooks,skipped,Runner hooks tests - V2 runner differs,,2025-12-29
+feature-199,feature,runner/hooks/test-hook-skip.feature,,,test-hook-skip.feature,test-hook-skip.feature,runner/hooks,skipped,Runner hooks tests - V2 runner differs,,2025-12-29
+feature-200,feature,runner/multi-scenario-fail.feature,,,multi-scenario-fail.feature,multi scenario,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-201,feature,runner/multi-scenario.feature,,,multi-scenario.feature,multi scenario,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-202,feature,runner/no-scenario-name.feature,,,no-scenario-name.feature,no-scenario-name.feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-203,feature,runner/notEqualMatch.feature,,,notEqualMatch.feature,not equal match test file,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-204,feature,runner/outline.feature,,,outline.feature,simple feature file,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-205,feature,runner/run-arg.feature,,,run-arg.feature,run-arg.feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-206,feature,runner/run-ignore.feature,,,run-ignore.feature,run-ignore.feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-207,feature,runner/scenario.feature,,,scenario.feature,simple feature file,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-208,feature,runner/signin.feature,,,signin.feature,signin.feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-209,feature,runner/stackoverflow-error.feature,,,stackoverflow-error.feature,stackoverflow-error.feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-210,feature,runner/table.feature,,,table.feature,table.feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-211,feature,runner/test-called-embedded-file.feature,,,test-called-embedded-file.feature,test-called-embedded-file.feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-212,feature,runner/test-called-embedded.feature,,,test-called-embedded.feature,test-called-embedded.feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-213,feature,runner/test-called.feature,,,test-called.feature,test-called.feature,runner,skipped,Runner tests - V2 runner differs,,2025-12-29
+feature-214,feature,scenario-outline-result.feature,,,scenario-outline-result.feature,my feature,root,skipped,Tests V1 result structure - V2 result differs,,2025-12-29
 feature-215,feature,scenario-variable-scope.feature,,,scenario-variable-scope.feature,scenario-variable-scope.feature,root,passed,variable scoping between scenarios,,2025-12-19
 feature-216,feature,schema-like.feature,,,schema-like.feature,json-schema like validation,root,passed,,,2025-12-28
-feature-217,feature,schema-read.feature,,,schema-read.feature,schema-read.feature,root,pending,,,
+feature-217,feature,schema-read.feature,,,schema-read.feature,schema-read.feature,root,passed,Schema validation with read(),,2025-12-29
 feature-218,feature,set-xml.feature,,,set-xml.feature,set-xml.feature,root,passed,XML table-based set with auto-build implemented,io/karatelabs/core/StepXmlTest,2025-12-19
 feature-219,feature,set.feature,,,set.feature,set.feature,root,passed,set keyword for setting json paths,,2025-12-19
 feature-220,feature,single-scenario.feature,,,single-scenario.feature,sample feature with distinct signature for each scenario,root,passed,multiple scenarios in feature,,2025-12-19
-feature-221,feature,sort-array.feature,,,sort-array.feature,example of js java hybrid sort,root,pending,,,
+feature-221,feature,sort-array.feature,,,sort-array.feature,example of js java hybrid sort,root,passed,karate.sort with JS comparator,,2025-12-29
 feature-222,feature,table.feature,,,table.feature,table.feature,root,passed,table keyword for creating arrays of objects,,2025-12-19
 feature-223,feature,tags.feature,,,tags.feature,tags.feature,root,passed,karate.tags functionality,,2025-12-19
-feature-224,feature,tags/env-tags.feature,,,env-tags.feature,env-tags.feature,tags,pending,,,
-feature-225,feature,tags/outline-tags.feature,,,outline-tags.feature,outline-tags.feature,tags,pending,,,
-feature-226,feature,to-bean-called.feature,,,to-bean-called.feature,to-bean-called.feature,root,pending,,,
-feature-227,feature,to-bean.feature,,,to-bean.feature,demo calling java methods with complex types,root,pending,,,
+feature-224,feature,tags/env-tags.feature,,,env-tags.feature,env-tags.feature,tags,passed,Environment-based tags work,,2025-12-29
+feature-225,feature,tags/outline-tags.feature,,,outline-tags.feature,outline-tags.feature,tags,passed,Tags in outline examples work,,2025-12-29
+feature-226,feature,to-bean-called.feature,,,to-bean-called.feature,to-bean-called.feature,root,skipped,Uses V1 test classes - karate.toBean tested in StepJsTest,,2025-12-29
+feature-227,feature,to-bean.feature,,,to-bean.feature,demo calling java methods with complex types,root,skipped,Uses V1 test classes - karate.toBean tested in StepJsTest,,2025-12-29
 feature-228,feature,type-conv.feature,,,type-conv.feature,"convert between json, xml and string",root,passed,19/23 pass; POJO tests skipped (V2 has equivalent); number formatting differences expected between JS engines,StepDataTypesTest#testReplaceWithJsonObject StepJsTest#testJsonPathOnStringAutoConvert,2025-12-20
 feature-229,feature,type-conversion.feature,,,type-conversion.feature,type-conversion.feature,root,passed,csv/yaml parsing; added testYamlNestedStructure,StepDataTypesTest,2025-12-20
-feature-230,feature,ui-google.feature,,,ui-google.feature,ui-google.feature,root,pending,,,
-feature-231,feature,users-doc.feature,,,users-doc.feature,users-doc.feature,root,pending,,,
+feature-230,feature,ui-google.feature,,,ui-google.feature,ui-google.feature,root,skipped,Browser/Driver - not in V2 scope,,2025-12-29
+feature-231,feature,users-doc.feature,,,users-doc.feature,users-doc.feature,root,skipped,Uses doc() templates - not in V2 scope,,2025-12-29
 feature-232,feature,utils-reuse-common.feature,,,utils-reuse-common.feature,utils-reuse-common.feature,root,passed,helper feature with common utils,,2025-12-20
-feature-233,feature,utils-reuse.feature,,,utils-reuse.feature,json and js functions loaded in the karate-config.js,root,pending,,,
-feature-234,feature,websocket.feature,,,websocket.feature,websocket.feature,root,pending,,,
+feature-233,feature,utils-reuse.feature,,,utils-reuse.feature,json and js functions loaded in the karate-config.js,root,skipped,Uses classpath: config dependencies - config reuse tested elsewhere,,2025-12-29
+feature-234,feature,websocket.feature,,,websocket.feature,websocket.feature,root,skipped,WebSocket - not in V2 scope,,2025-12-29
 feature-235,feature,xml-pretty.feature,,,xml-pretty.feature,xml-pretty.feature,root,passed,XML literal + set + match support added,io/karatelabs/core/StepXmlTest,2025-12-19
 feature-236,feature,xml/xml-and-xpath.feature,,,xml-and-xpath.feature,xml and xpath demos,xml,passed,2/2 scenarios pass - XML-as-JSON and XPath functions (count) fully supported,io/karatelabs/core/StepXmlTest,2025-12-19
 feature-237,feature,xml/xml-call.feature,,,xml-call.feature,Example,xml,passed,4/4 scenarios pass - get xml //xpath and call with embedded XML args fixed,io/karatelabs/core/xml/XmlCallTest,2025-12-19
