@@ -105,7 +105,7 @@ public class StepExecutor {
             // Check if keyword contains punctuation - means it's a JS expression
             // Examples: foo.bar, foo(), foo['bar'].baz('blah')
             // Note: cases like foo[x] are handled by the lexer (rewinds to GS_RHS mode)
-            if (keyword != null && hasPunctuation(keyword)) {
+            if (keyword != null && StepUtils.hasPunctuation(keyword)) {
                 String fullExpr = keyword + text;
                 if (step.getDocString() != null) {
                     fullExpr = fullExpr + step.getDocString();
@@ -148,6 +148,7 @@ public class StepExecutor {
                     case "form field" -> executeFormField(step);
                     case "form fields" -> executeFormFields(step);
                     case "request" -> executeRequest(step);
+                    case "retry until" -> executeRetryUntil(step);
                     case "method" -> executeMethod(step);
                     case "status" -> executeStatus(step);
                     case "multipart file" -> executeMultipartFile(step);
@@ -228,7 +229,7 @@ public class StepExecutor {
 
     private void executeDef(Step step) {
         String text = step.getText();
-        int eqIndex = findAssignmentOperator(text);
+        int eqIndex = StepUtils.findAssignmentOperator(text);
         if (eqIndex < 0) {
             throw new RuntimeException("def requires '=' assignment: " + text);
         }
@@ -264,13 +265,13 @@ public class StepExecutor {
         // Try to evaluate the first token to see if it's a JS function or Feature
         // Syntax: "fun" or "fun arg" where fun is a JS function variable or Feature
         // Note: read('file.js') returns a JS function, read('file.feature') returns a Feature
-        int spaceIdx = findCallArgSeparator(callExpr);
+        int spaceIdx = StepUtils.findCallArgSeparator(callExpr);
         String firstToken = spaceIdx > 0 ? callExpr.substring(0, spaceIdx) : callExpr;
 
         // Check if it's a read() call for a literal feature file path - use parseCallExpression
         // which properly handles embedded expressions like #(nodes)
         // For read(variable) or read('file.js'), we evaluate to determine the type
-        if (isLiteralFeatureRead(callExpr)) {
+        if (StepUtils.isLiteralFeatureRead(callExpr)) {
             // Fall through to standard feature call handling
         } else {
             // Try to evaluate as a JS expression (handles variables, read('file.js'), etc.)
@@ -389,7 +390,7 @@ public class StepExecutor {
             Map<String, Object> cached = (Map<String, Object>) cache.get(cacheKey);
             if (cached != null) {
                 // Return deep copy to prevent cross-scenario mutation
-                runtime.setVariable(resultVar, deepCopy(cached));
+                runtime.setVariable(resultVar, StepUtils.deepCopy(cached));
                 return;
             }
         }
@@ -402,7 +403,7 @@ public class StepExecutor {
             @SuppressWarnings("unchecked")
             Map<String, Object> resultVars = (Map<String, Object>) runtime.getVariable(resultVar);
             if (resultVars != null) {
-                cache.put(cacheKey, deepCopy(resultVars));
+                cache.put(cacheKey, StepUtils.deepCopy(resultVars));
             }
         }
     }
@@ -468,7 +469,7 @@ public class StepExecutor {
 
         // Check for Karate-style XML xpath: "varname /xpath = value"
         // The key indicator is "space + /" pattern before the equals sign
-        int eqIndex = findAssignmentOperator(text);
+        int eqIndex = StepUtils.findAssignmentOperator(text);
         if (eqIndex > 0) {
             String leftPart = text.substring(0, eqIndex).trim();
             // Look for "varname /xpath" pattern (space followed by /)
@@ -554,7 +555,7 @@ public class StepExecutor {
         // Navigate to base path if specified
         if (basePath != null && target instanceof Map) {
             String cleanPath = basePath.startsWith("$.") ? basePath.substring(2) : basePath;
-            Object nested = getOrCreatePath((Map<String, Object>) target, cleanPath);
+            Object nested = StepUtils.getOrCreatePath((Map<String, Object>) target, cleanPath);
             target = nested;
         }
 
@@ -572,7 +573,7 @@ public class StepExecutor {
                 boolean keepNull = valueExpr.startsWith("(") && valueExpr.endsWith(")");
                 Object value = runtime.eval(valueExpr);
                 if (value != null || keepNull) {
-                    setValueAtPath(target, path, value);
+                    StepUtils.setValueAtPath(target, path, value);
                 }
             }
         } else if (isArrayFormat) {
@@ -635,7 +636,7 @@ public class StepExecutor {
                             element = new LinkedHashMap<>();
                             resultList.set(targetIdx, element);
                         }
-                        setValueAtPath(element, path, value);
+                        StepUtils.setValueAtPath(element, path, value);
                     }
                 }
             }
@@ -746,70 +747,6 @@ public class StepExecutor {
     }
 
     @SuppressWarnings("unchecked")
-    private Object getOrCreatePath(Map<String, Object> target, String path) {
-        String[] parts = path.split("\\.");
-        Map<String, Object> current = target;
-        for (String part : parts) {
-            Object next = current.get(part);
-            if (next == null) {
-                next = new LinkedHashMap<>();
-                current.put(part, next);
-            }
-            if (next instanceof Map) {
-                current = (Map<String, Object>) next;
-            } else {
-                return next;
-            }
-        }
-        return current;
-    }
-
-    @SuppressWarnings("unchecked")
-    private void setValueAtPath(Object target, String path, Object value) {
-        if (target instanceof Map) {
-            Map<String, Object> map = (Map<String, Object>) target;
-            // Handle array bracket notation in path: bar[0]
-            if (path.contains("[")) {
-                int bracketIdx = path.indexOf('[');
-                String key = path.substring(0, bracketIdx);
-                int closeIdx = path.indexOf(']');
-                int arrayIdx = Integer.parseInt(path.substring(bracketIdx + 1, closeIdx));
-                String remainder = closeIdx + 1 < path.length() ? path.substring(closeIdx + 1) : "";
-
-                Object arr = map.get(key);
-                if (arr == null) {
-                    arr = new ArrayList<>();
-                    map.put(key, arr);
-                }
-                if (arr instanceof List) {
-                    List<Object> list = (List<Object>) arr;
-                    while (list.size() <= arrayIdx) {
-                        list.add(remainder.isEmpty() ? null : new LinkedHashMap<>());
-                    }
-                    if (remainder.isEmpty()) {
-                        list.set(arrayIdx, value);
-                    } else {
-                        String nextPath = remainder.startsWith(".") ? remainder.substring(1) : remainder;
-                        setValueAtPath(list.get(arrayIdx), nextPath, value);
-                    }
-                }
-            } else if (path.contains(".")) {
-                int dotIdx = path.indexOf('.');
-                String key = path.substring(0, dotIdx);
-                String rest = path.substring(dotIdx + 1);
-                Object nested = map.get(key);
-                if (nested == null) {
-                    nested = new LinkedHashMap<>();
-                    map.put(key, nested);
-                }
-                setValueAtPath(nested, rest, value);
-            } else {
-                map.put(path, value);
-            }
-        }
-    }
-
-    @SuppressWarnings("unchecked")
     private void executeRemove(Step step) {
         String text = step.getText().trim();
 
@@ -843,7 +780,7 @@ public class StepExecutor {
                 // For simple paths like "foo" or "foo.bar", traverse and remove
                 if (target instanceof Map) {
                     Map<String, Object> map = (Map<String, Object>) target;
-                    removeAtPath(map, pathWithoutDollar);
+                    StepUtils.removeAtPath(map, pathWithoutDollar);
                 }
             }
         } else {
@@ -859,47 +796,9 @@ public class StepExecutor {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private void removeAtPath(Map<String, Object> map, String path) {
-        // Handle bracket notation like "['foo']"
-        if (path.startsWith("[")) {
-            int closeIdx = path.indexOf(']');
-            if (closeIdx > 0) {
-                String key = path.substring(1, closeIdx);
-                // Remove quotes from key if present
-                if ((key.startsWith("'") && key.endsWith("'")) ||
-                    (key.startsWith("\"") && key.endsWith("\""))) {
-                    key = key.substring(1, key.length() - 1);
-                }
-                String remainder = closeIdx + 1 < path.length() ? path.substring(closeIdx + 1) : "";
-                if (remainder.isEmpty()) {
-                    map.remove(key);
-                } else {
-                    Object nested = map.get(key);
-                    if (nested instanceof Map) {
-                        String nextPath = remainder.startsWith(".") ? remainder.substring(1) : remainder;
-                        removeAtPath((Map<String, Object>) nested, nextPath);
-                    }
-                }
-            }
-        } else if (path.contains(".")) {
-            // Dot notation: "foo.bar"
-            int dotIdx = path.indexOf('.');
-            String key = path.substring(0, dotIdx);
-            String rest = path.substring(dotIdx + 1);
-            Object nested = map.get(key);
-            if (nested instanceof Map) {
-                removeAtPath((Map<String, Object>) nested, rest);
-            }
-        } else {
-            // Simple key
-            map.remove(path);
-        }
-    }
-
     private void executeText(Step step) {
         String text = step.getText();
-        int eqIndex = findAssignmentOperator(text);
+        int eqIndex = StepUtils.findAssignmentOperator(text);
         String name = text.substring(0, eqIndex).trim();
         // text keyword preserves the docstring as-is (no JS evaluation)
         String value = step.getDocString();
@@ -911,7 +810,7 @@ public class StepExecutor {
 
     private void executeJson(Step step) {
         String text = step.getText();
-        int eqIndex = findAssignmentOperator(text);
+        int eqIndex = StepUtils.findAssignmentOperator(text);
         String name = text.substring(0, eqIndex).trim();
         String expr = text.substring(eqIndex + 1).trim();
         // Use evalMarkupExpression to handle XML literals like: json foo = <bar>baz</bar>
@@ -934,7 +833,7 @@ public class StepExecutor {
 
     private void executeXml(Step step) {
         String text = step.getText();
-        int eqIndex = findAssignmentOperator(text);
+        int eqIndex = StepUtils.findAssignmentOperator(text);
         String name = text.substring(0, eqIndex).trim();
         String expr;
         if (step.getDocString() != null) {
@@ -961,7 +860,7 @@ public class StepExecutor {
 
     private void executeXmlString(Step step) {
         String text = step.getText();
-        int eqIndex = findAssignmentOperator(text);
+        int eqIndex = StepUtils.findAssignmentOperator(text);
         String name = text.substring(0, eqIndex).trim();
         String expr = text.substring(eqIndex + 1).trim();
         Object value = runtime.eval(expr);
@@ -977,7 +876,7 @@ public class StepExecutor {
 
     private void executeString(Step step) {
         String text = step.getText();
-        int eqIndex = findAssignmentOperator(text);
+        int eqIndex = StepUtils.findAssignmentOperator(text);
         String name = text.substring(0, eqIndex).trim();
         String expr = text.substring(eqIndex + 1).trim();
         Object value = runtime.eval(expr);
@@ -995,7 +894,7 @@ public class StepExecutor {
 
     private void executeCsv(Step step) {
         String text = step.getText();
-        int eqIndex = findAssignmentOperator(text);
+        int eqIndex = StepUtils.findAssignmentOperator(text);
         String name = text.substring(0, eqIndex).trim();
         String csvText;
         if (step.getDocString() != null) {
@@ -1013,7 +912,7 @@ public class StepExecutor {
 
     private void executeYaml(Step step) {
         String text = step.getText();
-        int eqIndex = findAssignmentOperator(text);
+        int eqIndex = StepUtils.findAssignmentOperator(text);
         String name = text.substring(0, eqIndex).trim();
         String yamlText;
         if (step.getDocString() != null) {
@@ -1031,7 +930,7 @@ public class StepExecutor {
 
     private void executeCopy(Step step) {
         String text = step.getText();
-        int eqIndex = findAssignmentOperator(text);
+        int eqIndex = StepUtils.findAssignmentOperator(text);
         String name = text.substring(0, eqIndex).trim();
         String expr = text.substring(eqIndex + 1).trim();
         Object value = runtime.eval(expr);
@@ -1115,7 +1014,7 @@ public class StepExecutor {
             runtime.setVariable(varName, varText);
         } else {
             // Single-line syntax: replace varName.token = 'replacement'
-            int eqIndex = findAssignmentOperator(text);
+            int eqIndex = StepUtils.findAssignmentOperator(text);
             if (eqIndex < 0) {
                 throw new RuntimeException("replace requires '=' assignment: " + text);
             }
@@ -1296,7 +1195,7 @@ public class StepExecutor {
         if (dollarIdx > 0) {
             String varName = expr.substring(0, dollarIdx).trim();
             String jsonPath = expr.substring(dollarIdx + 1).trim();
-            if (isValidVariableName(varName) && jsonPath.startsWith("$")) {
+            if (StepUtils.isValidVariableName(varName) && jsonPath.startsWith("$")) {
                 Object target = runtime.getVariable(varName);
                 if (target != null) {
                     return JsonPath.read(target, jsonPath);
@@ -1348,7 +1247,7 @@ public class StepExecutor {
         if (spaceSlashIdx > 0) {
             String varName = expr.substring(0, spaceSlashIdx).trim();
             String xpath = expr.substring(spaceSlashIdx + 1).trim();
-            if (isValidVariableName(varName)) {
+            if (StepUtils.isValidVariableName(varName)) {
                 Object target = runtime.getVariable(varName);
                 if (target instanceof Node) {
                     Object result = KarateJsUtils.evalXmlPath((Node) target, xpath);
@@ -1364,7 +1263,7 @@ public class StepExecutor {
             // Make sure the character before / is not a space
             if (expr.charAt(slashIdx - 1) != ' ') {
                 String varName = expr.substring(0, slashIdx);
-                if (isValidVariableName(varName)) {
+                if (StepUtils.isValidVariableName(varName)) {
                     Object target = runtime.getVariable(varName);
                     if (target instanceof Node) {
                         String xpath = expr.substring(slashIdx);
@@ -1525,19 +1424,10 @@ public class StepExecutor {
     }
 
     /**
-     * Checks if a string is a valid variable name.
-     * V2 allows underscore as first character (differs from V1 which only allows letters).
-     */
-    private boolean isValidVariableName(String name) {
-        return name != null && !name.isEmpty()
-                && name.matches("[a-zA-Z_][a-zA-Z0-9_]*");
-    }
-
-    /**
      * Validates a variable name and throws if invalid.
      */
     private void validateVariableName(String name) {
-        if (!isValidVariableName(name)) {
+        if (!StepUtils.isValidVariableName(name)) {
             throw new RuntimeException("invalid variable name: " + name);
         }
         if ("karate".equals(name)) {
@@ -1622,11 +1512,11 @@ public class StepExecutor {
                 if (i > 0) {
                     sb.append(' ');
                 }
-                sb.append(stringify(list.get(i)));
+                sb.append(StepUtils.stringify(list.get(i)));
             }
             LogContext.get().log(sb.toString());
         } else {
-            LogContext.get().log(stringify(value));
+            LogContext.get().log(StepUtils.stringify(value));
         }
     }
 
@@ -1663,7 +1553,7 @@ public class StepExecutor {
 
     private void executeParam(Step step) {
         String text = step.getText();
-        int eqIndex = findAssignmentOperator(text);
+        int eqIndex = StepUtils.findAssignmentOperator(text);
         String name = text.substring(0, eqIndex).trim();
         Object value = runtime.eval(text.substring(eqIndex + 1).trim());
         if (value instanceof List<?> list) {
@@ -1703,7 +1593,7 @@ public class StepExecutor {
             }
         } else {
             String text = step.getText();
-            int eqIndex = findAssignmentOperator(text);
+            int eqIndex = StepUtils.findAssignmentOperator(text);
             String name = text.substring(0, eqIndex).trim();
             Object value = runtime.eval(text.substring(eqIndex + 1).trim());
             http().header(name, value.toString());
@@ -1721,7 +1611,7 @@ public class StepExecutor {
     private void executeCookie(Step step) {
         // Cookies are accumulated in HttpRequestBuilder and combined when request is built
         String text = step.getText();
-        int eqIndex = findAssignmentOperator(text);
+        int eqIndex = StepUtils.findAssignmentOperator(text);
         String name = text.substring(0, eqIndex).trim();
         Object value = runtime.eval(text.substring(eqIndex + 1).trim());
         http().cookie(name, value.toString());
@@ -1739,7 +1629,7 @@ public class StepExecutor {
 
     private void executeFormField(Step step) {
         String text = step.getText();
-        int eqIndex = findAssignmentOperator(text);
+        int eqIndex = StepUtils.findAssignmentOperator(text);
         String name = text.substring(0, eqIndex).trim();
         Object value = runtime.eval(text.substring(eqIndex + 1).trim());
         http().formField(name, value.toString());
@@ -1763,6 +1653,11 @@ public class StepExecutor {
             body = runtime.eval(step.getText());
         }
         http().body(body);
+    }
+
+    private void executeRetryUntil(Step step) {
+        String condition = step.getText().trim();
+        http().retryUntil(condition);
     }
 
     @SuppressWarnings("unchecked")
@@ -1791,14 +1686,31 @@ public class StepExecutor {
             http().headers((Map<String, Object>) headersMap);
         }
 
-        HttpResponse response = http().invoke(method);
+        // Check for retry condition
+        String retryUntil = http().getRetryUntil();
+        HttpResponse response;
+        if (retryUntil != null) {
+            response = executeMethodWithRetry(method, retryUntil, config);
+        } else {
+            response = http().invoke(method);
+        }
 
         // Track previous request for karate.prevRequest
         if (response.getRequest() != null) {
             runtime.getKarate().setPrevRequest(response.getRequest());
         }
 
-        // Set response variables
+        setResponseVariables(response);
+
+        // Log HTTP request/response to context
+        LogContext ctx = LogContext.get();
+        if (response.getRequest() != null) {
+            ctx.log("{} {}", method, response.getRequest().getUrlAndPath());
+        }
+        ctx.log("{} ({} ms)", response.getStatus(), response.getResponseTime());
+    }
+
+    private void setResponseVariables(HttpResponse response) {
         Object body = response.getBodyConverted();
         runtime.setVariable("response", body);
         runtime.setVariable("responseStatus", response.getStatus());
@@ -1818,13 +1730,58 @@ public class StepExecutor {
             responseType = "string";
         }
         runtime.setVariable("responseType", responseType);
+    }
 
-        // Log HTTP request/response to context
-        LogContext ctx = LogContext.get();
-        if (response.getRequest() != null) {
-            ctx.log("{} {}", method, response.getRequest().getUrlAndPath());
+    private HttpResponse executeMethodWithRetry(String method, String retryUntil, KarateConfig config) {
+        int maxRetries = config.getRetryCount();
+        int sleepInterval = config.getRetryInterval();
+        int retryCount = 0;
+
+        while (true) {
+            if (retryCount == maxRetries) {
+                throw new RuntimeException("retry failed after " + maxRetries + " attempts: " + retryUntil);
+            }
+            if (retryCount > 0) {
+                try {
+                    logger.debug("sleeping {} ms before retry #{}", sleepInterval, retryCount);
+                    Thread.sleep(sleepInterval);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("retry interrupted", e);
+                }
+            }
+
+            // Make a copy of the request builder to preserve state for retry
+            HttpRequestBuilder httpCopy = http().copy();
+            HttpResponse response = http().invoke(method);
+
+            // Set response variables so the condition can access them
+            setResponseVariables(response);
+
+            // Evaluate retry condition
+            boolean conditionMet;
+            try {
+                Object result = runtime.eval(retryUntil);
+                conditionMet = Boolean.TRUE.equals(result);
+            } catch (Exception e) {
+                logger.warn("retry condition evaluation failed: {}", e.getMessage());
+                conditionMet = false;
+            }
+
+            if (conditionMet) {
+                if (retryCount > 0) {
+                    logger.debug("retry condition satisfied after {} attempts", retryCount + 1);
+                }
+                return response;
+            } else {
+                logger.debug("retry condition not satisfied: {}", retryUntil);
+            }
+
+            // Restore request state for next retry (http().invoke() resets it)
+            http().restoreFrom(httpCopy);
+
+            retryCount++;
         }
-        ctx.log("{} ({} ms)", response.getStatus(), response.getResponseTime());
     }
 
     private void executeStatus(Step step) {
@@ -1843,7 +1800,7 @@ public class StepExecutor {
     @SuppressWarnings("unchecked")
     private void executeMultipartFile(Step step) {
         String text = step.getText();
-        int eqIndex = findAssignmentOperator(text);
+        int eqIndex = StepUtils.findAssignmentOperator(text);
         if (eqIndex < 0) {
             throw new RuntimeException("multipart file requires '=' assignment: " + text);
         }
@@ -1906,7 +1863,7 @@ public class StepExecutor {
      */
     private void executeMultipartField(Step step) {
         String text = step.getText();
-        int eqIndex = findAssignmentOperator(text);
+        int eqIndex = StepUtils.findAssignmentOperator(text);
         if (eqIndex < 0) {
             throw new RuntimeException("multipart field requires '=' assignment: " + text);
         }
@@ -2051,13 +2008,13 @@ public class StepExecutor {
         // Try to evaluate the first token to see if it's a JS function
         // Syntax: "call fun" or "call fun arg" where fun is a JS function variable
         // Note: read('file.js') returns a JS function, read('file.feature') returns a Feature
-        int spaceIdx = findCallArgSeparator(text);
+        int spaceIdx = StepUtils.findCallArgSeparator(text);
         String firstToken = spaceIdx > 0 ? text.substring(0, spaceIdx) : text;
 
         // Check if it's a read() call for a literal feature file path - use parseCallExpression
         // which properly handles embedded expressions like #(nodes)
         // For read(variable) or read('file.js'), we evaluate to determine the type
-        if (isLiteralFeatureRead(text)) {
+        if (StepUtils.isLiteralFeatureRead(text)) {
             // Fall through to standard feature call handling
         } else {
             // Try to evaluate as a JS expression (handles variables, read('file.js'), etc.)
@@ -2278,7 +2235,7 @@ public class StepExecutor {
             if (cached != null) {
                 // Apply deep copies of cached variables to current runtime
                 @SuppressWarnings("unchecked")
-                Map<String, Object> copies = (Map<String, Object>) deepCopy(cached);
+                Map<String, Object> copies = (Map<String, Object>) StepUtils.deepCopy(cached);
                 for (Map.Entry<String, Object> entry : copies.entrySet()) {
                     runtime.setVariable(entry.getKey(), entry.getValue());
                 }
@@ -2291,7 +2248,7 @@ public class StepExecutor {
 
         // Cache a deep copy of the result
         if (cache != null && fr.getLastExecuted() != null) {
-            cache.put(cacheKey, deepCopy(runtime.getAllVariables()));
+            cache.put(cacheKey, StepUtils.deepCopy(runtime.getAllVariables()));
         }
     }
 
@@ -2366,101 +2323,10 @@ public class StepExecutor {
      * - @tag - call scenario in same file by tag
      */
     private void parsePathAndTag(String rawPath, CallExpression expr) {
-        ParsedFeaturePath parsed = parseFeaturePath(rawPath);
-        expr.path = parsed.path;
-        expr.tagSelector = parsed.tagSelector;
-        expr.sameFile = parsed.sameFile;
-    }
-
-    /**
-     * Parsed result of a feature path with optional tag selector.
-     * Used by both StepExecutor (call keyword) and ScenarioRuntime (callSingle).
-     */
-    public record ParsedFeaturePath(String path, String tagSelector, boolean sameFile) {}
-
-    /**
-     * Parse a feature path into path and tag selector components.
-     * Supports:
-     * - file.feature@tag - call specific scenario by tag
-     * - @tag - call scenario in same file by tag
-     * - file.feature - normal call without tag
-     *
-     * @param rawPath the raw path string (may contain @tag suffix)
-     * @return ParsedFeaturePath with separated path and tag components
-     */
-    public static ParsedFeaturePath parseFeaturePath(String rawPath) {
-        if (rawPath.startsWith("@")) {
-            // Same-file tag call: @tagname
-            return new ParsedFeaturePath(null, rawPath, true);
-        }
-        // Check for tag suffix: file.feature@tag
-        int tagPos = rawPath.indexOf(".feature@");
-        if (tagPos != -1) {
-            String path = rawPath.substring(0, tagPos + 8);  // "file.feature"
-            String tag = "@" + rawPath.substring(tagPos + 9);  // "@tag"
-            return new ParsedFeaturePath(path, tag, false);
-        }
-        // No tag - normal call
-        return new ParsedFeaturePath(rawPath, null, false);
-    }
-
-    /**
-     * Find the separator between the call target and arguments.
-     * Handles quoted strings in read() calls, e.g., read('foo bar.js') arg
-     * Similar to V1's parseCallArgs but finds position instead of splitting.
-     */
-    private int findCallArgSeparator(String text) {
-        // If it's a read() call, find the closing paren first
-        if (text.startsWith("read(")) {
-            int parenDepth = 0;
-            boolean inSingleQuote = false;
-            boolean inDoubleQuote = false;
-            for (int i = 0; i < text.length(); i++) {
-                char c = text.charAt(i);
-                if (c == '\'' && !inDoubleQuote) {
-                    inSingleQuote = !inSingleQuote;
-                } else if (c == '"' && !inSingleQuote) {
-                    inDoubleQuote = !inDoubleQuote;
-                }
-                if (inSingleQuote || inDoubleQuote) continue;
-                if (c == '(') parenDepth++;
-                else if (c == ')') {
-                    parenDepth--;
-                    if (parenDepth == 0) {
-                        // Found closing paren, look for space after it
-                        int spacePos = text.indexOf(' ', i + 1);
-                        return spacePos;
-                    }
-                }
-            }
-            return -1;
-        }
-        // For non-read() calls, just find first space
-        return text.indexOf(' ');
-    }
-
-    /**
-     * Check if a call expression is a read() call for a literal feature file path.
-     * Returns true only for read('...feature') or read("...feature") with literal string paths.
-     * Returns false for read(variable) or read('file.js') - these should be evaluated to determine type.
-     */
-    private boolean isLiteralFeatureRead(String text) {
-        if (!text.startsWith("read(")) return false;
-        // Only handle literal string paths, not variable references
-        int openParen = text.indexOf('(');
-        if (openParen == -1) return false;
-        int nextChar = openParen + 1;
-        if (nextChar >= text.length()) return false;
-        char c = text.charAt(nextChar);
-        // Must start with quote for literal path
-        if (c != '\'' && c != '"') return false;
-        // Extract the path from read('path') or read("path")
-        char quote = c;
-        int start = nextChar;
-        int end = text.indexOf(quote, start + 1);
-        if (end == -1) return false;
-        String path = text.substring(start + 1, end);
-        return path.endsWith(".feature");
+        StepUtils.ParsedFeaturePath parsed = StepUtils.parseFeaturePath(rawPath);
+        expr.path = parsed.path();
+        expr.tagSelector = parsed.tagSelector();
+        expr.sameFile = parsed.sameFile();
     }
 
     private static class CallExpression {
@@ -2504,7 +2370,7 @@ public class StepExecutor {
 
     private void executeConfigure(Step step) {
         String text = step.getText();
-        int eqIndex = findAssignmentOperator(text);
+        int eqIndex = StepUtils.findAssignmentOperator(text);
         if (eqIndex < 0) {
             throw new RuntimeException("configure requires '=' assignment: " + text);
         }
@@ -2513,103 +2379,7 @@ public class StepExecutor {
         runtime.configure(key, value);
     }
 
-    // ========== Helpers ==========
-
-    private int findAssignmentOperator(String text) {
-        // Find the first '=' that's not part of '==' or '!=' or '<=' or '>='
-        int i = 0;
-        while (i < text.length()) {
-            char c = text.charAt(i);
-            if (c == '=' && i > 0) {
-                char prev = text.charAt(i - 1);
-                if (prev != '=' && prev != '!' && prev != '<' && prev != '>') {
-                    // Check not followed by '='
-                    if (i + 1 >= text.length() || text.charAt(i + 1) != '=') {
-                        return i;
-                    }
-                }
-            }
-            i++;
-        }
-        return -1;
-    }
-
-    private String stringify(Object value) {
-        if (value == null) {
-            return "null";
-        } else if (value instanceof String) {
-            return (String) value;
-        } else if (value instanceof Map || value instanceof List) {
-            return Json.stringifyStrict(value);
-        } else if (value instanceof Node) {
-            return Xml.toString((Node) value, false);
-        } else {
-            return value.toString();
-        }
-    }
-
-    /**
-     * Check if string contains JS expression punctuation like . ( [
-     * Used to detect if a "keyword" is actually a JS expression like foo.bar or foo()
-     * Space is allowed (for multi-word keywords like "form field")
-     */
-    private boolean hasPunctuation(String s) {
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            // Check for JS expression punctuation: . ( ) [ ] ' "
-            if (c == '.' || c == '(' || c == ')' || c == '[' || c == ']' || c == '\'' || c == '"') {
-                return true;
-            }
-        }
-        return false;
-    }
-
     // ========== Karate Expression Helpers ==========
-
-    /**
-     * Evaluates $varname[*].path or $varname.path syntax.
-     * This is a shortcut for jsonpath on a variable.
-     * Examples: $foo[*].name, $response.data, $[*].id (on response)
-     */
-    private Object evalJsonPathShortcut(String expr) {
-        // $varname.path or $varname[...].path
-        // Parse: extract variable name and jsonpath
-        String withoutDollar = expr.substring(1); // remove leading $
-
-        // Special case: $[...] or $. means use 'response' variable
-        if (withoutDollar.startsWith("[") || withoutDollar.startsWith(".")) {
-            Object target = runtime.getVariable("response");
-            String path = "$" + withoutDollar;
-            return JsonPath.read(target, path);
-        }
-
-        // Find where the path starts (at . or [)
-        int pathStart = -1;
-        for (int i = 0; i < withoutDollar.length(); i++) {
-            char c = withoutDollar.charAt(i);
-            if (c == '.' || c == '[') {
-                pathStart = i;
-                break;
-            }
-        }
-
-        String varName;
-        String jsonPath;
-        if (pathStart < 0) {
-            // No path, just $varname - return the variable itself
-            varName = withoutDollar;
-            return runtime.getVariable(varName);
-        } else {
-            varName = withoutDollar.substring(0, pathStart);
-            jsonPath = "$" + withoutDollar.substring(pathStart);
-        }
-
-        Object target = runtime.getVariable(varName);
-        if (target == null) {
-            return null;
-        }
-        return JsonPath.read(target, jsonPath);
-    }
 
     /**
      * Evaluates get[N] varname path or get varname path syntax.
@@ -2828,7 +2598,7 @@ public class StepExecutor {
                 // For inline optional, substitute empty string
                 // (key removal only applies to whole-value expressions)
             } else if (value != null) {
-                result.append(stringify(value));
+                result.append(StepUtils.stringify(value));
             }
             i = j;
         }
@@ -2861,7 +2631,7 @@ public class StepExecutor {
                             if (optional && result == null) {
                                 toRemove.add(attrib);
                             } else {
-                                attrib.setValue(result == null ? "" : stringify(result));
+                                attrib.setValue(result == null ? "" : StepUtils.stringify(result));
                             }
                         } catch (Exception e) {
                             // Leave as-is on error
@@ -2908,7 +2678,7 @@ public class StepExecutor {
                             // For CDATA or non-Node results, convert to string
                             String strResult = (result instanceof Node)
                                     ? Xml.toString((Node) result, false)
-                                    : (result == null ? "" : stringify(result));
+                                    : (result == null ? "" : StepUtils.stringify(result));
                             child.setNodeValue(strResult);
                         }
                     } catch (Exception e) {
@@ -2933,35 +2703,6 @@ public class StepExecutor {
                 }
             }
         }
-    }
-
-    // ========== Deep Copy Utility ==========
-
-    /**
-     * Deep copy to prevent cross-scenario mutation of cached data.
-     * Creates new ArrayList/LinkedHashMap instances for collections.
-     */
-    @SuppressWarnings("unchecked")
-    private Object deepCopy(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof Map) {
-            Map<String, Object> copy = new LinkedHashMap<>();
-            for (Map.Entry<String, Object> entry : ((Map<String, Object>) value).entrySet()) {
-                copy.put(entry.getKey(), deepCopy(entry.getValue()));
-            }
-            return copy;
-        }
-        if (value instanceof List) {
-            List<Object> copy = new ArrayList<>();
-            for (Object item : (List<Object>) value) {
-                copy.add(deepCopy(item));
-            }
-            return copy;
-        }
-        // Primitives, strings, functions, etc. are immutable - return as-is
-        return value;
     }
 
 }

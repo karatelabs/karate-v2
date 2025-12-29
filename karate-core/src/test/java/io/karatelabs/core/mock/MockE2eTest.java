@@ -52,6 +52,7 @@ class MockE2eTest {
 
             Background:
               * def counter = 0
+              * def retryCounter = { value: 0 }
               * def payments = {}
               * def foo = { bar: 'baz' }
 
@@ -163,6 +164,15 @@ class MockE2eTest {
 
             Scenario: pathMatches('/stable')
               * def response = { status: 'ok' }
+
+            # Counter-based retry endpoint - returns counter value, increments each call
+            Scenario: pathMatches('/counter/reset')
+              * retryCounter.value = 0
+              * def response = { counter: 0 }
+
+            Scenario: pathMatches('/counter')
+              * retryCounter.value = retryCounter.value + 1
+              * def response = { id: retryCounter.value }
 
             # ===== Binary scenarios =====
 
@@ -920,6 +930,139 @@ class MockE2eTest {
         } finally {
             counterServer.stopAsync();
         }
+    }
+
+    // ===== Retry Until Tests =====
+
+    @Test
+    void testRetryUntilBasic() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Retry Until Basic
+
+            Scenario: Retry until response condition is met
+            * url 'http://localhost:%d'
+
+            # Reset counter
+            * path '/counter/reset'
+            * method get
+            * status 200
+
+            # Retry until response.id > 3
+            * configure retry = { count: 10, interval: 0 }
+            * path '/counter'
+            * retry until response.id > 3
+            * method get
+            * status 200
+            * match response.id == 4
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testRetryUntilWithStatusCheck() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Retry Until With Status
+
+            Scenario: Retry until status and response condition
+            * url 'http://localhost:%d'
+
+            # Reset counter
+            * path '/counter/reset'
+            * method get
+            * status 200
+
+            # Retry until responseStatus == 200 && response.id >= 2
+            * configure retry = { count: 5, interval: 0 }
+            * path '/counter'
+            * retry until responseStatus == 200 && response.id >= 2
+            * method get
+            * status 200
+            * match response.id == 2
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testRetryUntilExceedsMaxRetries() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Retry Until Max Retries
+
+            Scenario: Retry exceeds max attempts
+            * url 'http://localhost:%d'
+
+            # Reset counter
+            * path '/counter/reset'
+            * method get
+            * status 200
+
+            # Try to get id > 100 with only 3 retries - should fail
+            * configure retry = { count: 3, interval: 0 }
+            * path '/counter'
+            * retry until response.id > 100
+            * method get
+            """.formatted(port));
+
+        // This should fail because max retries exceeded
+        assertFailed(sr);
+    }
+
+    @Test
+    void testRetryUntilWithJsFunction() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Retry Until With JS Function
+
+            Scenario: Use JS function in retry condition
+            * url 'http://localhost:%d'
+
+            # Reset counter
+            * path '/counter/reset'
+            * method get
+            * status 200
+
+            # Define a function to check condition
+            * def isReady = function(){ return response.id >= 3 }
+
+            * configure retry = { count: 10, interval: 0 }
+            * path '/counter'
+            * retry until isReady()
+            * method get
+            * status 200
+            * match response.id == 3
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureRetryDefaults() {
+        // Test that default retry config is count=3, interval=3000
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Configure Retry Defaults
+
+            Scenario: Check default retry configuration
+            * def cfg = karate.config
+            * match cfg.retryCount == 3
+            * match cfg.retryInterval == 3000
+            """);
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureRetryCustom() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Configure Retry Custom
+
+            Scenario: Set custom retry configuration
+            * configure retry = { count: 5, interval: 100 }
+            * def cfg = karate.config
+            * match cfg.retryCount == 5
+            * match cfg.retryInterval == 100
+            """);
+
+        assertPassed(sr);
     }
 
 }

@@ -45,7 +45,7 @@ Suite → FeatureRuntime → ScenarioRuntime → StepExecutor
 ### Step Keywords
 - **Variables:** `def`, `set`, `remove`, `text`, `json`, `xml`, `csv`, `yaml`, `string`, `xmlstring`, `copy`, `table`, `replace`
 - **Assertions:** `match` (all operators), `assert`, `print`
-- **HTTP:** `url`, `path`, `param`, `params`, `header`, `headers`, `cookie`, `cookies`, `form field`, `form fields`, `request`, `method`, `status`, `multipart file/field/fields/files/entity`
+- **HTTP:** `url`, `path`, `param`, `params`, `header`, `headers`, `cookie`, `cookies`, `form field`, `form fields`, `request`, `retry until`, `method`, `status`, `multipart file/field/fields/files/entity`
 - **Control:** `call`, `callonce`, `eval`, `doc`
 - **Config:** `configure` (see [Configure Keys](#configure-keys))
 

@@ -51,6 +51,7 @@ public class HttpRequestBuilder implements SimpleObject {
     private Set<Cookie> cookies;
     private String charset;
     private AuthHandler authHandler;
+    private String retryUntil;
 
     private final HttpClient client;
 
@@ -69,6 +70,7 @@ public class HttpRequestBuilder implements SimpleObject {
         cookies = null;
         charset = null;
         authHandler = null;
+        retryUntil = null;
     }
 
     public HttpRequestBuilder copy() {
@@ -83,7 +85,22 @@ public class HttpRequestBuilder implements SimpleObject {
         hrb.cookies = cookies;
         hrb.charset = charset;
         hrb.authHandler = authHandler;
+        hrb.retryUntil = retryUntil;
         return hrb;
+    }
+
+    public void restoreFrom(HttpRequestBuilder source) {
+        this.url = source.url;
+        this.method = source.method;
+        this.paths = source.paths;
+        this.params = source.params;
+        this.headers = source.headers;
+        this.multiPart = source.multiPart;
+        this.body = source.body;
+        this.cookies = source.cookies;
+        this.charset = source.charset;
+        this.authHandler = source.authHandler;
+        this.retryUntil = source.retryUntil;
     }
 
     public HttpRequest build() {
@@ -346,6 +363,19 @@ public class HttpRequestBuilder implements SimpleObject {
     public HttpRequestBuilder auth(AuthHandler authHandler) {
         this.authHandler = authHandler;
         return this;
+    }
+
+    public HttpRequestBuilder retryUntil(String condition) {
+        this.retryUntil = condition;
+        return this;
+    }
+
+    public String getRetryUntil() {
+        return retryUntil;
+    }
+
+    public boolean isRetry() {
+        return retryUntil != null;
     }
 
     public String getUri() {

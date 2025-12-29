@@ -509,7 +509,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         String filePath = path.contains("?") ? path.substring(0, path.indexOf('?')) : path;
 
         // Parse @tag selector from path using shared utility
-        StepExecutor.ParsedFeaturePath parsed = StepExecutor.parseFeaturePath(filePath);
+        StepUtils.ParsedFeaturePath parsed = StepUtils.parseFeaturePath(filePath);
         filePath = parsed.path() != null ? parsed.path() : filePath;
         String tagSelector = parsed.tagSelector();
 
