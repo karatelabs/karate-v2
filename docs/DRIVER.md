@@ -11,11 +11,175 @@
 | **2** | Browser Launch + Minimal Driver | ✅ Complete |
 | **3** | Testcontainers + E2E Infrastructure | ✅ Complete |
 | **4** | Visibility Layer (DriverInspector) | ✅ Complete |
-| **5** | Element Operations | ⬜ Not started |
+| **5** | Element Operations | ✅ Complete |
 | **6** | Frame & Dialog Support | ⬜ Not started |
 | **7** | Advanced Features | ⬜ Not started |
+| **8** | WebDriver Backend | ⬜ Not started |
+| **9** | Playwright Wire Protocol | ⬜ Not started |
+| **10** | WebDriver BiDi | ⬜ Not started |
 
 **Legend:** ⬜ Not started | 🟡 In progress | ✅ Complete
+
+**Deferred Features:**
+- Capabilities query API (`driver.supports(Capability.X)`)
+- Video recording (→ commercial JavaFX app)
+- karate-robot (cross-platform desktop automation)
+
+---
+
+## V2 Architecture Decisions (Interview Summary)
+
+This section captures architectural decisions from detailed design interviews.
+
+### Unified Driver Interface
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Interface name | `Driver` | V1 familiarity, established Karate terminology |
+| CDP-only APIs (intercept, screencast) | Base interface with graceful degradation | Methods return null/no-op on WebDriver. Simple API, cross-browser portable |
+| Strict mode | Configurable + logging | Log warnings by default, `driver.strict(true)` throws on unsupported ops |
+| Async events | Separate Inspector class | `DriverInspector` handles async. Driver stays pure sync. Current v2 approach |
+| Inspector binding | Always tied to Driver | `new DriverInspector(driver)`. Lifecycle managed together |
+
+### V1 Compatibility Strategy
+
+| Aspect | Approach |
+|--------|----------|
+| Gherkin/DSL | **Drop-in compatible** - users see same keywords (`click()`, `html()`, etc.) |
+| StepExecutor | Handles translation - internal Driver interface can differ |
+| Java API | **Clean break** - redesigned, not constrained by v1 quirks |
+| Feature-file mocks | **Both modes** - feature-file mocks for Karate users, callback for Java API |
+| Entry points | **Parallel** - both DSL and Java API as first-class citizens |
+
+### Timeout Taxonomy
+
+Unified at Driver level with specific timeout types:
+```java
+driver.sessionTimeout(Duration)   // Overall session timeout
+driver.connectTimeout(Duration)   // Connection establishment
+driver.pageLoadTimeout(Duration)  // Page navigation
+driver.elementTimeout(Duration)   // Element wait operations
+driver.scriptTimeout(Duration)    // JavaScript execution
+```
+
+### Error Handling
+
+| Aspect | Decision |
+|--------|----------|
+| Verbosity | **Always verbose** - include selector, page URL, timing, nearby elements |
+| Rationale | AI-agent friendly. Detailed context aids debugging |
+| Exception type | `DriverException` with programmatic access to context |
+
+### AI Agent Integration
+
+**API Design for AI Agents (Claude Code, etc.):**
+
+```java
+// Tiered API: summary + drill-down
+inspector.getSnapshot()           // Light summary
+inspector.getElementDetails(sel)  // Deep dive on specific element
+
+// AI-optimized views
+inspector.getAllClickables()      // Returns List<Element> with coords
+inspector.getAllInputFields()     // Returns List<Element> with coords
+inspector.getInteractableElements() // Combined view
+inspector.getErrorState()         // Current errors/warnings
+```
+
+**Element Objects:**
+- Return full `Element` objects (not DTOs)
+- Implement `SimpleObject` interface for Karate JS engine integration
+- Seamless flow between DOM and Karate in both directions
+- `element.click()` works directly
+
+**Coordinate System:**
+- Viewport-relative by default
+- Suitable for CDP `Input.dispatchMouseEvent`
+- Desktop (karate-robot) handles screen-absolute transform
+
+**Tool Use Abstraction:**
+- AI agents access via constrained tools, not direct API
+- Tools: `click_element`, `get_page_state`, `fill_input`, etc.
+- Auditable, controllable actions
+
+### JavaScript API Vision
+
+**Three Layers:**
+1. **Browser-side JS** - Enhanced helpers injected into page via `script()`
+2. **Karate-side JS** - GraalJS scripts that orchestrate Driver methods
+3. **Interactive REPL** - Live browser inspection for authoring/debugging
+
+**Design Principles:**
+- Avoid writing raw DOM JS - Locators generates and injects it
+- V2 allows tests in pure JS (not just Gherkin)
+- Simpler than async/await - sync waits with retry
+
+### Wait Model Enhancements
+
+**Observe Mode (V2 Launch):**
+```java
+// MutationObserver-based waits
+driver.waitFor("#element", WaitOptions.observe())  // Waits for DOM stability
+element.waitUntil("_.textContent.length > 0", WaitOptions.observe())
+```
+
+**Promise Support (V2 Launch):**
+- Even without full JS engine Promise support
+- Callback pattern: `driver.waitUntil(() -> condition, callback)`
+- Enables more reactive patterns
+
+### Multi-Backend Architecture
+
+**Phase 8: WebDriver Backend**
+- Reuse Karate HTTP client for consistency
+- Sync REST/HTTP to chromedriver, geckodriver, safaridriver, msedgedriver
+- W3C WebDriver spec compliance
+
+**Phase 9: Playwright Wire Protocol (Low Priority)**
+- Keep wire protocol approach (no embedded playwright-java)
+- Goal: become better than Playwright official libs
+- Simpler JS API, no async/await, mix API+UI testing
+- Redo with v2's improved WebSocket infrastructure
+
+**Phase 10: WebDriver BiDi (After Stable)**
+- Wait for CDP + classic WebDriver stability
+- BiDi spec still evolving
+- Add when spec matures (2025+)
+
+### Browser Provisioning
+
+| V1 | V2 |
+|----|-----|
+| Target interface (DockerTarget, custom) | **Testcontainers only** |
+| Custom provisioners | Simplified - use Testcontainers patterns |
+
+### Commercial JavaFX Application (Deferred)
+
+**Product Type:** Standalone product using karate-core as library
+
+**Features to Explore:**
+- Real-time browser visualization with CDP Screencast
+- LLM-based coding agent integration for test authoring/debugging
+- Step-through execution with breakpoints
+- DOM inspection and element highlighting
+- Network request/response viewer
+- Console log streaming
+- AI-assisted locator suggestions
+- Video recording (premium feature)
+
+**Architecture:**
+- CdpInspector (renamed from DriverInspector) as observability foundation
+- Event-driven updates via CDP subscriptions
+- Separation of driver logic from UI concerns
+- Tool use abstraction for AI agent access
+
+### karate-robot (Deferred)
+
+**Separate module** for cross-platform desktop automation:
+- Mac, Windows, Linux support
+- Robot-like capabilities for "browser use" flows
+- Coordinate transform from viewport to screen-absolute
+- Powerful for computer-use agent scenarios
 
 ### Phase 3 Notes
 
@@ -49,11 +213,40 @@
 - Added 5 navigation E2E tests using setUrl()
 - All 25 E2E tests passing
 
-**Next Steps for Phase 5:**
-- Implement Locators class for selector transformation
-- Add element operations (click, input, clear, focus, etc.)
-- Add Element class abstraction
-- Add wait methods (waitFor, waitForAny, waitUntil)
+### Phase 5 Notes
+
+**Completed:**
+- Created `Locators` class with full selector transformation:
+  - CSS selectors, XPath, wildcard locators (`{div}text`, `{^div}partial`, `{tag:2}text`)
+  - Proper quote escaping (fixed v1 bugs with single/double quotes)
+  - JS string escaping for special characters
+  - Script execution helpers (`scriptSelector`, `scriptAllSelector`)
+  - UI helper functions (`highlight`, `optionSelector`, `getPositionJs`, etc.)
+- Created `Element` class abstraction:
+  - Wrapper around DOM elements with fluent API
+  - Action methods: `click()`, `input()`, `clear()`, `focus()`, `scroll()`, `highlight()`
+  - State methods: `text()`, `html()`, `value()`, `attribute()`, `property()`, `enabled()`
+  - Wait methods: `waitFor()`, `waitForText()`, `waitForEnabled()`, `waitUntil()`
+- Added element operations to `CdpDriver`:
+  - Full element operations: `click`, `input`, `clear`, `focus`, `scroll`, `highlight`, `select`, `value`
+  - Element state: `text`, `html`, `value`, `attribute`, `property`, `enabled`, `exists`, `position`
+  - Locator methods: `locate`, `locateAll`, `optional`
+  - Script on elements: `script(locator, expression)`, `scriptAll(locator, expression)`
+- Added wait methods to `CdpDriver`:
+  - `waitFor`, `waitForAny`, `waitForText`, `waitForEnabled`, `waitForUrl`
+  - `waitUntil(locator, expression)`, `waitUntil(expression)`, `waitUntil(supplier)`
+  - `waitForResultCount(locator, count)`
+- Created `DriverException` for driver-specific errors
+- 72 unit tests for Locators class
+- 37 E2E tests for element operations
+- All 182 driver tests passing
+
+**Bug Fixes from v1:**
+1. XPath quote escaping - v1 breaks on `{div}It's working`
+2. JS string escaping for quotes/backslashes/newlines
+3. getPositionJs dimension bug (v1 incorrectly adds scroll offset to width/height)
+4. toFunction empty string handling (returns identity function)
+5. Input validation (early failure with clear messages)
 
 ### Future Enhancements (TODO)
 
@@ -69,6 +262,22 @@
 - Frames can be stitched with ffmpeg: `ffmpeg -framerate 2 -i '*.png' -c:v libx264 output.mp4`
 - Useful for debugging complex test failures
 - Not critical for v2 launch
+
+**JavaFX Commercial Application (TODO: Brainstorm):**
+- Rename `DriverInspector` to `CdpInspector` for consistency with CDP naming convention
+- Build a JavaFX desktop application for visual debugging and orchestration
+- Features to explore:
+  - Real-time browser visualization with CDP Screencast
+  - LLM-based coding agent integration for test authoring/debugging
+  - Step-through execution with breakpoints
+  - DOM inspection and element highlighting
+  - Network request/response viewer
+  - Console log streaming
+  - AI-assisted locator suggestions
+- Architecture considerations:
+  - CdpInspector as the observability foundation
+  - Event-driven updates via CDP subscriptions
+  - Separation of driver logic from UI concerns
 
 ---
 
