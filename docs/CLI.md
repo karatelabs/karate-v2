@@ -420,6 +420,44 @@ karate mcp --stdio
 
 > **Note:** `karate init` is implemented in Rust. See [Rust Launcher Spec](../../karate-cli/docs/spec.md) for details.
 
+### `karate perf`
+
+Run performance tests with Gatling (requires karate-gatling-bundle.jar in `~/.karate/ext/`):
+
+```bash
+karate perf --users 10 --duration 30s features/
+```
+
+See [GATLING.md](./GATLING.md) for full documentation.
+
+---
+
+## CLI Extension SPI (CommandProvider)
+
+Modules can register additional subcommands via ServiceLoader:
+
+```java
+// io.karatelabs.cli.CommandProvider
+public interface CommandProvider {
+    String getName();           // e.g., "perf"
+    String getDescription();    // e.g., "Run performance tests"
+    Object getCommand();        // PicoCLI command instance
+}
+```
+
+**Registration:** Create `META-INF/services/io.karatelabs.cli.CommandProvider` with implementation class name.
+
+**Discovery:** Main.java discovers providers on classpath:
+
+```java
+ServiceLoader<CommandProvider> providers = ServiceLoader.load(CommandProvider.class);
+for (CommandProvider provider : providers) {
+    spec.addSubcommand(provider.getName(), provider.getCommand());
+}
+```
+
+**Use case:** The karate-gatling module uses this to add the `perf` subcommand when its JAR is in `~/.karate/ext/`.
+
 ---
 
 ## TODO

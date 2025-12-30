@@ -1,6 +1,6 @@
 # Karate v2 Runtime Design
 
-> See also: [CLI.md](./CLI.md) | [PARSER.md](./PARSER.md) | [JS_ENGINE.md](./JS_ENGINE.md) | [REPORTS.md](./REPORTS.md) | [EVENTS.md](./EVENTS.md) | [PRINCIPLES.md](./PRINCIPLES.md)
+> See also: [CLI.md](./CLI.md) | [PARSER.md](./PARSER.md) | [JS_ENGINE.md](./JS_ENGINE.md) | [REPORTS.md](./REPORTS.md) | [EVENTS.md](./EVENTS.md) | [PRINCIPLES.md](./PRINCIPLES.md) | [GATLING.md](./GATLING.md)
 
 ---
 
@@ -26,10 +26,13 @@ Suite → FeatureRuntime → ScenarioRuntime → StepExecutor
 | `FeatureRuntime` | Feature execution, scenario iteration, caching |
 | `ScenarioRuntime` | Scenario execution, variable scope |
 | `StepExecutor` | Keyword-based step dispatch |
-| `KarateJs` | JS engine bridge, `karate.*` methods |
+| `KarateJs` | JS engine bridge, `karate.*` methods, implements `PerfContext` |
 | `KarateJsBase` | Shared state and infrastructure for KarateJs |
 | `KarateJsUtils` | Stateless utility methods for `karate.*` API |
 | `KarateJsContext` | Runtime context interface (implemented by ScenarioRuntime) |
+| `PerfContext` | Interface for custom performance event capture (Gatling integration) |
+| `PerfEvent` | Data record for performance events (name, startTime, endTime) |
+| `CommandProvider` | SPI for CLI subcommand registration (see [CLI.md](./CLI.md)) |
 | `Runner` | Fluent API for test execution |
 | `RuntimeHook` | Lifecycle callbacks for test execution interception (see [EVENTS.md](./EVENTS.md) for new API) |
 | `ResultListener` | Observation interface for reporting |
@@ -141,6 +144,7 @@ Intentional deviations from V1 behavior:
 | `call(path, arg?)` | KarateJs | Call feature file |
 | `callonce(path, arg?)` | KarateJs | Call feature once per feature |
 | `callSingle(path, arg?)` | KarateJs | Call once per suite (cached) |
+| `capturePerfEvent(name, start, end)` | KarateJs | Capture custom perf event (Gatling integration, NO-OP otherwise) |
 | `config` | KarateJs | Get config object |
 | `configure(key, value)` | KarateJs | Set configuration |
 | `distinct(list)` | KarateJsUtils | Remove duplicates |
@@ -225,6 +229,43 @@ Intentional deviations from V1 behavior:
 | `channel()`, `consume()` | Kafka extension |
 | `webSocket()`, `webSocketBinary()` | WebSocket not yet |
 | `compareImage()` | UI testing |
+
+### Performance Testing Integration (PerfContext)
+
+The `PerfContext` interface enables custom performance event capture for Gatling integration:
+
+```java
+// io.karatelabs.core.PerfContext
+public interface PerfContext {
+    void capturePerfEvent(String name, long startTime, long endTime);
+}
+```
+
+`KarateJs` implements `PerfContext`, so the `karate` object can be passed to Java methods:
+
+```java
+// Custom Java code capturing performance metrics
+public static Map<String, Object> myRpc(Map<String, Object> args, PerfContext context) {
+    long start = System.currentTimeMillis();
+    // ... custom logic (database, gRPC, etc.) ...
+    long end = System.currentTimeMillis();
+
+    context.capturePerfEvent("myRpc", start, end);
+    return Map.of("success", true);
+}
+```
+
+```gherkin
+# Feature file usage
+Scenario: Custom RPC
+  * def result = Java.type('mock.MockUtils').myRpc({ data: 'test' }, karate)
+```
+
+**Behavior:**
+- **Normal execution:** `capturePerfEvent()` is a NO-OP
+- **Gatling context:** Events are reported to Gatling's StatsEngine
+
+**Implementation:** `KarateJs` has an optional `perfEventHandler` that Gatling sets before feature execution. See [GATLING.md](./GATLING.md) for full integration details.
 
 ### Pending V1 Parity (Advanced)
 
@@ -398,6 +439,38 @@ Anonymous daily usage ping from `Suite.run()`:
 **Storage:** `~/.karate/uuid.txt`, `~/.karate/telemetry.json`
 
 **Opt-out:** `export KARATE_TELEMETRY=false`
+
+---
+
+### TODO: Plugin Architecture
+
+V1 uses `Class.forName()` for loading plugins (RuntimeHook, ChannelFactory, RobotFactory, etc.). V2 should formalize the plugin architecture:
+
+**ServiceLoader (auto-discovery):**
+- Best for: CLI commands, report listeners, extensions that should "just work"
+- User drops JAR in `~/.karate/ext/`, plugin is automatically available
+- Uses `META-INF/services/` for registration
+- Example: `CommandProvider` for `karate perf`
+
+**Class.forName (explicit loading):**
+- Best for: RuntimeHooks, custom factories where user wants explicit control
+- User specifies class name via CLI `--hook com.example.MyHook` or config
+- More flexible for conditional loading
+
+**Proposed SPIs:**
+
+| Interface | Purpose | Discovery |
+|-----------|---------|-----------|
+| `CommandProvider` | CLI subcommands | ServiceLoader |
+| `RunListenerFactory` | Event listeners | ServiceLoader |
+| `ReportWriterFactory` | Custom report formats | ServiceLoader |
+| `RuntimeHook` | Lifecycle callbacks | Class.forName (--hook) |
+| `HttpClientFactory` | Custom HTTP clients | Class.forName (config) |
+
+**Implementation notes:**
+- ServiceLoader providers should be lazy-loaded and fail gracefully
+- Document which interfaces use which pattern
+- Consider a unified `PluginRegistry` that supports both patterns
 
 ---
 
