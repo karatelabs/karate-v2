@@ -15,7 +15,10 @@
     </appender>    
    
     <logger name="io.karatelabs" level="INFO"/>
-   
+
+    <!-- Suppress verbose Testcontainers stack traces when trying Docker connection strategies -->
+    <logger name="org.testcontainers.dockerclient.DockerClientProviderStrategy" level="ERROR"/>
+
     <root level="warn">
         <appender-ref ref="STDOUT" />
         <appender-ref ref="FILE" />

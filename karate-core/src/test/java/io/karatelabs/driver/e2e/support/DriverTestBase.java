@@ -30,8 +30,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.Testcontainers;
 import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -40,15 +40,23 @@ import java.nio.file.Path;
  * Base class for driver E2E tests.
  * Provides Docker-based Chrome via Testcontainers and a test page server.
  */
-@Testcontainers
+@org.testcontainers.junit.jupiter.Testcontainers
 public abstract class DriverTestBase {
 
     protected static final Logger logger = LoggerFactory.getLogger(DriverTestBase.class);
 
-    // Workaround for Docker 29.x compatibility
-    // See: https://github.com/testcontainers/testcontainers-java/issues/11212
+    // Test server port - use fixed port for exposeHostPorts which must be called before container starts
+    private static final int TEST_SERVER_PORT = 18080;
+
+    // Static initialization block runs before @Container field initialization
     static {
+        // Workaround for Docker 29.x compatibility
+        // See: https://github.com/testcontainers/testcontainers-java/issues/11212
         System.setProperty("api.version", "1.44");
+
+        // Expose the test server port to containers BEFORE container starts
+        Testcontainers.exposeHostPorts(TEST_SERVER_PORT);
+        logger.info("exposed host port {} to containers", TEST_SERVER_PORT);
     }
 
     @Container
@@ -59,7 +67,7 @@ public abstract class DriverTestBase {
 
     @BeforeAll
     static void startTestServer() {
-        testServer = TestPageServer.start();
+        testServer = TestPageServer.start(TEST_SERVER_PORT);
         logger.info("test page server started on port: {}", testServer.getPort());
     }
 
@@ -92,7 +100,7 @@ public abstract class DriverTestBase {
      */
     protected String testUrl(String path) {
         // Use host.testcontainers.internal to access host services from container
-        return chrome.getHostAccessUrl(testServer.getPort()) + path;
+        return chrome.getHostAccessUrl(TEST_SERVER_PORT) + path;
     }
 
     /**

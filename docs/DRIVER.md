@@ -10,7 +10,7 @@
 | **1** | WebSocket + CDP Client | ✅ Complete |
 | **2** | Browser Launch + Minimal Driver | ✅ Complete |
 | **3** | Testcontainers + E2E Infrastructure | ✅ Complete |
-| **4** | Visibility Layer (DriverInspector) | ⬜ Not started |
+| **4** | Visibility Layer (DriverInspector) | ✅ Complete |
 | **5** | Element Operations | ⬜ Not started |
 | **6** | Frame & Dialog Support | ⬜ Not started |
 | **7** | Advanced Features | ⬜ Not started |
@@ -27,15 +27,48 @@
 - Created test HTML pages (index, navigation, wait, input, iframe)
 - Basic E2E tests passing: script execution, object return, screenshot
 
-**Known Issues:**
+**Known Issues (Resolved):**
 - Docker 29.x requires `api.version=1.44` workaround (see [testcontainers-java#11212](https://github.com/testcontainers/testcontainers-java/issues/11212))
-- Page navigation (`setUrl()`) times out - page load event detection needs debugging
+- ~~Page navigation (`setUrl()`) times out~~ - Fixed: page load event detection working correctly
 - The chromedp/headless-shell image starts with no page targets; ChromeContainer creates one via `/json/new`
 
-**Next Steps for Phase 4:**
-- Debug page load event detection for navigation tests
-- Add container-to-host networking for TestPageServer access
-- Implement DriverInspector for observability
+### Phase 4 Notes
+
+**Completed:**
+- Fixed container-to-host networking using `Testcontainers.exposeHostPorts()` with fixed port (18080)
+- Page load event detection verified working for all navigation tests
+- Implemented `DriverInspector` class for full observability:
+  - Screenshot capture (PNG, JPEG, WebP formats)
+  - DOM queries (getOuterHtml, getInnerHtml, getText, getAttributes, querySelectorAll)
+  - Console message capture and streaming
+  - Network request/response event handlers
+  - Page load event handlers
+  - Error/exception handlers
+  - Debug snapshot (url, title, console, screenshot)
+- Added 17 E2E tests for DriverInspector
+- Added 5 navigation E2E tests using setUrl()
+- All 25 E2E tests passing
+
+**Next Steps for Phase 5:**
+- Implement Locators class for selector transformation
+- Add element operations (click, input, clear, focus, etc.)
+- Add Element class abstraction
+- Add wait methods (waitFor, waitForAny, waitUntil)
+
+### Future Enhancements (TODO)
+
+**Video Recording via CDP Screencast:**
+- CDP has `Page.startScreencast` which streams frames as events - no container changes needed
+- Could add to `DriverInspector`:
+  ```java
+  inspector.startRecording();
+  // ... test actions ...
+  byte[] video = inspector.stopRecording(); // returns mp4 via ffmpeg
+  ```
+- Uses `Page.screencastFrame` events with `Page.screencastFrameAck` for flow control
+- Frames can be stitched with ffmpeg: `ffmpeg -framerate 2 -i '*.png' -c:v libx264 output.mp4`
+- Useful for debugging complex test failures
+- Not critical for v2 launch
 
 ---
 
