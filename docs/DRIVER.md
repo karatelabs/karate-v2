@@ -7,15 +7,35 @@
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| **1** | WebSocket + CDP Client | ⬜ Not started |
-| **2** | Browser Launch + Minimal Driver | ⬜ Not started |
-| **3** | Testcontainers + E2E Infrastructure | ⬜ Not started |
+| **1** | WebSocket + CDP Client | ✅ Complete |
+| **2** | Browser Launch + Minimal Driver | ✅ Complete |
+| **3** | Testcontainers + E2E Infrastructure | ✅ Complete |
 | **4** | Visibility Layer (DriverInspector) | ⬜ Not started |
 | **5** | Element Operations | ⬜ Not started |
 | **6** | Frame & Dialog Support | ⬜ Not started |
 | **7** | Advanced Features | ⬜ Not started |
 
 **Legend:** ⬜ Not started | 🟡 In progress | ✅ Complete
+
+### Phase 3 Notes
+
+**Completed:**
+- Added Testcontainers dependencies (v1.21.3)
+- Created `ChromeContainer` wrapper for `chromedp/headless-shell:latest`
+- Created `TestPageServer` using existing HttpServer infrastructure
+- Created `DriverTestBase` abstract class for E2E tests
+- Created test HTML pages (index, navigation, wait, input, iframe)
+- Basic E2E tests passing: script execution, object return, screenshot
+
+**Known Issues:**
+- Docker 29.x requires `api.version=1.44` workaround (see [testcontainers-java#11212](https://github.com/testcontainers/testcontainers-java/issues/11212))
+- Page navigation (`setUrl()`) times out - page load event detection needs debugging
+- The chromedp/headless-shell image starts with no page targets; ChromeContainer creates one via `/json/new`
+
+**Next Steps for Phase 4:**
+- Debug page load event detection for navigation tests
+- Add container-to-host networking for TestPageServer access
+- Implement DriverInspector for observability
 
 ---
 

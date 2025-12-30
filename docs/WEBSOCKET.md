@@ -7,15 +7,15 @@
 
 | Component | Description | Status |
 |-----------|-------------|--------|
-| WsFrame | Immutable text/binary frame wrapper | ⬜ Not started |
-| WsException | Single exception type with cause | ⬜ Not started |
-| WsClientOptions | Client configuration builder | ⬜ Not started |
-| WsClient | Netty WebSocket client | ⬜ Not started |
-| WsClientHandler | Netty handler (public) | ⬜ Not started |
+| WsFrame | Immutable text/binary frame wrapper | ✅ Complete |
+| WsException | Single exception type with cause | ✅ Complete |
+| WsClientOptions | Client configuration builder | ✅ Complete |
+| WsClient | Netty WebSocket client | ✅ Complete |
+| WsClientHandler | Netty handler (public) | ✅ Complete |
 | WsServerOptions | Server configuration builder | ⬜ Not started |
 | WsServer | Netty WebSocket server | ⬜ Not started |
 | WsServerHandler | Netty handler (public) | ⬜ Not started |
-| Unit tests | Echo server tests | ⬜ Not started |
+| Unit tests | Echo server tests | 🟡 In progress |
 
 **Legend:** ⬜ Not started | 🟡 In progress | ✅ Complete
 
