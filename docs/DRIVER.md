@@ -16,7 +16,7 @@
 | **7** | Advanced Features | ✅ Complete |
 | **8** | Package Restructuring + Driver Interface | ✅ Complete |
 | **9** | Gherkin/DSL Integration | 🟡 In progress |
-| **9b** | Gherkin E2E Tests (mirror Java E2E) | ⬜ Not started |
+| **9b** | Gherkin E2E Tests (mirror Java E2E) | 🟡 In progress |
 | **9c** | Test Optimization (browser reuse) | ⬜ Not started |
 | **10** | Playwright Backend | ⬜ Not started |
 | **11** | WebDriver Backend (Legacy) | ⬜ Not started |
@@ -624,6 +624,30 @@ Key features to validate:
 3. Well-structured test organization matching v2 Java E2E test structure
 4. NOT a direct port of v1 tests - fresh structure using v2 patterns
 
+**Completed:**
+- Created `DriverFeatureTest.java` - JUnit runner with Testcontainers + TestPageServer
+- Created `karate-config.js` for driver features (reads webSocketUrl/serverUrl from system properties)
+- Created `navigation.feature` with 3 passing scenarios:
+  - Navigate and verify title (`driver url`, `driver.title`)
+  - Script execution (`script('1 + 1')`)
+  - Get page content via script (`script('window.testValue')`)
+
+**Working v2 Gherkin Syntax:**
+```gherkin
+* configure driver = driverConfig
+* driver serverUrl + '/'
+* match driver.title == 'Karate Driver Test'
+* def result = script('1 + 1')
+```
+
+**Remaining:**
+- Research v1 README (`karate/karate-core/README.md`) for complete API coverage
+- Create remaining feature files (element, mouse, keys, cookie, frame, dialog)
+- Issues to investigate:
+  - `Key.TAB` etc. not working (static field access on interface in JS)
+  - Dialog callback pattern needs different Gherkin approach
+  - Frame switching with null needs driver initialized first
+
 **Test Structure:**
 ```
 karate-core/src/test/resources/io/karatelabs/driver/
@@ -635,26 +659,25 @@ karate-core/src/test/resources/io/karatelabs/driver/
 │   ├── iframe.html
 │   └── dialog.html
 │
-└── features/                 # NEW: Gherkin E2E tests
-    ├── navigation.feature    # mirrors NavigationE2eTest
-    ├── element.feature       # mirrors ElementE2eTest
-    ├── mouse.feature         # mirrors MouseE2eTest
-    ├── keys.feature          # mirrors KeysE2eTest
-    ├── cookie.feature        # mirrors CookieE2eTest
-    ├── frame.feature         # mirrors FrameE2eTest
-    ├── dialog.feature        # mirrors DialogE2eTest
-    ├── intercept.feature     # mirrors InterceptE2eTest
-    └── inspector.feature     # mirrors InspectorE2eTest
+└── features/                 # Gherkin E2E tests
+    ├── karate-config.js      # Driver config (reads system properties)
+    ├── navigation.feature    # ✅ 3 scenarios passing
+    ├── element.feature.skip  # Pending
+    ├── mouse.feature.skip    # Pending
+    ├── keys.feature.skip     # Pending (Key constants issue)
+    ├── cookie.feature.skip   # Pending
+    ├── frame.feature.skip    # Pending (switchFrame(null) issue)
+    └── dialog.feature.skip   # Pending (callback pattern issue)
 ```
 
 **Infrastructure Reuse:**
 - `TestPageServer` - Reuse for serving test HTML pages
 - `ChromeContainer` - Reuse Testcontainers Chrome setup
-- `DriverTestBase` - Create Gherkin equivalent (`DriverFeatureTest.java`)
+- `DriverFeatureTest.java` - Gherkin test runner (created)
 - Test HTML pages - Reuse existing pages in `pages/` directory
 
-**V1 Reference:** `/Users/peter/dev/zcode/karate/karate-e2e-tests/src/test/java/driver`
-- Use v1 tests as feature reference, NOT for direct porting
+**V1 Reference:** `/Users/peter/dev/zcode/karate/karate-core/README.md`
+- Use v1 README as API reference for Gherkin syntax
 - v2 tests should be cleaner, better organized, using Testcontainers
 
 ### Phase 9c Notes
