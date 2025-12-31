@@ -285,4 +285,71 @@ class StepConfigureTest {
         assertEquals(30000, config.jsGet("connectTimeout")); // default
     }
 
+    // ========== Driver Configuration ==========
+
+    @Test
+    void testConfigureDriverMap() {
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * configure driver = { headless: true, timeout: 60000 }
+            * def cfg = karate.config
+            * match cfg.driverConfig.headless == true
+            * match cfg.driverConfig.timeout == 60000
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureDriverEmptyMap() {
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * configure driver = {}
+            * def cfg = karate.config
+            * match cfg.driverConfig != null
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureDriverWebSocketUrl() {
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * configure driver = { webSocketUrl: 'ws://localhost:9222/devtools/page/1234' }
+            * def cfg = karate.config
+            * match cfg.driverConfig.webSocketUrl == 'ws://localhost:9222/devtools/page/1234'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testDriverConfigCopy() {
+        KarateConfig original = new KarateConfig();
+        original.configure("driver", Map.of("headless", true, "timeout", 30000));
+
+        KarateConfig copy = original.copy();
+
+        // Verify copy has driver config
+        assertNotNull(copy.getDriverConfig());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> driverConfig = (Map<String, Object>) copy.getDriverConfig();
+        assertEquals(true, driverConfig.get("headless"));
+        assertEquals(30000, driverConfig.get("timeout"));
+    }
+
+    @Test
+    void testDriverConfigJsGet() {
+        KarateConfig config = new KarateConfig();
+        config.configure("driver", Map.of("headless", true));
+
+        Object driverConfig = config.jsGet("driverConfig");
+        assertNotNull(driverConfig);
+        assertTrue(driverConfig instanceof Map);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> map = (Map<String, Object>) driverConfig;
+        assertEquals(true, map.get("headless"));
+    }
+
 }

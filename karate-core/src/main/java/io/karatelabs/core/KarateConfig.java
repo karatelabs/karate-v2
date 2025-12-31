@@ -85,7 +85,9 @@ public class KarateConfig implements SimpleObject {
             // NTLM Auth
             "ntlmUsername", "ntlmPassword", "ntlmDomain", "ntlmWorkstation",
             // Mock settings
-            "corsEnabled", "responseHeaders", "afterScenario"
+            "corsEnabled", "responseHeaders", "afterScenario",
+            // Driver
+            "driverConfig"
     );
 
     // ===== HTTP Client (requires rebuild when changed) =====
@@ -153,6 +155,9 @@ public class KarateConfig implements SimpleObject {
     private Object responseHeaders;  // Map<String,Object> or JS function
     private Object afterScenario;    // Invokable - hook called after each scenario
 
+    // Driver configuration (Map or DriverOptions)
+    private Object driverConfig;
+
     /**
      * Create a deep copy of this configuration.
      * Used to snapshot config state for callonce/callSingle isolation.
@@ -215,6 +220,8 @@ public class KarateConfig implements SimpleObject {
         copy.corsEnabled = this.corsEnabled;
         copy.responseHeaders = this.responseHeaders;
         copy.afterScenario = this.afterScenario;
+        // Driver
+        copy.driverConfig = this.driverConfig;
         return copy;
     }
 
@@ -336,6 +343,12 @@ public class KarateConfig implements SimpleObject {
             }
             case "afterScenario" -> {
                 this.afterScenario = value;
+                yield false;
+            }
+
+            // Driver configuration
+            case "driver" -> {
+                this.driverConfig = value;
                 yield false;
             }
 
@@ -552,6 +565,10 @@ public class KarateConfig implements SimpleObject {
             case "ntlmPassword" -> ntlmPassword;
             case "ntlmDomain" -> ntlmDomain;
             case "ntlmWorkstation" -> ntlmWorkstation;
+            case "corsEnabled" -> corsEnabled;
+            case "responseHeaders" -> responseHeaders;
+            case "afterScenario" -> afterScenario;
+            case "driverConfig" -> driverConfig;
             default -> null;
         };
     }
@@ -728,6 +745,10 @@ public class KarateConfig implements SimpleObject {
 
     public Object getAfterScenario() {
         return afterScenario;
+    }
+
+    public Object getDriverConfig() {
+        return driverConfig;
     }
 
 }

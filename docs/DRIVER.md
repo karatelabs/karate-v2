@@ -15,7 +15,7 @@
 | **6** | Frame & Dialog Support | ✅ Complete |
 | **7** | Advanced Features | ✅ Complete |
 | **8** | Package Restructuring + Driver Interface | ✅ Complete |
-| **9** | Gherkin/DSL Integration | ⬜ Not started |
+| **9** | Gherkin/DSL Integration | 🟡 In progress |
 | **9b** | Gherkin E2E Tests (mirror Java E2E) | ⬜ Not started |
 | **9c** | Test Optimization (browser reuse) | ⬜ Not started |
 | **10** | Playwright Backend | ⬜ Not started |
@@ -587,6 +587,32 @@ Key features to validate:
 - Cookies: `cookie('name')`, `clearCookies()`
 - Chaining: `waitFor('#id').click()`
 - Properties: `driver.url`, `driver.title`, `driver.cookies`
+
+**Completed:**
+- Added `driverConfig` field to KarateConfig with `configure driver = { ... }` handler
+- Added `getDriver()` and `initDriver()` to ScenarioRuntime with lazy initialization
+- Added `driver` keyword to StepExecutor for URL navigation (`* driver 'http://...'`)
+- Driver interface extends `ObjectLike` for JS property access (`driver.url`, `driver.title`, `driver.cookies`)
+- Bound driver action methods as root bindings for V1 compatibility:
+  - Element actions: `click`, `input`, `clear`, `focus`, `scroll`, `highlight`, `select`
+  - Element state: `text`, `html`, `value`, `attribute`, `exists`, `enabled`, `position`
+  - Wait methods: `waitFor`, `waitForText`, `waitForEnabled`, `waitForUrl`, `waitUntil`
+  - Locators: `locate`, `locateAll`, `optional`
+  - Frame switching: `switchFrame`
+  - Scripts: `script`, `scriptAll`
+  - Navigation: `refresh`, `back`, `forward`
+  - Screenshots: `screenshot`
+  - Cookies: `cookie`, `deleteCookie`, `clearCookies`
+  - Dialog: `dialog`
+  - Mouse/Keys: `mouse`, `keys`
+  - Key constants: `Key` class bound for `Key.ENTER`, `Key.TAB`, etc.
+- Added driver cleanup in ScenarioRuntime's `call()` finally block
+- Added tests for driver configuration in `StepConfigureTest`
+
+**Remaining:**
+- `karate.driver()` factory for JS API (Phase 9 stretch goal)
+- Gherkin E2E tests (moved to Phase 9b)
+- Validation with v1 feature files
 
 ### Phase 9b Notes
 

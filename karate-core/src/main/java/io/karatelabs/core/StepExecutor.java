@@ -166,6 +166,9 @@ public class StepExecutor {
                     // Config
                     case "configure" -> executeConfigure(step);
 
+                    // Browser driver
+                    case "driver" -> executeDriver(step);
+
                     default -> {
                         // Check if text starts with ( - means keyword is a function name like myFunc('a')
                         // We only do this check here (not earlier) because valid keywords like "eval"
@@ -2380,6 +2383,36 @@ public class StepExecutor {
         String key = text.substring(0, eqIndex).trim();
         Object value = runtime.eval(text.substring(eqIndex + 1).trim());
         runtime.configure(key, value);
+    }
+
+    // ========== Browser Driver ==========
+
+    /**
+     * Execute the driver keyword - navigate to a URL.
+     * Examples:
+     * - driver 'http://localhost:8080'
+     * - driver serverUrl + '/path'
+     * - driver myUrl
+     */
+    private void executeDriver(Step step) {
+        String text = step.getText();
+        if (text == null || text.trim().isEmpty()) {
+            throw new RuntimeException("driver keyword requires a URL argument");
+        }
+
+        // Evaluate the expression to get the URL
+        Object result = runtime.eval(text.trim());
+        if (result == null) {
+            throw new RuntimeException("driver URL evaluated to null: " + text);
+        }
+
+        String url = result.toString();
+
+        // Get the driver (initializes lazily if needed)
+        io.karatelabs.driver.Driver driver = runtime.getDriver();
+
+        // Navigate to the URL
+        driver.setUrl(url);
     }
 
     // ========== Karate Expression Helpers ==========

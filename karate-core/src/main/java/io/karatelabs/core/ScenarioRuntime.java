@@ -26,6 +26,9 @@ package io.karatelabs.core;
 import io.karatelabs.common.Json;
 import io.karatelabs.common.Resource;
 import io.karatelabs.common.StringUtils;
+import io.karatelabs.driver.Driver;
+import io.karatelabs.driver.cdp.CdpDriver;
+import io.karatelabs.driver.cdp.CdpDriverOptions;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.FeatureSection;
 import io.karatelabs.gherkin.Scenario;
@@ -72,6 +75,9 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
     // Signal/listen mechanism for async process integration
     private volatile Object listenResult;
     private CountDownLatch listenLatch = new CountDownLatch(1);
+
+    // Browser driver (lazily initialized)
+    private Driver driver;
 
     public ScenarioRuntime(FeatureRuntime featureRuntime, Scenario scenario) {
         this.featureRuntime = featureRuntime;
@@ -713,6 +719,9 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         } finally {
             // Note: afterScenario is called via SCENARIO_EXIT event through RuntimeHookAdapter
 
+            // Close driver if it was initialized
+            closeDriver();
+
             // Handle @fail tag - invert pass/fail result
             if (scenario.isFail()) {
                 result.applyFailTag();
@@ -887,6 +896,278 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
 
     public boolean isSkipBackground() {
         return skipBackground;
+    }
+
+    // ========== Driver Support ==========
+
+    /**
+     * Get the browser driver, initializing it lazily if needed.
+     * Requires driver to be configured via `configure driver = { ... }`.
+     *
+     * @return the Driver instance
+     * @throws RuntimeException if driver is not configured
+     */
+    public Driver getDriver() {
+        if (driver == null) {
+            driver = initDriver();
+        }
+        return driver;
+    }
+
+    /**
+     * Check if a driver has been initialized.
+     */
+    public boolean hasDriver() {
+        return driver != null;
+    }
+
+    /**
+     * Initialize the browser driver from configuration.
+     */
+    @SuppressWarnings("unchecked")
+    private Driver initDriver() {
+        Object driverConfig = config.getDriverConfig();
+        if (driverConfig == null) {
+            throw new RuntimeException("driver not configured - use: * configure driver = { type: 'chrome' }");
+        }
+
+        CdpDriverOptions options;
+        if (driverConfig instanceof Map) {
+            options = CdpDriverOptions.fromMap((Map<String, Object>) driverConfig);
+        } else {
+            options = CdpDriverOptions.builder().build();
+        }
+
+        // Check if webSocketUrl is provided (connecting to existing browser)
+        String wsUrl = options.getWebSocketUrl();
+        Driver driver;
+        if (wsUrl != null && !wsUrl.isEmpty()) {
+            logger.info("Connecting to existing browser: {}", wsUrl);
+            driver = CdpDriver.connect(wsUrl, options);
+        } else {
+            logger.info("Starting browser with options: headless={}", options.isHeadless());
+            driver = CdpDriver.start(options);
+        }
+
+        // Bind driver to JS engine as root binding (hidden from getAllVariables)
+        karate.engine.putRootBinding("driver", driver);
+
+        // Bind driver action methods as global functions (V1 compatibility)
+        bindDriverActions(driver);
+
+        return driver;
+    }
+
+    /**
+     * Bind driver action methods as global functions for V1 syntax compatibility.
+     * This allows writing `* click('#button')` instead of `* driver.click('#button')`.
+     */
+    private void bindDriverActions(Driver d) {
+        io.karatelabs.js.Engine engine = karate.engine;
+
+        // Element actions (return Element for chaining)
+        engine.putRootBinding("click", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.click(args[0].toString());
+        });
+        engine.putRootBinding("input", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.input(args[0].toString(), args.length > 1 ? args[1].toString() : "");
+        });
+        engine.putRootBinding("clear", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.clear(args[0].toString());
+        });
+        engine.putRootBinding("focus", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.focus(args[0].toString());
+        });
+        engine.putRootBinding("scroll", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.scroll(args[0].toString());
+        });
+        engine.putRootBinding("highlight", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.highlight(args[0].toString());
+        });
+        engine.putRootBinding("select", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            String locator = args[0].toString();
+            Object value = args.length > 1 ? args[1] : null;
+            if (value instanceof Number n) {
+                return d.select(locator, n.intValue());
+            }
+            return d.select(locator, value != null ? value.toString() : "");
+        });
+
+        // Element state (return primitives)
+        engine.putRootBinding("text", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.text(args[0].toString());
+        });
+        engine.putRootBinding("html", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.html(args[0].toString());
+        });
+        engine.putRootBinding("value", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            if (args.length == 1) {
+                // Getter: value('#input')
+                return d.value(args[0].toString());
+            } else {
+                // Setter: value('#input', 'text')
+                return d.value(args[0].toString(), args[1].toString());
+            }
+        });
+        engine.putRootBinding("attribute", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.attribute(args[0].toString(), args[1].toString());
+        });
+        engine.putRootBinding("exists", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.exists(args[0].toString());
+        });
+        engine.putRootBinding("enabled", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.enabled(args[0].toString());
+        });
+        engine.putRootBinding("position", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.position(args[0].toString());
+        });
+
+        // Wait methods
+        engine.putRootBinding("waitFor", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.waitFor(args[0].toString());
+        });
+        engine.putRootBinding("waitForText", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.waitForText(args[0].toString(), args[1].toString());
+        });
+        engine.putRootBinding("waitForEnabled", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.waitForEnabled(args[0].toString());
+        });
+        engine.putRootBinding("waitForUrl", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.waitForUrl(args[0].toString());
+        });
+        engine.putRootBinding("waitUntil", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            if (args.length == 1) {
+                // waitUntil(expression) - wait for JS expression to be truthy
+                return d.waitUntil(args[0].toString());
+            } else {
+                // waitUntil(locator, expression) - wait for element expression
+                return d.waitUntil(args[0].toString(), args[1].toString());
+            }
+        });
+
+        // Locators
+        engine.putRootBinding("locate", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.locate(args[0].toString());
+        });
+        engine.putRootBinding("locateAll", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.locateAll(args[0].toString());
+        });
+        engine.putRootBinding("optional", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.optional(args[0].toString());
+        });
+
+        // Frame switching
+        engine.putRootBinding("switchFrame", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            Object arg = args.length > 0 ? args[0] : null;
+            if (arg == null) {
+                d.switchFrame((String) null);
+            } else if (arg instanceof Number n) {
+                d.switchFrame(n.intValue());
+            } else {
+                d.switchFrame(arg.toString());
+            }
+            return null;
+        });
+
+        // Script execution
+        engine.putRootBinding("script", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            if (args.length == 1) {
+                return d.script(args[0].toString());
+            } else {
+                return d.script(args[0].toString(), args[1].toString());
+            }
+        });
+        engine.putRootBinding("scriptAll", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.scriptAll(args[0].toString(), args[1].toString());
+        });
+
+        // Navigation
+        engine.putRootBinding("refresh", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            d.refresh();
+            return null;
+        });
+        engine.putRootBinding("back", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            d.back();
+            return null;
+        });
+        engine.putRootBinding("forward", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            d.forward();
+            return null;
+        });
+
+        // Screenshots
+        engine.putRootBinding("screenshot", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            if (args.length == 0) {
+                return d.screenshot();
+            } else if (args[0] instanceof Boolean b) {
+                return d.screenshot(b);
+            }
+            return d.screenshot();
+        });
+
+        // Cookies
+        engine.putRootBinding("clearCookies", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            d.clearCookies();
+            return null;
+        });
+        engine.putRootBinding("deleteCookie", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            d.deleteCookie(args[0].toString());
+            return null;
+        });
+        @SuppressWarnings("unchecked")
+        io.karatelabs.js.JsCallable cookieFn = (ctx, args) -> {
+            Object arg = args[0];
+            if (arg instanceof String s) {
+                return d.cookie(s);
+            } else if (arg instanceof Map) {
+                d.cookie((Map<String, Object>) arg);
+                return null;
+            }
+            return null;
+        };
+        engine.putRootBinding("cookie", cookieFn);
+
+        // Dialog handling
+        engine.putRootBinding("dialog", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            boolean accept = args.length > 0 && Boolean.TRUE.equals(args[0]);
+            if (args.length > 1 && args[1] != null) {
+                d.dialog(accept, args[1].toString());
+            } else {
+                d.dialog(accept);
+            }
+            return null;
+        });
+
+        // Mouse and keys
+        engine.putRootBinding("mouse", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            if (args.length == 0) {
+                return d.mouse();
+            } else if (args.length == 1) {
+                return d.mouse(args[0].toString());
+            } else {
+                return d.mouse((Number) args[0], (Number) args[1]);
+            }
+        });
+        engine.putRootBinding("keys", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            return d.keys();
+        });
+
+        // Key constants (e.g., Key.ENTER, Key.TAB)
+        engine.putRootBinding("Key", io.karatelabs.driver.Keys.class);
+    }
+
+    /**
+     * Close the driver if it was initialized.
+     */
+    private void closeDriver() {
+        if (driver != null) {
+            try {
+                driver.quit();
+            } catch (Exception e) {
+                logger.warn("Error closing driver: {}", e.getMessage());
+            }
+            driver = null;
+        }
     }
 
     // ========== Signal/Listen Mechanism ==========

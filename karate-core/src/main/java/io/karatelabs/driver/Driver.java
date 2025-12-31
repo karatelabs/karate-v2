@@ -23,7 +23,10 @@
  */
 package io.karatelabs.driver;
 
+import io.karatelabs.js.ObjectLike;
+
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -33,8 +36,53 @@ import java.util.function.Supplier;
  * Provides a unified API for browser automation across different backends (CDP, Playwright, WebDriver).
  * <p>
  * Phase 8: Extracted from CdpDriver to enable multi-backend support.
+ * Phase 9: Implements ObjectLike for Gherkin/DSL integration (JS property access).
  */
-public interface Driver {
+public interface Driver extends ObjectLike {
+
+    // ========== ObjectLike Implementation (for JS property access) ==========
+
+    /**
+     * Get a property value by name for JavaScript access.
+     * Supports: driver.url, driver.title, driver.cookies
+     */
+    @Override
+    default Object get(String name) {
+        return switch (name) {
+            case "url" -> getUrl();
+            case "title" -> getTitle();
+            case "cookies" -> getCookies();
+            default -> null;
+        };
+    }
+
+    /**
+     * Property setting not supported - driver is read-only from JS.
+     */
+    @Override
+    default void put(String name, Object value) {
+        // Driver properties are read-only
+    }
+
+    /**
+     * Property removal not supported - driver is read-only from JS.
+     */
+    @Override
+    default void remove(String name) {
+        // Driver properties are read-only
+    }
+
+    /**
+     * Convert driver state to a map for JS/JSON serialization.
+     */
+    @Override
+    default Map<String, Object> toMap() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("url", getUrl());
+        map.put("title", getTitle());
+        map.put("cookies", getCookies());
+        return map;
+    }
 
     // ========== Navigation ==========
 
