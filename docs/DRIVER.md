@@ -21,6 +21,7 @@
 | **10** | Playwright Backend | ⬜ Not started |
 | **11** | WebDriver Backend (Legacy) | ⬜ Not started |
 | **12** | WebDriver BiDi (Future) | ⬜ Not started |
+| **13** | Cloud Provider Integration | ⬜ Not started |
 
 **Legend:** ⬜ Not started | 🟡 In progress | ✅ Complete
 
@@ -33,6 +34,7 @@
 - Phase 10 adds Playwright backend (validates multi-backend abstraction)
 - Phase 11 adds WebDriver (legacy, lower priority)
 - Phase 12 adds BiDi when spec matures
+- Phase 13 adds cloud provider support (SauceLabs, BrowserStack, LambdaTest)
 
 **Deferred Features:**
 - Capabilities query API (`driver.supports(Capability.X)`)
@@ -686,6 +688,162 @@ scenarios:  3 | passed:  3 | time: 0.3990
 =========================================================
 14:30:47.477 [main] INFO  ThreadLocalDriverProvider - Shutting down, closing 1 drivers
 ```
+
+**Safety: Handling `driver.quit()` by Users:**
+
+Users can still call `driver.quit()` explicitly. The system handles this gracefully:
+
+1. **`ScenarioRuntime.getDriver()`** - Checks `driver.isTerminated()` and auto-creates new driver if needed
+2. **`ThreadLocalDriverProvider.acquire()`** - Checks `isTerminated()` before reusing; discards stale references
+
+```gherkin
+# This works - auto-recovers after quit
+* driver 'http://example.com'
+* driver.quit()
+* driver 'http://other.com'  # Creates new driver automatically
+```
+
+**When ThreadLocalDriverProvider is Sufficient:**
+
+| Scenario | Sufficient? | Notes |
+|----------|-------------|-------|
+| Local Chrome/Edge with CDP | ✅ Yes | Default use case |
+| Testcontainers (chromedp/headless-shell) | ✅ Yes | Recommended for CI |
+| Multiple Testcontainers (parallel) | ✅ Yes | One container per thread |
+| Single container, multiple tabs | ❌ No | Need custom provider with `Target.createTarget` |
+| Cloud providers (SauceLabs, BrowserStack) | ❌ No | Need custom provider (see below) |
+| WebDriver backend | ❌ No | Override `createDriver()` or custom provider |
+
+**Cloud Provider Considerations (SauceLabs, BrowserStack):**
+
+Cloud providers support CDP via WebDriver's `se:cdp` capability:
+1. Establish WebDriver session to cloud grid
+2. Extract CDP WebSocket URL from session response (`se:cdp` field)
+3. Connect CDP client to that WebSocket
+
+This requires a custom `DriverProvider`:
+```java
+public class SauceLabsDriverProvider implements DriverProvider {
+    @Override
+    public Driver acquire(ScenarioRuntime runtime, Map<String, Object> config) {
+        // 1. Create WebDriver session to SauceLabs
+        // 2. Get se:cdp WebSocket URL from response
+        // 3. Return CdpDriver.connect(cdpUrl, options)
+    }
+
+    @Override
+    public void release(ScenarioRuntime runtime, Driver driver) {
+        // Cloud providers often prefer fresh sessions per test
+        // May want to quit here rather than reuse
+        driver.quit();
+    }
+}
+```
+
+**Note:** Cloud providers are moving toward WebDriver BiDi as the future standard. Karate v2 Phase 12 will add BiDi support.
+
+**Extending ThreadLocalDriverProvider:**
+
+For simpler customizations, extend rather than replace:
+```java
+public class MyDriverProvider extends ThreadLocalDriverProvider {
+    @Override
+    protected Driver createDriver(Map<String, Object> config) {
+        // Custom driver creation (e.g., add capabilities, connect to grid)
+        return super.createDriver(config);
+    }
+
+    @Override
+    protected void resetDriver(Driver driver) {
+        // Custom reset logic between scenarios
+        super.resetDriver(driver);
+    }
+}
+```
+
+### Phase 13 Notes (TODO)
+
+**Cloud Provider Integration (SauceLabs, BrowserStack, LambdaTest)**
+
+**Goals:**
+1. Provide `DriverProvider` implementations for top 3 cloud providers
+2. Support both CDP-over-WebDriver (`se:cdp`) and pure WebDriver modes
+3. Handle cloud-specific capabilities, authentication, and session reporting
+
+**Cloud Provider CDP Support:**
+
+| Provider | CDP Support | Method | Docs |
+|----------|-------------|--------|------|
+| SauceLabs | ✅ Yes | `se:cdp` via WebDriver | [CDP/BiDi docs](https://docs.saucelabs.com/web-apps/automated-testing/cdp-bidi/) |
+| BrowserStack | ✅ Yes | `se:cdp` via WebDriver | [DevTools guide](https://www.browserstack.com/guide/selenium-devtools) |
+| LambdaTest | ✅ Yes | `se:cdp` via WebDriver | Similar pattern |
+
+**Architecture:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    CloudDriverProvider                       │
+│  (abstract base - handles WebDriver session + CDP extract)   │
+└─────────────────────────────────────────────────────────────┘
+        ↑                    ↑                    ↑
+┌───────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│ SauceLabsDP   │  │ BrowserStackDP  │  │  LambdaTestDP   │
+│ - auth        │  │ - auth          │  │  - auth         │
+│ - capabilities│  │ - capabilities  │  │  - capabilities │
+│ - reporting   │  │ - reporting     │  │  - reporting    │
+└───────────────┘  └─────────────────┘  └─────────────────┘
+```
+
+**Implementation Approach:**
+
+1. **`CloudDriverProvider` base class:**
+   - Establish WebDriver session to cloud grid (REST API)
+   - Extract `se:cdp` WebSocket URL from session response
+   - Create `CdpDriver.connect(cdpUrl)` for CDP operations
+   - Handle session cleanup and test status reporting
+
+2. **Provider-specific subclasses:**
+   - Authentication (API keys, access tokens)
+   - Capability mapping (browser versions, platforms, tunnels)
+   - Test result reporting (pass/fail status, artifacts)
+   - Tunnel/proxy configuration for local testing
+
+**Key Considerations:**
+
+- **Session reuse:** Cloud providers typically charge per session and prefer fresh sessions. Default to `quit()` on `release()`, but allow opt-in reuse.
+- **Parallel execution:** Cloud grids handle parallelism server-side. `ThreadLocalDriverProvider` pattern still works - each thread gets its own cloud session.
+- **Fallback to WebDriver:** If CDP unavailable (older browsers, Safari), fall back to WebDriver-only mode with reduced functionality.
+- **Dependency on Phase 11:** Full WebDriver backend needed for non-CDP browsers. CDP-over-WebDriver can work with just Karate's HTTP client for session establishment.
+
+**Minimal MVP (CDP-over-WebDriver only):**
+```java
+public class SauceLabsDriverProvider implements DriverProvider {
+    private final String username;
+    private final String accessKey;
+
+    @Override
+    public Driver acquire(ScenarioRuntime runtime, Map<String, Object> config) {
+        // 1. POST to SauceLabs /session endpoint with capabilities
+        // 2. Extract sessionId and se:cdp URL from response
+        // 3. Return CdpDriver.connect(cdpUrl, options)
+    }
+
+    @Override
+    public void release(ScenarioRuntime runtime, Driver driver) {
+        // 1. Quit driver (closes CDP)
+        // 2. DELETE /session/{sessionId} to end cloud session
+        // 3. PUT /jobs/{sessionId} with pass/fail status
+        driver.quit();
+        reportTestStatus(runtime);
+    }
+}
+```
+
+**Future: WebDriver BiDi**
+
+When Phase 12 (BiDi) is complete, cloud providers will likely prefer BiDi over `se:cdp`. The `CloudDriverProvider` abstraction should accommodate both:
+- CDP mode: `se:cdp` WebSocket extraction
+- BiDi mode: Native BiDi WebSocket (when available)
 
 ### Future Enhancements (TODO)
 

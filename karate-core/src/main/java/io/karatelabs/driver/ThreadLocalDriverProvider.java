@@ -51,12 +51,18 @@ public class ThreadLocalDriverProvider implements DriverProvider {
     @Override
     public Driver acquire(ScenarioRuntime runtime, Map<String, Object> config) {
         Driver driver = threadDriver.get();
-        if (driver != null) {
+        if (driver != null && !driver.isTerminated()) {
             // Reuse existing driver, reset state
             resetDriver(driver);
             logger.debug("Reusing thread-local driver for scenario: {}",
                     runtime.getScenario().getName());
             return driver;
+        }
+        // Clear stale reference if driver was terminated
+        if (driver != null) {
+            logger.debug("Discarding terminated driver for thread: {}", Thread.currentThread().getName());
+            allDrivers.remove(Thread.currentThread().threadId());
+            threadDriver.remove();
         }
 
         // Create new driver for this thread
@@ -79,7 +85,9 @@ public class ThreadLocalDriverProvider implements DriverProvider {
         logger.info("Shutting down ThreadLocalDriverProvider, closing {} drivers", allDrivers.size());
         for (Driver driver : allDrivers.values()) {
             try {
-                driver.quit();
+                if (!driver.isTerminated()) {
+                    driver.quit();
+                }
             } catch (Exception e) {
                 logger.warn("Error closing driver: {}", e.getMessage());
             }
