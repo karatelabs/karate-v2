@@ -24,7 +24,7 @@
 package io.karatelabs.driver.e2e.support;
 
 import io.karatelabs.driver.Driver;
-import io.karatelabs.driver.ThreadLocalDriverProvider;
+import io.karatelabs.driver.PooledDriverProvider;
 import io.karatelabs.driver.cdp.CdpDriver;
 import io.karatelabs.driver.cdp.CdpDriverOptions;
 import org.slf4j.Logger;
@@ -33,29 +33,33 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 
 /**
- * Driver provider for Testcontainers Chrome that creates a new tab per thread.
+ * Driver provider for Testcontainers Chrome that creates a new tab per pooled slot.
  * This enables parallel execution within a single Chrome container.
+ * <p>
+ * Pool size is auto-detected from Runner.parallel(N), ensuring the pool always
+ * matches the parallelism level.
  */
-public class ContainerDriverProvider extends ThreadLocalDriverProvider {
+public class ContainerDriverProvider extends PooledDriverProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(ContainerDriverProvider.class);
 
     private final ChromeContainer container;
-    private final Object lock = new Object();
 
+    /**
+     * Create a container driver provider.
+     * Pool size will be auto-detected from Runner.parallel(N).
+     *
+     * @param container the Chrome container to create tabs in
+     */
     public ContainerDriverProvider(ChromeContainer container) {
+        super();  // Auto-detect pool size from Suite
         this.container = container;
     }
 
     @Override
     protected Driver createDriver(Map<String, Object> config) {
-        // Synchronize tab creation to avoid overwhelming the container
-        String wsUrl;
-        synchronized (lock) {
-            wsUrl = container.getCdpUrl();
-            logger.info("Created new tab in container for thread {}: {}",
-                    Thread.currentThread().getName(), wsUrl);
-        }
+        String wsUrl = container.getCdpUrl();
+        logger.info("Created new tab in container: {}", wsUrl);
         CdpDriverOptions options = CdpDriverOptions.fromMap(config);
         return CdpDriver.connect(wsUrl, options);
     }

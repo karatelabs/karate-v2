@@ -372,8 +372,8 @@ public final class Runner {
          * Example:
          * <pre>
          * Runner.path("features/")
-         *     .driverProvider(new ThreadLocalDriverProvider())
-         *     .parallel(4);
+         *     .driverProvider(new PooledDriverProvider())
+         *     .parallel(4);  // Pool size auto-detected
          * </pre>
          */
         public Builder driverProvider(io.karatelabs.driver.DriverProvider provider) {

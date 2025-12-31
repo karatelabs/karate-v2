@@ -90,8 +90,8 @@ class DriverFeatureTest {
 
     @Test
     void testDriverFeatures() {
-        // ContainerDriverProvider creates a new tab per thread in the single Chrome container
-        // This enables parallel execution efficiently
+        // ContainerDriverProvider creates tabs in the Chrome container
+        // Pool size is auto-detected from parallel(N) - no need to specify it
         ContainerDriverProvider provider = new ContainerDriverProvider(chrome);
 
         SuiteResult result = Runner.path("classpath:io/karatelabs/driver/features")
@@ -100,7 +100,7 @@ class DriverFeatureTest {
                 .outputHtmlReport(true)
                 .outputConsoleSummary(true)
                 .driverProvider(provider)
-                .parallel(2);  // 2 threads, each gets its own tab in the container
+                .parallel(2);  // Pool size auto-detected from this
 
         // Log results
         logger.info("Feature count: {}", result.getFeatureCount());
