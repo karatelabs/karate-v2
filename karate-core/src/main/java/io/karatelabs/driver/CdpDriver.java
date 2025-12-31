@@ -62,6 +62,9 @@ public class CdpDriver {
     private volatile String currentDialogText;
     private volatile DialogHandler dialogHandler;
 
+    // Request interception
+    private volatile InterceptHandler interceptHandler;
+
     // Frame tracking
     private Frame currentFrame;
     private final Map<String, Integer> frameContexts = new ConcurrentHashMap<>();
@@ -226,6 +229,70 @@ public class CdpDriver {
             frameContexts.clear();
             logger.trace("execution contexts cleared");
         });
+
+        // Request interception
+        cdp.on("Fetch.requestPaused", this::onRequestPaused);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void onRequestPaused(CdpEvent event) {
+        String requestId = event.get("requestId");
+        Map<String, Object> request = event.get("request");
+        String resourceType = event.get("resourceType");
+
+        String url = request != null ? (String) request.get("url") : "";
+        String method = request != null ? (String) request.get("method") : "GET";
+        Map<String, Object> headers = request != null ? (Map<String, Object>) request.get("headers") : Map.of();
+        String postData = request != null ? (String) request.get("postData") : null;
+
+        logger.debug("request intercepted: {} {}", method, url);
+
+        InterceptResponse response = null;
+        if (interceptHandler != null) {
+            InterceptRequest interceptRequest = new InterceptRequest(requestId, url, method, headers, postData, resourceType);
+            try {
+                response = interceptHandler.handle(interceptRequest);
+            } catch (Exception e) {
+                logger.error("intercept handler error: {}", e.getMessage());
+            }
+        }
+
+        if (response != null) {
+            // Fulfill with mock response
+            fulfillRequest(requestId, response);
+        } else {
+            // Continue to network
+            continueRequest(requestId);
+        }
+    }
+
+    private void fulfillRequest(String requestId, InterceptResponse response) {
+        CdpMessage message = cdp.method("Fetch.fulfillRequest")
+                .param("requestId", requestId)
+                .param("responseCode", response.getStatus());
+
+        // Build response headers
+        if (response.getHeaders() != null && !response.getHeaders().isEmpty()) {
+            java.util.List<Map<String, String>> headersList = new java.util.ArrayList<>();
+            for (Map.Entry<String, Object> entry : response.getHeaders().entrySet()) {
+                headersList.add(Map.of("name", entry.getKey(), "value", String.valueOf(entry.getValue())));
+            }
+            message.param("responseHeaders", headersList);
+        }
+
+        // Body must be Base64 encoded
+        String bodyBase64 = response.getBodyBase64();
+        if (bodyBase64 != null && !bodyBase64.isEmpty()) {
+            message.param("body", bodyBase64);
+        }
+
+        message.send();
+    }
+
+    private void continueRequest(String requestId) {
+        cdp.method("Fetch.continueRequest")
+                .param("requestId", requestId)
+                .send();
     }
 
     // ========== Navigation ==========
@@ -1080,6 +1147,515 @@ public class CdpDriver {
         }
 
         throw new DriverException("timeout waiting for " + count + " elements: " + locator);
+    }
+
+    // ========== Cookies ==========
+
+    /**
+     * Get a cookie by name.
+     *
+     * @param name the cookie name
+     * @return the cookie as a Map, or null if not found
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> cookie(String name) {
+        CdpResponse response = cdp.method("Network.getCookies").send();
+        List<Map<String, Object>> cookies = response.getResult("cookies");
+        if (cookies != null) {
+            for (Map<String, Object> cookie : cookies) {
+                if (name.equals(cookie.get("name"))) {
+                    return cookie;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Set a cookie.
+     *
+     * @param cookie the cookie as a Map with keys: name, value, domain, path, secure, httpOnly, sameSite, expires
+     */
+    public void cookie(Map<String, Object> cookie) {
+        logger.debug("set cookie: {}", cookie.get("name"));
+        CdpMessage message = cdp.method("Network.setCookie");
+        cookie.forEach(message::param);
+        message.send();
+    }
+
+    /**
+     * Delete a cookie by name.
+     *
+     * @param name the cookie name
+     */
+    public void deleteCookie(String name) {
+        logger.debug("delete cookie: {}", name);
+        // Get cookie first to get domain
+        Map<String, Object> cookie = cookie(name);
+        if (cookie != null) {
+            String domain = (String) cookie.get("domain");
+            cdp.method("Network.deleteCookies")
+                    .param("name", name)
+                    .param("domain", domain)
+                    .send();
+        }
+    }
+
+    /**
+     * Clear all cookies.
+     */
+    public void clearCookies() {
+        logger.debug("clear all cookies");
+        cdp.method("Network.clearBrowserCookies").send();
+    }
+
+    /**
+     * Get all cookies.
+     *
+     * @return list of cookies as Maps
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> getCookies() {
+        CdpResponse response = cdp.method("Network.getCookies").send();
+        List<Map<String, Object>> cookies = response.getResult("cookies");
+        return cookies != null ? cookies : List.of();
+    }
+
+    // ========== Window Management ==========
+
+    /**
+     * Maximize the browser window.
+     */
+    public void maximize() {
+        logger.debug("maximize window");
+        CdpResponse response = cdp.method("Browser.getWindowForTarget").send();
+        Integer windowId = response.getResult("windowId");
+        if (windowId != null) {
+            cdp.method("Browser.setWindowBounds")
+                    .param("windowId", windowId)
+                    .param("bounds", Map.of("windowState", "maximized"))
+                    .send();
+        }
+    }
+
+    /**
+     * Minimize the browser window.
+     */
+    public void minimize() {
+        logger.debug("minimize window");
+        CdpResponse response = cdp.method("Browser.getWindowForTarget").send();
+        Integer windowId = response.getResult("windowId");
+        if (windowId != null) {
+            cdp.method("Browser.setWindowBounds")
+                    .param("windowId", windowId)
+                    .param("bounds", Map.of("windowState", "minimized"))
+                    .send();
+        }
+    }
+
+    /**
+     * Make the browser window fullscreen.
+     */
+    public void fullscreen() {
+        logger.debug("fullscreen window");
+        CdpResponse response = cdp.method("Browser.getWindowForTarget").send();
+        Integer windowId = response.getResult("windowId");
+        if (windowId != null) {
+            cdp.method("Browser.setWindowBounds")
+                    .param("windowId", windowId)
+                    .param("bounds", Map.of("windowState", "fullscreen"))
+                    .send();
+        }
+    }
+
+    /**
+     * Get window dimensions and position.
+     *
+     * @return Map with keys: x, y, width, height, windowState
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getDimensions() {
+        CdpResponse response = cdp.method("Browser.getWindowForTarget").send();
+        Integer windowId = response.getResult("windowId");
+        if (windowId != null) {
+            CdpResponse boundsResponse = cdp.method("Browser.getWindowBounds")
+                    .param("windowId", windowId)
+                    .send();
+            return boundsResponse.getResult("bounds");
+        }
+        return Map.of();
+    }
+
+    /**
+     * Set window dimensions and/or position.
+     *
+     * @param dimensions Map with optional keys: x, y, width, height, windowState
+     */
+    public void setDimensions(Map<String, Object> dimensions) {
+        logger.debug("set dimensions: {}", dimensions);
+        CdpResponse response = cdp.method("Browser.getWindowForTarget").send();
+        Integer windowId = response.getResult("windowId");
+        if (windowId != null) {
+            // First restore to normal state if changing size/position
+            if (dimensions.containsKey("width") || dimensions.containsKey("height") ||
+                    dimensions.containsKey("x") || dimensions.containsKey("y")) {
+                cdp.method("Browser.setWindowBounds")
+                        .param("windowId", windowId)
+                        .param("bounds", Map.of("windowState", "normal"))
+                        .send();
+            }
+            cdp.method("Browser.setWindowBounds")
+                    .param("windowId", windowId)
+                    .param("bounds", dimensions)
+                    .send();
+        }
+    }
+
+    // ========== PDF Generation ==========
+
+    /**
+     * Generate a PDF of the current page.
+     *
+     * @param options Map with optional keys: scale, displayHeaderFooter, headerTemplate, footerTemplate,
+     *                printBackground, landscape, pageRanges, paperWidth, paperHeight,
+     *                marginTop, marginBottom, marginLeft, marginRight
+     * @return PDF bytes
+     */
+    public byte[] pdf(Map<String, Object> options) {
+        logger.debug("generate PDF");
+        CdpMessage message = cdp.method("Page.printToPDF");
+        if (options != null) {
+            options.forEach(message::param);
+        }
+        CdpResponse response = message.send();
+        String base64 = response.getResultAsString("data");
+        return Base64.getDecoder().decode(base64);
+    }
+
+    /**
+     * Generate a PDF of the current page with default options.
+     *
+     * @return PDF bytes
+     */
+    public byte[] pdf() {
+        return pdf(null);
+    }
+
+    // ========== Navigation Extras ==========
+
+    /**
+     * Refresh the current page.
+     */
+    public void refresh() {
+        logger.debug("refresh page");
+        domContentEventFired = false;
+        framesStillLoading.clear();
+        cdp.method("Page.reload").send();
+        waitForPageLoad(options.getPageLoadStrategy());
+    }
+
+    /**
+     * Reload the page ignoring cache.
+     */
+    public void reload() {
+        logger.debug("reload page (ignore cache)");
+        domContentEventFired = false;
+        framesStillLoading.clear();
+        cdp.method("Page.reload")
+                .param("ignoreCache", true)
+                .send();
+        waitForPageLoad(options.getPageLoadStrategy());
+    }
+
+    /**
+     * Navigate back in history.
+     */
+    public void back() {
+        logger.debug("navigate back");
+        CdpResponse response = cdp.method("Page.getNavigationHistory").send();
+        Integer currentIndex = response.getResult("currentIndex");
+        List<Map<String, Object>> entries = response.getResult("entries");
+        if (currentIndex != null && currentIndex > 0 && entries != null) {
+            Map<String, Object> prevEntry = entries.get(currentIndex - 1);
+            Integer entryId = (Integer) prevEntry.get("id");
+            if (entryId != null) {
+                domContentEventFired = false;
+                framesStillLoading.clear();
+                cdp.method("Page.navigateToHistoryEntry")
+                        .param("entryId", entryId)
+                        .send();
+                waitForPageLoad(options.getPageLoadStrategy());
+            }
+        }
+    }
+
+    /**
+     * Navigate forward in history.
+     */
+    public void forward() {
+        logger.debug("navigate forward");
+        CdpResponse response = cdp.method("Page.getNavigationHistory").send();
+        Integer currentIndex = response.getResult("currentIndex");
+        List<Map<String, Object>> entries = response.getResult("entries");
+        if (currentIndex != null && entries != null && currentIndex < entries.size() - 1) {
+            Map<String, Object> nextEntry = entries.get(currentIndex + 1);
+            Integer entryId = (Integer) nextEntry.get("id");
+            if (entryId != null) {
+                domContentEventFired = false;
+                framesStillLoading.clear();
+                cdp.method("Page.navigateToHistoryEntry")
+                        .param("entryId", entryId)
+                        .send();
+                waitForPageLoad(options.getPageLoadStrategy());
+            }
+        }
+    }
+
+    /**
+     * Activate the browser window (bring to front).
+     */
+    public void activate() {
+        logger.debug("activate window");
+        cdp.method("Page.bringToFront").send();
+    }
+
+    // ========== Mouse and Keyboard ==========
+
+    /**
+     * Get a Mouse object at position (0, 0).
+     *
+     * @return a new Mouse object
+     */
+    public Mouse mouse() {
+        return new Mouse(cdp);
+    }
+
+    /**
+     * Get a Mouse object positioned at an element's center.
+     *
+     * @param locator the element locator
+     * @return a new Mouse object positioned at the element's center
+     */
+    @SuppressWarnings("unchecked")
+    public Mouse mouse(String locator) {
+        Map<String, Object> pos = position(locator, true);
+        double x = ((Number) pos.get("x")).doubleValue();
+        double y = ((Number) pos.get("y")).doubleValue();
+        double width = ((Number) pos.get("width")).doubleValue();
+        double height = ((Number) pos.get("height")).doubleValue();
+        // Center of element
+        return new Mouse(cdp, x + width / 2, y + height / 2);
+    }
+
+    /**
+     * Get a Mouse object at specified coordinates.
+     *
+     * @param x the x coordinate
+     * @param y the y coordinate
+     * @return a new Mouse object at the specified position
+     */
+    public Mouse mouse(Number x, Number y) {
+        return new Mouse(cdp, x.doubleValue(), y.doubleValue());
+    }
+
+    /**
+     * Get a Keys object for keyboard input.
+     *
+     * @return a new Keys object
+     */
+    public Keys keys() {
+        return new Keys(cdp);
+    }
+
+    // ========== Pages/Tabs Management ==========
+
+    /**
+     * Get list of all page targets (tabs).
+     *
+     * @return list of target IDs
+     */
+    @SuppressWarnings("unchecked")
+    public List<String> getPages() {
+        CdpResponse response = cdp.method("Target.getTargets").send();
+        List<Map<String, Object>> targets = response.getResult("targetInfos");
+        List<String> pages = new ArrayList<>();
+        if (targets != null) {
+            for (Map<String, Object> target : targets) {
+                String type = (String) target.get("type");
+                if ("page".equals(type)) {
+                    String targetId = (String) target.get("targetId");
+                    pages.add(targetId);
+                }
+            }
+        }
+        return pages;
+    }
+
+    /**
+     * Switch to a page by title or URL substring.
+     *
+     * @param titleOrUrl the title or URL substring to match
+     */
+    @SuppressWarnings("unchecked")
+    public void switchPage(String titleOrUrl) {
+        logger.debug("switch page by title/url: {}", titleOrUrl);
+        CdpResponse response = cdp.method("Target.getTargets").send();
+        List<Map<String, Object>> targets = response.getResult("targetInfos");
+        if (targets != null) {
+            for (Map<String, Object> target : targets) {
+                String type = (String) target.get("type");
+                if (!"page".equals(type)) continue;
+
+                String title = (String) target.get("title");
+                String url = (String) target.get("url");
+                if ((title != null && title.contains(titleOrUrl)) ||
+                        (url != null && url.contains(titleOrUrl))) {
+                    String targetId = (String) target.get("targetId");
+                    activateTarget(targetId);
+                    return;
+                }
+            }
+        }
+        throw new DriverException("no page found matching: " + titleOrUrl);
+    }
+
+    /**
+     * Switch to a page by index.
+     *
+     * @param index the zero-based index
+     */
+    public void switchPage(int index) {
+        logger.debug("switch page by index: {}", index);
+        List<String> pages = getPages();
+        if (index < 0 || index >= pages.size()) {
+            throw new DriverException("no page at index: " + index);
+        }
+        activateTarget(pages.get(index));
+    }
+
+    // ========== Positional Locators ==========
+
+    /**
+     * Create a finder for elements to the right of the reference element.
+     *
+     * @param locator the reference element locator
+     * @return a Finder for elements to the right
+     */
+    public Finder rightOf(String locator) {
+        return new Finder(this, locator, Finder.Position.RIGHT_OF);
+    }
+
+    /**
+     * Create a finder for elements to the left of the reference element.
+     *
+     * @param locator the reference element locator
+     * @return a Finder for elements to the left
+     */
+    public Finder leftOf(String locator) {
+        return new Finder(this, locator, Finder.Position.LEFT_OF);
+    }
+
+    /**
+     * Create a finder for elements above the reference element.
+     *
+     * @param locator the reference element locator
+     * @return a Finder for elements above
+     */
+    public Finder above(String locator) {
+        return new Finder(this, locator, Finder.Position.ABOVE);
+    }
+
+    /**
+     * Create a finder for elements below the reference element.
+     *
+     * @param locator the reference element locator
+     * @return a Finder for elements below
+     */
+    public Finder below(String locator) {
+        return new Finder(this, locator, Finder.Position.BELOW);
+    }
+
+    /**
+     * Create a finder for elements near the reference element.
+     *
+     * @param locator the reference element locator
+     * @return a Finder for nearby elements
+     */
+    public Finder near(String locator) {
+        return new Finder(this, locator, Finder.Position.NEAR);
+    }
+
+    // ========== Request Interception ==========
+
+    /**
+     * Enable request interception with a handler.
+     * The handler is called for each matching request. Return an InterceptResponse to mock,
+     * or null to continue to the network.
+     *
+     * @param patterns URL patterns to intercept (e.g., "*api/*", "https://example.com/*")
+     * @param handler the intercept handler
+     */
+    public void intercept(List<String> patterns, InterceptHandler handler) {
+        logger.debug("enable request interception for patterns: {}", patterns);
+        this.interceptHandler = handler;
+
+        // Build request patterns for Fetch.enable
+        List<Map<String, Object>> requestPatterns = new ArrayList<>();
+        for (String pattern : patterns) {
+            requestPatterns.add(Map.of("urlPattern", pattern));
+        }
+
+        cdp.method("Fetch.enable")
+                .param("patterns", requestPatterns)
+                .send();
+    }
+
+    /**
+     * Enable request interception for all requests.
+     *
+     * @param handler the intercept handler
+     */
+    public void intercept(InterceptHandler handler) {
+        intercept(List.of("*"), handler);
+    }
+
+    /**
+     * Stop request interception.
+     */
+    public void stopIntercept() {
+        logger.debug("disable request interception");
+        this.interceptHandler = null;
+        cdp.method("Fetch.disable").send();
+    }
+
+    private void activateTarget(String targetId) {
+        cdp.method("Target.activateTarget")
+                .param("targetId", targetId)
+                .send();
+
+        // Attach to the target to get its session
+        CdpResponse attachResponse = cdp.method("Target.attachToTarget")
+                .param("targetId", targetId)
+                .param("flatten", true)
+                .send();
+
+        String sessionId = attachResponse.getResultAsString("sessionId");
+        if (sessionId != null) {
+            // Update the CDP client to use this session
+            cdp.setSessionId(sessionId);
+        }
+
+        // Re-enable required domains on new target
+        cdp.method("Page.enable").send();
+        cdp.method("Runtime.enable").send();
+
+        // Get new main frame ID
+        CdpResponse frameResponse = cdp.method("Page.getFrameTree").send();
+        mainFrameId = frameResponse.getResult("frameTree.frame.id");
+
+        // Reset frame state
+        currentFrame = null;
+        frameContexts.clear();
     }
 
     // ========== Utilities ==========

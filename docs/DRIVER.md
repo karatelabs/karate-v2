@@ -13,7 +13,7 @@
 | **4** | Visibility Layer (CdpInspector) | ✅ Complete |
 | **5** | Element Operations | ✅ Complete |
 | **6** | Frame & Dialog Support | ✅ Complete |
-| **7** | Advanced Features | ⬜ Not started |
+| **7** | Advanced Features | ✅ Complete |
 | **8** | Driver Interface + Playwright Backend | ⬜ Not started |
 | **9** | WebDriver Backend (Legacy) | ⬜ Not started |
 | **10** | WebDriver BiDi (Future) | ⬜ Not started |
@@ -358,6 +358,82 @@ Driver driver = Driver.builder()
 - Cross-origin iframes (Phase 7) will require `Target.attachToTarget` for separate sessions
 - Dialog handler auto-dismisses if user doesn't call accept/dismiss
 - Frame contexts are tracked via `Runtime.executionContextCreated` events
+
+### Phase 7 Notes
+
+**Completed:**
+- Implemented request interception with callback-based API:
+  - `InterceptHandler` functional interface for handling requests
+  - `InterceptRequest` class with url, method, headers, postData, resourceType
+  - `InterceptResponse` class with factory methods (json, html, text, status, redirect)
+  - `intercept(patterns, handler)` and `intercept(handler)` methods
+  - `stopIntercept()` to disable interception
+  - Uses CDP `Fetch.enable`, `Fetch.requestPaused`, `Fetch.fulfillRequest`, `Fetch.continueRequest`
+- Implemented cookie management:
+  - `cookie(name)` - get single cookie by name
+  - `cookie(map)` - set cookie with properties
+  - `deleteCookie(name)` - delete cookie by name
+  - `clearCookies()` - clear all cookies
+  - `getCookies()` - get all cookies as list
+  - Uses CDP `Network.getCookies`, `Network.setCookie`, `Network.deleteCookies`, `Network.clearBrowserCookies`
+- Implemented window management:
+  - `maximize()`, `minimize()`, `fullscreen()` - window state control
+  - `getDimensions()` - get window bounds (x, y, width, height, windowState)
+  - `setDimensions(map)` - set window bounds
+  - Uses CDP `Browser.getWindowForTarget`, `Browser.setWindowBounds`, `Browser.getWindowBounds`
+- Implemented PDF generation:
+  - `pdf()` and `pdf(options)` - generate PDF with optional settings
+  - Options: scale, displayHeaderFooter, headerTemplate, footerTemplate, printBackground, landscape, pageRanges, paperWidth, paperHeight, margins
+  - Uses CDP `Page.printToPDF`
+- Implemented navigation extras:
+  - `refresh()` - reload page
+  - `reload()` - reload ignoring cache
+  - `back()` - navigate back in history
+  - `forward()` - navigate forward in history
+  - `activate()` - bring window to front
+- Implemented Mouse class:
+  - `mouse()`, `mouse(locator)`, `mouse(x, y)` - create Mouse at position
+  - `move(x, y)`, `offset(dx, dy)` - movement
+  - `click()`, `doubleClick()`, `rightClick()` - click actions
+  - `down()`, `up()` - mouse button control
+  - `wheel(deltaX, deltaY)`, `scrollDown/Up/Left/Right(amount)` - scrolling
+  - `dragTo(x, y)` - drag operation
+  - Uses CDP `Input.dispatchMouseEvent`
+- Implemented Keys class:
+  - `keys()` - create Keys object
+  - `type(text)` - type character sequence
+  - `press(key)` - press and release key
+  - `down(key)`, `up(key)` - modifier control
+  - `combo(modifiers, key)` - key combinations
+  - `ctrl(key)`, `alt(key)`, `shift(key)`, `meta(key)` - modifier shortcuts
+  - Key constants: ENTER, TAB, BACKSPACE, ESCAPE, arrows, F-keys, etc.
+  - Uses CDP `Input.dispatchKeyEvent`
+- Implemented pages/tabs management:
+  - `getPages()` - list all page targets
+  - `switchPage(titleOrUrl)` - switch by title or URL match
+  - `switchPage(index)` - switch by index
+  - Session management via CDP `Target.getTargets`, `Target.activateTarget`, `Target.attachToTarget`
+- Implemented positional locators:
+  - `Finder` class for relative element location
+  - `rightOf(locator)`, `leftOf(locator)`, `above(locator)`, `below(locator)`, `near(locator)`
+  - `finder.find(locator)` - find first matching element
+  - `finder.findAll(locator)` - find all matching elements sorted by distance
+  - `finder.within(pixels)` - set tolerance for matching
+  - Uses position comparison with tolerance for overlap detection
+- Added 30 new E2E tests:
+  - `CookieE2eTest` (5 tests)
+  - `MouseE2eTest` (9 tests)
+  - `KeysE2eTest` (8 tests)
+  - `InterceptE2eTest` (8 tests)
+- All 241 driver tests passing
+
+**New Classes:**
+- `Mouse.java` - CDP-based mouse actions
+- `Keys.java` - CDP-based keyboard actions with key constants
+- `Finder.java` - positional element finder
+- `InterceptHandler.java` - functional interface for request interception
+- `InterceptRequest.java` - intercepted request details
+- `InterceptResponse.java` - mock response builder
 
 ### Future Enhancements (TODO)
 

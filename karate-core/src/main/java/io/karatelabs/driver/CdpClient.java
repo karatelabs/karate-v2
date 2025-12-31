@@ -51,6 +51,7 @@ public class CdpClient {
     private final ConcurrentHashMap<Integer, CompletableFuture<CdpResponse>> pending = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, List<Consumer<CdpEvent>>> eventHandlers = new ConcurrentHashMap<>();
     private final Duration defaultTimeout;
+    private volatile String sessionId;
 
     // Factory methods
 
@@ -142,7 +143,26 @@ public class CdpClient {
      * Create a new CDP message builder.
      */
     public CdpMessage method(String method) {
-        return new CdpMessage(this, nextId(), method);
+        CdpMessage message = new CdpMessage(this, nextId(), method);
+        if (sessionId != null) {
+            message.sessionId(sessionId);
+        }
+        return message;
+    }
+
+    /**
+     * Get the current session ID.
+     */
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    /**
+     * Set the session ID for subsequent requests.
+     * Used when switching between page targets.
+     */
+    public void setSessionId(String sessionId) {
+        this.sessionId = sessionId;
     }
 
     // Send methods
