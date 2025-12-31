@@ -74,9 +74,9 @@ public class KarateJs extends KarateJsBase {
 
     public KarateJs(Resource root, HttpClient client) {
         super(root, client);
-        engine.put("karate", this);
-        engine.put("read", read = initRead());
-        engine.put("match", matchFluent());
+        engine.putRootBinding("karate", this);
+        engine.putRootBinding("read", read = initRead());
+        engine.putRootBinding("match", matchFluent());
     }
 
     /**

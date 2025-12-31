@@ -349,6 +349,20 @@ class EngineTest {
     }
 
     @Test
+    void testRootBindings() {
+        Engine engine = new Engine();
+        engine.putRootBinding("magic", "secret");
+        engine.put("normal", "visible");
+
+        // Root binding is accessible in eval
+        assertEquals("secret", engine.eval("magic"));
+
+        // But not in getBindings()
+        assertFalse(engine.getBindings().containsKey("magic"));
+        assertTrue(engine.getBindings().containsKey("normal"));
+    }
+
+    @Test
     void testJsDocCommentExtraction() {
         String js = """
                 /**

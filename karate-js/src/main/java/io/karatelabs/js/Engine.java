@@ -70,6 +70,10 @@ public class Engine {
         bindings.put(name, value);
     }
 
+    public void putRootBinding(String name, Object value) {
+        root.put(name, value);
+    }
+
     public void remove(String name) {
         bindings.remove(name);
     }

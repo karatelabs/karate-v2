@@ -481,35 +481,37 @@ V1 uses `Class.forName()` for loading plugins (RuntimeHook, ChannelFactory, Robo
 
 ---
 
-### TODO: Private Variables in JS Engine
+### Root Bindings (Private Variables)
 
-Currently, built-in variables (`karate`, `read`, `match`, `fn`, `__arg`, `__row`, `__num`) are stored in the JS engine bindings alongside user-defined variables. `ScenarioRuntime.getAllVariables()` filters these out using a hardcoded `BUILT_IN_VARS` set.
+The JS engine supports "root bindings" via `Engine.putRootBinding()` for built-in variables that should be accessible during evaluation but excluded from `getBindings()`.
 
-**Problem:** This approach requires maintaining a list of built-in names and doesn't scale well when adding new internal variables. It also complicates debugging tools that need to distinguish between user and system variables.
+**How it works:**
+- `putRootBinding(name, value)` stores in `ContextRoot._bindings` (the root context's private bindings)
+- `put(name, value)` stores in `Engine.bindings` (user-accessible bindings)
+- `getBindings()` returns only `Engine.bindings`, excluding root bindings
+- Variable lookup (`get()`) checks both, so root bindings are accessible during JS evaluation
 
-**Proposed Solution:** Add a "private" variable storage mechanism to the JS engine:
-
+**Usage in KarateJs:**
 ```java
-// In Engine.java
-private final Map<String, Object> privateBindings = new LinkedHashMap<>();
+// In KarateJs constructor - these won't appear in getAllVariables()
+engine.putRootBinding("karate", this);
+engine.putRootBinding("read", initRead());
+engine.putRootBinding("match", matchFluent());
 
-public void putPrivate(String name, Object value) {
-    privateBindings.put(name, value);
-}
-
-public Object getPrivate(String name) {
-    return privateBindings.get(name);
-}
-
-// get() checks both, getBindings() returns only public
+// In ScenarioRuntime - call args and example data
+engine.putRootBinding("__arg", callArg);
+engine.putRootBinding("__row", exampleData);
+engine.putRootBinding("__num", exampleIndex);
 ```
 
-This would allow:
-- Built-ins stored via `putPrivate()` - invisible to `getAllVariables()`
-- User variables stored via `put()` - visible normally
-- Debugging tools can access both via separate methods
+**Result:** `ScenarioRuntime.getAllVariables()` returns only user-defined variables without needing a hardcoded exclusion list.
 
-**Impact:** `KarateJs` constructor would use `putPrivate()` for `karate`, `read`, `match`. Config evaluation would use `putPrivate()` for `fn`. The `BUILT_IN_VARS` filter in `ScenarioRuntime` could then be removed.
+### TODO: Filter `fn` from karate-config.js
+
+The `fn` variable from karate-config.js convention may still appear in `getAllVariables()`. Options to address:
+1. Use `Engine.evalWith()` for config evaluation and post-process the map
+2. Remove `fn` from bindings after config evaluation
+3. Accept that `fn` appears (low priority, doesn't affect functionality)
 
 ---
 

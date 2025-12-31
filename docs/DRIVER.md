@@ -567,6 +567,16 @@ driver.quit()
 4. **StepExecutor** - Add `driver` keyword handler for Gherkin
 5. **Driver interface** - Implement `SimpleObject` for JS property access
 
+**Hidden Variables (Root Bindings):**
+
+Use `engine.putRootBinding()` for driver-related variables that should be accessible in JS but excluded from `getAllVariables()`. This matches V1's `setHiddenVariable()` pattern:
+
+- `driver` - Browser driver instance
+- `Key` - Keyboard key constants (ENTER, TAB, ESCAPE, etc.)
+- Magic action methods exposed as globals: `click()`, `input()`, `html()`, `waitFor()`, etc.
+
+These will be accessible during Gherkin execution (e.g., `* click('#button')`) but won't pollute the scenario's exported variables. See RUNTIME.md for `putRootBinding()` documentation.
+
 Key features to validate:
 - `configure driver = { type: 'chrome' }`
 - Navigation: `driver serverUrl + '/path'`

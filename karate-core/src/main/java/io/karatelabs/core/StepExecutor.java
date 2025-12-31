@@ -1716,7 +1716,10 @@ public class StepExecutor {
         runtime.setVariable("responseStatus", response.getStatus());
         runtime.setVariable("responseHeaders", response.getHeaders());
         runtime.setVariable("responseTime", response.getResponseTime());
-        runtime.setVariable("responseBytes", response.getBodyBytes());
+        // Hidden variables (accessible but not in getAllVariables())
+        runtime.setHiddenVariable("responseBytes", response.getBodyBytes());
+        runtime.setHiddenVariable("responseCookies", response.getCookies());
+        runtime.setHiddenVariable("requestTimeStamp", response.getStartTime());
 
         // Determine response type for V1 compatibility
         String responseType;
@@ -1729,7 +1732,7 @@ public class StepExecutor {
         } else {
             responseType = "string";
         }
-        runtime.setVariable("responseType", responseType);
+        runtime.setHiddenVariable("responseType", responseType);
     }
 
     private HttpResponse executeMethodWithRetry(String method, String retryUntil, KarateConfig config) {

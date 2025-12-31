@@ -23,6 +23,7 @@
  */
 package io.karatelabs.core;
 
+import io.karatelabs.http.HttpResponse;
 import org.junit.jupiter.api.Test;
 
 import static io.karatelabs.core.InMemoryHttpClient.*;
@@ -265,6 +266,31 @@ class StepHttpTest {
             * cookie session = 'abc123'
             * method get
             * status 200
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testResponseCookies() {
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            HttpResponse resp = json("{ \"ok\": true }");
+            resp.setHeader("Set-Cookie", java.util.List.of(
+                "session=abc123; Path=/; HttpOnly",
+                "token=xyz789; Domain=test.com"
+            ));
+            resp.setStartTime(1234567890L);
+            return resp;
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * method get
+            * status 200
+            * match responseCookies.session.value == 'abc123'
+            * match responseCookies.session.path == '/'
+            * match responseCookies.token.value == 'xyz789'
+            * match responseCookies.token.domain == 'test.com'
+            * match requestTimeStamp == 1234567890
             """);
         assertPassed(sr);
     }

@@ -45,7 +45,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -127,7 +126,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         if (featureRuntime != null && featureRuntime.getCallArg() != null) {
             Map<String, Object> callArg = featureRuntime.getCallArg();
             // Set __arg to the full argument map (V1 compatibility)
-            karate.engine.put("__arg", callArg);
+            karate.engine.putRootBinding("__arg", callArg);
             // Also spread individual keys as variables
             for (var entry : callArg.entrySet()) {
                 karate.engine.put(entry.getKey(), entry.getValue());
@@ -141,9 +140,9 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
                 karate.engine.put(entry.getKey(), entry.getValue());
             }
             // Set __row to the full example data map
-            karate.engine.put("__row", exampleData);
+            karate.engine.putRootBinding("__row", exampleData);
             // Set __num to the example index (0-based)
-            karate.engine.put("__num", scenario.getExampleIndex());
+            karate.engine.putRootBinding("__num", scenario.getExampleIndex());
         }
     }
 
@@ -767,29 +766,20 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         karate.engine.put(name, value);
     }
 
+    /**
+     * Set a "hidden" variable that is accessible in JS but excluded from getAllVariables().
+     * Used for internal implementation details like responseBytes, responseType, etc.
+     */
+    public void setHiddenVariable(String name, Object value) {
+        karate.engine.putRootBinding(name, value);
+    }
+
     public Object getVariable(String name) {
         return karate.engine.get(name);
     }
 
-    /**
-     * Built-in variable names that should be excluded from getAllVariables().
-     * These are set up by KarateJs and karate-config.js, not user-defined.
-     */
-    private static final Set<String> BUILT_IN_VARS = Set.of(
-            "karate", "read", "match",  // KarateJs built-ins
-            "fn",                        // karate-config.js function
-            "__arg", "__row", "__num"    // Special variables for call args and examples
-    );
-
     public Map<String, Object> getAllVariables() {
-        Map<String, Object> bindings = karate.engine.getBindings();
-        Map<String, Object> result = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> entry : bindings.entrySet()) {
-            if (!BUILT_IN_VARS.contains(entry.getKey())) {
-                result.put(entry.getKey(), entry.getValue());
-            }
-        }
-        return result;
+        return new LinkedHashMap<>(karate.engine.getBindings());
     }
 
     public io.karatelabs.js.Engine getEngine() {

@@ -86,7 +86,6 @@ class ContextRoot extends CoreContext {
         };
     }
 
-    @SuppressWarnings("unchecked")
     private Object initGlobal(String key) {
         return switch (key) {
             case "console" -> createConsole();

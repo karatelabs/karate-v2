@@ -215,6 +215,27 @@ public class HttpResponse implements SimpleObject {
         this.delay = delay;
     }
 
+    /**
+     * Parse cookies from Set-Cookie headers using Netty's cookie decoder.
+     * Returns a map where each cookie name maps to a map with properties like 'value', 'domain', 'path', etc.
+     * This matches V1 behavior where cookies are accessed as: responseCookies['name'].value
+     */
+    public Map<String, Map<String, Object>> getCookies() {
+        List<String> setCookieHeaders = getHeaderValues(Http.Header.SET_COOKIE.key);
+        if (setCookieHeaders == null || setCookieHeaders.isEmpty()) {
+            return java.util.Collections.emptyMap();
+        }
+        Map<String, Map<String, Object>> cookies = new java.util.LinkedHashMap<>();
+        for (String header : setCookieHeaders) {
+            io.netty.handler.codec.http.cookie.Cookie cookie =
+                    io.netty.handler.codec.http.cookie.ClientCookieDecoder.LAX.decode(header);
+            if (cookie != null) {
+                cookies.put(cookie.name(), Cookies.toMap(cookie));
+            }
+        }
+        return cookies;
+    }
+
     @Override
     public Map<String, Object> toMap() {
         Map<String, Object> map = new HashMap<>();
