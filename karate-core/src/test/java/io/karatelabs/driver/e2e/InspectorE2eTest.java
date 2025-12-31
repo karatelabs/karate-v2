@@ -23,7 +23,7 @@
  */
 package io.karatelabs.driver.e2e;
 
-import io.karatelabs.driver.DriverInspector;
+import io.karatelabs.driver.CdpInspector;
 import io.karatelabs.driver.e2e.support.DriverTestBase;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -40,16 +40,16 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * E2E tests for DriverInspector observability features.
+ * E2E tests for CdpInspector observability features.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class InspectorE2eTest extends DriverTestBase {
 
-    private static DriverInspector inspector;
+    private static CdpInspector inspector;
 
     @BeforeAll
     static void createInspector() {
-        inspector = new DriverInspector(driver);
+        inspector = new CdpInspector(driver);
     }
 
     @Test

@@ -10,15 +10,21 @@
 | **1** | WebSocket + CDP Client | ✅ Complete |
 | **2** | Browser Launch + Minimal Driver | ✅ Complete |
 | **3** | Testcontainers + E2E Infrastructure | ✅ Complete |
-| **4** | Visibility Layer (DriverInspector) | ✅ Complete |
+| **4** | Visibility Layer (CdpInspector) | ✅ Complete |
 | **5** | Element Operations | ✅ Complete |
 | **6** | Frame & Dialog Support | ✅ Complete |
 | **7** | Advanced Features | ⬜ Not started |
-| **8** | WebDriver Backend | ⬜ Not started |
-| **9** | Playwright Wire Protocol | ⬜ Not started |
-| **10** | WebDriver BiDi | ⬜ Not started |
+| **8** | Driver Interface + Playwright Backend | ⬜ Not started |
+| **9** | WebDriver Backend (Legacy) | ⬜ Not started |
+| **10** | WebDriver BiDi (Future) | ⬜ Not started |
 
 **Legend:** ⬜ Not started | 🟡 In progress | ✅ Complete
+
+**Phase Strategy:**
+- Phase 7 completes CDP driver to full v1 parity
+- Phase 8 extracts `Driver` interface and adds Playwright (validates abstraction)
+- Phase 9 adds WebDriver (legacy, lower priority)
+- Phase 10 adds BiDi when spec matures
 
 **Deferred Features:**
 - Capabilities query API (`driver.supports(Capability.X)`)
@@ -38,8 +44,8 @@ This section captures architectural decisions from detailed design interviews.
 | Interface name | `Driver` | V1 familiarity, established Karate terminology |
 | CDP-only APIs (intercept, screencast) | Base interface with graceful degradation | Methods return null/no-op on WebDriver. Simple API, cross-browser portable |
 | Strict mode | Configurable + logging | Log warnings by default, `driver.strict(true)` throws on unsupported ops |
-| Async events | Separate Inspector class | `DriverInspector` handles async. Driver stays pure sync. Current v2 approach |
-| Inspector binding | Always tied to Driver | `new DriverInspector(driver)`. Lifecycle managed together |
+| Async events | Separate Inspector class | `CdpInspector` handles async. Driver stays pure sync. Current v2 approach |
+| Inspector binding | Always tied to Driver | `new CdpInspector(driver)`. Lifecycle managed together |
 
 ### V1 Compatibility Strategy
 
@@ -130,21 +136,65 @@ element.waitUntil("_.textContent.length > 0", WaitOptions.observe())
 
 ### Multi-Backend Architecture
 
-**Phase 8: WebDriver Backend**
+**Phase 8: Driver Interface + Playwright Backend**
+- Extract `Driver` interface from `CdpDriver`
+- Add `PlaywrightDriver` using Playwright wire protocol (WebSocket + JSON)
+- Validates abstraction works across backends
+- Same tests run with config switch: `Driver.builder().backend(Backend.PLAYWRIGHT).build()`
+- Docker: `mcr.microsoft.com/playwright` or `browserless/chrome`
+
+**Phase 9: WebDriver Backend (Legacy)**
+- Lower priority - WebDriver is legacy, BiDi is the future
 - Reuse Karate HTTP client for consistency
 - Sync REST/HTTP to chromedriver, geckodriver, safaridriver, msedgedriver
 - W3C WebDriver spec compliance
 
-**Phase 9: Playwright Wire Protocol (Low Priority)**
-- Keep wire protocol approach (no embedded playwright-java)
-- Goal: become better than Playwright official libs
-- Simpler JS API, no async/await, mix API+UI testing
-- Redo with v2's improved WebSocket infrastructure
-
-**Phase 10: WebDriver BiDi (After Stable)**
-- Wait for CDP + classic WebDriver stability
+**Phase 10: WebDriver BiDi (Future)**
 - BiDi spec still evolving
 - Add when spec matures (2025+)
+- Combines WebDriver compatibility with CDP-like event streaming
+
+### Wait/Retry Model Alignment
+
+**Design Goal:** Same test syntax works across all backends.
+
+**Karate v1 Model (Explicit Wait/Retry):**
+```java
+click("#id")                      // Immediate - fails fast if not found
+retry().click("#id")              // Opt-in to retry behavior
+retry(5, 10000).click("#id")      // Custom retry count and interval
+waitFor("#id").click()            // Explicit wait, then action
+waitForText("#id", "hello")       // Wait for text content
+```
+
+**Playwright Model (Auto-Wait):**
+- Actions auto-wait by default (visible, stable, enabled)
+- Built-in actionability checks before each action
+- Configurable timeouts per action
+
+**Alignment Strategy:**
+| Karate API | CDP Backend | Playwright Backend |
+|------------|-------------|-------------------|
+| `click("#id")` | Immediate, fail fast | Leverage Playwright auto-wait |
+| `retry().click("#id")` | Poll until found, then click | Extend Playwright timeout |
+| `retry(5, 10000).click("#id")` | Custom retry settings | Map to Playwright timeout |
+| `waitFor("#id")` | Poll until exists | `locator.waitFor()` |
+| `waitForText("#id", "text")` | Poll until text matches | `locator.filter({hasText})` |
+| `waitForEnabled("#id")` | Poll until enabled | `locator.waitFor({state: 'enabled'})` |
+
+**Key Insight:** Playwright's auto-wait is equivalent to wrapping every action in `waitFor()`.
+For Karate users who want fast-fail behavior on Playwright, we can add `{ force: true }` option.
+
+**Configuration:**
+```java
+Driver driver = Driver.builder()
+    .backend(Backend.CDP)         // or PLAYWRIGHT, WEBDRIVER
+    .autoWait(false)              // Karate v1 behavior: fail fast
+    .autoWait(true)               // Playwright behavior: auto-wait
+    .timeout(Duration.ofSeconds(30))
+    .retryInterval(Duration.ofMillis(500))
+    .build();
+```
 
 ### Browser Provisioning
 
@@ -157,6 +207,11 @@ element.waitUntil("_.textContent.length > 0", WaitOptions.observe())
 
 **Product Type:** Standalone product using karate-core as library
 
+**Primary Use Cases:**
+1. **LLM Agent Debugging** - Provide visibility into browser state for AI coding agents (Claude Code, etc.)
+2. **Record & Replay** - Capture browser interactions for test authoring
+3. **API Test Derivation** - Generate API tests from observed browser network traffic
+
 **Features to Explore:**
 - Real-time browser visualization with CDP Screencast
 - LLM-based coding agent integration for test authoring/debugging
@@ -167,8 +222,26 @@ element.waitUntil("_.textContent.length > 0", WaitOptions.observe())
 - AI-assisted locator suggestions
 - Video recording (premium feature)
 
+**API Test Derivation from Browser Interactions:**
+- Record network requests during browser sessions via CDP `Network.*` events
+- Capture request/response pairs with headers, body, timing
+- HAR (HTTP Archive) file generation for portability
+- Smart filtering (ignore static assets, focus on API calls)
+- Generate Karate API test scenarios from recordings:
+  ```gherkin
+  # Auto-generated from browser session recording
+  Scenario: Create user flow
+    Given url 'https://api.example.com'
+    And path '/users'
+    And request { name: 'John', email: 'john@example.com' }
+    When method POST
+    Then status 201
+  ```
+- LLM-assisted refinement (parameterize values, add assertions, handle auth)
+- Correlation detection (extract tokens from responses, use in subsequent requests)
+
 **Architecture:**
-- CdpInspector (renamed from DriverInspector) as observability foundation
+- CdpInspector as observability foundation (CDP-specific, not available for WebDriver)
 - Event-driven updates via CDP subscriptions
 - Separation of driver logic from UI concerns
 - Tool use abstraction for AI agent access
@@ -201,7 +274,7 @@ element.waitUntil("_.textContent.length > 0", WaitOptions.observe())
 **Completed:**
 - Fixed container-to-host networking using `Testcontainers.exposeHostPorts()` with fixed port (18080)
 - Page load event detection verified working for all navigation tests
-- Implemented `DriverInspector` class for full observability:
+- Implemented `CdpInspector` class for full observability:
   - Screenshot capture (PNG, JPEG, WebP formats)
   - DOM queries (getOuterHtml, getInnerHtml, getText, getAttributes, querySelectorAll)
   - Console message capture and streaming
@@ -209,7 +282,7 @@ element.waitUntil("_.textContent.length > 0", WaitOptions.observe())
   - Page load event handlers
   - Error/exception handlers
   - Debug snapshot (url, title, console, screenshot)
-- Added 17 E2E tests for DriverInspector
+- Added 17 E2E tests for CdpInspector
 - Added 5 navigation E2E tests using setUrl()
 - All 25 E2E tests passing
 
@@ -290,7 +363,7 @@ element.waitUntil("_.textContent.length > 0", WaitOptions.observe())
 
 **Video Recording via CDP Screencast:**
 - CDP has `Page.startScreencast` which streams frames as events - no container changes needed
-- Could add to `DriverInspector`:
+- Could add to `CdpInspector`:
   ```java
   inspector.startRecording();
   // ... test actions ...
@@ -302,7 +375,6 @@ element.waitUntil("_.textContent.length > 0", WaitOptions.observe())
 - Not critical for v2 launch
 
 **JavaFX Commercial Application (TODO: Brainstorm):**
-- Rename `DriverInspector` to `CdpInspector` for consistency with CDP naming convention
 - Build a JavaFX desktop application for visual debugging and orchestration
 - Features to explore:
   - Real-time browser visualization with CDP Screencast
@@ -338,7 +410,7 @@ The implementation will be in the `io.karatelabs.driver` package, building on th
 | Browser process | Separate BrowserLauncher class |
 | Raw CDP access | Expose via driver.getCdpClient() |
 | Docker container | Testcontainers + chromedp/headless-shell (~200MB) |
-| Observability | DriverInspector: screenshots + DOM queries + event stream |
+| Observability | CdpInspector: screenshots + DOM queries + event stream |
 
 ---
 
@@ -1508,7 +1580,7 @@ public static boolean isValidJs(String expression) {
 5. **Testable:** NavigationE2ETest, basic scripts
 
 ### Phase 4: Visibility Layer
-1. DriverInspector class
+1. CdpInspector class
 2. Screenshot capture, DOM queries
 3. Event streaming (Console, Network, Page)
 4. Debug snapshot helper
@@ -1649,17 +1721,17 @@ cdp.method("Network.enable").send();
 
 ---
 
-## DriverInspector (Claude Code Visibility)
+## CdpInspector (Claude Code Visibility)
 
 Full observability for debugging and AI-assisted development.
 
 ```java
-public class DriverInspector {
+public class CdpInspector {
 
     private final CdpDriver driver;
     private final List<String> consoleMessages = new CopyOnWriteArrayList<>();
 
-    public DriverInspector(CdpDriver driver) {
+    public CdpInspector(CdpDriver driver) {
         this.driver = driver;
         enableObservability();
     }
@@ -1711,7 +1783,7 @@ public class DriverInspector {
 ### Usage Example
 
 ```java
-DriverInspector inspector = new DriverInspector(driver);
+CdpInspector inspector = new CdpInspector(driver);
 
 // Take screenshot
 inspector.saveScreenshot(Path.of("debug.png"));
@@ -1856,7 +1928,7 @@ public abstract class DriverTestBase {
 
     protected static HttpServer testServer;
     protected static CdpDriver driver;
-    protected static DriverInspector inspector;
+    protected static CdpInspector inspector;
 
     @BeforeAll
     static void startTestServer() {
@@ -1871,7 +1943,7 @@ public abstract class DriverTestBase {
                 .pageLoadStrategy(PageLoadStrategy.DOMCONTENT_AND_FRAMES)
                 .build()
         );
-        inspector = new DriverInspector(driver);
+        inspector = new CdpInspector(driver);
     }
 
     @AfterAll
@@ -1971,7 +2043,7 @@ karate-core/src/main/java/io/karatelabs/driver/
 ├── CdpDriverOptions.java    # Configuration
 ├── BrowserLauncher.java     # Chrome process
 ├── PageLoadStrategy.java    # Enum
-├── DriverInspector.java     # Visibility/observability
+├── CdpInspector.java     # Visibility/observability
 ├── DialogHandler.java       # Functional interface
 ├── Dialog.java              # Dialog wrapper
 ├── InterceptHandler.java    # Functional interface

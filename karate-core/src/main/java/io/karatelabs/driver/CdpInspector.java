@@ -38,7 +38,7 @@ import java.util.function.Consumer;
  * Provides screenshots, DOM queries, console messages, and event streaming
  * for debugging and AI-assisted development.
  */
-public class DriverInspector {
+public class CdpInspector {
 
     private static final Logger logger = LogContext.RUNTIME_LOGGER;
 
@@ -56,7 +56,7 @@ public class DriverInspector {
     private Runnable pageLoadHandler;
     private Consumer<Throwable> errorHandler;
 
-    public DriverInspector(CdpDriver driver) {
+    public CdpInspector(CdpDriver driver) {
         this.driver = driver;
         this.cdp = driver.getCdpClient();
         enableObservability();
@@ -161,7 +161,7 @@ public class DriverInspector {
             }
         });
 
-        logger.debug("DriverInspector observability enabled");
+        logger.debug("CdpInspector observability enabled");
     }
 
     // ========== Screenshot Capture ==========
