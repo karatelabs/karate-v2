@@ -363,6 +363,32 @@ class EngineTest {
     }
 
     @Test
+    void testLazyRootBindings() {
+        Engine engine = new Engine();
+
+        // Simulate a suite-level resource that may or may not exist
+        String[] suiteDriver = { null };
+
+        // Root binding with Supplier - lazily evaluated each time
+        engine.putRootBinding("driver", (Supplier<String>) () -> {
+            // This simulates: return local driver if exists, else suite driver
+            return suiteDriver[0];
+        });
+
+        // Initially null
+        assertNull(engine.eval("driver"));
+
+        // Suite creates the driver
+        suiteDriver[0] = "suite-driver";
+
+        // Now it returns the suite driver (lazy evaluation)
+        assertEquals("suite-driver", engine.eval("driver"));
+
+        // Still not in getBindings() (hidden)
+        assertFalse(engine.getBindings().containsKey("driver"));
+    }
+
+    @Test
     void testJsDocCommentExtraction() {
         String js = """
                 /**

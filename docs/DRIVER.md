@@ -15,9 +15,9 @@
 | **6** | Frame & Dialog Support | ✅ Complete |
 | **7** | Advanced Features | ✅ Complete |
 | **8** | Package Restructuring + Driver Interface | ✅ Complete |
-| **9** | Gherkin/DSL Integration | 🟡 In progress |
-| **9b** | Gherkin E2E Tests (mirror Java E2E) | 🟡 In progress |
-| **9c** | Test Optimization (browser reuse) | ⬜ Not started |
+| **9** | Gherkin/DSL Integration | ✅ Complete |
+| **9b** | Gherkin E2E Tests + DriverProvider | 🟡 In progress |
+| **9c** | Test Optimization (browser reuse) | ✅ Complete (via DriverProvider) |
 | **10** | Playwright Backend | ⬜ Not started |
 | **11** | WebDriver Backend (Legacy) | ⬜ Not started |
 | **12** | WebDriver BiDi (Future) | ⬜ Not started |
@@ -208,8 +208,14 @@ Driver driver = Driver.builder()
 
 | V1 | V2 |
 |----|-----|
-| Target interface (DockerTarget, custom) | **Testcontainers only** |
-| Custom provisioners | Simplified - use Testcontainers patterns |
+| Target interface (DockerTarget, custom) | `DriverProvider` interface |
+| Custom provisioners | `ThreadLocalDriverProvider` or custom implementations |
+| Per-scenario browser | Optional - provider controls lifecycle |
+
+**DriverProvider vs V1 Target:**
+- V1 `Target.start()/stop()` - created browser per scenario
+- V2 `DriverProvider.acquire()/release()` - flexible lifecycle (per-scenario, per-thread, pooled)
+- Simpler interface, more control over reuse patterns
 
 ### Commercial JavaFX Application (Deferred)
 
@@ -273,13 +279,15 @@ Driver driver = Driver.builder()
 | **7** | Intercept, cookies, window, PDF, navigation, Mouse, Keys, Finder | 241 |
 | **8** | Package restructuring: `Driver` interface + `cdp/` subpackage | 241 |
 
-**Package Structure (Phase 8):**
+**Package Structure (Phase 8+9c):**
 ```
 io.karatelabs.driver/
 ├── Driver, Element, Locators, Finder    # Backend-agnostic
 ├── Mouse, Keys, Dialog                   # Interfaces
 ├── DialogHandler, InterceptHandler       # Functional interfaces
 ├── InterceptRequest, InterceptResponse   # Data classes
+├── DriverProvider                        # Lifecycle management interface
+├── ThreadLocalDriverProvider             # Per-thread driver reuse
 └── cdp/                                  # CDP implementation
     ├── CdpDriver, CdpMouse, CdpKeys, CdpDialog
     ├── CdpClient, CdpMessage, CdpEvent, CdpResponse
@@ -395,6 +403,8 @@ Key features to validate:
   - Navigate and verify title (`driver url`, `driver.title`)
   - Script execution (`script('1 + 1')`)
   - Get page content via script (`script('window.testValue')`)
+- Integrated `DriverProvider` for efficient driver reuse (see Phase 9c)
+- `DriverFeatureTest` now uses `ThreadLocalDriverProvider`
 
 **Working v2 Gherkin Syntax:**
 ```gherkin
@@ -564,82 +574,118 @@ Key features to validate:
 
 **Test Structure:**
 ```
-karate-core/src/test/resources/io/karatelabs/driver/
-├── pages/                    # Existing test HTML pages (reuse)
-│   ├── index.html
-│   ├── navigation.html
-│   ├── wait.html
-│   ├── input.html
-│   ├── iframe.html
-│   └── dialog.html
+karate-core/src/test/
+├── java/io/karatelabs/driver/e2e/
+│   └── DriverFeatureTest.java    # JUnit runner with ThreadLocalDriverProvider
 │
-└── features/                 # Gherkin E2E tests
-    ├── karate-config.js      # Driver config (reads system properties)
-    ├── navigation.feature    # ✅ 3 scenarios passing
-    ├── element.feature.skip  # Pending
-    ├── mouse.feature.skip    # Pending
-    ├── keys.feature.skip     # Pending (Key constants issue)
-    ├── cookie.feature.skip   # Pending
-    ├── frame.feature.skip    # Pending (switchFrame(null) issue)
-    └── dialog.feature.skip   # Pending (callback pattern issue)
+└── resources/io/karatelabs/driver/
+    ├── pages/                    # Test HTML pages
+    │   ├── index.html
+    │   ├── navigation.html
+    │   ├── wait.html
+    │   ├── input.html
+    │   ├── iframe.html
+    │   └── dialog.html
+    │
+    └── features/                 # Gherkin E2E tests
+        ├── karate-config.js      # Driver config (reads system properties)
+        ├── navigation.feature    # ✅ 3 scenarios passing
+        ├── element.feature       # Ready to test (renamed from .skip)
+        ├── mouse.feature.skip    # Pending
+        ├── keys.feature.skip     # Pending (Key constants issue)
+        ├── cookie.feature.skip   # Pending
+        ├── frame.feature.skip    # Pending (switchFrame(null) issue)
+        └── dialog.feature.skip   # Pending (callback pattern issue)
+```
+
+**Test Runner Pattern:**
+```java
+@Test
+void testDriverFeatures() {
+    ThreadLocalDriverProvider provider = new ThreadLocalDriverProvider();
+
+    Runner.path("classpath:io/karatelabs/driver/features")
+        .configDir("classpath:io/karatelabs/driver/features/karate-config.js")
+        .driverProvider(provider)  // Reuse driver across scenarios
+        .parallel(1);
+}
 ```
 
 **Infrastructure Reuse:**
-- `TestPageServer` - Reuse for serving test HTML pages
-- `ChromeContainer` - Reuse Testcontainers Chrome setup
-- `DriverFeatureTest.java` - Gherkin test runner (created)
-- Test HTML pages - Reuse existing pages in `pages/` directory
+- `TestPageServer` - Serves test HTML pages
+- `ChromeContainer` - Testcontainers Chrome setup
+- `ThreadLocalDriverProvider` - Driver reuse across scenarios
+- Test HTML pages in `pages/` directory
 
 **V1 Reference:** `/Users/peter/dev/zcode/karate/karate-core/README.md`
 - Use v1 README as API reference for Gherkin syntax
 - v2 tests should be cleaner, better organized, using Testcontainers
 
-### Phase 9c Notes
+### Phase 9c: DriverProvider Architecture (Complete)
 
-**Test Optimization (browser reuse)**
+**Problem:** V1's approach of closing driver after each scenario is inefficient. Parallel execution needs separate driver instances per thread.
 
-**Goals:**
-1. Most tests reuse the same browser instance for speed
-2. Only tests that require fresh browser state get isolated instances
-3. Proper cleanup between tests (cookies, localStorage, navigation)
+**Solution:** `DriverProvider` interface for flexible driver lifecycle management.
 
-**Strategy:**
 ```java
-// Shared browser for most tests
-@TestInstance(Lifecycle.PER_CLASS)
-class SharedBrowserFeatureTest {
-    static ChromeContainer chrome;  // Started once for all tests
-    static CdpDriver driver;        // Reused across tests
-
-    @BeforeEach
-    void resetBrowserState() {
-        driver.clearCookies();
-        driver.script("localStorage.clear()");
-        driver.setUrl("about:blank");
-    }
-}
-
-// Isolated browser for specific tests (dialogs, intercept, etc.)
-@TestInstance(Lifecycle.PER_METHOD)
-class IsolatedBrowserFeatureTest {
-    // Fresh browser per test
+public interface DriverProvider {
+    Driver acquire(ScenarioRuntime runtime, Map<String, Object> config);
+    void release(ScenarioRuntime runtime, Driver driver);
+    void shutdown();
 }
 ```
 
-**Test Categories:**
-| Category | Browser Mode | Reason |
-|----------|--------------|--------|
-| Navigation | Shared | Simple state reset |
-| Element | Shared | Simple state reset |
-| Mouse/Keys | Shared | Simple state reset |
-| Cookies | Shared | Clear between tests |
-| Frames | Shared | Navigate away resets |
-| Dialogs | Isolated | Dialog handlers persist |
-| Intercept | Isolated | Intercept state persists |
+**Flow:**
+```
+Runner.driverProvider(provider)
+    ↓
+Suite.driverProvider (stored)
+    ↓
+ScenarioRuntime.initDriver()
+    → provider.acquire(runtime, config)  // Get driver
+    ↓
+ScenarioRuntime.closeDriver()
+    → provider.release(runtime, driver)  // Return driver (don't quit)
+    ↓
+Suite.run() finally
+    → provider.shutdown()  // Close all drivers
+```
 
-**Expected Speedup:**
-- Current: ~20s for 241 tests (browser start per test class)
-- Target: ~10s (single browser, parallel test classes where safe)
+**Built-in Implementation: `ThreadLocalDriverProvider`**
+- One driver per thread, reused across scenarios
+- Resets state between scenarios (about:blank, clear cookies)
+- Efficient for sequential and parallel execution
+
+```java
+// Usage
+Runner.path("features/")
+    .driverProvider(new ThreadLocalDriverProvider())
+    .parallel(4);
+```
+
+**Key Files:**
+- `io.karatelabs.driver.DriverProvider` - Interface
+- `io.karatelabs.driver.ThreadLocalDriverProvider` - Per-thread implementation
+- `io.karatelabs.core.Suite` - Holds provider, calls shutdown()
+- `io.karatelabs.core.Runner.Builder` - `.driverProvider()` method
+- `io.karatelabs.core.ScenarioRuntime` - Uses provider for acquire/release
+
+**Parallel Execution Options:**
+| Approach | Description | Use Case |
+|----------|-------------|----------|
+| `ThreadLocalDriverProvider` | One driver per thread | Multiple containers or local browsers |
+| Custom `DriverProvider` | Pool of tabs in single browser | Single Testcontainer, CDP `Target.createTarget` |
+| Multiple containers | One container per thread | Full isolation, higher resource usage |
+
+**Test Results:**
+```
+14:30:47.156 [main] INFO  ThreadLocalDriverProvider - Created new driver for thread: main
+=========================================================
+feature: navigation.feature
+scenarios:  3 | passed:  3 | time: 0.3990
+=========================================================
+14:30:47.477 [main] INFO  ThreadLocalDriverProvider - Shutting down, closing 1 drivers
+```
 
 ### Future Enhancements (TODO)
 
@@ -679,6 +725,8 @@ class IsolatedBrowserFeatureTest {
 
 **Key Source Files:**
 - `io.karatelabs.driver.Driver` - Main interface (v1 API compatible)
+- `io.karatelabs.driver.DriverProvider` - Driver lifecycle management
+- `io.karatelabs.driver.ThreadLocalDriverProvider` - Per-thread driver reuse
 - `io.karatelabs.driver.cdp.CdpDriver` - CDP implementation
 - `io.karatelabs.driver.Locators` - Selector transformation (CSS, XPath, wildcards)
 - `io.karatelabs.driver.Element` - Fluent element API
@@ -692,6 +740,7 @@ class IsolatedBrowserFeatureTest {
 | Dialog handling | Callback: `onDialog(handler)` |
 | Request interception | Both callback and mock-feature modes |
 | Docker | Testcontainers + `chromedp/headless-shell` (~200MB) |
+| Driver lifecycle | `DriverProvider` interface (replaces v1 `Target`) |
 
 **V1 Compatibility:**
 - Gherkin DSL is drop-in compatible
@@ -699,3 +748,4 @@ class IsolatedBrowserFeatureTest {
 - `@AutoDef` removed, Plugin interface removed
 - `onDialog()` replaces polling `getDialogText()`
 - `getCdpClient()` exposes raw CDP access
+- `DriverProvider` replaces `Target` interface (simpler, more flexible)

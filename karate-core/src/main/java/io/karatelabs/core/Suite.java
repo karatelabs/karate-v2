@@ -26,6 +26,7 @@ package io.karatelabs.core;
 import io.karatelabs.common.FileUtils;
 import io.karatelabs.common.Resource;
 import io.karatelabs.common.ResourceNotFoundException;
+import io.karatelabs.driver.DriverProvider;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.Tag;
 import io.karatelabs.js.Engine;
@@ -102,6 +103,9 @@ public class Suite {
 
     // Results
     private SuiteResult result;
+
+    // Driver provider (manages driver lifecycle across scenarios)
+    private DriverProvider driverProvider;
 
     private Suite() {
     }
@@ -449,6 +453,11 @@ public class Suite {
         } finally {
             result.setEndTime(System.currentTimeMillis());
 
+            // Shutdown driver provider if one exists
+            if (driverProvider != null) {
+                driverProvider.shutdown();
+            }
+
             // Close JSONL event writer
             if (jsonlWriter != null) {
                 try {
@@ -757,6 +766,24 @@ public class Suite {
         System.getProperties().forEach((k, v) -> merged.put(k.toString(), v.toString()));
         merged.putAll(systemProperties);
         return merged;
+    }
+
+    // ========== Driver Provider ==========
+
+    /**
+     * Get the driver provider. May be null if not configured.
+     */
+    public DriverProvider getDriverProvider() {
+        return driverProvider;
+    }
+
+    /**
+     * Set the driver provider.
+     * Called via Runner.driverProvider() or Suite.driverProvider().
+     */
+    public Suite driverProvider(DriverProvider provider) {
+        this.driverProvider = provider;
+        return this;
     }
 
 }

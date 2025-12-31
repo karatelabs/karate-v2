@@ -78,6 +78,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
 
     // Browser driver (lazily initialized)
     private Driver driver;
+    private boolean driverFromProvider;  // true if driver came from provider (use release, not quit)
 
     public ScenarioRuntime(FeatureRuntime featureRuntime, Scenario scenario) {
         this.featureRuntime = featureRuntime;
@@ -931,22 +932,37 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
             throw new RuntimeException("driver not configured - use: * configure driver = { type: 'chrome' }");
         }
 
-        CdpDriverOptions options;
+        Map<String, Object> configMap = null;
         if (driverConfig instanceof Map) {
-            options = CdpDriverOptions.fromMap((Map<String, Object>) driverConfig);
+            configMap = (Map<String, Object>) driverConfig;
         } else {
-            options = CdpDriverOptions.builder().build();
+            configMap = new java.util.HashMap<>();
         }
 
-        // Check if webSocketUrl is provided (connecting to existing browser)
-        String wsUrl = options.getWebSocketUrl();
+        // Check if a driver provider is configured at Suite level
+        io.karatelabs.driver.DriverProvider provider = null;
+        if (featureRuntime != null && featureRuntime.getSuite() != null) {
+            provider = featureRuntime.getSuite().getDriverProvider();
+        }
+
         Driver driver;
-        if (wsUrl != null && !wsUrl.isEmpty()) {
-            logger.info("Connecting to existing browser: {}", wsUrl);
-            driver = CdpDriver.connect(wsUrl, options);
+        if (provider != null) {
+            // Use provider to acquire driver
+            driver = provider.acquire(this, configMap);
+            driverFromProvider = true;
+            logger.info("Acquired driver from provider for scenario: {}", scenario.getName());
         } else {
-            logger.info("Starting browser with options: headless={}", options.isHeadless());
-            driver = CdpDriver.start(options);
+            // Create driver directly (default behavior)
+            CdpDriverOptions options = CdpDriverOptions.fromMap(configMap);
+            String wsUrl = options.getWebSocketUrl();
+            if (wsUrl != null && !wsUrl.isEmpty()) {
+                logger.info("Connecting to existing browser: {}", wsUrl);
+                driver = CdpDriver.connect(wsUrl, options);
+            } else {
+                logger.info("Starting browser with options: headless={}", options.isHeadless());
+                driver = CdpDriver.start(options);
+            }
+            driverFromProvider = false;
         }
 
         // Bind driver to JS engine as root binding (hidden from getAllVariables)
@@ -1157,17 +1173,38 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
     }
 
     /**
-     * Close the driver if it was initialized.
+     * Close or release the driver if it was initialized.
+     * If driver came from a provider, release it back to the provider.
+     * Otherwise, close it directly.
      */
     private void closeDriver() {
-        if (driver != null) {
+        if (driver == null) {
+            return;
+        }
+
+        if (driverFromProvider) {
+            // Release back to provider
+            io.karatelabs.driver.DriverProvider provider = null;
+            if (featureRuntime != null && featureRuntime.getSuite() != null) {
+                provider = featureRuntime.getSuite().getDriverProvider();
+            }
+            if (provider != null) {
+                try {
+                    provider.release(this, driver);
+                    logger.debug("Released driver to provider for scenario: {}", scenario.getName());
+                } catch (Exception e) {
+                    logger.warn("Error releasing driver to provider: {}", e.getMessage());
+                }
+            }
+        } else {
+            // Close directly
             try {
                 driver.quit();
             } catch (Exception e) {
                 logger.warn("Error closing driver: {}", e.getMessage());
             }
-            driver = null;
         }
+        driver = null;
     }
 
     // ========== Signal/Listen Mechanism ==========

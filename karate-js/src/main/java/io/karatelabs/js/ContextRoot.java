@@ -24,6 +24,7 @@
 package io.karatelabs.js;
 
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 class ContextRoot extends CoreContext {
 
@@ -63,7 +64,11 @@ class ContextRoot extends CoreContext {
     @Override
     Object get(String key) {
         if (_bindings != null && _bindings.containsKey(key)) {
-            return _bindings.get(key);
+            Object result = _bindings.get(key);
+            if (result instanceof Supplier<?> supplier) {
+                return supplier.get();
+            }
+            return result;
         }
         Object global = initGlobal(key);
         if (global != null) {

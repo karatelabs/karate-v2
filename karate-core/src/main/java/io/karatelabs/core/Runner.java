@@ -107,6 +107,7 @@ public final class Runner {
         private boolean outputConsoleSummary = true;
         private Map<String, String> systemProperties;
         private LogLevel logLevel = LogLevel.INFO;
+        private io.karatelabs.driver.DriverProvider driverProvider;
 
         Builder() {
         }
@@ -363,6 +364,24 @@ public final class Runner {
         }
 
         /**
+         * Set a driver provider for managing browser driver lifecycle.
+         * <p>
+         * When set, the provider is used to acquire/release drivers for scenarios
+         * instead of creating a new driver per scenario.
+         * <p>
+         * Example:
+         * <pre>
+         * Runner.path("features/")
+         *     .driverProvider(new ThreadLocalDriverProvider())
+         *     .parallel(4);
+         * </pre>
+         */
+        public Builder driverProvider(io.karatelabs.driver.DriverProvider provider) {
+            this.driverProvider = provider;
+            return this;
+        }
+
+        /**
          * Execute the tests with the specified thread count.
          * This is the terminal operation that runs the tests.
          *
@@ -432,6 +451,11 @@ public final class Runner {
             // Add result listeners
             for (ResultListener listener : resultListeners) {
                 suite.resultListener(listener);
+            }
+
+            // Set driver provider
+            if (driverProvider != null) {
+                suite.driverProvider(driverProvider);
             }
 
             // Apply log level (this is a global setting)

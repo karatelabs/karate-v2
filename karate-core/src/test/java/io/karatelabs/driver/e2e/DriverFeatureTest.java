@@ -25,6 +25,7 @@ package io.karatelabs.driver.e2e;
 
 import io.karatelabs.core.Runner;
 import io.karatelabs.core.SuiteResult;
+import io.karatelabs.driver.ThreadLocalDriverProvider;
 import io.karatelabs.driver.e2e.support.ChromeContainer;
 import io.karatelabs.driver.e2e.support.TestPageServer;
 import org.junit.jupiter.api.AfterAll;
@@ -96,12 +97,17 @@ class DriverFeatureTest {
 
     @Test
     void testDriverFeatures() {
+        // Use ThreadLocalDriverProvider to reuse driver across scenarios
+        // This is efficient and works with single Testcontainers Chrome instance
+        ThreadLocalDriverProvider provider = new ThreadLocalDriverProvider();
+
         SuiteResult result = Runner.path("classpath:io/karatelabs/driver/features")
                 .configDir("classpath:io/karatelabs/driver/features/karate-config.js")
                 .outputDir(Path.of("target", "driver-feature-reports"))
                 .outputHtmlReport(true)
                 .outputConsoleSummary(true)
-                .parallel(1);
+                .driverProvider(provider)
+                .parallel(1);  // Sequential for now (single Chrome instance)
 
         // Log results
         logger.info("Feature count: {}", result.getFeatureCount());
