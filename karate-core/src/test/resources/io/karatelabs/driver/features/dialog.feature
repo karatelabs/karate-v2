@@ -1,56 +1,52 @@
 Feature: Dialog Tests
   Dialog handling (alert, confirm, prompt)
-  Note: In Gherkin, dialog handling uses auto-accept handlers or manual dialog() calls
 
   Background:
     * configure driver = driverConfig
     * driver serverUrl + '/dialog'
 
-  # Dialog tests require callback handlers which are more naturally expressed in Java API
-  # These Gherkin tests verify the basic dialog infrastructure works
-
   Scenario: Alert dialog auto-handled
     # Set up a handler that auto-accepts alerts
     * def handler = function(d) { d.accept() }
-    * driver.onDialog(handler)
+    * onDialog(handler)
     * click('#alert-btn')
     * waitForText('#result', 'Alert was shown')
     * def resultText = text('#result')
     * match resultText == 'Alert was shown'
-    * driver.onDialog(null)
+    * onDialog(null)
 
   Scenario: Confirm dialog accept
     * def handler = function(d) { d.accept() }
-    * driver.onDialog(handler)
+    * onDialog(handler)
     * click('#confirm-btn')
     * waitForText('#result', 'Confirm result: true')
     * def resultText = text('#result')
     * match resultText == 'Confirm result: true'
-    * driver.onDialog(null)
+    * onDialog(null)
 
   Scenario: Confirm dialog dismiss
     * def handler = function(d) { d.dismiss() }
-    * driver.onDialog(handler)
+    * onDialog(handler)
     * click('#confirm-btn')
     * waitForText('#result', 'Confirm result: false')
     * def resultText = text('#result')
     * match resultText == 'Confirm result: false'
-    * driver.onDialog(null)
+    * onDialog(null)
 
   Scenario: Prompt dialog accept with text
     * def handler = function(d) { d.accept('John Doe') }
-    * driver.onDialog(handler)
+    * onDialog(handler)
     * click('#prompt-btn')
     * waitForText('#result', 'Prompt result: John Doe')
     * def resultText = text('#result')
     * match resultText == 'Prompt result: John Doe'
-    * driver.onDialog(null)
+    * onDialog(null)
 
   Scenario: Prompt dialog dismiss
     * def handler = function(d) { d.dismiss() }
-    * driver.onDialog(handler)
+    * onDialog(handler)
     * click('#prompt-btn')
     * waitForText('#result', 'Prompt result: null')
     * def resultText = text('#result')
     * match resultText == 'Prompt result: null'
-    * driver.onDialog(null)
+    * onDialog(null)

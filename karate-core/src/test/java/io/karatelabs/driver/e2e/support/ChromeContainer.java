@@ -96,37 +96,15 @@ public class ChromeContainer extends GenericContainer<ChromeContainer> {
                 .build();
 
         try {
-            // First try /json to get existing page targets
+            // Always create a new tab/target for each caller
+            // This enables parallel execution - each thread gets its own page
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://" + host + ":" + port + "/json"))
-                    .timeout(Duration.ofSeconds(10))
-                    .GET()
-                    .build();
-
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 200) {
-                List<Map<String, Object>> targets = (List<Map<String, Object>>) JSONValue.parse(response.body());
-                if (targets != null && !targets.isEmpty()) {
-                    for (Map<String, Object> target : targets) {
-                        String targetType = (String) target.get("type");
-                        if ("page".equals(targetType)) {
-                            String wsUrl = (String) target.get("webSocketDebuggerUrl");
-                            if (wsUrl != null) {
-                                return wsUrl.replace("localhost", host).replace("127.0.0.1", host);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // No page targets exist - create a new one
-            request = HttpRequest.newBuilder()
                     .uri(URI.create("http://" + host + ":" + port + "/json/new?about:blank"))
                     .timeout(Duration.ofSeconds(10))
                     .PUT(HttpRequest.BodyPublishers.noBody())
                     .build();
 
-            response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() == 200) {
                 Map<String, Object> newTarget = (Map<String, Object>) JSONValue.parse(response.body());
                 if (newTarget != null) {
@@ -137,7 +115,7 @@ public class ChromeContainer extends GenericContainer<ChromeContainer> {
                 }
             }
 
-            throw new RuntimeException("Failed to get WebSocket URL from Chrome container");
+            throw new RuntimeException("Failed to create new tab in Chrome container");
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {

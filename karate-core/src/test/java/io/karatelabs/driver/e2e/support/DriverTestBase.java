@@ -30,68 +30,43 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.Testcontainers;
-import org.testcontainers.junit.jupiter.Container;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
  * Base class for driver E2E tests.
- * Provides Docker-based Chrome via Testcontainers and a test page server.
+ * Uses SharedChromeContainer for efficient test execution - single container for all tests.
  */
-@org.testcontainers.junit.jupiter.Testcontainers
 public abstract class DriverTestBase {
 
     protected static final Logger logger = LoggerFactory.getLogger(DriverTestBase.class);
 
-    // Test server port - use fixed port for exposeHostPorts which must be called before container starts
-    private static final int TEST_SERVER_PORT = 18080;
-
-    // Static initialization block runs before @Container field initialization
-    static {
-        // Workaround for Docker 29.x compatibility
-        // See: https://github.com/testcontainers/testcontainers-java/issues/11212
-        System.setProperty("api.version", "1.44");
-
-        // Expose the test server port to containers BEFORE container starts
-        Testcontainers.exposeHostPorts(TEST_SERVER_PORT);
-        logger.info("exposed host port {} to containers", TEST_SERVER_PORT);
-    }
-
-    @Container
-    protected static final ChromeContainer chrome = new ChromeContainer();
-
-    protected static TestPageServer testServer;
+    protected static SharedChromeContainer shared;
     protected static CdpDriver driver;
 
     @BeforeAll
-    static void startTestServer() {
-        testServer = TestPageServer.start(TEST_SERVER_PORT);
-        logger.info("test page server started on port: {}", testServer.getPort());
-    }
+    static void setupDriver() {
+        // Get or create shared container (singleton)
+        shared = SharedChromeContainer.getInstance();
 
-    @BeforeAll
-    static void createDriver() {
-        driver = chrome.createDriver(
+        // Create driver connected to shared container
+        driver = shared.getChrome().createDriver(
                 CdpDriverOptions.builder()
                         .timeout(30000)
                         .pageLoadStrategy(PageLoadStrategy.DOMCONTENT_AND_FRAMES)
                         .build()
         );
-        logger.info("CDP driver connected to Chrome container");
+        logger.info("CDP driver connected to shared Chrome container");
     }
 
     @AfterAll
-    static void cleanup() {
+    static void cleanupDriver() {
         if (driver != null) {
             driver.quit();
             driver = null;
         }
-        if (testServer != null) {
-            testServer.stopAsync();
-            testServer = null;
-        }
+        // Note: shared container is NOT stopped here - it persists for all test classes
     }
 
     /**
@@ -99,8 +74,7 @@ public abstract class DriverTestBase {
      * Use this for driver.setUrl() calls.
      */
     protected String testUrl(String path) {
-        // Use host.testcontainers.internal to access host services from container
-        return chrome.getHostAccessUrl(TEST_SERVER_PORT) + path;
+        return shared.getHostAccessUrl() + path;
     }
 
     /**
@@ -108,7 +82,7 @@ public abstract class DriverTestBase {
      * Use this for debugging or local access.
      */
     protected String localUrl(String path) {
-        return testServer.getBaseUrl() + path;
+        return shared.getTestServer().getBaseUrl() + path;
     }
 
     /**

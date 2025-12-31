@@ -16,7 +16,7 @@
 | **7** | Advanced Features | ✅ Complete |
 | **8** | Package Restructuring + Driver Interface | ✅ Complete |
 | **9** | Gherkin/DSL Integration | ✅ Complete |
-| **9b** | Gherkin E2E Tests + DriverProvider | 🟡 In progress |
+| **9b** | Gherkin E2E Tests + DriverProvider | ✅ Complete |
 | **9c** | Test Optimization (browser reuse) | ✅ Complete (via DriverProvider) |
 | **10** | Playwright Backend | ⬜ Not started |
 | **11** | WebDriver Backend (Legacy) | ⬜ Not started |
@@ -416,12 +416,11 @@ Key features to validate:
 * def result = script('1 + 1')
 ```
 
-**Remaining:**
-- Create remaining feature files (element, mouse, keys, cookie, frame, dialog)
-- Issues to investigate:
-  - `Key.TAB` etc. not working (static field access on interface in JS)
-  - Dialog callback pattern needs different Gherkin approach
-  - Frame switching with null needs driver initialized first
+**Completed (all issues resolved):**
+- All 7 feature files created and passing (83 scenarios total)
+- `Key.TAB` etc. - Fixed by wrapping `Keys.class` in `JavaType` for static field access
+- Dialog callbacks - Fixed via `onDialog(handler)` root binding that wraps `JsCallable` to `DialogHandler`
+- Frame switching - Working correctly
 
 **V1 API Reference (from karate-core/README.md):**
 
@@ -499,25 +498,26 @@ Key features to validate:
 *Dialogs:*
 | V1 Gherkin | Description | V2 Status |
 |------------|-------------|-----------|
-| `dialog(accept)` | Accept/dismiss | ❌ Callback issue |
-| `dialog(accept, text)` | Accept with text | ❌ Callback issue |
-| `driver.dialogText` | Get dialog text | ❌ Callback issue |
+| `onDialog(handler)` | Register callback | ✅ Working |
+| `dialog(accept)` | Accept/dismiss | ✅ Working |
+| `dialog(accept, text)` | Accept with text | ✅ Working |
+| `driver.dialogText` | Get dialog text | ✅ Working |
 
 *Cookies:*
 | V1 Gherkin | Description | V2 Status |
 |------------|-------------|-----------|
-| `cookie(name)` | Get cookie | 🔲 Test needed |
-| `cookie(map)` | Set cookie | 🔲 Test needed |
-| `driver.cookies` | Get all cookies | 🔲 Test needed |
-| `deleteCookie(name)` | Delete cookie | 🔲 Test needed |
-| `clearCookies()` | Clear all | 🔲 Test needed |
+| `cookie(name)` | Get cookie | ✅ Working |
+| `cookie(map)` | Set cookie | ✅ Working |
+| `driver.cookies` | Get all cookies | ✅ Working |
+| `deleteCookie(name)` | Delete cookie | ✅ Working |
+| `clearCookies()` | Clear all | ✅ Working |
 
 *Frames:*
 | V1 Gherkin | Description | V2 Status |
 |------------|-------------|-----------|
-| `switchFrame(index)` | By index | ❌ Issue |
-| `switchFrame(locator)` | By locator | ❌ Issue |
-| `switchFrame(null)` | Return to main | ❌ Issue |
+| `switchFrame(index)` | By index | ✅ Working |
+| `switchFrame(locator)` | By locator | ✅ Working |
+| `switchFrame(null)` | Return to main | ✅ Working |
 
 *Pages/Tabs:*
 | V1 Gherkin | Description | V2 Status |
@@ -528,17 +528,18 @@ Key features to validate:
 *Mouse:*
 | V1 Gherkin | Description | V2 Status |
 |------------|-------------|-----------|
-| `mouse()` | Create mouse | 🔲 Test needed |
-| `mouse(locator)` | At element | 🔲 Test needed |
-| `mouse(x, y)` | At coordinates | 🔲 Test needed |
-| `.move()`, `.click()`, `.doubleClick()` | Chain methods | 🔲 Test needed |
+| `mouse()` | Create mouse | ✅ Working |
+| `mouse(locator)` | At element | ✅ Working |
+| `mouse(x, y)` | At coordinates | ✅ Working |
+| `.move()`, `.click()`, `.doubleClick()` | Chain methods | ✅ Working |
 
 *Special Keys:*
 | V1 Gherkin | Description | V2 Status |
 |------------|-------------|-----------|
-| `Key.ENTER`, `Key.TAB`, etc. | Key constants | ❌ Not accessible |
-| `input('#id', 'text' + Key.ENTER)` | With string concat | ❌ Not working |
-| `input('#id', ['text', Key.ENTER])` | With array | ❌ Not working |
+| `Key.ENTER`, `Key.TAB`, etc. | Key constants | ✅ Working |
+| `keys().press(Key.TAB)` | Press special key | ✅ Working |
+| `keys().type('text')` | Type text | ✅ Working |
+| `keys().ctrl('a')` | Ctrl+key combo | ✅ Working |
 
 *Window:*
 | V1 Gherkin | Description | V2 Status |
@@ -563,16 +564,7 @@ Key features to validate:
 | `above(loc)`, `below(loc)` | Above/below | 🔲 Test needed |
 | `near(loc)` | Nearby | 🔲 Test needed |
 
-*Known Issues to Fix:*
-1. **Key constants** - `Key.ENTER`, `Key.TAB` not accessible in JS engine
-   - Need to expose Key class or individual constants as root bindings
-   - May need `Key` to be a JS object with string values, not interface with static fields
-   - **Hint:** Having `Key` interface implement `SimpleObject` or `ObjectLike` may solve the problem (enables JS property access on Java objects)
-2. **Dialog handling** - Callback-based approach doesn't fit Gherkin synchronous style
-   - V1 uses synchronous `dialog()` which auto-handles opened dialog
-   - V2 needs to register callback before triggering dialog
-3. **Frame switching** - `switchFrame(null)` requires driver to be initialized first
-   - Need to handle case where driver not yet navigated
+*Known Issues:* None - all features working!
 
 **Test Structure:**
 ```
@@ -596,8 +588,8 @@ karate-core/src/test/
         ├── mouse.feature         # ✅ 9 scenarios passing
         ├── cookie.feature        # ✅ 5 scenarios passing
         ├── frame.feature         # ✅ 16 scenarios passing
-        ├── keys.feature.skip     # Pending (Key constants issue)
-        └── dialog.feature.skip   # Pending (investigate hanging)
+        ├── dialog.feature        # ✅ 5 scenarios passing
+        └── keys.feature          # ✅ 8 scenarios passing
 ```
 
 **Test Runner Pattern:**
@@ -681,9 +673,38 @@ Runner.path("features/")
 
 **Test Results:**
 ```
-features:    5 | passed:    5 | all passed
-scenarios:  70 | passed:   70 | all passed
+Gherkin E2E: 7 features, 83 scenarios - all passed
+Java E2E:   9 test classes, 121 tests - all passed
 ```
+
+**Java E2E Test Optimization: SharedChromeContainer**
+
+All Java E2E tests (`*E2eTest.java`) share a single Testcontainers Chrome instance via `SharedChromeContainer`:
+
+```java
+// SharedChromeContainer - singleton for all Java E2E tests
+public class SharedChromeContainer {
+    private static volatile SharedChromeContainer instance;
+
+    public static SharedChromeContainer getInstance() {
+        // Lazy singleton - starts container on first access
+        // Shutdown hook cleans up when JVM exits
+    }
+}
+
+// DriverTestBase - base class for all Java E2E tests
+public abstract class DriverTestBase {
+    @BeforeAll
+    static void setupDriver() {
+        shared = SharedChromeContainer.getInstance();  // Reuses singleton
+        driver = shared.getChrome().createDriver(...);
+    }
+}
+```
+
+**Key Files:**
+- `io.karatelabs.driver.e2e.support.SharedChromeContainer` - Singleton container holder
+- `io.karatelabs.driver.e2e.support.DriverTestBase` - Base class using shared container
 
 **Safety: Handling `driver.quit()` by Users:**
 

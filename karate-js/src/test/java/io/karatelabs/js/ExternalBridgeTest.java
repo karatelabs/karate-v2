@@ -493,6 +493,36 @@ class ExternalBridgeTest extends EvalBase {
         assertEquals("success", engine.eval("testFn(doc)"));
     }
 
+    // =================================================================================================================
+    // Interface Static Fields Tests
+    // =================================================================================================================
+
+    @Test
+    void testInterfaceStaticFieldAccess() {
+        // Test that static fields on interfaces can be accessed (like Keys.ENTER)
+        assertEquals("foo-value", eval("var DemoInterface = Java.type('io.karatelabs.js.DemoInterface'); DemoInterface.FOO"));
+        assertEquals("bar-value", eval("var DemoInterface = Java.type('io.karatelabs.js.DemoInterface'); DemoInterface.BAR"));
+    }
+
+    @Test
+    void testInterfaceStaticFieldUnicode() {
+        // Test unicode values like Key.ENTER = "\uE007"
+        assertEquals("\uE007", eval("var DemoInterface = Java.type('io.karatelabs.js.DemoInterface'); DemoInterface.ENTER"));
+        assertEquals("\uE004", eval("var DemoInterface = Java.type('io.karatelabs.js.DemoInterface'); DemoInterface.TAB"));
+        assertEquals("\uE00C", eval("var DemoInterface = Java.type('io.karatelabs.js.DemoInterface'); DemoInterface.ESCAPE"));
+    }
+
+    @Test
+    void testInterfaceStaticFieldWithPut() {
+        // Test when interface is put as JavaType wrapper (like engine.put("Key", new JavaType(Keys.class)))
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        engine.put("DemoInterface", new JavaType(DemoInterface.class));
+        assertEquals("foo-value", engine.eval("DemoInterface.FOO"));
+        assertEquals("bar-value", engine.eval("DemoInterface.BAR"));
+        assertEquals("\uE007", engine.eval("DemoInterface.ENTER"));
+    }
+
     @Test
     void testXmlPathViaSimpleObject() {
         engine = new Engine();

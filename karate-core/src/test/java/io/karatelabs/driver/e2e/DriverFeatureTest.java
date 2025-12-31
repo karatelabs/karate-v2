@@ -25,8 +25,8 @@ package io.karatelabs.driver.e2e;
 
 import io.karatelabs.core.Runner;
 import io.karatelabs.core.SuiteResult;
-import io.karatelabs.driver.ThreadLocalDriverProvider;
 import io.karatelabs.driver.e2e.support.ChromeContainer;
+import io.karatelabs.driver.e2e.support.ContainerDriverProvider;
 import io.karatelabs.driver.e2e.support.TestPageServer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -73,14 +73,9 @@ class DriverFeatureTest {
         testServer = TestPageServer.start(TEST_SERVER_PORT);
         logger.info("test page server started on port: {}", testServer.getPort());
 
-        // Set system properties that karate-config.js will read
-        String webSocketUrl = chrome.getCdpUrl();
+        // Set serverUrl for test pages (webSocketUrl not needed - ContainerDriverProvider handles it)
         String serverUrl = chrome.getHostAccessUrl(TEST_SERVER_PORT);
-
-        System.setProperty("karate.driver.webSocketUrl", webSocketUrl);
         System.setProperty("karate.driver.serverUrl", serverUrl);
-
-        logger.info("driver webSocketUrl: {}", webSocketUrl);
         logger.info("driver serverUrl: {}", serverUrl);
     }
 
@@ -90,16 +85,14 @@ class DriverFeatureTest {
             testServer.stopAsync();
             testServer = null;
         }
-        // Clear system properties
-        System.clearProperty("karate.driver.webSocketUrl");
         System.clearProperty("karate.driver.serverUrl");
     }
 
     @Test
     void testDriverFeatures() {
-        // Use ThreadLocalDriverProvider to reuse driver across scenarios
-        // This is efficient and works with single Testcontainers Chrome instance
-        ThreadLocalDriverProvider provider = new ThreadLocalDriverProvider();
+        // ContainerDriverProvider creates a new tab per thread in the single Chrome container
+        // This enables parallel execution efficiently
+        ContainerDriverProvider provider = new ContainerDriverProvider(chrome);
 
         SuiteResult result = Runner.path("classpath:io/karatelabs/driver/features")
                 .configDir("classpath:io/karatelabs/driver/features/karate-config.js")
@@ -107,7 +100,7 @@ class DriverFeatureTest {
                 .outputHtmlReport(true)
                 .outputConsoleSummary(true)
                 .driverProvider(provider)
-                .parallel(1);  // Sequential for now (single Chrome instance)
+                .parallel(2);  // 2 threads, each gets its own tab in the container
 
         // Log results
         logger.info("Feature count: {}", result.getFeatureCount());

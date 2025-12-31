@@ -1154,6 +1154,19 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
             return null;
         });
 
+        // Dialog handler registration (wraps JsCallable to DialogHandler)
+        engine.putRootBinding("onDialog", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+            if (args.length == 0 || args[0] == null) {
+                d.onDialog(null);
+            } else if (args[0] instanceof io.karatelabs.js.JsCallable) {
+                io.karatelabs.js.JsCallable jsHandler = (io.karatelabs.js.JsCallable) args[0];
+                d.onDialog(dialog -> {
+                    jsHandler.call(ctx, dialog);
+                });
+            }
+            return null;
+        });
+
         // Mouse and keys
         engine.putRootBinding("mouse", (io.karatelabs.js.JsCallable) (ctx, args) -> {
             if (args.length == 0) {
@@ -1169,7 +1182,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         });
 
         // Key constants (e.g., Key.ENTER, Key.TAB)
-        engine.putRootBinding("Key", io.karatelabs.driver.Keys.class);
+        engine.putRootBinding("Key", new io.karatelabs.js.JavaType(io.karatelabs.driver.Keys.class));
     }
 
     /**
