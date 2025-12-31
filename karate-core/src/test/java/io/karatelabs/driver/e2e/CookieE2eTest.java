@@ -23,6 +23,8 @@
  */
 package io.karatelabs.driver.e2e;
 
+import io.karatelabs.driver.cdp.*;
+
 import io.karatelabs.driver.e2e.support.DriverTestBase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

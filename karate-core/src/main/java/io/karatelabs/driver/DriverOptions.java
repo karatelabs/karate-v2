@@ -23,30 +23,59 @@
  */
 package io.karatelabs.driver;
 
-import org.junit.jupiter.api.Test;
+import java.time.Duration;
 
-import static org.junit.jupiter.api.Assertions.*;
+/**
+ * Base options interface for browser drivers.
+ * Provides common configuration that applies to all driver backends.
+ * <p>
+ * Phase 8: Extracted from CdpDriverOptions to enable multi-backend support.
+ */
+public interface DriverOptions {
 
-class BrowserLauncherTest {
+    /**
+     * Get timeout in milliseconds.
+     */
+    int getTimeout();
 
-    @Test
-    void testDefaultPathsMac() {
-        assertEquals("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-                BrowserLauncher.DEFAULT_PATH_MAC);
-    }
+    /**
+     * Get timeout as Duration.
+     */
+    Duration getTimeoutDuration();
 
-    @Test
-    void testDefaultPathsWindows() {
-        assertEquals("C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-                BrowserLauncher.DEFAULT_PATH_WIN64);
-        assertEquals("C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-                BrowserLauncher.DEFAULT_PATH_WIN32);
-    }
+    /**
+     * Get retry count for operations.
+     */
+    int getRetryCount();
 
-    @Test
-    void testDefaultPathsLinux() {
-        assertEquals("/usr/bin/google-chrome",
-                BrowserLauncher.DEFAULT_PATH_LINUX);
-    }
+    /**
+     * Get retry interval in milliseconds.
+     */
+    int getRetryInterval();
+
+    /**
+     * Check if running in headless mode.
+     */
+    boolean isHeadless();
+
+    /**
+     * Check if screenshots should be taken on failure.
+     */
+    boolean isScreenshotOnFailure();
+
+    /**
+     * Check if element highlighting is enabled.
+     */
+    boolean isHighlight();
+
+    /**
+     * Get highlight duration in milliseconds.
+     */
+    int getHighlightDuration();
+
+    /**
+     * Get page load strategy.
+     */
+    PageLoadStrategy getPageLoadStrategy();
 
 }

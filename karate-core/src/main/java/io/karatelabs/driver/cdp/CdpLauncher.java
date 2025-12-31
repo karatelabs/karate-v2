@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.driver;
+package io.karatelabs.driver.cdp;
 
 import io.karatelabs.common.OsUtils;
 import io.karatelabs.output.LogContext;
@@ -45,10 +45,11 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
+ * CDP-based browser launcher.
  * Manages Chrome browser process lifecycle.
  * Launches Chrome with CDP debugging enabled and provides WebSocket URL for connection.
  */
-public class BrowserLauncher {
+public class CdpLauncher {
 
     private static final Logger logger = LogContext.RUNTIME_LOGGER;
 
@@ -59,7 +60,7 @@ public class BrowserLauncher {
     public static final String DEFAULT_PATH_LINUX = "/usr/bin/google-chrome";
 
     // Track active launchers for cleanup
-    private static final Set<BrowserLauncher> ACTIVE = ConcurrentHashMap.newKeySet();
+    private static final Set<CdpLauncher> ACTIVE = ConcurrentHashMap.newKeySet();
 
     private final ProcessHandle process;
     private final String host;
@@ -67,7 +68,7 @@ public class BrowserLauncher {
     private String webSocketUrl;
     private volatile boolean closed = false;
 
-    private BrowserLauncher(ProcessHandle process, String host, int port) {
+    private CdpLauncher(ProcessHandle process, String host, int port) {
         this.process = process;
         this.host = host;
         this.port = port;
@@ -78,13 +79,13 @@ public class BrowserLauncher {
      * Close all active browser instances.
      */
     public static void closeAll() {
-        ACTIVE.forEach(BrowserLauncher::close);
+        ACTIVE.forEach(CdpLauncher::close);
     }
 
     /**
      * Launch Chrome browser and return launcher instance.
      */
-    public static BrowserLauncher start(CdpDriverOptions options) {
+    public static CdpLauncher start(CdpDriverOptions options) {
         String executable = resolveExecutable(options.getExecutable());
         int port = options.getPort() > 0 ? options.getPort() : PortUtils.findFreePort();
         String host = options.getHost();
@@ -99,7 +100,7 @@ public class BrowserLauncher {
                         .build()
         );
 
-        BrowserLauncher launcher = new BrowserLauncher(process, host, port);
+        CdpLauncher launcher = new CdpLauncher(process, host, port);
 
         // Wait for Chrome to be ready
         if (!launcher.waitForReady(options.getTimeout())) {

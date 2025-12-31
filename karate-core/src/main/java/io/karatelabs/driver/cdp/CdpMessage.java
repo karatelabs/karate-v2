@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.driver;
+package io.karatelabs.driver.cdp;
 
 import net.minidev.json.JSONStyle;
 import net.minidev.json.JSONValue;
@@ -43,7 +43,7 @@ public class CdpMessage {
     private Duration timeout;
     private String sessionId;
 
-    CdpMessage(CdpClient client, int id, String method) {
+    public CdpMessage(CdpClient client, int id, String method) {
         this.client = client;
         this.id = id;
         this.method = method;

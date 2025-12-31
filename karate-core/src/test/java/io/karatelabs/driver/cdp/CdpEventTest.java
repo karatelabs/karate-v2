@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.driver;
+package io.karatelabs.driver.cdp;
 
 import org.junit.jupiter.api.Test;
 

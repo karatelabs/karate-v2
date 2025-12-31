@@ -24,7 +24,7 @@
 package io.karatelabs.driver;
 
 /**
- * Represents a JavaScript dialog (alert, confirm, prompt, or beforeunload).
+ * Interface for JavaScript dialogs (alert, confirm, prompt, or beforeunload).
  * <p>
  * Dialog types:
  * <ul>
@@ -33,100 +33,55 @@ package io.karatelabs.driver;
  *   <li>{@code "prompt"} - Dialog with text input, OK and Cancel buttons</li>
  *   <li>{@code "beforeunload"} - Dialog shown when leaving page</li>
  * </ul>
+ * <p>
+ * Phase 8: Extracted as interface to enable multi-backend support.
  */
-public class Dialog {
-
-    private final CdpClient cdp;
-    private final String message;
-    private final String type;
-    private final String defaultPrompt;
-    private volatile boolean handled = false;
-
-    Dialog(CdpClient cdp, String message, String type, String defaultPrompt) {
-        this.cdp = cdp;
-        this.message = message;
-        this.type = type;
-        this.defaultPrompt = defaultPrompt;
-    }
+public interface Dialog {
 
     /**
      * Get the dialog message.
      *
      * @return the message displayed in the dialog
      */
-    public String getMessage() {
-        return message;
-    }
+    String getMessage();
 
     /**
      * Get the dialog type.
      *
      * @return one of: "alert", "confirm", "prompt", "beforeunload"
      */
-    public String getType() {
-        return type;
-    }
+    String getType();
 
     /**
      * Get the default prompt value (for prompt dialogs).
      *
      * @return the default value for prompt dialogs, or null for other types
      */
-    public String getDefaultPrompt() {
-        return defaultPrompt;
-    }
+    String getDefaultPrompt();
 
     /**
      * Accept the dialog (click OK/Yes).
      * For prompt dialogs, this accepts with an empty string.
      */
-    public void accept() {
-        accept(null);
-    }
+    void accept();
 
     /**
      * Accept the dialog with input text (for prompt dialogs).
      *
      * @param promptText the text to enter in the prompt (ignored for non-prompt dialogs)
      */
-    public void accept(String promptText) {
-        if (handled) {
-            throw new DriverException("dialog already handled");
-        }
-        handled = true;
-        CdpMessage message = cdp.method("Page.handleJavaScriptDialog")
-                .param("accept", true);
-        if (promptText != null) {
-            message.param("promptText", promptText);
-        }
-        message.send();
-    }
+    void accept(String promptText);
 
     /**
      * Dismiss the dialog (click Cancel/No).
      */
-    public void dismiss() {
-        if (handled) {
-            throw new DriverException("dialog already handled");
-        }
-        handled = true;
-        cdp.method("Page.handleJavaScriptDialog")
-                .param("accept", false)
-                .send();
-    }
+    void dismiss();
 
     /**
      * Check if this dialog has been handled.
      *
      * @return true if accept() or dismiss() has been called
      */
-    public boolean isHandled() {
-        return handled;
-    }
-
-    @Override
-    public String toString() {
-        return "Dialog{type='" + type + "', message='" + message + "'}";
-    }
+    boolean isHandled();
 
 }

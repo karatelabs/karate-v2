@@ -14,8 +14,10 @@
 | **5** | Element Operations | ✅ Complete |
 | **6** | Frame & Dialog Support | ✅ Complete |
 | **7** | Advanced Features | ✅ Complete |
-| **8** | Package Restructuring + Driver Interface | ⬜ Not started |
+| **8** | Package Restructuring + Driver Interface | ✅ Complete |
 | **9** | Gherkin/DSL Integration | ⬜ Not started |
+| **9b** | Gherkin E2E Tests (mirror Java E2E) | ⬜ Not started |
+| **9c** | Test Optimization (browser reuse) | ⬜ Not started |
 | **10** | Playwright Backend | ⬜ Not started |
 | **11** | WebDriver Backend (Legacy) | ⬜ Not started |
 | **12** | WebDriver BiDi (Future) | ⬜ Not started |
@@ -26,6 +28,8 @@
 - Phases 1-7 complete CDP driver to full v1 parity
 - Phase 8 restructures packages (`driver/cdp/`) and extracts `Driver` interface
 - Phase 9 integrates driver with Gherkin DSL (v1 syntax) and adds modern JS API
+- Phase 9b creates Gherkin E2E tests mirroring Java E2E structure (reuse test infra)
+- Phase 9c optimizes tests for browser reuse (speed improvement)
 - Phase 10 adds Playwright backend (validates multi-backend abstraction)
 - Phase 11 adds WebDriver (legacy, lower priority)
 - Phase 12 adds BiDi when spec matures
@@ -443,12 +447,32 @@ Driver driver = Driver.builder()
 
 **Package Restructuring + Driver Interface**
 
-**Goals:**
-1. Extract `Driver` interface from `CdpDriver`
-2. Move CDP-specific classes to `driver/cdp/` subpackage
-3. Extract `Mouse` and `Keys` as interfaces (implementations in cdp/)
-4. Create `DriverOptions` base interface
-5. Update imports across codebase and tests
+**Completed:**
+- Created `Driver` interface (extracted from CdpDriver)
+- Created `DriverOptions` interface for base configuration
+- Created `Mouse` interface (with key constants retained)
+- Created `Keys` interface (with key constants retained)
+- Created `Dialog` interface for dialog handling
+- Created `cdp/` subpackage for CDP-specific implementations
+- Moved CDP classes to cdp/ subpackage:
+  - CdpDriver (implements Driver)
+  - CdpDriverOptions (implements DriverOptions)
+  - CdpMouse (implements Mouse, renamed from Mouse)
+  - CdpKeys (implements Keys, renamed from Keys)
+  - CdpDialog (implements Dialog, renamed from Dialog)
+  - CdpLauncher (renamed from BrowserLauncher)
+  - CdpClient, CdpMessage, CdpEvent, CdpResponse, CdpInspector
+- Kept backend-agnostic classes in parent package:
+  - InterceptRequest, InterceptResponse (pure data classes)
+  - Element, Locators, Finder
+  - DialogHandler, InterceptHandler (functional interfaces)
+  - DriverException, PageLoadStrategy
+- Updated all test imports
+- Moved CDP-specific unit tests to `cdp/` test package:
+  - CdpMessageTest, CdpResponseTest, CdpEventTest, CdpLauncherTest, CdpDriverOptionsTest
+- Kept `LocatorsTest` in parent package (tests backend-agnostic class)
+- E2E tests remain in `e2e/` package (test Driver interface behavior)
+- All 241 driver tests passing
 
 **Package Structure:**
 ```
@@ -460,25 +484,26 @@ io.karatelabs.driver/
 ├── Finder.java              # Positional element finder
 ├── Mouse.java               # Interface for mouse actions
 ├── Keys.java                # Interface for keyboard actions
+├── Dialog.java              # Interface for dialog handling
 ├── DriverException.java
 ├── PageLoadStrategy.java
 ├── DialogHandler.java
 ├── InterceptHandler.java
+├── InterceptRequest.java    # Data class (backend-agnostic)
+├── InterceptResponse.java   # Data class (backend-agnostic)
 │
 └── cdp/                     # CDP-specific implementation
     ├── CdpDriver.java       # implements Driver
-    ├── CdpDriverOptions.java
+    ├── CdpDriverOptions.java # implements DriverOptions
     ├── CdpClient.java
     ├── CdpMessage.java
     ├── CdpEvent.java
     ├── CdpResponse.java
     ├── CdpInspector.java
-    ├── BrowserLauncher.java
+    ├── CdpLauncher.java     # renamed from BrowserLauncher
     ├── CdpMouse.java        # implements Mouse
     ├── CdpKeys.java         # implements Keys
-    ├── Dialog.java
-    ├── InterceptRequest.java
-    └── InterceptResponse.java
+    └── CdpDialog.java       # implements Dialog
 ```
 
 **Classification:**
@@ -491,12 +516,13 @@ io.karatelabs.driver/
 | PageLoadStrategy.java | CdpResponse.java |
 | DialogHandler.java | CdpDriverOptions.java |
 | InterceptHandler.java | CdpInspector.java |
-| Driver.java (NEW) | BrowserLauncher.java |
-| DriverOptions.java (NEW) | CdpMouse.java (renamed from Mouse) |
-| Mouse.java (→ interface) | CdpKeys.java (renamed from Keys) |
-| Keys.java (→ interface) | Dialog.java |
-| | InterceptRequest.java |
-| | InterceptResponse.java |
+| InterceptRequest.java | CdpLauncher.java |
+| InterceptResponse.java | CdpMouse.java |
+| Driver.java (NEW) | CdpKeys.java |
+| DriverOptions.java (NEW) | CdpDialog.java |
+| Mouse.java (→ interface) | |
+| Keys.java (→ interface) | |
+| Dialog.java (NEW) | |
 
 ### Phase 9 Notes
 
@@ -541,8 +567,6 @@ driver.quit()
 4. **StepExecutor** - Add `driver` keyword handler for Gherkin
 5. **Driver interface** - Implement `SimpleObject` for JS property access
 
-**V1 Test Suite:** `/Users/peter/dev/zcode/karate/karate-e2e-tests/src/test/java/driver`
-
 Key features to validate:
 - `configure driver = { type: 'chrome' }`
 - Navigation: `driver serverUrl + '/path'`
@@ -553,6 +577,96 @@ Key features to validate:
 - Cookies: `cookie('name')`, `clearCookies()`
 - Chaining: `waitFor('#id').click()`
 - Properties: `driver.url`, `driver.title`, `driver.cookies`
+
+### Phase 9b Notes
+
+**Gherkin E2E Tests (mirror Java E2E structure)**
+
+**Goals:**
+1. Create Gherkin feature files that mirror the existing Java E2E tests
+2. Reuse existing test infrastructure (TestPageServer, test HTML pages)
+3. Well-structured test organization matching v2 Java E2E test structure
+4. NOT a direct port of v1 tests - fresh structure using v2 patterns
+
+**Test Structure:**
+```
+karate-core/src/test/resources/io/karatelabs/driver/
+├── pages/                    # Existing test HTML pages (reuse)
+│   ├── index.html
+│   ├── navigation.html
+│   ├── wait.html
+│   ├── input.html
+│   ├── iframe.html
+│   └── dialog.html
+│
+└── features/                 # NEW: Gherkin E2E tests
+    ├── navigation.feature    # mirrors NavigationE2eTest
+    ├── element.feature       # mirrors ElementE2eTest
+    ├── mouse.feature         # mirrors MouseE2eTest
+    ├── keys.feature          # mirrors KeysE2eTest
+    ├── cookie.feature        # mirrors CookieE2eTest
+    ├── frame.feature         # mirrors FrameE2eTest
+    ├── dialog.feature        # mirrors DialogE2eTest
+    ├── intercept.feature     # mirrors InterceptE2eTest
+    └── inspector.feature     # mirrors InspectorE2eTest
+```
+
+**Infrastructure Reuse:**
+- `TestPageServer` - Reuse for serving test HTML pages
+- `ChromeContainer` - Reuse Testcontainers Chrome setup
+- `DriverTestBase` - Create Gherkin equivalent (`DriverFeatureTest.java`)
+- Test HTML pages - Reuse existing pages in `pages/` directory
+
+**V1 Reference:** `/Users/peter/dev/zcode/karate/karate-e2e-tests/src/test/java/driver`
+- Use v1 tests as feature reference, NOT for direct porting
+- v2 tests should be cleaner, better organized, using Testcontainers
+
+### Phase 9c Notes
+
+**Test Optimization (browser reuse)**
+
+**Goals:**
+1. Most tests reuse the same browser instance for speed
+2. Only tests that require fresh browser state get isolated instances
+3. Proper cleanup between tests (cookies, localStorage, navigation)
+
+**Strategy:**
+```java
+// Shared browser for most tests
+@TestInstance(Lifecycle.PER_CLASS)
+class SharedBrowserFeatureTest {
+    static ChromeContainer chrome;  // Started once for all tests
+    static CdpDriver driver;        // Reused across tests
+
+    @BeforeEach
+    void resetBrowserState() {
+        driver.clearCookies();
+        driver.script("localStorage.clear()");
+        driver.setUrl("about:blank");
+    }
+}
+
+// Isolated browser for specific tests (dialogs, intercept, etc.)
+@TestInstance(Lifecycle.PER_METHOD)
+class IsolatedBrowserFeatureTest {
+    // Fresh browser per test
+}
+```
+
+**Test Categories:**
+| Category | Browser Mode | Reason |
+|----------|--------------|--------|
+| Navigation | Shared | Simple state reset |
+| Element | Shared | Simple state reset |
+| Mouse/Keys | Shared | Simple state reset |
+| Cookies | Shared | Clear between tests |
+| Frames | Shared | Navigate away resets |
+| Dialogs | Isolated | Dialog handlers persist |
+| Intercept | Isolated | Intercept state persists |
+
+**Expected Speedup:**
+- Current: ~20s for 241 tests (browser start per test class)
+- Target: ~10s (single browser, parallel test classes where safe)
 
 ### Future Enhancements (TODO)
 
@@ -2228,32 +2342,33 @@ karate-core/src/main/java/io/karatelabs/http/
 └── WsClientHandler.java     # Netty handler
 
 karate-core/src/main/java/io/karatelabs/driver/
-├── Driver.java              # Interface (Phase 8)
-├── DriverOptions.java       # Base options interface (Phase 8)
+├── Driver.java              # Interface (extracted from CdpDriver)
+├── DriverOptions.java       # Base options interface
 ├── Element.java             # Element abstraction
 ├── Locators.java            # Locator transformation
 ├── Finder.java              # Positional element finder
-├── Mouse.java               # Mouse interface (Phase 8)
-├── Keys.java                # Keyboard interface (Phase 8)
+├── Mouse.java               # Mouse interface
+├── Keys.java                # Keyboard interface
+├── Dialog.java              # Dialog interface
 ├── DriverException.java     # Exception
 ├── PageLoadStrategy.java    # Enum
 ├── DialogHandler.java       # Functional interface
 ├── InterceptHandler.java    # Functional interface
+├── InterceptRequest.java    # Data class
+├── InterceptResponse.java   # Data class
 │
-└── cdp/                     # CDP-specific (Phase 8 restructure)
+└── cdp/                     # CDP-specific implementation
     ├── CdpDriver.java       # implements Driver
-    ├── CdpDriverOptions.java
+    ├── CdpDriverOptions.java # implements DriverOptions
     ├── CdpClient.java       # CDP protocol client
     ├── CdpMessage.java      # Fluent message builder
     ├── CdpResponse.java     # Response wrapper
     ├── CdpEvent.java        # Event wrapper
     ├── CdpInspector.java    # Visibility/observability
-    ├── BrowserLauncher.java # Chrome process
+    ├── CdpLauncher.java     # Chrome process
     ├── CdpMouse.java        # implements Mouse
     ├── CdpKeys.java         # implements Keys
-    ├── Dialog.java          # Dialog wrapper
-    ├── InterceptRequest.java
-    └── InterceptResponse.java
+    └── CdpDialog.java       # implements Dialog
 
 karate-core/src/test/java/io/karatelabs/driver/
 ├── unit/

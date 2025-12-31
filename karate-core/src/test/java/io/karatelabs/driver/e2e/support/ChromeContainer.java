@@ -23,8 +23,8 @@
  */
 package io.karatelabs.driver.e2e.support;
 
-import io.karatelabs.driver.CdpDriver;
-import io.karatelabs.driver.CdpDriverOptions;
+import io.karatelabs.driver.cdp.CdpDriver;
+import io.karatelabs.driver.cdp.CdpDriverOptions;
 import net.minidev.json.JSONValue;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;

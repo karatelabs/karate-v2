@@ -23,6 +23,8 @@
  */
 package io.karatelabs.driver;
 
+import io.karatelabs.driver.cdp.CdpDriver;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +43,7 @@ public class Finder {
     // Default tolerance in pixels for "near" matching
     private static final double DEFAULT_TOLERANCE = 50.0;
 
-    enum Position {
+    public enum Position {
         RIGHT_OF,
         LEFT_OF,
         ABOVE,
@@ -49,7 +51,7 @@ public class Finder {
         NEAR
     }
 
-    Finder(CdpDriver driver, String referenceLocator, Position position) {
+    public Finder(CdpDriver driver, String referenceLocator, Position position) {
         this(driver, referenceLocator, position, DEFAULT_TOLERANCE);
     }
 

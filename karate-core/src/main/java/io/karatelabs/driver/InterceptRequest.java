@@ -37,8 +37,8 @@ public class InterceptRequest {
     private final String postData;
     private final String resourceType;
 
-    InterceptRequest(String requestId, String url, String method,
-                     Map<String, Object> headers, String postData, String resourceType) {
+    public InterceptRequest(String requestId, String url, String method,
+                            Map<String, Object> headers, String postData, String resourceType) {
         this.requestId = requestId;
         this.url = url;
         this.method = method;

@@ -21,7 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.driver;
+package io.karatelabs.driver.cdp;
+
+import io.karatelabs.driver.DriverOptions;
+import io.karatelabs.driver.PageLoadStrategy;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -29,10 +32,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Configuration options for CdpDriver.
+ * CDP-specific driver configuration options.
+ * Implements DriverOptions interface and adds CDP-specific settings.
  * Supports both Builder pattern and Map constructor for v1 compatibility.
  */
-public class CdpDriverOptions {
+public class CdpDriverOptions implements DriverOptions {
 
     private final int timeout;
     private final int retryCount;

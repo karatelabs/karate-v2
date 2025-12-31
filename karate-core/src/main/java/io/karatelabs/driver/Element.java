@@ -23,6 +23,8 @@
  */
 package io.karatelabs.driver;
 
+import io.karatelabs.driver.cdp.CdpDriver;
+
 import java.util.List;
 import java.util.Map;
 
@@ -36,7 +38,7 @@ public class Element {
     private final String locator;
     private final boolean exists;
 
-    Element(CdpDriver driver, String locator, boolean exists) {
+    public Element(CdpDriver driver, String locator, boolean exists) {
         this.driver = driver;
         this.locator = locator;
         this.exists = exists;
@@ -44,12 +46,12 @@ public class Element {
 
     // ========== Factory Methods ==========
 
-    static Element of(CdpDriver driver, String locator) {
+    public static Element of(CdpDriver driver, String locator) {
         boolean exists = driver.exists(locator);
         return new Element(driver, locator, exists);
     }
 
-    static Element optional(CdpDriver driver, String locator) {
+    public static Element optional(CdpDriver driver, String locator) {
         boolean exists = driver.exists(locator);
         return new Element(driver, locator, exists);
     }

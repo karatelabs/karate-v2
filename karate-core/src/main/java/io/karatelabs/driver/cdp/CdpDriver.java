@@ -21,8 +21,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.driver;
+package io.karatelabs.driver.cdp;
 
+import io.karatelabs.driver.DialogHandler;
+import io.karatelabs.driver.Driver;
+import io.karatelabs.driver.DriverException;
+import io.karatelabs.driver.DriverOptions;
+import io.karatelabs.driver.Element;
+import io.karatelabs.driver.Finder;
+import io.karatelabs.driver.InterceptHandler;
+import io.karatelabs.driver.InterceptRequest;
+import io.karatelabs.driver.InterceptResponse;
+import io.karatelabs.driver.Keys;
+import io.karatelabs.driver.Locators;
+import io.karatelabs.driver.Mouse;
+import io.karatelabs.driver.PageLoadStrategy;
 import io.karatelabs.output.LogContext;
 import org.slf4j.Logger;
 
@@ -36,10 +49,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 /**
- * Minimal CDP-based browser driver.
- * Phase 2: start, connect, quit, setUrl, getUrl, getTitle, script, screenshot.
+ * CDP-based browser driver implementation.
+ * Implements the Driver interface using Chrome DevTools Protocol.
  */
-public class CdpDriver {
+public class CdpDriver implements Driver {
 
     private static final Logger logger = LogContext.RUNTIME_LOGGER;
 
@@ -48,7 +61,7 @@ public class CdpDriver {
 
     private final CdpClient cdp;
     private final CdpDriverOptions options;
-    private final BrowserLauncher launcher; // null if connected to existing browser
+    private final CdpLauncher launcher; // null if connected to existing browser
 
     // Page load state
     private volatile boolean domContentEventFired;
@@ -89,7 +102,7 @@ public class CdpDriver {
         }
     }
 
-    private CdpDriver(BrowserLauncher launcher, CdpDriverOptions options) {
+    private CdpDriver(CdpLauncher launcher, CdpDriverOptions options) {
         this.launcher = launcher;
         this.options = options;
         this.cdp = CdpClient.connect(launcher.getWebSocketUrl(), options.getTimeoutDuration());
@@ -109,7 +122,7 @@ public class CdpDriver {
      * Launch a new browser and create driver.
      */
     public static CdpDriver start(CdpDriverOptions options) {
-        BrowserLauncher launcher = BrowserLauncher.start(options);
+        CdpLauncher launcher = CdpLauncher.start(options);
         return new CdpDriver(launcher, options);
     }
 
@@ -197,7 +210,7 @@ public class CdpDriver {
             logger.debug("dialog opening: type={}, message={}", type, message);
 
             if (dialogHandler != null) {
-                Dialog dialog = new Dialog(cdp, message, type, defaultPrompt);
+                CdpDialog dialog = new CdpDialog(cdp, message, type, defaultPrompt);
                 dialogHandler.handle(dialog);
                 // If handler didn't resolve the dialog, auto-dismiss
                 if (!dialog.isHandled()) {
@@ -687,7 +700,15 @@ public class CdpDriver {
         return cdp;
     }
 
-    public CdpDriverOptions getOptions() {
+    @Override
+    public DriverOptions getOptions() {
+        return options;
+    }
+
+    /**
+     * Get the CDP-specific options.
+     */
+    public CdpDriverOptions getCdpOptions() {
         return options;
     }
 
@@ -1427,7 +1448,7 @@ public class CdpDriver {
      * @return a new Mouse object
      */
     public Mouse mouse() {
-        return new Mouse(cdp);
+        return new CdpMouse(cdp);
     }
 
     /**
@@ -1444,7 +1465,7 @@ public class CdpDriver {
         double width = ((Number) pos.get("width")).doubleValue();
         double height = ((Number) pos.get("height")).doubleValue();
         // Center of element
-        return new Mouse(cdp, x + width / 2, y + height / 2);
+        return new CdpMouse(cdp, x + width / 2, y + height / 2);
     }
 
     /**
@@ -1455,7 +1476,7 @@ public class CdpDriver {
      * @return a new Mouse object at the specified position
      */
     public Mouse mouse(Number x, Number y) {
-        return new Mouse(cdp, x.doubleValue(), y.doubleValue());
+        return new CdpMouse(cdp, x.doubleValue(), y.doubleValue());
     }
 
     /**
@@ -1464,7 +1485,7 @@ public class CdpDriver {
      * @return a new Keys object
      */
     public Keys keys() {
-        return new Keys(cdp);
+        return new CdpKeys(cdp);
     }
 
     // ========== Pages/Tabs Management ==========

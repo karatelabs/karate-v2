@@ -23,8 +23,8 @@
  */
 package io.karatelabs.driver.e2e.support;
 
-import io.karatelabs.driver.CdpDriver;
-import io.karatelabs.driver.CdpDriverOptions;
+import io.karatelabs.driver.cdp.CdpDriver;
+import io.karatelabs.driver.cdp.CdpDriverOptions;
 import io.karatelabs.driver.PageLoadStrategy;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
