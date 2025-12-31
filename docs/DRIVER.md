@@ -641,12 +641,162 @@ Key features to validate:
 ```
 
 **Remaining:**
-- Research v1 README (`karate/karate-core/README.md`) for complete API coverage
 - Create remaining feature files (element, mouse, keys, cookie, frame, dialog)
 - Issues to investigate:
   - `Key.TAB` etc. not working (static field access on interface in JS)
   - Dialog callback pattern needs different Gherkin approach
   - Frame switching with null needs driver initialized first
+
+**V1 API Reference (from karate-core/README.md):**
+
+*Navigation:*
+| V1 Gherkin | Description | V2 Status |
+|------------|-------------|-----------|
+| `driver 'url'` | Navigate to URL | ✅ Working |
+| `driver.url` | Get/set current URL | ✅ Working |
+| `driver.title` | Get page title | ✅ Working |
+| `refresh()` | Page reload (keep cache) | 🔲 Test needed |
+| `reload()` | Hard reload (clear cache) | 🔲 Test needed |
+| `back()` | Navigate back | 🔲 Test needed |
+| `forward()` | Navigate forward | 🔲 Test needed |
+
+*Element Actions:*
+| V1 Gherkin | Description | V2 Status |
+|------------|-------------|-----------|
+| `click(locator)` | Click element | 🔲 Test needed |
+| `input(locator, value)` | Input text | 🔲 Test needed |
+| `input(locator, ['a', Key.ENTER])` | Input array | 🔲 Key issue |
+| `input(locator, 'text', delay)` | Input with delay | 🔲 Test needed |
+| `submit().click(locator)` | Submit + click | 🔲 Test needed |
+| `focus(locator)` | Focus element | 🔲 Test needed |
+| `clear(locator)` | Clear input | 🔲 Test needed |
+| `value(locator, value)` | Set value | 🔲 Test needed |
+| `select(locator, text)` | Select dropdown | 🔲 Test needed |
+| `scroll(locator)` | Scroll to element | 🔲 Test needed |
+| `highlight(locator)` | Highlight element | 🔲 Test needed |
+
+*Element State:*
+| V1 Gherkin | Description | V2 Status |
+|------------|-------------|-----------|
+| `html(locator)` | Get outerHTML | 🔲 Test needed |
+| `text(locator)` | Get textContent | 🔲 Test needed |
+| `value(locator)` | Get value | 🔲 Test needed |
+| `attribute(locator, name)` | Get attribute | 🔲 Test needed |
+| `enabled(locator)` | Check if enabled | 🔲 Test needed |
+| `exists(locator)` | Check if exists | 🔲 Test needed |
+| `position(locator)` | Get position | 🔲 Test needed |
+
+*Locators:*
+| V1 Gherkin | Description | V2 Status |
+|------------|-------------|-----------|
+| `locate(locator)` | Find single element | 🔲 Test needed |
+| `locateAll(locator)` | Find all elements | 🔲 Test needed |
+| `optional(locator)` | Find without failing | 🔲 Test needed |
+
+*Wait Methods:*
+| V1 Gherkin | Description | V2 Status |
+|------------|-------------|-----------|
+| `waitFor(locator)` | Wait for element | 🔲 Test needed |
+| `waitForAny(loc1, loc2)` | Wait for any | 🔲 Test needed |
+| `waitForUrl('path')` | Wait for URL | 🔲 Test needed |
+| `waitForText(loc, text)` | Wait for text | 🔲 Test needed |
+| `waitForEnabled(loc)` | Wait until enabled | 🔲 Test needed |
+| `waitForResultCount(loc, n)` | Wait for count | 🔲 Test needed |
+| `waitUntil('js')` | Wait until JS true | 🔲 Test needed |
+| `waitUntil(loc, 'js')` | Wait on element | 🔲 Test needed |
+| `delay(ms)` | Sleep | 🔲 Test needed |
+
+*Scripts:*
+| V1 Gherkin | Description | V2 Status |
+|------------|-------------|-----------|
+| `script('js')` | Execute JS | ✅ Working |
+| `script(locator, 'js')` | JS on element | 🔲 Test needed |
+| `scriptAll(locator, 'js')` | JS on all elements | 🔲 Test needed |
+
+*Retry:*
+| V1 Gherkin | Description | V2 Status |
+|------------|-------------|-----------|
+| `retry()` | Enable retry | 🔲 Test needed |
+| `retry(count)` | Set retry count | 🔲 Test needed |
+| `retry(count, interval)` | Set count + interval | 🔲 Test needed |
+
+*Dialogs:*
+| V1 Gherkin | Description | V2 Status |
+|------------|-------------|-----------|
+| `dialog(accept)` | Accept/dismiss | ❌ Callback issue |
+| `dialog(accept, text)` | Accept with text | ❌ Callback issue |
+| `driver.dialogText` | Get dialog text | ❌ Callback issue |
+
+*Cookies:*
+| V1 Gherkin | Description | V2 Status |
+|------------|-------------|-----------|
+| `cookie(name)` | Get cookie | 🔲 Test needed |
+| `cookie(map)` | Set cookie | 🔲 Test needed |
+| `driver.cookies` | Get all cookies | 🔲 Test needed |
+| `deleteCookie(name)` | Delete cookie | 🔲 Test needed |
+| `clearCookies()` | Clear all | 🔲 Test needed |
+
+*Frames:*
+| V1 Gherkin | Description | V2 Status |
+|------------|-------------|-----------|
+| `switchFrame(index)` | By index | ❌ Issue |
+| `switchFrame(locator)` | By locator | ❌ Issue |
+| `switchFrame(null)` | Return to main | ❌ Issue |
+
+*Pages/Tabs:*
+| V1 Gherkin | Description | V2 Status |
+|------------|-------------|-----------|
+| `switchPage(titleOrUrl)` | Switch by title/URL | 🔲 Test needed |
+| `switchPage(index)` | Switch by index | 🔲 Test needed |
+
+*Mouse:*
+| V1 Gherkin | Description | V2 Status |
+|------------|-------------|-----------|
+| `mouse()` | Create mouse | 🔲 Test needed |
+| `mouse(locator)` | At element | 🔲 Test needed |
+| `mouse(x, y)` | At coordinates | 🔲 Test needed |
+| `.move()`, `.click()`, `.doubleClick()` | Chain methods | 🔲 Test needed |
+
+*Special Keys:*
+| V1 Gherkin | Description | V2 Status |
+|------------|-------------|-----------|
+| `Key.ENTER`, `Key.TAB`, etc. | Key constants | ❌ Not accessible |
+| `input('#id', 'text' + Key.ENTER)` | With string concat | ❌ Not working |
+| `input('#id', ['text', Key.ENTER])` | With array | ❌ Not working |
+
+*Window:*
+| V1 Gherkin | Description | V2 Status |
+|------------|-------------|-----------|
+| `driver.dimensions` | Get/set dimensions | 🔲 Test needed |
+| `maximize()`, `minimize()` | Window state | 🔲 Test needed |
+| `fullscreen()` | Fullscreen | 🔲 Test needed |
+| `quit()`, `close()` | Close browser | 🔲 Test needed |
+
+*Screenshots:*
+| V1 Gherkin | Description | V2 Status |
+|------------|-------------|-----------|
+| `screenshot()` | Take screenshot | 🔲 Test needed |
+| `screenshot(locator)` | Element screenshot | 🔲 Test needed |
+| `pdf(options)` | Generate PDF | 🔲 Test needed |
+
+*Friendly Locators:*
+| V1 Gherkin | Description | V2 Status |
+|------------|-------------|-----------|
+| `rightOf(loc).input(val)` | To the right | 🔲 Test needed |
+| `leftOf(loc).click()` | To the left | 🔲 Test needed |
+| `above(loc)`, `below(loc)` | Above/below | 🔲 Test needed |
+| `near(loc)` | Nearby | 🔲 Test needed |
+
+*Known Issues to Fix:*
+1. **Key constants** - `Key.ENTER`, `Key.TAB` not accessible in JS engine
+   - Need to expose Key class or individual constants as root bindings
+   - May need `Key` to be a JS object with string values, not interface with static fields
+   - **Hint:** Having `Key` interface implement `SimpleObject` or `ObjectLike` may solve the problem (enables JS property access on Java objects)
+2. **Dialog handling** - Callback-based approach doesn't fit Gherkin synchronous style
+   - V1 uses synchronous `dialog()` which auto-handles opened dialog
+   - V2 needs to register callback before triggering dialog
+3. **Frame switching** - `switchFrame(null)` requires driver to be initialized first
+   - Need to handle case where driver not yet navigated
 
 **Test Structure:**
 ```
