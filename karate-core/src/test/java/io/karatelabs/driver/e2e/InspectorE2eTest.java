@@ -43,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * E2E tests for DriverInspector observability features.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class InspectorE2ETest extends DriverTestBase {
+class InspectorE2eTest extends DriverTestBase {
 
     private static DriverInspector inspector;
 

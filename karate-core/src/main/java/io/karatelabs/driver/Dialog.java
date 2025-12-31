@@ -1,0 +1,132 @@
+/*
+ * The MIT License
+ *
+ * Copyright 2025 Karate Labs Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+package io.karatelabs.driver;
+
+/**
+ * Represents a JavaScript dialog (alert, confirm, prompt, or beforeunload).
+ * <p>
+ * Dialog types:
+ * <ul>
+ *   <li>{@code "alert"} - Simple message dialog with OK button</li>
+ *   <li>{@code "confirm"} - Dialog with OK and Cancel buttons</li>
+ *   <li>{@code "prompt"} - Dialog with text input, OK and Cancel buttons</li>
+ *   <li>{@code "beforeunload"} - Dialog shown when leaving page</li>
+ * </ul>
+ */
+public class Dialog {
+
+    private final CdpClient cdp;
+    private final String message;
+    private final String type;
+    private final String defaultPrompt;
+    private volatile boolean handled = false;
+
+    Dialog(CdpClient cdp, String message, String type, String defaultPrompt) {
+        this.cdp = cdp;
+        this.message = message;
+        this.type = type;
+        this.defaultPrompt = defaultPrompt;
+    }
+
+    /**
+     * Get the dialog message.
+     *
+     * @return the message displayed in the dialog
+     */
+    public String getMessage() {
+        return message;
+    }
+
+    /**
+     * Get the dialog type.
+     *
+     * @return one of: "alert", "confirm", "prompt", "beforeunload"
+     */
+    public String getType() {
+        return type;
+    }
+
+    /**
+     * Get the default prompt value (for prompt dialogs).
+     *
+     * @return the default value for prompt dialogs, or null for other types
+     */
+    public String getDefaultPrompt() {
+        return defaultPrompt;
+    }
+
+    /**
+     * Accept the dialog (click OK/Yes).
+     * For prompt dialogs, this accepts with an empty string.
+     */
+    public void accept() {
+        accept(null);
+    }
+
+    /**
+     * Accept the dialog with input text (for prompt dialogs).
+     *
+     * @param promptText the text to enter in the prompt (ignored for non-prompt dialogs)
+     */
+    public void accept(String promptText) {
+        if (handled) {
+            throw new DriverException("dialog already handled");
+        }
+        handled = true;
+        CdpMessage message = cdp.method("Page.handleJavaScriptDialog")
+                .param("accept", true);
+        if (promptText != null) {
+            message.param("promptText", promptText);
+        }
+        message.send();
+    }
+
+    /**
+     * Dismiss the dialog (click Cancel/No).
+     */
+    public void dismiss() {
+        if (handled) {
+            throw new DriverException("dialog already handled");
+        }
+        handled = true;
+        cdp.method("Page.handleJavaScriptDialog")
+                .param("accept", false)
+                .send();
+    }
+
+    /**
+     * Check if this dialog has been handled.
+     *
+     * @return true if accept() or dismiss() has been called
+     */
+    public boolean isHandled() {
+        return handled;
+    }
+
+    @Override
+    public String toString() {
+        return "Dialog{type='" + type + "', message='" + message + "'}";
+    }
+
+}

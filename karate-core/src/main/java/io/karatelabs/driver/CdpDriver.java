@@ -58,6 +58,34 @@ public class CdpDriver {
     // Lifecycle
     private volatile boolean terminated = false;
 
+    // Dialog handling
+    private volatile String currentDialogText;
+    private volatile DialogHandler dialogHandler;
+
+    // Frame tracking
+    private Frame currentFrame;
+    private final Map<String, Integer> frameContexts = new ConcurrentHashMap<>();
+
+    /**
+     * Internal representation of a frame.
+     */
+    private static class Frame {
+        final String id;
+        final String url;
+        final String name;
+
+        Frame(String id, String url, String name) {
+            this.id = id;
+            this.url = url;
+            this.name = name;
+        }
+
+        @Override
+        public String toString() {
+            return "Frame{id='" + id + "', url='" + url + "', name='" + name + "'}";
+        }
+    }
+
     private CdpDriver(BrowserLauncher launcher, CdpDriverOptions options) {
         this.launcher = launcher;
         this.options = options;
@@ -157,6 +185,47 @@ public class CdpDriver {
             }
             logger.trace("frameStoppedLoading: {}", frameId);
         });
+
+        cdp.on("Page.javascriptDialogOpening", event -> {
+            String message = event.get("message");
+            String type = event.get("type");
+            String defaultPrompt = event.get("defaultPrompt");
+            currentDialogText = message;
+            logger.debug("dialog opening: type={}, message={}", type, message);
+
+            if (dialogHandler != null) {
+                Dialog dialog = new Dialog(cdp, message, type, defaultPrompt);
+                dialogHandler.handle(dialog);
+                // If handler didn't resolve the dialog, auto-dismiss
+                if (!dialog.isHandled()) {
+                    logger.warn("dialog handler did not resolve dialog, auto-dismissing");
+                    dialog.dismiss();
+                }
+            }
+            // If no handler registered, dialog will block - user must call dialog() methods
+        });
+
+        // Track execution contexts for frames
+        cdp.on("Runtime.executionContextCreated", event -> {
+            Map<String, Object> context = event.get("context");
+            if (context != null) {
+                Number contextId = (Number) context.get("id");
+                Map<String, Object> auxData = (Map<String, Object>) context.get("auxData");
+                if (auxData != null && contextId != null) {
+                    String frameId = (String) auxData.get("frameId");
+                    Boolean isDefault = (Boolean) auxData.get("isDefault");
+                    if (frameId != null && Boolean.TRUE.equals(isDefault)) {
+                        frameContexts.put(frameId, contextId.intValue());
+                        logger.trace("execution context created: frameId={}, contextId={}", frameId, contextId);
+                    }
+                }
+            }
+        });
+
+        cdp.on("Runtime.executionContextsCleared", event -> {
+            frameContexts.clear();
+            logger.trace("execution contexts cleared");
+        });
     }
 
     // ========== Navigation ==========
@@ -243,10 +312,24 @@ public class CdpDriver {
     }
 
     private CdpResponse eval(String expression) {
-        return cdp.method("Runtime.evaluate")
+        CdpMessage message = cdp.method("Runtime.evaluate")
                 .param("expression", expression)
-                .param("returnByValue", true)
-                .send();
+                .param("returnByValue", true);
+
+        // If in a frame, use its execution context
+        Integer contextId = getFrameContext();
+        if (contextId != null) {
+            message.param("contextId", contextId);
+        }
+
+        return message.send();
+    }
+
+    private Integer getFrameContext() {
+        if (currentFrame == null) {
+            return null;
+        }
+        return frameContexts.get(currentFrame.id);
     }
 
     private Object extractJsValue(CdpResponse response) {
@@ -289,6 +372,206 @@ public class CdpDriver {
         }
 
         return bytes;
+    }
+
+    // ========== Dialog Handling ==========
+
+    /**
+     * Register a handler for JavaScript dialogs (alert, confirm, prompt, beforeunload).
+     * When a dialog opens, the handler is called with a Dialog object.
+     * The handler should call dialog.accept() or dialog.dismiss() to resolve the dialog.
+     *
+     * @param handler the dialog handler, or null to remove the handler
+     */
+    public void onDialog(DialogHandler handler) {
+        this.dialogHandler = handler;
+    }
+
+    /**
+     * Get the current dialog message.
+     *
+     * @return the dialog message, or null if no dialog is open
+     */
+    public String getDialogText() {
+        return currentDialogText;
+    }
+
+    /**
+     * Accept or dismiss the current dialog.
+     * This is used when no DialogHandler is registered.
+     *
+     * @param accept true to accept (OK), false to dismiss (Cancel)
+     */
+    public void dialog(boolean accept) {
+        dialog(accept, null);
+    }
+
+    /**
+     * Accept or dismiss the current dialog with optional prompt input.
+     * This is used when no DialogHandler is registered.
+     *
+     * @param accept true to accept (OK), false to dismiss (Cancel)
+     * @param input the text to enter for prompt dialogs (ignored if accept is false)
+     */
+    public void dialog(boolean accept, String input) {
+        CdpMessage message = cdp.method("Page.handleJavaScriptDialog")
+                .param("accept", accept);
+        if (accept && input != null) {
+            message.param("promptText", input);
+        }
+        message.send();
+        currentDialogText = null;
+    }
+
+    // ========== Frame Switching ==========
+
+    /**
+     * Switch to an iframe by index in the frame tree.
+     *
+     * @param index the zero-based index of the frame
+     */
+    public void switchFrame(int index) {
+        CdpResponse response = cdp.method("Page.getFrameTree").send();
+        List<Map<String, Object>> childFrames = response.getResult("frameTree.childFrames");
+
+        if (childFrames == null || index < 0 || index >= childFrames.size()) {
+            throw new DriverException("no frame at index: " + index);
+        }
+
+        Map<String, Object> frameData = childFrames.get(index);
+        Map<String, Object> frame = (Map<String, Object>) frameData.get("frame");
+        String frameId = (String) frame.get("id");
+        String url = (String) frame.get("url");
+        String name = (String) frame.get("name");
+
+        currentFrame = new Frame(frameId, url, name);
+        logger.debug("switched to frame by index {}: {}", index, currentFrame);
+
+        // Ensure we have execution context for this frame
+        ensureFrameContext(frameId);
+    }
+
+    /**
+     * Switch to an iframe by locator (CSS, XPath, or wildcard).
+     * Pass null to switch back to the main frame.
+     *
+     * @param locator the locator for the iframe element, or null to return to main frame
+     */
+    public void switchFrame(String locator) {
+        if (locator == null) {
+            // Switch back to main frame
+            currentFrame = null;
+            logger.debug("switched to main frame");
+            return;
+        }
+
+        // Find the iframe element and get its frame ID
+        String js = Locators.wrapInFunctionInvoke(
+                "var e = " + Locators.selector(locator) + ";" +
+                        " if (!e) return null;" +
+                        " if (e.tagName !== 'IFRAME' && e.tagName !== 'FRAME') return { error: 'not a frame element' };" +
+                        " return { " +
+                        "   name: e.name || ''," +
+                        "   src: e.src || ''" +
+                        " }");
+        Object result = script(js);
+
+        if (result == null) {
+            throw new DriverException("frame not found: " + locator);
+        }
+
+        Map<String, Object> frameInfo = (Map<String, Object>) result;
+        if (frameInfo.containsKey("error")) {
+            throw new DriverException("locator is not a frame: " + locator);
+        }
+
+        // Get frame ID from frame tree by matching name or src
+        String targetName = (String) frameInfo.get("name");
+        String targetSrc = (String) frameInfo.get("src");
+
+        CdpResponse response = cdp.method("Page.getFrameTree").send();
+        List<Map<String, Object>> childFrames = response.getResult("frameTree.childFrames");
+
+        if (childFrames == null || childFrames.isEmpty()) {
+            throw new DriverException("no child frames in page");
+        }
+
+        // Find matching frame in tree
+        String frameId = null;
+        String url = null;
+        String name = null;
+
+        for (Map<String, Object> frameData : childFrames) {
+            Map<String, Object> frame = (Map<String, Object>) frameData.get("frame");
+            String fId = (String) frame.get("id");
+            String fUrl = (String) frame.get("url");
+            String fName = (String) frame.get("name");
+
+            // Match by name if provided, otherwise by URL
+            boolean matches = false;
+            if (targetName != null && !targetName.isEmpty() && targetName.equals(fName)) {
+                matches = true;
+            } else if (targetSrc != null && !targetSrc.isEmpty() && fUrl != null && fUrl.contains(targetSrc)) {
+                matches = true;
+            } else if ((targetName == null || targetName.isEmpty()) && (targetSrc == null || targetSrc.isEmpty())) {
+                // No name or src - use first frame
+                matches = true;
+            }
+
+            if (matches) {
+                frameId = fId;
+                url = fUrl;
+                name = fName;
+                break;
+            }
+        }
+
+        if (frameId == null) {
+            throw new DriverException("could not find frame for locator: " + locator);
+        }
+
+        currentFrame = new Frame(frameId, url, name);
+        logger.debug("switched to frame by locator {}: {}", locator, currentFrame);
+
+        // Ensure we have execution context for this frame
+        ensureFrameContext(frameId);
+    }
+
+    /**
+     * Get the current frame, or null if in main frame.
+     *
+     * @return the current frame info, or null
+     */
+    public Map<String, Object> getCurrentFrame() {
+        if (currentFrame == null) {
+            return null;
+        }
+        return Map.of(
+                "id", currentFrame.id,
+                "url", currentFrame.url != null ? currentFrame.url : "",
+                "name", currentFrame.name != null ? currentFrame.name : ""
+        );
+    }
+
+    private void ensureFrameContext(String frameId) {
+        // Check if we already have an execution context for this frame
+        if (frameContexts.containsKey(frameId)) {
+            return;
+        }
+
+        // Create an isolated world for this frame
+        try {
+            CdpResponse response = cdp.method("Page.createIsolatedWorld")
+                    .param("frameId", frameId)
+                    .send();
+            Integer contextId = response.getResult("executionContextId");
+            if (contextId != null) {
+                frameContexts.put(frameId, contextId);
+                logger.debug("created isolated world for frame {}: contextId={}", frameId, contextId);
+            }
+        } catch (Exception e) {
+            logger.warn("failed to create isolated world for frame {}: {}", frameId, e.getMessage());
+        }
     }
 
     // ========== Lifecycle ==========

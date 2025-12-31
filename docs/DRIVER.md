@@ -12,7 +12,7 @@
 | **3** | Testcontainers + E2E Infrastructure | ✅ Complete |
 | **4** | Visibility Layer (DriverInspector) | ✅ Complete |
 | **5** | Element Operations | ✅ Complete |
-| **6** | Frame & Dialog Support | ⬜ Not started |
+| **6** | Frame & Dialog Support | ✅ Complete |
 | **7** | Advanced Features | ⬜ Not started |
 | **8** | WebDriver Backend | ⬜ Not started |
 | **9** | Playwright Wire Protocol | ⬜ Not started |
@@ -247,6 +247,44 @@ element.waitUntil("_.textContent.length > 0", WaitOptions.observe())
 3. getPositionJs dimension bug (v1 incorrectly adds scroll offset to width/height)
 4. toFunction empty string handling (returns identity function)
 5. Input validation (early failure with clear messages)
+
+### Phase 6 Notes
+
+**Completed:**
+- Created `DialogHandler` functional interface for dialog callbacks
+- Created `Dialog` class with accept/dismiss methods
+- Added dialog handling to `CdpDriver`:
+  - `onDialog(handler)` - register callback for dialogs
+  - `dialog(accept)`, `dialog(accept, input)` - manual dialog control
+  - `getDialogText()` - get current dialog message
+  - Event handler for `Page.javascriptDialogOpening`
+- Added frame tracking infrastructure:
+  - `Frame` inner class with id, url, name
+  - `frameContexts` map - Maps frameId to execution context ID
+  - `Runtime.executionContextCreated` event handler
+  - Modified `eval()` to use frame context
+- Implemented `switchFrame()` methods:
+  - `switchFrame(int index)` - by frame tree index
+  - `switchFrame(String locator)` - by CSS/XPath locator
+  - `switchFrame(null)` - return to main frame
+  - `getCurrentFrame()` - get current frame info
+  - `ensureFrameContext()` - create isolated world if needed
+- Created `dialog.html` test page with alert, confirm, prompt buttons
+- Created `DialogE2ETest` (10 tests):
+  - Alert with handler, Confirm accept/dismiss, Prompt accept/dismiss/default/empty
+- Created `FrameE2ETest` (19 tests):
+  - Main frame content/variables/buttons
+  - Switch by index and by locator
+  - Invalid frame handling
+  - Frame operations (click, script, element state)
+  - Multiple frame switches
+- All 211 driver tests passing
+
+**Design Notes:**
+- Same-origin iframes work via `Page.getFrameTree` and `Page.createIsolatedWorld`
+- Cross-origin iframes (Phase 7) will require `Target.attachToTarget` for separate sessions
+- Dialog handler auto-dismisses if user doesn't call accept/dismiss
+- Frame contexts are tracked via `Runtime.executionContextCreated` events
 
 ### Future Enhancements (TODO)
 

@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * E2E tests for browser navigation.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class NavigationE2ETest extends DriverTestBase {
+class NavigationE2eTest extends DriverTestBase {
 
     @Test
     @Order(1)

@@ -37,7 +37,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class ElementE2ETest extends DriverTestBase {
+class ElementE2eTest extends DriverTestBase {
 
     @BeforeEach
     void navigateToInputPage() {
