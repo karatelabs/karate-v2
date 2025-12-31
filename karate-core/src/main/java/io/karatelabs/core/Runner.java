@@ -481,23 +481,15 @@ public final class Runner {
 
                 if (classpathPath.endsWith(".feature")) {
                     // Single feature file
-                    try {
-                        Resource resource = Resource.path(path);
-                        Feature feature = Feature.read(resource);
-                        target.add(feature);
-                    } catch (Exception e) {
-                        // Resource not found or not a file
-                    }
+                    Resource resource = Resource.path(path);
+                    Feature feature = Feature.read(resource);
+                    target.add(feature);
                 } else {
                     // Directory - scan for .feature files
                     List<Resource> resources = Resource.scanClasspath(classpathPath, "feature", null, root);
                     for (Resource resource : resources) {
-                        try {
-                            Feature feature = Feature.read(resource);
-                            target.add(feature);
-                        } catch (Exception e) {
-                            // Skip invalid feature files
-                        }
+                        Feature feature = Feature.read(resource);
+                        target.add(feature);
                     }
                 }
             }

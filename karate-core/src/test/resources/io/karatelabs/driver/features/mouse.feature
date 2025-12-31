@@ -23,8 +23,8 @@ Feature: Mouse Tests
     # Allow small tolerance
     * def xDiff = m.getX() - expectedX
     * def yDiff = m.getY() - expectedY
-    * match Math.abs(xDiff) < 2
-    * match Math.abs(yDiff) < 2
+    * assert Math.abs(xDiff) < 2
+    * assert Math.abs(yDiff) < 2
 
   Scenario: Mouse move
     * def m = mouse()

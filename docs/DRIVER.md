@@ -592,12 +592,12 @@ karate-core/src/test/
     └── features/                 # Gherkin E2E tests
         ├── karate-config.js      # Driver config (reads system properties)
         ├── navigation.feature    # ✅ 3 scenarios passing
-        ├── element.feature       # Ready to test (renamed from .skip)
-        ├── mouse.feature.skip    # Pending
+        ├── element.feature       # ✅ 37 scenarios passing
+        ├── mouse.feature         # ✅ 9 scenarios passing
+        ├── cookie.feature        # ✅ 5 scenarios passing
+        ├── frame.feature         # ✅ 16 scenarios passing
         ├── keys.feature.skip     # Pending (Key constants issue)
-        ├── cookie.feature.skip   # Pending
-        ├── frame.feature.skip    # Pending (switchFrame(null) issue)
-        └── dialog.feature.skip   # Pending (callback pattern issue)
+        └── dialog.feature.skip   # Pending (investigate hanging)
 ```
 
 **Test Runner Pattern:**
@@ -681,12 +681,8 @@ Runner.path("features/")
 
 **Test Results:**
 ```
-14:30:47.156 [main] INFO  ThreadLocalDriverProvider - Created new driver for thread: main
-=========================================================
-feature: navigation.feature
-scenarios:  3 | passed:  3 | time: 0.3990
-=========================================================
-14:30:47.477 [main] INFO  ThreadLocalDriverProvider - Shutting down, closing 1 drivers
+features:    5 | passed:    5 | all passed
+scenarios:  70 | passed:   70 | all passed
 ```
 
 **Safety: Handling `driver.quit()` by Users:**

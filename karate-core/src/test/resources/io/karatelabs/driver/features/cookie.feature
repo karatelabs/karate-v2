@@ -3,8 +3,8 @@ Feature: Cookie Tests
 
   Background:
     * configure driver = driverConfig
-    * clearCookies()
     * driver serverUrl + '/'
+    * clearCookies()
 
   Scenario: Set and get cookie
     * cookie({ name: 'test_cookie', value: 'hello123', domain: 'host.testcontainers.internal' })
@@ -17,7 +17,7 @@ Feature: Cookie Tests
     * cookie({ name: 'cookie1', value: 'value1', domain: 'host.testcontainers.internal' })
     * cookie({ name: 'cookie2', value: 'value2', domain: 'host.testcontainers.internal' })
     * def cookies = driver.cookies
-    * match cookies.length >= 2
+    * assert cookies.length >= 2
     * def names = $cookies[*].name
     * match names contains 'cookie1'
     * match names contains 'cookie2'

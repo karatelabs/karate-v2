@@ -136,7 +136,7 @@ Feature: Element Tests
 
   Scenario: Locate all elements
     * def inputs = locateAll("input[type='text'], input[type='email'], input[type='password']")
-    * match inputs.size() >= 3
+    * assert inputs.size() >= 3
 
   Scenario: Locate all options
     * def options = locateAll('#country option')
@@ -159,8 +159,8 @@ Feature: Element Tests
     * match pos.y != null
     * match pos.width != null
     * match pos.height != null
-    * match pos.width > 0
-    * match pos.height > 0
+    * assert pos.width > 0
+    * assert pos.height > 0
 
   # ========== Wait Methods ==========
 
