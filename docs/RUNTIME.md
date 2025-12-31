@@ -225,10 +225,16 @@ Intentional deviations from V1 behavior:
 
 | Method | Reason |
 |--------|--------|
-| `driver`, `robot` | Browser/UI not in V2 |
+| `robot` | Desktop automation deferred (karate-robot) |
 | `channel()`, `consume()` | Kafka extension |
 | `webSocket()`, `webSocketBinary()` | WebSocket not yet |
 | `compareImage()` | UI testing |
+
+### Planned (Driver/Browser)
+
+| Method | Phase | Notes |
+|--------|-------|-------|
+| `driver` | Phase 9 | Browser automation via `karate.driver()` - see [DRIVER.md](./DRIVER.md) |
 
 ### Performance Testing Integration (PerfContext)
 
@@ -286,13 +292,14 @@ Scenario: Custom RPC
 | Key | Priority |
 |-----|----------|
 | `url` | High |
+| `driver` | High (Phase 9) |
 | `lowerCaseResponseHeaders` | Medium |
 | `logPrettyRequest/Response` | Medium |
 | `printEnabled` | Medium |
 | `localAddress` | Low |
 
 ### Out of Scope
-`driver`, `robot`, `driverTarget`, `kafka`, `grpc`, `websocket`, `webhook`, `responseHeaders`, `responseDelay`, `cors`
+`robot`, `driverTarget`, `kafka`, `grpc`, `websocket`, `webhook`, `responseHeaders`, `responseDelay`, `cors`
 
 ---
 

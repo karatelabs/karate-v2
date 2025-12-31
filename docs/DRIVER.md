@@ -14,17 +14,21 @@
 | **5** | Element Operations | ✅ Complete |
 | **6** | Frame & Dialog Support | ✅ Complete |
 | **7** | Advanced Features | ✅ Complete |
-| **8** | Driver Interface + Playwright Backend | ⬜ Not started |
-| **9** | WebDriver Backend (Legacy) | ⬜ Not started |
-| **10** | WebDriver BiDi (Future) | ⬜ Not started |
+| **8** | Package Restructuring + Driver Interface | ⬜ Not started |
+| **9** | Gherkin/DSL Integration | ⬜ Not started |
+| **10** | Playwright Backend | ⬜ Not started |
+| **11** | WebDriver Backend (Legacy) | ⬜ Not started |
+| **12** | WebDriver BiDi (Future) | ⬜ Not started |
 
 **Legend:** ⬜ Not started | 🟡 In progress | ✅ Complete
 
 **Phase Strategy:**
-- Phase 7 completes CDP driver to full v1 parity
-- Phase 8 extracts `Driver` interface and adds Playwright (validates abstraction)
-- Phase 9 adds WebDriver (legacy, lower priority)
-- Phase 10 adds BiDi when spec matures
+- Phases 1-7 complete CDP driver to full v1 parity
+- Phase 8 restructures packages (`driver/cdp/`) and extracts `Driver` interface
+- Phase 9 integrates driver with Gherkin DSL (v1 syntax) and adds modern JS API
+- Phase 10 adds Playwright backend (validates multi-backend abstraction)
+- Phase 11 adds WebDriver (legacy, lower priority)
+- Phase 12 adds BiDi when spec matures
 
 **Deferred Features:**
 - Capabilities query API (`driver.supports(Capability.X)`)
@@ -434,6 +438,121 @@ Driver driver = Driver.builder()
 - `InterceptHandler.java` - functional interface for request interception
 - `InterceptRequest.java` - intercepted request details
 - `InterceptResponse.java` - mock response builder
+
+### Phase 8 Notes
+
+**Package Restructuring + Driver Interface**
+
+**Goals:**
+1. Extract `Driver` interface from `CdpDriver`
+2. Move CDP-specific classes to `driver/cdp/` subpackage
+3. Extract `Mouse` and `Keys` as interfaces (implementations in cdp/)
+4. Create `DriverOptions` base interface
+5. Update imports across codebase and tests
+
+**Package Structure:**
+```
+io.karatelabs.driver/
+├── Driver.java              # Interface (extracted from CdpDriver)
+├── DriverOptions.java       # Base options interface
+├── Element.java             # Backend-agnostic
+├── Locators.java            # Backend-agnostic JS generation
+├── Finder.java              # Positional element finder
+├── Mouse.java               # Interface for mouse actions
+├── Keys.java                # Interface for keyboard actions
+├── DriverException.java
+├── PageLoadStrategy.java
+├── DialogHandler.java
+├── InterceptHandler.java
+│
+└── cdp/                     # CDP-specific implementation
+    ├── CdpDriver.java       # implements Driver
+    ├── CdpDriverOptions.java
+    ├── CdpClient.java
+    ├── CdpMessage.java
+    ├── CdpEvent.java
+    ├── CdpResponse.java
+    ├── CdpInspector.java
+    ├── BrowserLauncher.java
+    ├── CdpMouse.java        # implements Mouse
+    ├── CdpKeys.java         # implements Keys
+    ├── Dialog.java
+    ├── InterceptRequest.java
+    └── InterceptResponse.java
+```
+
+**Classification:**
+| Stay in `driver/` | Move to `driver/cdp/` |
+|-------------------|----------------------|
+| Element.java | CdpDriver.java |
+| Locators.java | CdpClient.java |
+| Finder.java | CdpMessage.java |
+| DriverException.java | CdpEvent.java |
+| PageLoadStrategy.java | CdpResponse.java |
+| DialogHandler.java | CdpDriverOptions.java |
+| InterceptHandler.java | CdpInspector.java |
+| Driver.java (NEW) | BrowserLauncher.java |
+| DriverOptions.java (NEW) | CdpMouse.java (renamed from Mouse) |
+| Mouse.java (→ interface) | CdpKeys.java (renamed from Keys) |
+| Keys.java (→ interface) | Dialog.java |
+| | InterceptRequest.java |
+| | InterceptResponse.java |
+
+### Phase 9 Notes
+
+**Gherkin/DSL Integration**
+
+**Goals:**
+1. Add `configure driver` support to KarateConfig
+2. Add `driver` keyword to StepExecutor
+3. Bind driver to JS engine for method calls
+4. Support v1 Gherkin syntax exactly
+5. Add modern JS API for `.karate.js` scripts
+6. Validate with v1 feature file tests
+
+**Two API Modes:**
+
+1. **Gherkin DSL (v1 compatible)** - For `.feature` files:
+```gherkin
+* configure driver = { type: 'chrome', headless: true }
+* driver serverUrl + '/login'
+* input('#username', 'admin')
+* click('button[type=submit]')
+* waitFor('#dashboard')
+* def title = driver.title
+```
+
+2. **Modern JS API** - For `.karate.js` scripts:
+```javascript
+var driver = karate.driver({ type: 'chrome', headless: true })
+driver.open('http://localhost:8080/login')
+driver.input('#username', 'admin')
+driver.click('button[type=submit]')
+driver.waitFor('#dashboard')
+var title = driver.title
+driver.quit()
+```
+
+**Implementation Components:**
+
+1. **KarateConfig** - Add `driverConfig` field and configure handler
+2. **ScenarioRuntime** - Add `getDriver()` with lazy initialization
+3. **KarateJs** - Expose `karate.driver()` factory for JS API
+4. **StepExecutor** - Add `driver` keyword handler for Gherkin
+5. **Driver interface** - Implement `SimpleObject` for JS property access
+
+**V1 Test Suite:** `/Users/peter/dev/zcode/karate/karate-e2e-tests/src/test/java/driver`
+
+Key features to validate:
+- `configure driver = { type: 'chrome' }`
+- Navigation: `driver serverUrl + '/path'`
+- Actions: `click('#id')`, `input('#id', 'value')`, `clear('#id')`
+- Waits: `waitFor('#id')`, `waitForText('#id', 'text')`, `waitForEnabled('#id')`
+- Scripts: `script('...')`, `scriptAll('...')`
+- Frames: `switchFrame('#iframe')`, `switchFrame(0)`, `switchFrame(null)`
+- Cookies: `cookie('name')`, `clearCookies()`
+- Chaining: `waitFor('#id').click()`
+- Properties: `driver.url`, `driver.title`, `driver.cookies`
 
 ### Future Enhancements (TODO)
 
@@ -2109,25 +2228,32 @@ karate-core/src/main/java/io/karatelabs/http/
 └── WsClientHandler.java     # Netty handler
 
 karate-core/src/main/java/io/karatelabs/driver/
-├── Driver.java              # Interface
+├── Driver.java              # Interface (Phase 8)
+├── DriverOptions.java       # Base options interface (Phase 8)
 ├── Element.java             # Element abstraction
-├── CdpClient.java           # CDP protocol client
-├── CdpMessage.java          # Fluent message builder
-├── CdpResponse.java         # Response wrapper
-├── CdpEvent.java            # Event wrapper
-├── CdpDriver.java           # Main implementation
-├── CdpDriverOptions.java    # Configuration
-├── BrowserLauncher.java     # Chrome process
-├── PageLoadStrategy.java    # Enum
-├── CdpInspector.java     # Visibility/observability
-├── DialogHandler.java       # Functional interface
-├── Dialog.java              # Dialog wrapper
-├── InterceptHandler.java    # Functional interface
 ├── Locators.java            # Locator transformation
-├── Mouse.java               # Mouse actions
-├── Keys.java                # Keyboard actions
-├── Finder.java              # Positional locator interface
-└── DriverException.java     # Exception
+├── Finder.java              # Positional element finder
+├── Mouse.java               # Mouse interface (Phase 8)
+├── Keys.java                # Keyboard interface (Phase 8)
+├── DriverException.java     # Exception
+├── PageLoadStrategy.java    # Enum
+├── DialogHandler.java       # Functional interface
+├── InterceptHandler.java    # Functional interface
+│
+└── cdp/                     # CDP-specific (Phase 8 restructure)
+    ├── CdpDriver.java       # implements Driver
+    ├── CdpDriverOptions.java
+    ├── CdpClient.java       # CDP protocol client
+    ├── CdpMessage.java      # Fluent message builder
+    ├── CdpResponse.java     # Response wrapper
+    ├── CdpEvent.java        # Event wrapper
+    ├── CdpInspector.java    # Visibility/observability
+    ├── BrowserLauncher.java # Chrome process
+    ├── CdpMouse.java        # implements Mouse
+    ├── CdpKeys.java         # implements Keys
+    ├── Dialog.java          # Dialog wrapper
+    ├── InterceptRequest.java
+    └── InterceptResponse.java
 
 karate-core/src/test/java/io/karatelabs/driver/
 ├── unit/
