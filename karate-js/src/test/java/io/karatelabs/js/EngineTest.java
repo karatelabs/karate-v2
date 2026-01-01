@@ -394,7 +394,7 @@ class EngineTest {
                 /**
                  * @schema schema
                  */
-                
+
                  console.log('hello world');
                 """;
         Resource resource = Resource.text(js);
@@ -402,6 +402,36 @@ class EngineTest {
         Node node = parser.parse();
         String comment = node.getFirstToken().getComments().getFirst().text;
         assertTrue(comment.startsWith("/**"));
+    }
+
+    @Test
+    void testConstRedeclareAcrossEvals() {
+        Engine engine = new Engine();
+        engine.eval("const a = 1");
+        try {
+            engine.eval("const a = 2");
+            fail("error expected");
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("identifier 'a' has already been declared"));
+        }
+        // let should also fail
+        try {
+            engine.eval("let a = 3");
+            fail("error expected");
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("identifier 'a' has already been declared"));
+        }
+    }
+
+    @Test
+    void testEnginePutCanBeOverwritten() {
+        // engine.put() should not create const/let bindings
+        Engine engine = new Engine();
+        engine.put("x", 1);
+        engine.put("x", 2); // should work
+        assertEquals(2, engine.eval("x"));
+        engine.eval("x = 3"); // should also work
+        assertEquals(3, engine.eval("x"));
     }
 
 }

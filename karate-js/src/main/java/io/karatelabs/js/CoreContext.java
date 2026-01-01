@@ -176,6 +176,10 @@ class CoreContext implements Context {
                 }
             }
             putBinding(key, value, info); // current scope
+            // for top-level declarations, also store BindingInfo in root to persist across evals
+            if (depth == 0 && root != null) {
+                root.addBindingInfo(info);
+            }
         } else { // hoist var
             CoreContext targetContext = this;
             while (targetContext.depth > 0 && targetContext.scope != ContextScope.FUNCTION) {
@@ -211,11 +215,15 @@ class CoreContext implements Context {
         }
         _bindings.put(key, value);
         if (info != null) {
-            if (_bindingInfos == null) {
-                _bindingInfos = new ArrayList<>();
-            }
-            _bindingInfos.add(info);
+            addBindingInfo(info);
         }
+    }
+
+    void addBindingInfo(BindingInfo info) {
+        if (_bindingInfos == null) {
+            _bindingInfos = new ArrayList<>();
+        }
+        _bindingInfos.add(info);
     }
 
     boolean hasKey(String key) {
@@ -234,6 +242,14 @@ class CoreContext implements Context {
     private BindingInfo findConstOrLet(String key) {
         if (_bindingInfos != null) {
             for (BindingInfo info : _bindingInfos) {
+                if (info.name.equals(key)) {
+                    return info;
+                }
+            }
+        }
+        // check root for top-level const/let declarations from previous evals (only at depth 0)
+        if (depth == 0 && root != null && root._bindingInfos != null) {
+            for (BindingInfo info : root._bindingInfos) {
                 if (info.name.equals(key)) {
                     return info;
                 }
