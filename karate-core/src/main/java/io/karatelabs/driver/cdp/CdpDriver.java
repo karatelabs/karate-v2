@@ -418,6 +418,12 @@ public class CdpDriver implements Driver {
         }
         Object exceptionDetails = response.getResult("exceptionDetails");
         if (exceptionDetails != null) {
+            // Try to get detailed error message from exception object
+            String description = response.getResultAsString("exceptionDetails.exception.description");
+            if (description != null && !description.isEmpty()) {
+                throw new RuntimeException("JS exception: " + description);
+            }
+            // Fall back to text (usually just "Uncaught")
             String text = response.getResultAsString("exceptionDetails.text");
             throw new RuntimeException("JS exception: " + text);
         }
@@ -742,11 +748,14 @@ public class CdpDriver implements Driver {
     }
 
     /**
-     * Input text into an element.
+     * Input text into an element using CDP keypresses.
+     * Uses keyboard typing for React/Vue compatibility.
      */
     public Element input(String locator, String value) {
         logger.debug("input: {} <- {}", locator, value);
-        script(Locators.inputJs(locator, value));
+        focus(locator);
+        clear(locator);
+        keys().type(value);
         return Element.of(this, locator);
     }
 

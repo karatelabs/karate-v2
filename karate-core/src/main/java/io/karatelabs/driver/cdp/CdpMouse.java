@@ -24,6 +24,8 @@
 package io.karatelabs.driver.cdp;
 
 import io.karatelabs.driver.Mouse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
@@ -34,6 +36,7 @@ import java.util.Map;
  */
 public class CdpMouse implements Mouse {
 
+    private static final Logger logger = LoggerFactory.getLogger(CdpMouse.class);
     private final CdpClient cdp;
     private double x;
     private double y;
@@ -65,6 +68,9 @@ public class CdpMouse implements Mouse {
 
     @Override
     public Mouse click() {
+        // First move to the position (like v1's batched actions)
+        // This ensures the browser properly targets the element
+        dispatchEvent("mouseMoved");
         down();
         up();
         return this;
@@ -157,14 +163,33 @@ public class CdpMouse implements Mouse {
                 .param("x", x)
                 .param("y", y);
 
-        // Default button is left
-        if (!extra.containsKey("button")) {
-            message.param("button", "left");
-        }
-
-        // Add click count for press/release
-        if ((type.equals("mousePressed") || type.equals("mouseReleased")) && !extra.containsKey("clickCount")) {
-            message.param("clickCount", 1);
+        // Only set button for press/release events (not for mouseMoved)
+        if (type.equals("mousePressed")) {
+            if (!extra.containsKey("button")) {
+                message.param("button", "left");
+            }
+            if (!extra.containsKey("clickCount")) {
+                message.param("clickCount", 1);
+            }
+            // buttons bitmask: 1 = left button pressed
+            if (!extra.containsKey("buttons")) {
+                message.param("buttons", 1);
+            }
+        } else if (type.equals("mouseReleased")) {
+            if (!extra.containsKey("button")) {
+                message.param("button", "left");
+            }
+            if (!extra.containsKey("clickCount")) {
+                message.param("clickCount", 1);
+            }
+            // buttons bitmask: 0 = no buttons pressed after release
+            if (!extra.containsKey("buttons")) {
+                message.param("buttons", 0);
+            }
+        } else {
+            // For mouseMoved, button should be "none"
+            message.param("button", "none");
+            message.param("buttons", 0);
         }
 
         // Add any extra parameters

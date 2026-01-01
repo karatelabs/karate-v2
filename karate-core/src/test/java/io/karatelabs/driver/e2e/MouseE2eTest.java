@@ -119,4 +119,67 @@ class MouseE2eTest extends DriverTestBase {
         assertEquals(150.0, mouse.getY());
     }
 
+    @Test
+    void testMouseClickGeneratesDomEvents() {
+        // Set up event tracking
+        driver.script("""
+            window.__mouseEvents = [];
+            ['mousedown', 'mouseup', 'click'].forEach(function(type) {
+                document.addEventListener(type, function(e) {
+                    window.__mouseEvents.push({
+                        type: e.type,
+                        target: e.target.id || e.target.tagName,
+                        isTrusted: e.isTrusted,
+                        clientX: e.clientX,
+                        clientY: e.clientY
+                    });
+                }, true);
+            });
+        """);
+
+        // Scroll button into view first (like Puppeteer does)
+        driver.script("document.querySelector('#submit-btn').scrollIntoView({block: 'center'})");
+
+        // Get button position (now it should be in viewport)
+        Map<String, Object> pos = driver.position("#submit-btn", true);
+        System.out.println("Button position after scroll: " + pos);
+
+        // Calculate expected click position
+        double expectedX = ((Number) pos.get("x")).doubleValue() + ((Number) pos.get("width")).doubleValue() / 2;
+        double expectedY = ((Number) pos.get("y")).doubleValue() + ((Number) pos.get("height")).doubleValue() / 2;
+        System.out.println("Expected click at: (" + expectedX + ", " + expectedY + ")");
+
+        // Click the button using CDP mouse
+        Mouse mouse = driver.mouse("#submit-btn");
+        System.out.println("Mouse positioned at: (" + mouse.getX() + ", " + mouse.getY() + ")");
+        mouse.click();
+
+        // Check what DOM events were generated
+        @SuppressWarnings("unchecked")
+        java.util.List<Map<String, Object>> events = (java.util.List<Map<String, Object>>)
+            driver.script("window.__mouseEvents");
+
+        System.out.println("Mouse events captured: " + events);
+
+        // We should have mousedown, mouseup, click
+        assertTrue(events.size() >= 3,
+            "Expected at least 3 mouse events (mousedown, mouseup, click), got: " + events.size());
+
+        // Check for required event types
+        var eventTypes = events.stream()
+            .map(e -> (String) e.get("type"))
+            .toList();
+        assertTrue(eventTypes.contains("mousedown"), "Missing mousedown event");
+        assertTrue(eventTypes.contains("mouseup"), "Missing mouseup event");
+        assertTrue(eventTypes.contains("click"), "Missing click event");
+
+        // Verify click was on the button
+        var clickEvent = events.stream()
+            .filter(e -> "click".equals(e.get("type")))
+            .findFirst()
+            .orElseThrow();
+        assertEquals("submit-btn", clickEvent.get("target"),
+            "Click should be on submit-btn, not " + clickEvent.get("target"));
+    }
+
 }

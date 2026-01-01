@@ -59,6 +59,20 @@ Feature: Element Tests
     * def value = value('#bio')
     * match value contains 'biography'
 
+  Scenario: Input triggers DOM events
+    # Clear event log
+    * script('window.inputEvents = []')
+    # Type into the field
+    * input('#username', 'test')
+    # Verify value is set
+    * match value('#username') == 'test'
+    # Verify input events were triggered (React/Vue compatibility)
+    * def events = script('window.inputEvents')
+    * assert events.length > 0
+    # Check that at least one input event was fired for the username field
+    * def inputEvents = events.filter(e => e.type == 'input' && e.target == 'username')
+    * assert inputEvents.length > 0
+
   # ========== Click Operations ==========
 
   Scenario: Click button

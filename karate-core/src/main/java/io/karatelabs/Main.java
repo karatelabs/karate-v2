@@ -23,7 +23,6 @@
  */
 package io.karatelabs;
 
-import io.karatelabs.cli.AgentCommand;
 import io.karatelabs.cli.CleanCommand;
 import io.karatelabs.cli.MockCommand;
 import io.karatelabs.cli.RunCommand;
@@ -58,8 +57,7 @@ import java.util.concurrent.Callable;
         subcommands = {
                 RunCommand.class,
                 MockCommand.class,
-                CleanCommand.class,
-                AgentCommand.class
+                CleanCommand.class
         }
 )
 public class Main implements Callable<Integer> {
