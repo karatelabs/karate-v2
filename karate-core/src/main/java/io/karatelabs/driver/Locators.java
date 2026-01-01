@@ -86,6 +86,14 @@ public class Locators {
             throw new DriverException("locator cannot be null or empty");
         }
 
+        // Ref locator from aria-snapshot: ref:e1, ref:e2, etc.
+        if (locator.startsWith("ref:")) {
+            String ref = locator.substring(4);
+            // Returns element from window.__karate.refs or throws if stale
+            return "(function(){ var el = window.__karate && window.__karate.resolveRef('" + ref + "');" +
+                    " if (!el) throw new Error('stale ref: " + ref + "'); return el; })()";
+        }
+
         // Pure JS expression - pass through (but not XPath starting with parenthesis)
         if (locator.startsWith("(") && !locator.startsWith("(//")) {
             return locator;

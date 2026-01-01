@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- Console appender that writes to stderr (not stdout) for CLI compatibility -->
+    <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.err</target>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="io.karatelabs" level="DEBUG"/>
+    <logger name="karate.runtime" level="DEBUG"/>
+
+    <!-- Suppress noisy netty logs -->
+    <logger name="io.netty" level="WARN"/>
+
+    <root level="WARN">
+        <appender-ref ref="STDERR" />
+    </root>
+
+</configuration>

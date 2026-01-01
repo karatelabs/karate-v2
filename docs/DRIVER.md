@@ -260,6 +260,12 @@ Mouse mouse(Number x, Number y)                  // At coordinates
 Keys keys()
 ```
 
+**Keyboard Implementation Notes (CdpKeys):**
+- Uses v1-compatible 3-event sequence: `rawKeyDown` → `char` → `keyUp`
+- Enter key sends `text: "\r"` (required for form submission)
+- Punctuation uses proper `windowsVirtualKeyCode` (e.g., `.` = 190, `,` = 188)
+- Special keys (Tab, Enter, Backspace) handled separately from printable chars
+
 ### Pages/Tabs
 ```java
 List<String> getPages()

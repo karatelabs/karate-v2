@@ -74,7 +74,7 @@ public class CdpKeys implements Keys {
         int flag = getModifierFlag(key);
         if (flag > 0) {
             modifiers |= flag;
-            dispatchKeyDown(getKeyInfo(key));
+            dispatchRawKeyDown(getKeyInfo(key));
         }
         return this;
     }
@@ -129,24 +129,30 @@ public class CdpKeys implements Keys {
 
     private void typeChar(char c) {
         KeyInfo info = getKeyInfoForChar(c);
-        dispatchKeyDown(info);
-        dispatchKeyPress(info);
+        dispatchRawKeyDown(info);
+        dispatchChar(info);
         dispatchKeyUp(info);
     }
 
     private void pressSpecialKey(String key) {
         KeyInfo info = getKeyInfo(key);
-        dispatchKeyDown(info);
+        // Special keys need rawKeyDown + char (with proper text) + keyUp
+        dispatchRawKeyDown(info);
+        // Enter key needs char event with \r to trigger form submit
+        if (info.text != null && !info.text.isEmpty()) {
+            dispatchChar(info);
+        }
         dispatchKeyUp(info);
     }
 
-    private void dispatchKeyDown(KeyInfo info) {
+    private void dispatchRawKeyDown(KeyInfo info) {
         CdpMessage message = cdp.method("Input.dispatchKeyEvent")
-                .param("type", "keyDown")
+                .param("type", "rawKeyDown")  // rawKeyDown works better than keyDown
                 .param("modifiers", modifiers);
 
         if (info.key != null) message.param("key", info.key);
         if (info.code != null) message.param("code", info.code);
+        if (info.text != null) message.param("text", info.text);
         if (info.windowsVirtualKeyCode > 0) message.param("windowsVirtualKeyCode", info.windowsVirtualKeyCode);
         if (info.nativeVirtualKeyCode > 0) message.param("nativeVirtualKeyCode", info.nativeVirtualKeyCode);
 
@@ -166,15 +172,16 @@ public class CdpKeys implements Keys {
         message.send();
     }
 
-    private void dispatchKeyPress(KeyInfo info) {
+    private void dispatchChar(KeyInfo info) {
         if (info.text == null || info.text.isEmpty()) {
             return;
         }
-        cdp.method("Input.dispatchKeyEvent")
+        CdpMessage message = cdp.method("Input.dispatchKeyEvent")
                 .param("type", "char")
                 .param("modifiers", modifiers)
-                .param("text", info.text)
-                .send();
+                .param("text", info.text);
+        if (info.windowsVirtualKeyCode > 0) message.param("windowsVirtualKeyCode", info.windowsVirtualKeyCode);
+        message.send();
     }
 
     private boolean isSpecialKey(String key) {
@@ -214,8 +221,21 @@ public class CdpKeys implements Keys {
             info.code = "Space";
             info.windowsVirtualKeyCode = 32;
         } else {
-            // For other characters, just use the character
-            info.windowsVirtualKeyCode = c;
+            // Punctuation and special characters - use proper key codes
+            switch (c) {
+                case '.' -> { info.code = "Period"; info.windowsVirtualKeyCode = 190; }
+                case ',' -> { info.code = "Comma"; info.windowsVirtualKeyCode = 188; }
+                case ';' -> { info.code = "Semicolon"; info.windowsVirtualKeyCode = 186; }
+                case '\'' -> { info.code = "Quote"; info.windowsVirtualKeyCode = 222; }
+                case '[' -> { info.code = "BracketLeft"; info.windowsVirtualKeyCode = 219; }
+                case ']' -> { info.code = "BracketRight"; info.windowsVirtualKeyCode = 221; }
+                case '\\' -> { info.code = "Backslash"; info.windowsVirtualKeyCode = 220; }
+                case '/' -> { info.code = "Slash"; info.windowsVirtualKeyCode = 191; }
+                case '`' -> { info.code = "Backquote"; info.windowsVirtualKeyCode = 192; }
+                case '-' -> { info.code = "Minus"; info.windowsVirtualKeyCode = 189; }
+                case '=' -> { info.code = "Equal"; info.windowsVirtualKeyCode = 187; }
+                default -> info.windowsVirtualKeyCode = 0; // Let text handle it
+            }
         }
 
         return info;
@@ -233,7 +253,7 @@ public class CdpKeys implements Keys {
         switch (c) {
             case '\uE003' -> { info.key = "Backspace"; info.code = "Backspace"; info.windowsVirtualKeyCode = 8; }
             case '\uE004' -> { info.key = "Tab"; info.code = "Tab"; info.windowsVirtualKeyCode = 9; }
-            case '\uE006', '\uE007' -> { info.key = "Enter"; info.code = "Enter"; info.windowsVirtualKeyCode = 13; }
+            case '\uE006', '\uE007' -> { info.key = "Enter"; info.code = "Enter"; info.windowsVirtualKeyCode = 13; info.text = "\r"; }
             case '\uE008' -> { info.key = "Shift"; info.code = "ShiftLeft"; info.windowsVirtualKeyCode = 16; }
             case '\uE009' -> { info.key = "Control"; info.code = "ControlLeft"; info.windowsVirtualKeyCode = 17; }
             case '\uE00A' -> { info.key = "Alt"; info.code = "AltLeft"; info.windowsVirtualKeyCode = 18; }
