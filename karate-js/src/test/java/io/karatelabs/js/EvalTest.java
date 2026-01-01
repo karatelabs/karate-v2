@@ -587,6 +587,28 @@ class EvalTest extends EvalBase {
     }
 
     @Test
+    void testConstRedeclare() {
+        try {
+            eval("const a = 1; const a = 2");
+            fail("error expected");
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("identifier 'a' has already been declared"));
+        }
+        try {
+            eval("let b = 1; let b = 2");
+            fail("error expected");
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("identifier 'b' has already been declared"));
+        }
+        try {
+            eval("const c = 1; let c = 2");
+            fail("error expected");
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("identifier 'c' has already been declared"));
+        }
+    }
+
+    @Test
     void testBlockScopeVarHoisting() {
         eval("{ var a = 1; { var b = 2; } }");
         assertEquals(1, get("a"));

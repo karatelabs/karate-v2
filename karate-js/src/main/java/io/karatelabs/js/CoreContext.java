@@ -166,6 +166,15 @@ class CoreContext implements Context {
             ((JsFunction) value).name = key;
         }
         if (info != null) { // if present, will always be let or const (micro optimization)
+            BindingInfo existing = findConstOrLet(key);
+            if (existing != null) {
+                if (scope == ContextScope.LOOP_INIT) {
+                    // for-of/for-in loop iteration: re-declaration is valid, remove old binding info
+                    _bindingInfos.remove(existing);
+                } else {
+                    throw new RuntimeException("identifier '" + key + "' has already been declared");
+                }
+            }
             putBinding(key, value, info); // current scope
         } else { // hoist var
             CoreContext targetContext = this;
