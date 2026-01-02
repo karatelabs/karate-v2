@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class FeatureRuntime implements Callable<FeatureResult> {
 
@@ -59,6 +60,7 @@ public class FeatureRuntime implements Callable<FeatureResult> {
     // Caches (feature-level)
     final Map<String, Object> CALLONCE_CACHE = new ConcurrentHashMap<>();
     final Map<String, Object> SETUPONCE_CACHE = new ConcurrentHashMap<>();
+    private final ReentrantLock callOnceLock = new ReentrantLock();
 
     // State
     private ScenarioRuntime lastExecuted;
@@ -518,6 +520,10 @@ public class FeatureRuntime implements Callable<FeatureResult> {
 
     public FeatureResult getResult() {
         return result;
+    }
+
+    public ReentrantLock getCallOnceLock() {
+        return callOnceLock;
     }
 
 }

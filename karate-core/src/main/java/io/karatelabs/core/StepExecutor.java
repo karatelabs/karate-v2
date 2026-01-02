@@ -382,32 +382,48 @@ public class StepExecutor {
     private void executeCallOnceWithResult(String callExpr, String resultVar) {
         String cacheKey = "callonce:" + callExpr;
 
-        // Check cache first
+        // Use feature-level cache (not suite-level) - callOnce is scoped per feature
         FeatureRuntime fr = runtime.getFeatureRuntime();
-        Map<String, Object> cache = fr != null && fr.getSuite() != null
-                ? fr.getSuite().getCallOnceCache()
-                : fr != null ? fr.CALLONCE_CACHE : null;
-
-        if (cache != null) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> cached = (Map<String, Object>) cache.get(cacheKey);
-            if (cached != null) {
-                // Return deep copy to prevent cross-scenario mutation
-                runtime.setVariable(resultVar, StepUtils.deepCopy(cached));
-                return;
-            }
+        if (fr == null) {
+            // No feature context - just execute normally
+            executeCallWithResult(callExpr, resultVar);
+            return;
         }
 
-        // Not cached - execute the call
-        executeCallWithResult(callExpr, resultVar);
+        Map<String, Object> cache = fr.CALLONCE_CACHE;
+        java.util.concurrent.locks.ReentrantLock lock = fr.getCallOnceLock();
 
-        // Cache a deep copy of the result
-        if (cache != null) {
+        // Fast path - check cache without lock
+        @SuppressWarnings("unchecked")
+        Map<String, Object> cached = (Map<String, Object>) cache.get(cacheKey);
+        if (cached != null) {
+            // Return deep copy to prevent cross-scenario mutation
+            runtime.setVariable(resultVar, StepUtils.deepCopy(cached));
+            return;
+        }
+
+        // Slow path - acquire lock for execution
+        lock.lock();
+        try {
+            // Double-check after acquiring lock
+            @SuppressWarnings("unchecked")
+            Map<String, Object> rechecked = (Map<String, Object>) cache.get(cacheKey);
+            if (rechecked != null) {
+                runtime.setVariable(resultVar, StepUtils.deepCopy(rechecked));
+                return;
+            }
+
+            // Not cached - execute the call
+            executeCallWithResult(callExpr, resultVar);
+
+            // Cache a deep copy of the result
             @SuppressWarnings("unchecked")
             Map<String, Object> resultVars = (Map<String, Object>) runtime.getVariable(resultVar);
             if (resultVars != null) {
                 cache.put(cacheKey, StepUtils.deepCopy(resultVars));
             }
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -2229,32 +2245,52 @@ public class StepExecutor {
         String text = step.getText().trim();
         String cacheKey = text;
 
-        // Check cache first
+        // Use feature-level cache (not suite-level) - callOnce is scoped per feature
         FeatureRuntime fr = runtime.getFeatureRuntime();
-        Map<String, Object> cache = fr != null && fr.getSuite() != null
-                ? fr.getSuite().getCallOnceCache()
-                : fr != null ? fr.CALLONCE_CACHE : null;
-
-        if (cache != null) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> cached = (Map<String, Object>) cache.get(cacheKey);
-            if (cached != null) {
-                // Apply deep copies of cached variables to current runtime
-                @SuppressWarnings("unchecked")
-                Map<String, Object> copies = (Map<String, Object>) StepUtils.deepCopy(cached);
-                for (Map.Entry<String, Object> entry : copies.entrySet()) {
-                    runtime.setVariable(entry.getKey(), entry.getValue());
-                }
-                return;
-            }
+        if (fr == null) {
+            // No feature context - just execute normally
+            executeCall(step);
+            return;
         }
 
-        // Not cached - execute the call
-        executeCall(step);
+        Map<String, Object> cache = fr.CALLONCE_CACHE;
+        java.util.concurrent.locks.ReentrantLock lock = fr.getCallOnceLock();
 
-        // Cache a deep copy of the result
-        if (cache != null && fr.getLastExecuted() != null) {
+        // Fast path - check cache without lock
+        @SuppressWarnings("unchecked")
+        Map<String, Object> cached = (Map<String, Object>) cache.get(cacheKey);
+        if (cached != null) {
+            // Apply deep copies of cached variables to current runtime
+            applyCachedCallOnceResult(cached);
+            return;
+        }
+
+        // Slow path - acquire lock for execution
+        lock.lock();
+        try {
+            // Double-check after acquiring lock (another thread may have populated cache)
+            @SuppressWarnings("unchecked")
+            Map<String, Object> rechecked = (Map<String, Object>) cache.get(cacheKey);
+            if (rechecked != null) {
+                applyCachedCallOnceResult(rechecked);
+                return;
+            }
+
+            // Not cached - execute the call
+            executeCall(step);
+
+            // Cache a deep copy of the result (executeCall already copied vars to runtime)
             cache.put(cacheKey, StepUtils.deepCopy(runtime.getAllVariables()));
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private void applyCachedCallOnceResult(Map<String, Object> cached) {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> copies = (Map<String, Object>) StepUtils.deepCopy(cached);
+        for (Map.Entry<String, Object> entry : copies.entrySet()) {
+            runtime.setVariable(entry.getKey(), entry.getValue());
         }
     }
 

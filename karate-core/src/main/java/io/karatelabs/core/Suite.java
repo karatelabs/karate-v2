@@ -97,7 +97,7 @@ public class Suite {
     private final List<ResultListener> resultListeners = new ArrayList<>();
 
     // Caches (shared across features)
-    private final Map<String, Object> CALLONCE_CACHE = new ConcurrentHashMap<>();
+    // Note: CALLONCE is now feature-scoped in FeatureRuntime, not suite-scoped
     private final Map<String, Object> CALLSINGLE_CACHE = new ConcurrentHashMap<>();
     private final ReentrantLock callSingleLock = new ReentrantLock();
 
@@ -700,10 +700,6 @@ public class Suite {
 
     public List<Feature> getFeatures() {
         return features;
-    }
-
-    public Map<String, Object> getCallOnceCache() {
-        return CALLONCE_CACHE;
     }
 
     public Map<String, Object> getCallSingleCache() {

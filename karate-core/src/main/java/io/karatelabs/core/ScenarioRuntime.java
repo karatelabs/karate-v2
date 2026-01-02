@@ -347,6 +347,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
     /**
      * Execute karate.callonce() - runs a feature once per FeatureRuntime and caches the result.
      * Uses the same cache as the callonce keyword.
+     * Uses double-check locking to ensure thread-safe execution in parallel scenarios.
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> executeJsCallOnce(String path, Object arg) {
@@ -357,25 +358,36 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         // Use the same cache key format as the keyword: "callonce:call read('path')"
         String cacheKey = "callonce:call read('" + path + "')";
 
-        // Get cache from Suite or FeatureRuntime
-        Map<String, Object> cache = featureRuntime.getSuite() != null
-                ? featureRuntime.getSuite().getCallOnceCache()
-                : featureRuntime.CALLONCE_CACHE;
+        // Use feature-level cache (not suite-level) - callOnce is scoped per feature
+        Map<String, Object> cache = featureRuntime.CALLONCE_CACHE;
+        java.util.concurrent.locks.ReentrantLock lock = featureRuntime.getCallOnceLock();
 
-        // Check cache first
+        // Fast path - check cache without lock
         Map<String, Object> cached = (Map<String, Object>) cache.get(cacheKey);
         if (cached != null) {
             // Deep copy to prevent cross-scenario mutation
             return (Map<String, Object>) deepCopy(cached);
         }
 
-        // Not cached - execute the call
-        Map<String, Object> result = executeJsCall(path, arg);
+        // Slow path - acquire lock for execution
+        lock.lock();
+        try {
+            // Double-check after acquiring lock
+            Map<String, Object> rechecked = (Map<String, Object>) cache.get(cacheKey);
+            if (rechecked != null) {
+                return (Map<String, Object>) deepCopy(rechecked);
+            }
 
-        // Cache a deep copy to prevent the caller from mutating the cache
-        cache.put(cacheKey, (Map<String, Object>) deepCopy(result));
+            // Not cached - execute the call
+            Map<String, Object> result = executeJsCall(path, arg);
 
-        return result;
+            // Cache a deep copy to prevent the caller from mutating the cache
+            cache.put(cacheKey, (Map<String, Object>) deepCopy(result));
+
+            return result;
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**

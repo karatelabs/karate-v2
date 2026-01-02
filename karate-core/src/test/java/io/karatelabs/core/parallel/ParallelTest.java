@@ -168,6 +168,34 @@ class ParallelTest {
     }
 
     /**
+     * Test that callonce is feature-scoped, not suite-scoped.
+     * Two features running in parallel, each with callonce to the same helper,
+     * should each execute the helper independently (not share cached results).
+     */
+    @Test
+    void testCallonceFeatureIsolation() {
+        // Reset the counter before test
+        CallOnceCounter.reset();
+
+        // Run two features in parallel, each using callonce to the same helper
+        SuiteResult result = Runner.path(
+                        "classpath:io/karatelabs/core/parallel/callonce-feature-a.feature",
+                        "classpath:io/karatelabs/core/parallel/callonce-feature-b.feature"
+                )
+                .configDir("classpath:io/karatelabs/core/parallel")
+                .outputConsoleSummary(false)
+                .parallel(2);
+
+        assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
+
+        // Each feature should have executed the helper once (feature-scoped isolation)
+        // If callonce were suite-scoped, counter would be 1 (shared cache across features)
+        int count = CallOnceCounter.get();
+        assertEquals(2, count,
+                "callonce should be feature-scoped: expected 2 executions (one per feature), but got " + count);
+    }
+
+    /**
      * Comprehensive parallel HTTP test combining:
      * - Multiple scenarios with HTTP calls
      * - Dynamic scenario outline with HTTP
