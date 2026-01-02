@@ -742,6 +742,94 @@ AI-agent friendly: detailed context aids debugging.
 
 ---
 
+## Wildcard Locator Implementation
+
+### Problem
+
+Wildcard locators like `{div}Account` need to:
+1. Match visible elements only
+2. Match text in child elements (not just direct text nodes)
+3. Prefer leaf elements over parents that contain matching descendants
+4. Expand roles (e.g., `{button}` matches `<div role="button">`)
+5. Count indices consistently with how they're generated
+
+XPath-based solutions have semantic mismatches with JavaScript's DOM APIs (visibility, textContent, etc.), leading to edge cases.
+
+### Solution: Client-Side JavaScript Resolver
+
+Instead of expanding wildcards to XPath, we inject a JavaScript resolver into the browser:
+
+```
+{div}text     → window.__karateWildcard.resolve("div", "text", 1, false)
+{^div}text    → window.__karateWildcard.resolve("div", "text", 1, true)
+{div:2}text   → window.__karateWildcard.resolve("div", "text", 2, false)
+```
+
+**Resource:** `karate-core/src/main/resources/io/karatelabs/driver/wildcard.js`
+
+### Features
+
+| Feature | Implementation |
+|---------|----------------|
+| Visibility | Checks `display`, `visibility`, `aria-hidden`, bounding rect |
+| Text extraction | TreeWalker over text nodes, excludes hidden ancestors |
+| Leaf preference | Skips elements if a matching descendant exists |
+| Role expansion | `{button}` → `button, [role="button"], input[type="submit"]` |
+| Index counting | Counts only visible, leaf-matched elements |
+
+### Injection Strategy (CdpDriver)
+
+```java
+// Load once at class load
+private static final String WILDCARD_JS = loadResource("wildcard.js");
+
+// Inject on-demand before wildcard evaluation
+public Object script(String expression) {
+    if (expression.contains("__karateWildcard")) {
+        ensureWildcardSupport();
+    }
+    return eval(expression);
+}
+
+private void ensureWildcardSupport() {
+    Boolean exists = (Boolean) evalDirect("typeof window.__karateWildcard !== 'undefined'");
+    if (!Boolean.TRUE.equals(exists)) {
+        evalDirect(WILDCARD_JS);
+    }
+}
+```
+
+### Multi-Backend Considerations
+
+The `wildcard.js` is pure browser JavaScript - any driver backend can use it:
+
+| Backend | Implementation |
+|---------|----------------|
+| CDP | Inject via `Runtime.evaluate` |
+| Playwright | Inject via `page.evaluate` or `addInitScript` |
+| WebDriver | Inject via `executeScript` |
+
+Future backends should implement the same injection pattern:
+1. Load `wildcard.js` from resources
+2. Check if `window.__karateWildcard` exists
+3. Inject if missing
+4. Execute the resolver call
+
+### Role Mappings
+
+The resolver expands certain tags to include ARIA roles:
+
+```javascript
+{
+    'button': 'button, [role="button"], input[type="submit"], input[type="button"]',
+    'a': 'a[href], [role="link"]',
+    'select': 'select, [role="combobox"], [role="listbox"]',
+    'input': 'input:not([type="hidden"]), textarea, [role="textbox"]'
+}
+```
+
+---
+
 ## Deferred Features
 
 ### Commercial JavaFX Application

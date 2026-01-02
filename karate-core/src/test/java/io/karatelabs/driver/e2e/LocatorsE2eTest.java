@@ -339,4 +339,40 @@ class LocatorsE2eTest extends DriverTestBase {
         assertEquals("", text);
     }
 
+    // ========== Wildcard JS Resolver ==========
+
+    @Test
+    void testWildcardMatchesVisibleOnly() {
+        driver.setUrl("data:text/html," +
+            "<div style='display:none'>Save</div>" +
+            "<div id='visible'>Save</div>");
+        Element el = driver.locate("{div}Save");
+        assertEquals("visible", el.attribute("id"));
+    }
+
+    @Test
+    void testWildcardMatchesLeafElement() {
+        driver.setUrl("data:text/html,<div id='outer'><div id='inner'>Click</div></div>");
+        Element el = driver.locate("{div}Click");
+        assertEquals("inner", el.attribute("id"));
+    }
+
+    @Test
+    void testWildcardIndexCountsVisibleOnly() {
+        driver.setUrl("data:text/html," +
+            "<button>Save</button>" +
+            "<button style='display:none'>Save</button>" +
+            "<button id='second'>Save</button>");
+        Element el = driver.locate("{button:2}Save");
+        assertEquals("second", el.attribute("id"));
+    }
+
+    @Test
+    void testWildcardButtonExpandsRoles() {
+        // {button} should match role="button" too
+        driver.setUrl("data:text/html,<div role='button' id='btn'>Click Me</div>");
+        Element el = driver.locate("{button}Click Me");
+        assertEquals("btn", el.attribute("id"));
+    }
+
 }

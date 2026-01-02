@@ -39,6 +39,8 @@ import io.karatelabs.driver.PageLoadStrategy;
 import io.karatelabs.output.LogContext;
 import org.slf4j.Logger;
 
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -55,6 +57,17 @@ import java.util.function.Supplier;
 public class CdpDriver implements Driver {
 
     private static final Logger logger = LogContext.RUNTIME_LOGGER;
+
+    // Wildcard locator support script
+    private static final String WILDCARD_JS = loadResource("wildcard.js");
+
+    private static String loadResource(String name) {
+        try (InputStream is = CdpDriver.class.getResourceAsStream("/io/karatelabs/driver/" + name)) {
+            return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load " + name, e);
+        }
+    }
 
     // Track active drivers for cleanup
     private static final Set<CdpDriver> ACTIVE = ConcurrentHashMap.newKeySet();
@@ -384,9 +397,35 @@ public class CdpDriver implements Driver {
     // ========== JavaScript Evaluation ==========
 
     /**
+     * Ensure wildcard locator support script is injected.
+     */
+    private void ensureWildcardSupport() {
+        try {
+            Boolean exists = (Boolean) evalDirect("typeof window.__karateWildcard !== 'undefined'");
+            if (!Boolean.TRUE.equals(exists)) {
+                evalDirect(WILDCARD_JS);
+            }
+        } catch (Exception e) {
+            // Ignore - may fail during navigation
+        }
+    }
+
+    /**
      * Execute JavaScript and return result.
      */
     public Object script(String expression) {
+        // Inject wildcard support if needed
+        if (expression.contains("__karateWildcard")) {
+            ensureWildcardSupport();
+        }
+        CdpResponse response = eval(expression);
+        return extractJsValue(response);
+    }
+
+    /**
+     * Execute JavaScript without checking for wildcard support (used internally).
+     */
+    private Object evalDirect(String expression) {
         CdpResponse response = eval(expression);
         return extractJsValue(response);
     }

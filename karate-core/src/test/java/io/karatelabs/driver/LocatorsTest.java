@@ -114,44 +114,44 @@ class LocatorsTest {
     @Test
     void testWildcardExact() {
         String result = Locators.expandWildcard("{div}Login");
-        assertEquals("//div[normalize-space(text())='Login']", result);
+        assertEquals("window.__karateWildcard.resolve(\"div\", \"Login\", 1, false)", result);
     }
 
     @Test
     void testWildcardContains() {
         String result = Locators.expandWildcard("{^div}Log");
-        assertEquals("//div[contains(normalize-space(text()),'Log')]", result);
+        assertEquals("window.__karateWildcard.resolve(\"div\", \"Log\", 1, true)", result);
     }
 
     @Test
     void testWildcardAnyTag() {
         String result = Locators.expandWildcard("{}Submit");
-        assertEquals("//*[normalize-space(text())='Submit']", result);
+        assertEquals("window.__karateWildcard.resolve(\"*\", \"Submit\", 1, false)", result);
     }
 
     @Test
     void testWildcardWithIndex() {
         String result = Locators.expandWildcard("{div:2}Item");
-        assertEquals("(//div[normalize-space(text())='Item'])[2]", result);
+        assertEquals("window.__karateWildcard.resolve(\"div\", \"Item\", 2, false)", result);
     }
 
     @Test
     void testWildcardAnyTagWithIndex() {
         String result = Locators.expandWildcard("{:3}Option");
-        assertEquals("(//*[normalize-space(text())='Option'])[3]", result);
+        assertEquals("window.__karateWildcard.resolve(\"*\", \"Option\", 3, false)", result);
     }
 
     @Test
     void testWildcardContainsWithIndex() {
         String result = Locators.expandWildcard("{^span:1}Click");
-        assertEquals("(//span[contains(normalize-space(text()),'Click')])[1]", result);
+        assertEquals("window.__karateWildcard.resolve(\"span\", \"Click\", 1, true)", result);
     }
 
     @Test
     void testWildcardToSelector() {
+        // Wildcard selector returns JS resolver call directly
         String result = Locators.selector("{button}Submit");
-        assertTrue(result.contains("document.evaluate"));
-        assertTrue(result.contains("//button[normalize-space(text())='Submit']"));
+        assertEquals("window.__karateWildcard.resolve(\"button\", \"Submit\", 1, false)", result);
     }
 
     @Test
@@ -161,28 +161,23 @@ class LocatorsTest {
         });
     }
 
-    // ========== XPath Quote Escaping (v1 Bug Fix) ==========
-
     @Test
-    void testWildcardWithSingleQuote() {
-        String result = Locators.expandWildcard("{div}It's working");
-        // Should use double quotes
-        assertEquals("//div[normalize-space(text())=\"It's working\"]", result);
+    void testExpandWildcardReturnsJsResolver() {
+        // Basic wildcard
+        assertEquals("window.__karateWildcard.resolve(\"div\", \"Save\", 1, false)",
+            Locators.expandWildcard("{div}Save"));
+        // Contains syntax
+        assertEquals("window.__karateWildcard.resolve(\"div\", \"Sav\", 1, true)",
+            Locators.expandWildcard("{^div}Sav"));
+        // With index
+        assertEquals("window.__karateWildcard.resolve(\"button\", \"Submit\", 2, false)",
+            Locators.expandWildcard("{button:2}Submit"));
+        // Any element
+        assertEquals("window.__karateWildcard.resolve(\"*\", \"Click\", 1, false)",
+            Locators.expandWildcard("{}Click"));
     }
 
-    @Test
-    void testWildcardWithDoubleQuote() {
-        String result = Locators.expandWildcard("{div}Say \"Hello\"");
-        // Should use single quotes
-        assertEquals("//div[normalize-space(text())='Say \"Hello\"']", result);
-    }
-
-    @Test
-    void testWildcardWithBothQuotes() {
-        String result = Locators.expandWildcard("{div}It's \"complex\"");
-        // Should use concat()
-        assertTrue(result.contains("concat("));
-    }
+    // ========== XPath Quote Escaping (still used for non-wildcard XPath) ==========
 
     @Test
     void testEscapeXpathStringSimple() {
@@ -237,9 +232,10 @@ class LocatorsTest {
 
     @Test
     void testSelectorAllWildcard() {
+        // Wildcard selectorAll wraps single result in array
         String result = Locators.selectorAll("{li}Option");
-        assertTrue(result.contains("document.evaluate"));
-        assertTrue(result.contains("//li[normalize-space(text())='Option']"));
+        assertTrue(result.contains("window.__karateWildcard.resolve(\"li\", \"Option\", 1, false)"));
+        assertTrue(result.contains("return e ? [e] : []"));
     }
 
     // ========== toFunction Tests ==========

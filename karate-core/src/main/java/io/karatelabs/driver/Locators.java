@@ -87,8 +87,9 @@ public class Locators {
         }
 
         // Wildcard: {div}text or {^div}partial or {tag:2}text
+        // Returns JS expression directly (no further processing needed)
         if (locator.startsWith("{")) {
-            locator = expandWildcard(locator);
+            return expandWildcard(locator);
         }
 
         // XPath
@@ -115,12 +116,13 @@ public class Locators {
     // ========== Wildcard Locator Expansion ==========
 
     /**
-     * Expand wildcard locator to XPath.
+     * Expand wildcard locator to JavaScript resolver call.
+     * Uses browser-side JS that matches the same logic as locator generation.
      * <ul>
-     *   <li>{tag}text     → //tag[normalize-space(text())='text']</li>
-     *   <li>{^tag}text    → //tag[contains(normalize-space(text()),'text')]</li>
-     *   <li>{tag:2}text   → (//tag[normalize-space(text())='text'])[2]</li>
-     *   <li>{:2}text      → (//*[normalize-space(text())='text'])[2]</li>
+     *   <li>{tag}text     → window.__karateWildcard.resolve('tag', 'text', 1, false)</li>
+     *   <li>{^tag}text    → window.__karateWildcard.resolve('tag', 'text', 1, true)</li>
+     *   <li>{tag:2}text   → window.__karateWildcard.resolve('tag', 'text', 2, false)</li>
+     *   <li>{:2}text      → window.__karateWildcard.resolve('*', 'text', 2, false)</li>
      * </ul>
      */
     public static String expandWildcard(String locator) {
@@ -135,19 +137,12 @@ public class Locators {
         String text = m.group(4);
 
         String tag = (tagPart == null || tagPart.isEmpty()) ? "*" : tagPart;
-        int index = (indexPart != null) ? Integer.parseInt(indexPart) : 0;
+        int index = (indexPart != null) ? Integer.parseInt(indexPart) : 1;
 
-        if (!tag.startsWith("/")) {
-            tag = "//" + tag;
-        }
-
-        // Build XPath with proper quote escaping
-        String escapedText = escapeXpathString(text);
-        String xpath = contains
-                ? tag + "[contains(normalize-space(text())," + escapedText + ")]"
-                : tag + "[normalize-space(text())=" + escapedText + "]";
-
-        return index == 0 ? xpath : "(" + xpath + ")[" + index + "]";
+        // Build JS resolver call
+        String escapedTag = escapeForJs(tag);
+        String escapedText = escapeForJs(text);
+        return "window.__karateWildcard.resolve(\"" + escapedTag + "\", \"" + escapedText + "\", " + index + ", " + contains + ")";
     }
 
     // ========== XPath Selector ==========
@@ -189,8 +184,10 @@ public class Locators {
             throw new DriverException("locator cannot be null or empty");
         }
 
+        // Wildcard returns single element wrapped in array
         if (locator.startsWith("{")) {
-            locator = expandWildcard(locator);
+            String js = expandWildcard(locator);
+            return "(function(){ var e = " + js + "; return e ? [e] : [] })()";
         }
 
         if (isXpath(locator)) {
@@ -266,8 +263,12 @@ public class Locators {
      * Execute a function on all elements matching locator with context.
      */
     public static String scriptAllSelector(String locator, String expression, String contextNode) {
+        // Wildcard returns single element - apply function to it
         if (locator.startsWith("{")) {
-            locator = expandWildcard(locator);
+            String resolverJs = expandWildcard(locator);
+            String js = "var res = []; var fun = " + toFunction(expression) + "; var e = " + resolverJs + "; ";
+            js += "if (e) res.push(fun(e)); return res";
+            return wrapInFunctionInvoke(js);
         }
 
         boolean isXpathLocator = isXpath(locator);
@@ -460,8 +461,10 @@ public class Locators {
      * Generate JS to count matching elements.
      */
     public static String countJs(String locator) {
+        // Wildcard returns single element - count is 0 or 1
         if (locator.startsWith("{")) {
-            locator = expandWildcard(locator);
+            String resolverJs = expandWildcard(locator);
+            return wrapInFunctionInvoke("return " + resolverJs + " ? 1 : 0");
         }
         if (isXpath(locator)) {
             String escapedXpath = escapeForJs(locator);
