@@ -785,7 +785,8 @@ public class CdpDriver implements Driver {
         String js = Locators.wrapInFunctionInvoke(
                 "var e = " + Locators.selector(locator) + ";" +
                         " e.options[" + index + "].selected = true;" +
-                        " e.dispatchEvent(new Event('change'))");
+                        " e.dispatchEvent(new Event('input', {bubbles: true}));" +
+                        " e.dispatchEvent(new Event('change', {bubbles: true}))");
         script(js);
         return Element.of(this, locator);
     }

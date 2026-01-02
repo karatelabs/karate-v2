@@ -110,6 +110,19 @@ Feature: Element Tests
     * def selected = value('#country')
     * match selected == 'us'
 
+  Scenario: Select by text fallback (no prefix)
+    # When value doesn't match, should fall back to text match
+    * select('#country', 'United States')
+    * def selected = value('#country')
+    * match selected == 'us'
+
+  Scenario: Select triggers change event with bubbles
+    # Register a listener to verify bubbling works
+    * script("window.selectChanged = false; document.addEventListener('change', function(e) { if(e.target.id === 'country') window.selectChanged = true; })")
+    * select('#country', 'uk')
+    * def changed = script("window.selectChanged")
+    * match changed == true
+
   # ========== Checkbox Operations ==========
 
   Scenario: Checkbox click

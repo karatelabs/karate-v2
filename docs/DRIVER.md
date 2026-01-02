@@ -184,6 +184,18 @@ Element scroll(String locator)
 Element highlight(String locator)
 ```
 
+**Select Matching Behavior:**
+
+| Syntax | Behavior |
+|--------|----------|
+| `select(loc, 'us')` | Match by value first, then fall back to text |
+| `select(loc, 'United States')` | Falls back to text match if value not found |
+| `select(loc, '{}United States')` | Match by exact text only |
+| `select(loc, '{^}Unit')` | Match by text contains |
+| `select(loc, 1)` | Match by index (0-based) |
+
+Events dispatched: `input` then `change`, both with `{bubbles: true}` for React/Vue compatibility.
+
 ### Element State
 ```java
 String text(String locator)

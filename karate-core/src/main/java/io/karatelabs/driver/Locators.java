@@ -318,10 +318,11 @@ public class Locators {
 
     /**
      * Generate JS to select a dropdown option.
+     * Dispatches both 'input' and 'change' events with bubbles:true for framework compatibility.
      * <ul>
-     *   <li>"{}" prefix: select by exact text</li>
+     *   <li>"{}" prefix: select by exact text only</li>
      *   <li>"{^}" prefix: select by text contains</li>
-     *   <li>otherwise: select by value</li>
+     *   <li>otherwise: try value first, then fall back to text match</li>
      * </ul>
      */
     public static String optionSelector(String locator, String text) {
@@ -334,13 +335,15 @@ public class Locators {
                     ? "e.options[i].text.indexOf(t) !== -1"
                     : "e.options[i].text === t";
         } else {
-            condition = "e.options[i].value === t";
+            // Try value first, then fall back to text match
+            condition = "e.options[i].value === t || e.options[i].text === t";
         }
         String escapedText = escapeForJs(text);
         String js = "var e = " + selector(locator) + "; var t = \"" + escapedText + "\";" +
                 " for (var i = 0; i < e.options.length; ++i)" +
-                " if (" + condition + ") { e.options[i].selected = true; " +
-                "e.dispatchEvent(new Event('change')) }";
+                " if (" + condition + ") { e.options[i].selected = true; break }" +
+                " e.dispatchEvent(new Event('input', {bubbles: true}));" +
+                " e.dispatchEvent(new Event('change', {bubbles: true}))";
         return wrapInFunctionInvoke(js);
     }
 
