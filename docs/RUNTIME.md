@@ -23,15 +23,15 @@ Suite → FeatureRuntime → ScenarioRuntime → StepExecutor
 | Class | Description |
 |-------|-------------|
 | `Suite` | Top-level orchestrator, config loading, parallel execution |
-| `FeatureRuntime` | Feature execution, scenario iteration, caching |
+| `FeatureRuntime` | Feature execution, scenario iteration, callOnce caching |
 | `ScenarioRuntime` | Scenario execution, variable scope |
 | `StepExecutor` | Keyword-based step dispatch |
-| `KarateJs` | JS engine bridge, `karate.*` methods, implements `PerfContext` |
+| `KarateJs` | JS engine bridge, `karate.*` methods |
 | `KarateJsBase` | Shared state and infrastructure for KarateJs |
 | `KarateJsUtils` | Stateless utility methods for `karate.*` API |
 | `KarateJsContext` | Runtime context interface (implemented by ScenarioRuntime) |
-| `PerfContext` | Interface for custom performance event capture (Gatling integration) |
-| `PerfEvent` | Data record for performance events (name, startTime, endTime) |
+| `HttpClientFactory` | Factory for creating HttpClient instances (extensibility for Gatling) |
+| `DefaultHttpClientFactory` | Default factory creating per-instance ApacheHttpClient |
 | `CommandProvider` | SPI for CLI subcommand registration (see [CLI.md](./CLI.md)) |
 | `Runner` | Fluent API for test execution |
 | `RuntimeHook` | Lifecycle callbacks for test execution interception (see [EVENTS.md](./EVENTS.md) for new API) |
@@ -112,6 +112,64 @@ SuiteResult result = Runner.path("src/test/resources")
     .parallel(5);
 ```
 
+### Caching: callOnce vs callSingle
+
+| Method | Scope | Use Case |
+|--------|-------|----------|
+| `callonce` | Feature-scoped | Setup shared within a feature (e.g., test data for scenarios) |
+| `karate.callSingle()` | Suite-scoped | Global setup (e.g., auth token for entire test run) |
+
+**callOnce Behavior:**
+- Executes the called feature **once per feature file**
+- Uses feature-level cache with `ReentrantLock` for thread safety
+- Blocks scenarios within the **same feature** until cached
+- Does **NOT** block scenarios in **other features** running in parallel
+
+```gherkin
+Feature: User tests
+
+Background:
+  * callonce read('setup-user.feature')  # Runs once for this feature
+
+Scenario: Test 1
+  # Uses cached result from callonce
+
+Scenario: Test 2
+  # Uses same cached result
+```
+
+**callSingle Behavior:**
+- Executes **once globally** for entire test suite
+- Uses suite-level cache (shared across all features)
+- Ideal for `karate-config.js` initialization
+
+```javascript
+// karate-config.js
+function fn() {
+  var token = karate.callSingle('classpath:auth/get-token.feature');
+  return { authToken: token.accessToken };
+}
+```
+
+### HttpClientFactory
+
+The `HttpClientFactory` interface allows custom HTTP client creation for extensibility:
+
+```java
+public interface HttpClientFactory {
+    HttpClient create();
+}
+```
+
+**DefaultHttpClientFactory:** Creates a new `ApacheHttpClient` per instance (standard for functional tests with isolation).
+
+**Custom factories** can provide pooled connections for performance testing. See [GATLING.md](./GATLING.md) for the `PooledHttpClientFactory` used in karate-gatling.
+
+```java
+// Custom factory usage
+KarateJs karate = new KarateJs(root, customFactory);
+```
+
 ### System Properties
 | Property | Description |
 |----------|-------------|
@@ -144,7 +202,6 @@ Intentional deviations from V1 behavior:
 | `call(path, arg?)` | KarateJs | Call feature file |
 | `callonce(path, arg?)` | KarateJs | Call feature once per feature |
 | `callSingle(path, arg?)` | KarateJs | Call once per suite (cached) |
-| `capturePerfEvent(name, start, end)` | KarateJs | Capture custom perf event (Gatling integration, NO-OP otherwise) |
 | `config` | KarateJs | Get config object |
 | `configure(key, value)` | KarateJs | Set configuration |
 | `distinct(list)` | KarateJsUtils | Remove duplicates |
@@ -236,42 +293,9 @@ Intentional deviations from V1 behavior:
 |--------|-------|-------|
 | `driver` | Phase 9 | Browser automation via `karate.driver()` - see [DRIVER.md](./DRIVER.md) |
 
-### Performance Testing Integration (PerfContext)
+### Performance Testing Integration
 
-The `PerfContext` interface enables custom performance event capture for Gatling integration:
-
-```java
-// io.karatelabs.core.PerfContext
-public interface PerfContext {
-    void capturePerfEvent(String name, long startTime, long endTime);
-}
-```
-
-`KarateJs` implements `PerfContext`, so the `karate` object can be passed to Java methods:
-
-```java
-// Custom Java code capturing performance metrics
-public static Map<String, Object> myRpc(Map<String, Object> args, PerfContext context) {
-    long start = System.currentTimeMillis();
-    // ... custom logic (database, gRPC, etc.) ...
-    long end = System.currentTimeMillis();
-
-    context.capturePerfEvent("myRpc", start, end);
-    return Map.of("success", true);
-}
-```
-
-```gherkin
-# Feature file usage
-Scenario: Custom RPC
-  * def result = Java.type('mock.MockUtils').myRpc({ data: 'test' }, karate)
-```
-
-**Behavior:**
-- **Normal execution:** `capturePerfEvent()` is a NO-OP
-- **Gatling context:** Events are reported to Gatling's StatsEngine
-
-**Implementation:** `KarateJs` has an optional `perfEventHandler` that Gatling sets before feature execution. See [GATLING.md](./GATLING.md) for full integration details.
+See [GATLING.md](./GATLING.md) for the karate-gatling module plan, including `PerfContext` interface for custom performance event capture.
 
 ### Pending V1 Parity (Advanced)
 
@@ -286,17 +310,12 @@ Scenario: Custom RPC
 ## Configure Keys
 
 ### Implemented
-`ssl`, `proxy`, `readTimeout`, `connectTimeout`, `followRedirects`, `headers`, `cookies`, `charset`, `retry`, `report`, `ntlmAuth`, `callSingleCache`, `continueOnStepFailure`, `httpRetryEnabled`
+`ssl`, `proxy`, `readTimeout`, `connectTimeout`, `followRedirects`, `headers`, `cookies`, `charset`, `retry`, `report`, `ntlmAuth`, `callSingleCache`, `continueOnStepFailure`, `httpRetryEnabled`, `url`, `localAddress`, `lowerCaseResponseHeaders`, `logPrettyRequest`, `logPrettyResponse`, `printEnabled`
 
 ### TODO
 | Key | Priority |
 |-----|----------|
-| `url` | High |
-| `driver` | High (Phase 9) |
-| `lowerCaseResponseHeaders` | Medium |
-| `logPrettyRequest/Response` | Medium |
-| `printEnabled` | Medium |
-| `localAddress` | Low |
+| `driver` | Phase 9 - see [DRIVER.md](./DRIVER.md) |
 
 ### Out of Scope
 `robot`, `driverTarget`, `kafka`, `grpc`, `websocket`, `webhook`, `responseHeaders`, `responseDelay`, `cors`
@@ -362,156 +381,34 @@ karate-config-dev.js (env-specific)
 
 ## Future Phase
 
-### Lock System (`@lock=<name>`)
-
-For mutual exclusion when scenarios cannot run in parallel:
-
-```gherkin
-@lock=database
-Feature: User tests
-  Scenario: Create user      # holds "database" lock
-
-@lock=*
-Scenario: Restart server     # runs exclusively
-```
-
-**Implementation:**
-```java
-public class LockRegistry {
-    private final Map<String, ReentrantLock> locks = new ConcurrentHashMap<>();
-    private final ReentrantReadWriteLock globalLock = new ReentrantReadWriteLock();
-
-    public void acquireLock(String lockName) {
-        if ("*".equals(lockName)) {
-            acquireExclusive();
-        } else {
-            globalLock.readLock().lock();
-            locks.computeIfAbsent(lockName, k -> new ReentrantLock()).lock();
-        }
-    }
-}
-```
+| Feature | Description |
+|---------|-------------|
+| `@lock=<name>` | Mutual exclusion - scenarios with same lock run sequentially. `@lock=*` runs exclusively. |
+| `@retry` | Re-run failed scenarios. CLI: `karate --rerun target/karate-reports/rerun.txt` |
+| Multiple Suite Execution | `Runner.suites().add(...).parallel(n).run()` for grouped execution |
+| Telemetry | Anonymous usage ping. Opt-out: `KARATE_TELEMETRY=false` |
 
 ---
 
-### Retry System (`@retry`)
+### Plugin Architecture
 
-```gherkin
-@retry
-Scenario: Flaky test
-  * url 'https://flaky-api.example.com'
-  * method get
-  * status 200
-```
+| Interface | Purpose | Discovery | Status |
+|-----------|---------|-----------|--------|
+| `CommandProvider` | CLI subcommands | ServiceLoader | Implemented |
+| `HttpClientFactory` | Custom HTTP clients | Constructor injection | ✅ Implemented |
+| `RuntimeHook` | Lifecycle callbacks | Class.forName (--hook) | V1 pattern |
+| `RunListenerFactory` | Event listeners | ServiceLoader | Planned |
+| `ReportWriterFactory` | Custom report formats | ServiceLoader | Planned |
 
-**Flow:**
-1. Suite executes all scenarios
-2. Collect failed `@retry` scenarios
-3. Re-run failures (fresh execution)
-4. Final results use best outcome
+**ServiceLoader:** User drops JAR in `~/.karate/ext/`, plugin is automatically available via `META-INF/services/`.
 
-**CLI:** `karate --rerun target/karate-reports/rerun.txt`
+**Constructor injection:** Pass factory to `KarateJs` constructor (see HttpClientFactory).
 
 ---
 
-### Multiple Suite Execution
+### Root Bindings
 
-```java
-List<SuiteResult> results = Runner.suites()
-    .add(Runner.path("src/test/api/").parallel(10))
-    .add(Runner.path("src/test/ui/").parallel(2))
-    .parallel(2)
-    .run();
-```
-
----
-
-### Telemetry
-
-Anonymous daily usage ping from `Suite.run()`:
-
-```json
-{
-  "uuid": "abc-123-...",
-  "version": "2.0.0",
-  "os": "darwin",
-  "java": "21",
-  "features": 15,
-  "scenarios": 42,
-  "passed": true,
-  "ci": true
-}
-```
-
-**Storage:** `~/.karate/uuid.txt`, `~/.karate/telemetry.json`
-
-**Opt-out:** `export KARATE_TELEMETRY=false`
-
----
-
-### TODO: Plugin Architecture
-
-V1 uses `Class.forName()` for loading plugins (RuntimeHook, ChannelFactory, RobotFactory, etc.). V2 should formalize the plugin architecture:
-
-**ServiceLoader (auto-discovery):**
-- Best for: CLI commands, report listeners, extensions that should "just work"
-- User drops JAR in `~/.karate/ext/`, plugin is automatically available
-- Uses `META-INF/services/` for registration
-- Example: `CommandProvider` for `karate perf`
-
-**Class.forName (explicit loading):**
-- Best for: RuntimeHooks, custom factories where user wants explicit control
-- User specifies class name via CLI `--hook com.example.MyHook` or config
-- More flexible for conditional loading
-
-**Proposed SPIs:**
-
-| Interface | Purpose | Discovery |
-|-----------|---------|-----------|
-| `CommandProvider` | CLI subcommands | ServiceLoader |
-| `RunListenerFactory` | Event listeners | ServiceLoader |
-| `ReportWriterFactory` | Custom report formats | ServiceLoader |
-| `RuntimeHook` | Lifecycle callbacks | Class.forName (--hook) |
-| `HttpClientFactory` | Custom HTTP clients | Class.forName (config) |
-
-**Implementation notes:**
-- ServiceLoader providers should be lazy-loaded and fail gracefully
-- Document which interfaces use which pattern
-- Consider a unified `PluginRegistry` that supports both patterns
-
----
-
-### Root Bindings (Private Variables)
-
-The JS engine supports "root bindings" via `Engine.putRootBinding()` for built-in variables that should be accessible during evaluation but excluded from `getBindings()`.
-
-**How it works:**
-- `putRootBinding(name, value)` stores in `ContextRoot._bindings` (the root context's private bindings)
-- `put(name, value)` stores in `Engine.bindings` (user-accessible bindings)
-- `getBindings()` returns only `Engine.bindings`, excluding root bindings
-- Variable lookup (`get()`) checks both, so root bindings are accessible during JS evaluation
-
-**Usage in KarateJs:**
-```java
-// In KarateJs constructor - these won't appear in getAllVariables()
-engine.putRootBinding("karate", this);
-engine.putRootBinding("read", initRead());
-engine.putRootBinding("match", matchFluent());
-
-// In ScenarioRuntime - call args and example data
-engine.putRootBinding("__arg", callArg);
-engine.putRootBinding("__row", exampleData);
-engine.putRootBinding("__num", exampleIndex);
-```
-
-**Result:** `ScenarioRuntime.getAllVariables()` returns only user-defined variables without needing a hardcoded exclusion list.
-
-### TODO: Filter `fn` from karate-config.js
-
-The `fn` variable from karate-config.js convention may still appear in `getAllVariables()`. Options to address:
-1. Use `Engine.evalWith()` for config evaluation and post-process the map
-2. Remove `fn` from bindings after config evaluation
-3. Accept that `fn` appears (low priority, doesn't affect functionality)
+Built-in variables (`karate`, `read`, `match`, `__arg`, `__row`, `__num`) are stored as "root bindings" via `Engine.putRootBinding()`. These are accessible during JS evaluation but excluded from `getAllVariables()`, so only user-defined variables appear in reports and variable dumps.
 
 ---
 

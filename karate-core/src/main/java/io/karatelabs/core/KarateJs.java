@@ -30,7 +30,13 @@ import io.karatelabs.common.Resource;
 import io.karatelabs.common.Xml;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.MatchExpression;
-import io.karatelabs.http.*;
+import io.karatelabs.http.DefaultHttpClientFactory;
+import io.karatelabs.http.Http;
+import io.karatelabs.http.HttpClient;
+import io.karatelabs.http.HttpClientFactory;
+import io.karatelabs.http.HttpRequest;
+import io.karatelabs.http.HttpRequestBuilder;
+import io.karatelabs.http.HttpResponse;
 import io.karatelabs.js.GherkinParser;
 import io.karatelabs.markup.Markup;
 import io.karatelabs.js.Invokable;
@@ -69,7 +75,11 @@ public class KarateJs extends KarateJsBase {
     private final JsCallable read;
 
     public KarateJs(Resource root) {
-        this(root, new ApacheHttpClient());
+        this(root, new DefaultHttpClientFactory());
+    }
+
+    public KarateJs(Resource root, HttpClientFactory factory) {
+        this(root, factory.create());
     }
 
     public KarateJs(Resource root, HttpClient client) {

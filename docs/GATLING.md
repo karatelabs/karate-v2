@@ -118,132 +118,25 @@ karate-v2/
 
 ---
 
-## 2.1 HTTP Client Factory
+## 2.1 HTTP Client Factory ✅ DONE
 
-Add a simple factory interface to karate-core for connection pooling extensibility:
+**Implemented in karate-core:** `HttpClientFactory` interface and `DefaultHttpClientFactory`.
 
-```java
-// io/karatelabs/http/HttpClientFactory.java
-package io.karatelabs.http;
+`KarateJs` constructor accepts optional `HttpClientFactory`. The `PooledHttpClientFactory` for Gatling connection pooling will be implemented in the karate-gatling module.
 
-/**
- * Factory for creating HttpClient instances.
- * Allows Gatling integration to provide a shared connection pool.
- */
-public interface HttpClientFactory {
-    HttpClient create();
-}
-```
-
-**Default Implementation:**
-```java
-// io/karatelabs/http/DefaultHttpClientFactory.java
-public class DefaultHttpClientFactory implements HttpClientFactory {
-    @Override
-    public HttpClient create() {
-        return new ApacheHttpClient(); // Per-instance, no shared pool
-    }
-}
-```
-
-**Gatling Pooled Implementation:**
-```java
-// io/karatelabs/gatling/PooledHttpClientFactory.java
-public class PooledHttpClientFactory implements HttpClientFactory {
-    private final CloseableHttpClient sharedClient;
-
-    public PooledHttpClientFactory(int maxConnections, int maxPerRoute) {
-        PoolingHttpClientConnectionManager cm = PoolingHttpClientConnectionManagerBuilder.create()
-            .setMaxConnTotal(maxConnections)
-            .setMaxConnPerRoute(maxPerRoute)
-            .build();
-        this.sharedClient = HttpClients.custom()
-            .setConnectionManager(cm)
-            .build();
-    }
-
-    @Override
-    public HttpClient create() {
-        return new ApacheHttpClient(sharedClient); // Shared pool
-    }
-}
-```
-
-**Integration Points:**
-- `KarateJs` constructor accepts optional `HttpClientFactory`
-- `KarateProtocolBuilder.httpClientFactory()` sets factory for all features
-- Request timing includes connection pool wait (reflects real user experience)
+See [RUNTIME.md](./RUNTIME.md) for details.
 
 ---
 
-## 2.2 Caching Fixes Required in karate-core
+## 2.2 Caching Fixes ✅ DONE
 
-### 2.2.1 callOnce Race Condition
+**callOnce** now uses feature-scoped caching with `ReentrantLock` for thread safety (commit 15ad313).
 
-**Current Issue:** `callOnce` uses simple put/get without synchronization, causing race conditions under concurrent load.
+- `callOnce` blocks scenarios within the **same feature** only
+- `callOnce` does **NOT** block scenarios in **other features** running in parallel
+- `karate.callSingle()` remains suite-scoped (once globally per test run)
 
-**Fix:** Add ReentrantLock similar to callSingle:
-
-```java
-// StepExecutor.java - executeCallOnce()
-private void executeCallOnce(Step step) {
-    String cacheKey = getCacheKey(step);
-    FeatureRuntime fr = runtime.getFeatureRuntime();
-    Map<String, Object> cache = fr.CALLONCE_CACHE; // Use feature-level cache
-    ReentrantLock lock = fr.getCallOnceLock();     // New lock per feature
-
-    // Fast path - check without lock
-    if (cache.containsKey(cacheKey)) {
-        applyCachedResult(cache.get(cacheKey));
-        return;
-    }
-
-    // Slow path - acquire lock
-    lock.lock();
-    try {
-        // Double-check after acquiring lock
-        if (cache.containsKey(cacheKey)) {
-            applyCachedResult(cache.get(cacheKey));
-            return;
-        }
-
-        // Execute and cache
-        executeCall(step);
-        if (fr.getLastExecuted() != null) {
-            cache.put(cacheKey, StepUtils.deepCopy(runtime.getAllVariables()));
-        }
-    } finally {
-        lock.unlock();
-    }
-}
-```
-
-### 2.2.2 callOnce Scope Fix
-
-**Current Issue:** `callOnce` uses `Suite.getCallOnceCache()` (suite-scoped), but should use `FeatureRuntime.CALLONCE_CACHE` (feature-scoped).
-
-**Intended Behavior:**
-- callOnce blocks scenarios within the **same feature** only
-- callOnce does **NOT** block scenarios in **other features** running in parallel
-
-**Fix:** Change cache lookup priority in StepExecutor:
-
-```java
-// Before (WRONG - suite-scoped):
-Map<String, Object> cache = fr.getSuite() != null
-    ? fr.getSuite().getCallOnceCache()  // Suite-level - shared across features
-    : fr.CALLONCE_CACHE;
-
-// After (CORRECT - feature-scoped):
-Map<String, Object> cache = fr.CALLONCE_CACHE;  // Feature-level - isolated per feature
-```
-
-### 2.2.3 Config callSingle Behavior
-
-For `karate.callSingle()` in `karate-config.js`:
-- Executes **once globally** for entire Gatling run
-- All virtual users share the cached result (e.g., auth token)
-- This is the **existing correct behavior** via `Suite.getCallSingleCache()`
+See [RUNTIME.md](./RUNTIME.md) for details.
 
 ---
 
@@ -721,10 +614,10 @@ This approach validates both karate-gatling and v2's mock server under load.
 
 ## 8. Implementation Order
 
-### Phase 0: karate-core Prerequisites
-0. Add `HttpClientFactory` interface to karate-core
-1. Fix callOnce race condition (add ReentrantLock)
-2. Fix callOnce scope (feature-level, not suite-level)
+### Phase 0: karate-core Prerequisites ✅ DONE
+- ✅ `HttpClientFactory` interface added to karate-core
+- ✅ callOnce race condition fixed (ReentrantLock)
+- ✅ callOnce scope fixed (feature-level)
 
 ### Phase 1: Foundation
 3. Create `karate-gatling` module with pom.xml
@@ -811,18 +704,18 @@ public static void myRpc(Map args, PerfContext ctx) {
 
 ## 11. Files to Create/Modify
 
-### karate-core (modifications - Phase 0)
-| File | Purpose |
-|------|---------|
-| `HttpClientFactory.java` | Interface for HTTP client creation (new) |
-| `DefaultHttpClientFactory.java` | Default per-instance factory (new) |
-| `StepExecutor.java` | Fix callOnce race condition + scope (modify) |
-| `FeatureRuntime.java` | Add callOnce lock, ensure feature-level cache (modify) |
-| `PerfContext.java` | Interface for custom perf event capture (new) |
-| `PerfEvent.java` | Perf event data record (new) |
-| `KarateJs.java` | Add `implements PerfContext`, accept HttpClientFactory (modify) |
-| `CommandProvider.java` | SPI for dynamic subcommand discovery (new, Phase 5) |
-| `Main.java` | Add ServiceLoader discovery for CommandProvider (modify, Phase 5) |
+### karate-core (modifications)
+| File | Purpose | Status |
+|------|---------|--------|
+| `HttpClientFactory.java` | Interface for HTTP client creation | ✅ Done |
+| `DefaultHttpClientFactory.java` | Default per-instance factory | ✅ Done |
+| `StepExecutor.java` | callOnce race condition + scope fix | ✅ Done |
+| `FeatureRuntime.java` | callOnce lock, feature-level cache | ✅ Done |
+| `KarateJs.java` | Accept HttpClientFactory | ✅ Done |
+| `PerfContext.java` | Interface for custom perf event capture | Phase 2 |
+| `PerfEvent.java` | Perf event data record | Phase 2 |
+| `CommandProvider.java` | SPI for dynamic subcommand discovery | Phase 5 |
+| `Main.java` | ServiceLoader discovery for CommandProvider | Phase 5 |
 
 ### karate-gatling (new module)
 | File | Purpose |
