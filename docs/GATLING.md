@@ -7,13 +7,26 @@ This document describes the plan to port karate-gatling from v1 to karate-v2.
 | Decision | Choice |
 |----------|--------|
 | Gatling version | 3.12.x (latest stable) |
-| Scala version | 3.x only |
-| Integration approach | v2 RunListener event system |
-| DSL strategy | Java-primary DSL |
-| Async runtime | Virtual threads (Java 21+), no Akka/Pekko |
+| Scala version | 3.x only (no Scala DSL layer needed) |
+| Integration approach | v2 PerfHook + RunListener event system |
+| DSL strategy | Java-only DSL (Scala users use Java DSL directly) |
+| Async runtime | Match Gatling's execution model with PerfHook.submit() |
 | Session variables | Keep `__karate`/`__gatling` pattern |
 | Module location | Separate `karate-gatling` module |
-| Scope | V1 parity first |
+| Scope | V1 parity first, then profiling validation |
+| Failure handling | Abort immediately on first failure, report partial results |
+| HTTP pooling | HttpClientFactory for Gatling pooled connections |
+| Request timing | Include connection pool wait time |
+| callOnce caching | Feature-scoped (fix race condition in karate-core) |
+| Request names | User nameResolver only (no auto GraphQL detection) |
+| Silent mode | Suppress ALL (Gatling metrics + Karate HTML/logs) |
+| Custom events | capturePerfEvent() for HTTP + non-HTTP (DB, gRPC) |
+| Report formats | Both HTML (Highcharts) and JSON (--format json) |
+| CLI scope | Features only (no --simulation class support) |
+| Pause API | Keep karate.pause() for Gatling integration |
+| Timeout | Abort mid-request via HttpClient.abort() |
+| Feature parsing | Fresh parse per scenario (no caching) |
+| Gatling edition | OSS only |
 
 ---
 
@@ -36,8 +49,6 @@ karate-v2/
 │   │   ├── KarateSetAction.java     # Session variable injection
 │   │   ├── KarateUriPattern.java    # URI pattern + pause config
 │   │   └── MethodPause.java         # Method/pause data class
-│   ├── src/main/scala/io/karatelabs/gatling/
-│   │   └── ScalaDsl.scala           # Scala compatibility layer
 │   ├── src/test/java/
 │   │   └── io/karatelabs/gatling/
 │   │       ├── GatlingSimulation.java  # Comprehensive test simulation
@@ -107,6 +118,135 @@ karate-v2/
 
 ---
 
+## 2.1 HTTP Client Factory
+
+Add a simple factory interface to karate-core for connection pooling extensibility:
+
+```java
+// io/karatelabs/http/HttpClientFactory.java
+package io.karatelabs.http;
+
+/**
+ * Factory for creating HttpClient instances.
+ * Allows Gatling integration to provide a shared connection pool.
+ */
+public interface HttpClientFactory {
+    HttpClient create();
+}
+```
+
+**Default Implementation:**
+```java
+// io/karatelabs/http/DefaultHttpClientFactory.java
+public class DefaultHttpClientFactory implements HttpClientFactory {
+    @Override
+    public HttpClient create() {
+        return new ApacheHttpClient(); // Per-instance, no shared pool
+    }
+}
+```
+
+**Gatling Pooled Implementation:**
+```java
+// io/karatelabs/gatling/PooledHttpClientFactory.java
+public class PooledHttpClientFactory implements HttpClientFactory {
+    private final CloseableHttpClient sharedClient;
+
+    public PooledHttpClientFactory(int maxConnections, int maxPerRoute) {
+        PoolingHttpClientConnectionManager cm = PoolingHttpClientConnectionManagerBuilder.create()
+            .setMaxConnTotal(maxConnections)
+            .setMaxConnPerRoute(maxPerRoute)
+            .build();
+        this.sharedClient = HttpClients.custom()
+            .setConnectionManager(cm)
+            .build();
+    }
+
+    @Override
+    public HttpClient create() {
+        return new ApacheHttpClient(sharedClient); // Shared pool
+    }
+}
+```
+
+**Integration Points:**
+- `KarateJs` constructor accepts optional `HttpClientFactory`
+- `KarateProtocolBuilder.httpClientFactory()` sets factory for all features
+- Request timing includes connection pool wait (reflects real user experience)
+
+---
+
+## 2.2 Caching Fixes Required in karate-core
+
+### 2.2.1 callOnce Race Condition
+
+**Current Issue:** `callOnce` uses simple put/get without synchronization, causing race conditions under concurrent load.
+
+**Fix:** Add ReentrantLock similar to callSingle:
+
+```java
+// StepExecutor.java - executeCallOnce()
+private void executeCallOnce(Step step) {
+    String cacheKey = getCacheKey(step);
+    FeatureRuntime fr = runtime.getFeatureRuntime();
+    Map<String, Object> cache = fr.CALLONCE_CACHE; // Use feature-level cache
+    ReentrantLock lock = fr.getCallOnceLock();     // New lock per feature
+
+    // Fast path - check without lock
+    if (cache.containsKey(cacheKey)) {
+        applyCachedResult(cache.get(cacheKey));
+        return;
+    }
+
+    // Slow path - acquire lock
+    lock.lock();
+    try {
+        // Double-check after acquiring lock
+        if (cache.containsKey(cacheKey)) {
+            applyCachedResult(cache.get(cacheKey));
+            return;
+        }
+
+        // Execute and cache
+        executeCall(step);
+        if (fr.getLastExecuted() != null) {
+            cache.put(cacheKey, StepUtils.deepCopy(runtime.getAllVariables()));
+        }
+    } finally {
+        lock.unlock();
+    }
+}
+```
+
+### 2.2.2 callOnce Scope Fix
+
+**Current Issue:** `callOnce` uses `Suite.getCallOnceCache()` (suite-scoped), but should use `FeatureRuntime.CALLONCE_CACHE` (feature-scoped).
+
+**Intended Behavior:**
+- callOnce blocks scenarios within the **same feature** only
+- callOnce does **NOT** block scenarios in **other features** running in parallel
+
+**Fix:** Change cache lookup priority in StepExecutor:
+
+```java
+// Before (WRONG - suite-scoped):
+Map<String, Object> cache = fr.getSuite() != null
+    ? fr.getSuite().getCallOnceCache()  // Suite-level - shared across features
+    : fr.CALLONCE_CACHE;
+
+// After (CORRECT - feature-scoped):
+Map<String, Object> cache = fr.CALLONCE_CACHE;  // Feature-level - isolated per feature
+```
+
+### 2.2.3 Config callSingle Behavior
+
+For `karate.callSingle()` in `karate-config.js`:
+- Executes **once globally** for entire Gatling run
+- All virtual users share the cached result (e.g., auth token)
+- This is the **existing correct behavior** via `Suite.getCallSingleCache()`
+
+---
+
 ## 3. Core Classes Implementation
 
 ### 3.1 KarateDsl.java (Public API)
@@ -172,9 +312,11 @@ public class KarateProtocol implements Protocol {
 ### 3.3 KarateFeatureAction.java
 
 Key changes from v1:
-- Use v2's `RunListener` event system instead of `PerfHook`
-- Virtual threads for async execution and pauses
+- Use v2's PerfHook interface (maintains `submit()` abstraction from v1)
+- Match Gatling's execution model (not direct virtual threads)
 - Integrate with v2's `Suite`, `FeatureRuntime`, `ScenarioRuntime`
+- **Abort immediately on first failure**, report partial results
+- **Abort mid-request on Gatling timeout** via `HttpClient.abort()`
 
 ```java
 package io.karatelabs.gatling;
@@ -190,8 +332,8 @@ public class KarateFeatureAction implements Action {
 
     @Override
     public void execute(Session session) {
-        // Run in virtual thread for non-blocking execution
-        Thread.startVirtualThread(() -> executeFeature(session));
+        // Use PerfHook.submit() to match Gatling's execution model
+        protocol.getPerfHook().submit(() -> executeFeature(session));
     }
 
     private void executeFeature(Session session) {
@@ -200,14 +342,15 @@ public class KarateFeatureAction implements Action {
         Map<String, Object> karateVars = getOrCreate(session, KARATE_KEY);
         karateVars.put(GATLING_KEY, gatlingVars);
 
-        // 2. Create Suite with RunListener for metrics
+        // 2. Create Suite with PerfHook for metrics
         Suite suite = Suite.builder()
             .path(featurePath)
             .tags(tags)
-            .listener(createPerfListener())
+            .perfHook(createPerfHook(session))
+            .httpClientFactory(protocol.getHttpClientFactory())
             .build();
 
-        // 3. Execute and collect results
+        // 3. Execute - aborts immediately on first failure
         SuiteResult result = suite.run();
 
         // 4. Update session and continue
@@ -215,62 +358,110 @@ public class KarateFeatureAction implements Action {
         next.execute(updated);
     }
 
-    private RunListener createPerfListener() {
-        return event -> {
-            if (silent) return true; // Skip reporting for warm-up
+    private PerfHook createPerfHook(Session session) {
+        return new PerfHook() {
+            private HttpClient currentClient;
 
-            switch (event) {
-                case StepRunEvent e -> {
-                    // Report HTTP requests to Gatling
-                    if (isHttpStep(e)) {
-                        reportToGatling(e);
-                    }
+            @Override
+            public String getPerfEventName(HttpRequest req, ScenarioRuntime sr) {
+                String customName = protocol.getNameResolver().apply(req, sr);
+                if (customName != null) return customName;
+                return protocol.defaultNameResolver(req, sr);
+            }
+
+            @Override
+            public void reportPerfEvent(PerfEvent event) {
+                if (silent) return; // Skip for warm-up
+
+                Status status = event.isFailed() ? KO : OK;
+                statsEngine.logResponse(
+                    session.scenario(),
+                    session.groups(),
+                    event.getName(),
+                    event.getStartTime(),
+                    event.getEndTime(),
+                    status,
+                    Option.apply(String.valueOf(event.getStatusCode())),
+                    event.getMessage() != null ? Option.apply(event.getMessage()) : Option.empty()
+                );
+
+                // Apply pause after request
+                int pauseMs = protocol.pauseFor(event.getName(), event.getMethod());
+                if (pauseMs > 0) {
+                    pause(pauseMs);
                 }
             }
-            return true;
+
+            @Override
+            public void submit(Runnable runnable) {
+                // Matches Gatling's execution model
+                runnable.run();
+            }
+
+            @Override
+            public void pause(Number millis) {
+                // Use Gatling's non-blocking pause mechanism
+                try {
+                    Await.result(Future.never(), Duration.apply(millis.longValue(), TimeUnit.MILLISECONDS));
+                } catch (TimeoutException e) {
+                    // Expected - this is how Gatling's pause works
+                }
+            }
+
+            @Override
+            public void setHttpClient(HttpClient client) {
+                this.currentClient = client;
+            }
+
+            @Override
+            public void abortCurrentRequest() {
+                // Called on Gatling timeout - abort mid-request
+                if (currentClient != null) {
+                    currentClient.abort();
+                }
+            }
         };
     }
-
-    private void reportToGatling(StepRunEvent event) {
-        String name = resolveName(event);
-        long startTime = event.getStartTime();
-        long endTime = event.getEndTime();
-        Status status = event.isPassed() ? Status.OK : Status.KO;
-
-        statsEngine.logResponse(
-            session.scenario(),
-            session.groups(),
-            name,
-            startTime,
-            endTime,
-            status,
-            getStatusCode(event),
-            getErrorMessage(event)
-        );
-
-        // Apply pause after request
-        int pauseMs = protocol.pauseFor(name, getMethod(event));
-        if (pauseMs > 0) {
-            Thread.sleep(pauseMs); // Virtual thread - non-blocking
-        }
-    }
 }
 ```
 
-### 3.4 Virtual Thread Pause Implementation
+**Failure Handling:**
+- On first Karate assertion failure, execution stops immediately
+- Partial results (successful requests before failure) are reported to Gatling
+- Failed request is reported with KO status and error message
+
+**Timeout Handling:**
+- If Gatling scenario timeout is reached, `abortCurrentRequest()` is called
+- In-flight HTTP request is aborted via `HttpClient.abort()`
+- Prevents thread starvation from slow responses
+
+### 3.4 Pause Implementation (Gatling Model)
+
+Uses Gatling's non-blocking pause mechanism via `karate.pause()`:
 
 ```java
-// In KarateFeatureAction or utility class
-private void pause(int millis) {
+// In PerfHook implementation
+@Override
+public void pause(Number millis) {
+    // Gatling's non-blocking pause - waits without consuming threads
     try {
-        // With virtual threads, Thread.sleep() is non-blocking
-        // The virtual thread yields, platform thread is freed
-        Thread.sleep(millis);
-    } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
+        Await.result(Future.never(), Duration.apply(millis.longValue(), TimeUnit.MILLISECONDS));
+    } catch (TimeoutException e) {
+        // Expected - timeout is the pause completion signal
     }
 }
 ```
+
+**Usage in Karate Features:**
+```gherkin
+# Non-blocking pause - integrates with Gatling
+* karate.pause(5000)
+```
+
+**Note:** `karate.pause()` is preferred over `Thread.sleep()` as it:
+- Integrates with Gatling's scheduler
+- Does not block carrier threads
+- Works correctly in both Gatling and non-Gatling modes
 
 ---
 
@@ -389,14 +580,19 @@ __karate: { catId: 123 }    ←     catId (from feature)
 
 ### 6.1 Single Comprehensive Simulation
 
-Consolidate v1's multiple simulations into one comprehensive test:
+Consolidate v1's multiple simulations into one comprehensive test.
+
+**Perf-Optimized Defaults:**
+- HTML reports disabled (Gatling handles reporting)
+- Logging reduced (only errors/warnings)
+- Fresh feature parse per scenario (no caching)
 
 ```java
 package io.karatelabs.gatling;
 
 public class GatlingSimulation extends Simulation {
 
-    // Start mock server
+    // Start mock server using v2's Server class (dogfooding)
     static {
         MockServer.start();
     }
@@ -458,15 +654,20 @@ Scenario: Create and read cat
   And match response.name == 'Fluffy'
 ```
 
-### 6.3 Mock Server (v2 native)
+### 6.3 Mock Server (v2 Server class - dogfooding)
+
+Uses v2's `io.karatelabs.core.Server` for the test mock:
 
 ```java
 package io.karatelabs.gatling;
+
+import io.karatelabs.core.Server;
 
 public class MockServer {
     private static Server server;
 
     public static void start() {
+        // Using v2's Server class - dogfooding our own mock server
         server = Server.builder()
             .feature("classpath:mock/mock.feature")
             .build();
@@ -478,6 +679,8 @@ public class MockServer {
     }
 }
 ```
+
+This approach validates both karate-gatling and v2's mock server under load.
 
 ---
 
@@ -518,34 +721,48 @@ public class MockServer {
 
 ## 8. Implementation Order
 
+### Phase 0: karate-core Prerequisites
+0. Add `HttpClientFactory` interface to karate-core
+1. Fix callOnce race condition (add ReentrantLock)
+2. Fix callOnce scope (feature-level, not suite-level)
+
 ### Phase 1: Foundation
-1. Create `karate-gatling` module with pom.xml
-2. Implement `KarateProtocol` and `KarateProtocolBuilder`
-3. Implement `MethodPause` and `KarateUriPattern`
+3. Create `karate-gatling` module with pom.xml
+4. Implement `KarateProtocol` and `KarateProtocolBuilder`
+5. Implement `MethodPause` and `KarateUriPattern`
 
 ### Phase 2: Core Actions
-4. Implement `KarateFeatureAction` with RunListener integration
-5. Implement `KarateFeatureBuilder` with `.silent()`
-6. Implement `KarateSetAction` and builder
-7. Implement `KarateDsl` public API
+6. Implement `KarateFeatureAction` with PerfHook integration
+7. Implement `KarateFeatureBuilder` with `.silent()`
+8. Implement `KarateSetAction` and builder
+9. Implement `KarateDsl` public API
+10. Implement `PooledHttpClientFactory` for Gatling
 
 ### Phase 3: Testing
-8. Create mock server using v2 native mocks
-9. Port test features (simplified)
-10. Create `GatlingSimulation` comprehensive test
+11. Create mock server using v2 Server class
+12. Port test features (simplified)
+13. Create `GatlingSimulation` comprehensive test
 
 ### Phase 4: Polish
-11. Add Scala compatibility layer
-12. Port README.md with updated examples
-13. Add to parent pom.xml modules
-14. CI/CD integration
+14. Port README.md with updated examples (Java-only, no Scala DSL)
+15. Add to parent pom.xml modules
+16. CI/CD integration
 
 ### Phase 5: Standalone CLI Support (Non-Java Teams)
-15. Add `CommandProvider` SPI to karate-core for dynamic subcommand discovery
-16. Implement `PerfCommand` in karate-gatling (`karate perf`)
-17. Implement dynamic simulation generation from feature files
-18. Create `karate-gatling-bundle.jar` fatjar (Gatling + Scala + karate-gatling)
-19. Document standalone CLI usage
+17. Add `CommandProvider` SPI to karate-core for dynamic subcommand discovery
+18. Implement `PerfCommand` in karate-gatling (`karate perf`)
+19. Implement dynamic simulation generation from feature files
+20. Create `karate-gatling-bundle.jar` fatjar (Gatling + Scala + karate-gatling)
+21. Document standalone CLI usage
+
+### Phase 6: Profiling & Validation
+22. Create overhead comparison test (v2 karate-gatling vs plain Gatling)
+23. Port v1's `examples/profiling-test` for memory leak detection
+24. Run extended load tests to validate:
+    - No memory leaks in HTTP client pooling
+    - No memory leaks in v2 mock server under sustained load
+    - Overhead within acceptable range (< 5% vs plain Gatling)
+25. Document profiling methodology and results
 
 ---
 
@@ -594,14 +811,18 @@ public static void myRpc(Map args, PerfContext ctx) {
 
 ## 11. Files to Create/Modify
 
-### karate-core (modifications)
+### karate-core (modifications - Phase 0)
 | File | Purpose |
 |------|---------|
+| `HttpClientFactory.java` | Interface for HTTP client creation (new) |
+| `DefaultHttpClientFactory.java` | Default per-instance factory (new) |
+| `StepExecutor.java` | Fix callOnce race condition + scope (modify) |
+| `FeatureRuntime.java` | Add callOnce lock, ensure feature-level cache (modify) |
 | `PerfContext.java` | Interface for custom perf event capture (new) |
 | `PerfEvent.java` | Perf event data record (new) |
-| `KarateJs.java` | Add `implements PerfContext`, handler methods (modify) |
-| `CommandProvider.java` | SPI for dynamic subcommand discovery (new) |
-| `Main.java` | Add ServiceLoader discovery for CommandProvider (modify) |
+| `KarateJs.java` | Add `implements PerfContext`, accept HttpClientFactory (modify) |
+| `CommandProvider.java` | SPI for dynamic subcommand discovery (new, Phase 5) |
+| `Main.java` | Add ServiceLoader discovery for CommandProvider (modify, Phase 5) |
 
 ### karate-gatling (new module)
 | File | Purpose |
@@ -610,21 +831,24 @@ public static void myRpc(Map args, PerfContext ctx) {
 | `KarateDsl.java` | Public API entry point |
 | `KarateProtocol.java` | Gatling protocol |
 | `KarateProtocolBuilder.java` | Protocol builder |
-| `KarateFeatureAction.java` | Feature execution |
-| `KarateFeatureBuilder.java` | Feature action builder |
+| `KarateFeatureAction.java` | Feature execution with PerfHook |
+| `KarateFeatureBuilder.java` | Feature action builder with `.silent()` |
 | `KarateSetAction.java` | Variable injection |
 | `KarateUriPattern.java` | URI pattern + pause |
 | `MethodPause.java` | Method/pause record |
-| `ScalaDsl.scala` | Scala compatibility |
+| `PooledHttpClientFactory.java` | Gatling pooled connection factory |
 | `GatlingSimulation.java` | Comprehensive test |
-| `MockServer.java` | Test mock server |
+| `MockServer.java` | Test mock server (uses v2 Server) |
 | `features/*.feature` | Test features |
 | `mock/mock.feature` | Mock implementation |
-| `README.md` | Documentation |
+| `README.md` | Documentation (Java-only examples) |
 | `GatlingCommandProvider.java` | ServiceLoader provider for `perf` command (Phase 5) |
 | `PerfCommand.java` | CLI command implementation (Phase 5) |
 | `DynamicSimulation.java` | Runtime simulation generator (Phase 5) |
+| `ProfilingSimulation.java` | Overhead comparison test (Phase 6) |
 | `META-INF/services/...` | ServiceLoader registration (Phase 5) |
+
+**Note:** No Scala files needed - Java DSL works for both Java and Scala users.
 
 ---
 
@@ -684,6 +908,8 @@ for (CommandProvider provider : providers) {
 
 ### 12.3 PerfCommand (in karate-gatling)
 
+Features-only scope - generates dynamic simulation from feature files:
+
 ```java
 @Command(name = "perf", description = "Run performance tests with Gatling")
 public class PerfCommand implements Callable<Integer> {
@@ -703,23 +929,24 @@ public class PerfCommand implements Callable<Integer> {
     @Option(names = {"-t", "--tags"}, description = "Tag expression filter")
     String tags;
 
-    @Option(names = {"--simulation"}, description = "Custom simulation class (power users)")
-    String simulationClass;
-
     @Option(names = {"-o", "--output"}, description = "Output directory")
     String outputDir = "target/gatling";
 
+    @Option(names = {"--format"}, description = "Report format: html (default) or json")
+    String format = "html";
+
     @Override
     public Integer call() {
-        if (simulationClass != null) {
-            // Power user: run custom simulation
-            return runCustomSimulation(simulationClass);
-        }
         // Generate dynamic simulation from features
-        return runDynamicSimulation(paths, users, duration, rampUp, tags);
+        // (No --simulation option - features only for simplicity)
+        return runDynamicSimulation(paths, users, duration, rampUp, tags, format);
     }
 }
 ```
+
+**Report Formats:**
+- `html` (default): Full Gatling HTML report with Highcharts visualizations
+- `json`: Machine-readable JSON for CI/CD pipelines and external tools (Grafana, etc.)
 
 ### 12.4 Dynamic Simulation Generation
 
@@ -770,8 +997,17 @@ karate perf --users 10 --duration 60s --ramp 10s features/
 # Filter by tags
 karate perf --users 5 --duration 30s -t @smoke features/
 
-# Custom simulation (power users)
-karate perf --simulation com.example.MySimulation
+# JSON output for CI/CD
+karate perf --users 10 --duration 30s --format json features/
+```
+
+**Error Handling:**
+```bash
+# If bundle JAR is missing:
+$ karate perf features/
+Error: Gatling bundle not found.
+Run: karate plugin install gatling
+Or download manually from: https://github.com/karatelabs/karate/releases
 ```
 
 ### 12.6 karate-pom.json Support
@@ -784,13 +1020,15 @@ karate perf --simulation com.example.MySimulation
     "users": 10,
     "duration": "60s",
     "rampUp": "10s",
-    "output": "target/gatling-reports"
+    "output": "target/gatling-reports",
+    "format": "html"
   }
 }
 ```
 
 ```bash
 # Reads perf config from karate-pom.json
+# Config discovery matches 'karate test' behavior
 karate perf
 ```
 
@@ -954,13 +1192,13 @@ When developing, use Claude Code to:
 #### Verification Checklist
 
 - [ ] `karate --help` shows `perf` subcommand when bundle JAR present
-- [ ] `karate perf --help` shows all options
+- [ ] `karate perf --help` shows all options (no --simulation)
 - [ ] Basic feature execution works
 - [ ] Load profile options work (users, duration, ramp)
 - [ ] Tag filtering works
 - [ ] karate-pom.json perf section is read
-- [ ] Gatling HTML reports generated
-- [ ] Custom simulation class works (--simulation)
+- [ ] Gatling HTML reports generated (default format)
+- [ ] JSON format works (--format json)
 - [ ] Error messages are clear when bundle JAR missing
 
 ---
@@ -973,6 +1211,86 @@ When developing, use Claude Code to:
 | Bundle JAR size (~50-80MB) | Document size, consider optional download, compress |
 | ServiceLoader not finding provider | Test classpath construction, clear error messages |
 | Scala 3 compilation issues | Use latest scala-maven-plugin, test cross-compilation |
-| Virtual thread edge cases | Fallback to platform threads if issues found |
-| RunListener timing accuracy | Compare with v1 PerfHook metrics in testing |
+| callOnce race condition | Fix in karate-core before Gatling implementation |
+| PerfHook timing accuracy | Compare with v1 metrics in Phase 6 profiling |
 | Session variable conflicts | Document reserved keys, validate on set |
+| HTTP client memory leaks | Validate in Phase 6 extended load tests |
+
+---
+
+## 14. Operational Notes
+
+### 14.1 Timeout Handling
+
+When Gatling's scenario timeout is reached:
+1. `PerfHook.abortCurrentRequest()` is called
+2. In-flight HTTP request is aborted via `HttpClient.abort()`
+3. Scenario is marked as failed
+4. Partial results are still reported
+
+This prevents thread starvation from slow/hanging responses.
+
+### 14.2 Resource Cleanup
+
+**JVM Garbage Collection is sufficient** for resource cleanup. However, best practices:
+- Use try-with-resources for explicit cleanup in custom Java code
+- Avoid holding large objects across feature executions
+- HTTP connections are managed by the pooled factory
+
+### 14.3 Feature Parsing
+
+**Fresh parse per scenario** - no feature caching:
+- Each Gatling virtual user parses features independently
+- Ensures isolation between concurrent executions
+- Slightly higher CPU usage but simpler implementation
+
+### 14.4 Parallel Execution
+
+**Sequential within scenario, parallel across scenarios:**
+- Features within a single Gatling scenario execute sequentially
+- Use multiple Gatling scenarios for parallelism
+- No `karateParallel()` DSL - keep it simple
+
+Example:
+```java
+// CORRECT: Parallel via Gatling scenarios
+ScenarioBuilder cats = scenario("Cats").exec(karateFeature("cats.feature"));
+ScenarioBuilder dogs = scenario("Dogs").exec(karateFeature("dogs.feature"));
+setUp(
+    cats.injectOpen(rampUsers(10).during(10)),
+    dogs.injectOpen(rampUsers(10).during(10))
+);
+```
+
+### 14.5 Gatling Edition
+
+**Open-source Gatling only.** For Gatling Enterprise integration:
+- Export JSON reports from karate-gatling
+- Import into Gatling Enterprise separately
+- No built-in SDK integration
+
+### 14.6 Dynamic Load Adjustment
+
+Gatling handles dynamic load natively via:
+- `constantUsersPerSec(rate).during(duration).randomized()`
+- `rampUsersPerSec(rate1).to(rate2).during(duration)`
+- Throttling: `throttle(reachRps(100).in(10))`
+
+No Karate-specific dynamic load adjustment needed.
+
+### 14.7 Request Timing
+
+Request timing **includes connection pool wait time**:
+- Reflects real user experience
+- Measures from `HttpClient.invoke()` call to response
+- Includes SSL handshake, connection acquisition, network round-trip
+
+### 14.8 Silent Mode Behavior
+
+When `.silent()` is set on a `karateFeature()`:
+- **Gatling metrics**: Not reported to StatsEngine
+- **Karate HTML reports**: Already disabled in perf mode
+- **Logging**: Reduced to errors/warnings only
+- **Feature execution**: Runs normally, just invisible to reports
+
+Use for warm-up scenarios before actual load test.
