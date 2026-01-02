@@ -897,20 +897,43 @@ public class CdpDriver implements Driver {
     /**
      * Find all elements matching a locator.
      */
-    @SuppressWarnings("unchecked")
     public List<Element> locateAll(String locator) {
-        String js = Locators.scriptAllSelector(locator, Locators.KARATE_REF_GENERATOR);
-        List<String> refs = (List<String>) script(js);
-        if (refs == null) {
+        // Count matching elements
+        String countJs = Locators.countJs(locator);
+        Object countResult = script(countJs);
+        int count = countResult instanceof Number ? ((Number) countResult).intValue() : 0;
+        if (count == 0) {
             return List.of();
         }
+
+        // Create Element objects with indexed locators
         List<Element> elements = new ArrayList<>();
-        for (String ref : refs) {
-            // Create a JS expression locator for each element
-            String elementLocator = "(document._karate['" + ref + "'])";
-            elements.add(new Element(this, elementLocator, true));
+        for (int i = 0; i < count; i++) {
+            // Use JS expression to select nth element from querySelectorAll/evaluate
+            String indexedLocator = createIndexedLocator(locator, i);
+            elements.add(new Element(this, indexedLocator, true));
         }
         return elements;
+    }
+
+    /**
+     * Create a JS expression locator for the nth element matching a locator.
+     */
+    private String createIndexedLocator(String locator, int index) {
+        // Expand wildcard to XPath if needed
+        if (locator.startsWith("{")) {
+            locator = Locators.expandWildcard(locator);
+        }
+
+        if (Locators.isXpath(locator)) {
+            // For XPath, wrap in () and add index (1-based in XPath)
+            String escapedXpath = Locators.escapeForJs(locator);
+            return "(document.evaluate(\"(" + escapedXpath + ")[" + (index + 1) + "]\", document, null, 9, null).singleNodeValue)";
+        } else {
+            // For CSS, use querySelectorAll with array index
+            String escapedCss = Locators.escapeForJs(locator);
+            return "(document.querySelectorAll(\"" + escapedCss + "\")[" + index + "])";
+        }
     }
 
     /**

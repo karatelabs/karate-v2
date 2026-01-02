@@ -57,11 +57,6 @@ public class Locators {
                     " while(d == 'none'){ e = e.parentElement; d = window.getComputedStyle(e).display }" +
                     " e.scrollIntoView({block: 'center'}) }";
 
-    public static final String KARATE_REF_GENERATOR =
-            "function(e){" +
-                    " if (!document._karate) document._karate = { seq: (new Date()).getTime() };" +
-                    " var ref = 'ref' + document._karate.seq++; document._karate[ref] = e; return ref }";
-
     // ========== Main Selector Transformation ==========
 
     /**
@@ -84,14 +79,6 @@ public class Locators {
     public static String selector(String locator, String contextNode) {
         if (locator == null || locator.isEmpty()) {
             throw new DriverException("locator cannot be null or empty");
-        }
-
-        // Ref locator from aria-snapshot: ref:e1, ref:e2, etc.
-        if (locator.startsWith("ref:")) {
-            String ref = locator.substring(4);
-            // Returns element from window.__karate.refs or throws if stale
-            return "(function(){ var el = window.__karate && window.__karate.resolveRef('" + ref + "');" +
-                    " if (!el) throw new Error('stale ref: " + ref + "'); return el; })()";
         }
 
         // Pure JS expression - pass through (but not XPath starting with parenthesis)

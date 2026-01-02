@@ -34,7 +34,7 @@ io.karatelabs.driver/
 └── cdp/                                  # CDP implementation
     ├── CdpDriver, CdpMouse, CdpKeys, CdpDialog
     ├── CdpClient, CdpMessage, CdpEvent, CdpResponse
-    └── CdpInspector, CdpLauncher, CdpDriverOptions
+    └── CdpLauncher, CdpDriverOptions
 ```
 
 ---
@@ -444,85 +444,6 @@ driver.waitUntil('#btn', el => el.textContent.includes('Ready'))
 
 ---
 
-## LLM Automation (ariaTree)
-
-### Purpose
-
-Provide a compact representation of the page for LLM-based automation agents.
-
-### `ariaTree()` Method
-
-Returns YAML representation of the ARIA accessibility tree:
-
-```yaml
-- navigation:
-  - list:
-    - listitem:
-      - link "Home" [ref=e1]
-    - listitem:
-      - link "About" [ref=e2]
-- form:
-  - textbox "Email" [ref=e3]
-  - textbox "Password" [ref=e4]
-  - button "Sign In" [ref=e5]
-```
-
-### Ref-Based Locators
-
-```javascript
-// Use refs from ariaTree output
-driver.click('ref:e5')
-driver.input('ref:e3', 'user@example.com')
-```
-
-**Ref format:** Simple numeric: `e1`, `e2`, `e3`, ...
-
-### Ref Lifecycle
-
-- Refs are generated fresh per `ariaTree()` call
-- Refs are invalidated when DOM changes
-- LLM must call `ariaTree()` after actions that mutate DOM
-- Stale ref throws: `"ref:e5 is stale, call ariaTree() to refresh"`
-
-### One-Shot Workflow Pattern
-
-```gherkin
-Feature: LLM Browser Automation
-
-Scenario: Login with LLM agent
-  * driver 'https://example.com/login'
-  * def tree = driver.ariaTree()
-  * def context = { url: driver.url, title: driver.title, tree: tree }
-  * def code = llm.generateCode('Log in with admin/password', context)
-  * eval code
-  * match driver.url contains 'dashboard'
-```
-
-### Implementation
-
-CDP-only for now using browser-neutral JS injection:
-
-```java
-public String ariaTree() {
-    ensureAriaScriptInjected();
-    return (String) delegate.script("window.__karate.getAriaTree()");
-}
-```
-
-Injected script uses standard DOM APIs:
-- `element.getAttribute('aria-label')`
-- `element.role` or computed role
-- `getComputedStyle()` for visibility
-- `element.getBoundingClientRect()` for interactability
-
-### Agent API
-
-For a token-efficient LLM API with HATEOAS-style responses, see **[DRIVER_AGENT.md](./DRIVER_AGENT.md)**.
-
-The Agent API provides just 5 methods (`agent.look()`, `agent.act()`, `agent.go()`, `agent.wait()`, `agent.eval()`) with each response including available next actions - reducing system prompt size from 500+ tokens to ~60.
-
----
-
 ## DriverProvider (Browser Reuse)
 
 ### Interface
@@ -696,7 +617,7 @@ public class SauceLabsDriverProvider implements DriverProvider {
 | **1** | WebSocket client, CDP message protocol |
 | **2** | Browser launch, minimal driver |
 | **3** | Testcontainers + ChromeContainer + TestPageServer |
-| **4** | CdpInspector (screenshots, DOM, console, network) |
+| **4** | Screenshots, DOM, console, network utilities |
 | **5** | Locators, Element class, wait methods, v1 bug fixes |
 | **6** | Dialog handling (callback), frame switching |
 | **7** | Intercept, cookies, window, PDF, Mouse, Keys, Finder |
@@ -790,7 +711,7 @@ Both test suites must pass when switching backends:
 |----------|--------|-----------|
 | Interface name | `Driver` | V1 familiarity |
 | CDP-only APIs | Graceful degradation | Returns null/no-op on WebDriver |
-| Async events | Separate `CdpInspector` | Driver stays pure sync |
+| Async events | Callback handlers | Driver stays pure sync |
 | Error handling | Always verbose | AI-agent friendly |
 | Docker | Testcontainers + `chromedp/headless-shell` | ~200MB, fast |
 | Wait model | Auto-wait + override | Playwright-style, v1 compat |
@@ -837,4 +758,4 @@ AI-agent friendly: detailed context aids debugging.
 ### Video Recording
 - CDP `Page.startScreencast` streams frames
 - Stitch with ffmpeg for mp4 output
-- Add to `CdpInspector` when needed
+- Deferred to commercial app
