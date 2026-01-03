@@ -760,12 +760,19 @@ XPath-based solutions have semantic mismatches with JavaScript's DOM APIs (visib
 Instead of expanding wildcards to XPath, we inject a JavaScript resolver into the browser:
 
 ```
-{div}text     → window.__karateWildcard.resolve("div", "text", 1, false)
-{^div}text    → window.__karateWildcard.resolve("div", "text", 1, true)
-{div:2}text   → window.__karateWildcard.resolve("div", "text", 2, false)
+{div}text     → window.__kjs.resolve("div", "text", 1, false)
+{^div}text    → window.__kjs.resolve("div", "text", 1, true)
+{div:2}text   → window.__kjs.resolve("div", "text", 2, false)
 ```
 
-**Resource:** `karate-core/src/main/resources/io/karatelabs/driver/wildcard.js`
+**Resource:** `karate-core/src/main/resources/io/karatelabs/driver/driver.js`
+
+**Namespace:** `window.__kjs` (Karate JS Runtime):
+- `__kjs.resolve(tag, text, index, contains)` - Wildcard resolver
+- `__kjs.log(msg, data)` - Log for debugging
+- `__kjs.getLogs()` - Get log entries (for LLM debugging)
+- `__kjs.clearLogs()` - Clear log entries
+- `__kjs.isVisible()`, `__kjs.getVisibleText()` - Shared utilities
 
 ### Features
 
@@ -781,27 +788,27 @@ Instead of expanding wildcards to XPath, we inject a JavaScript resolver into th
 
 ```java
 // Load once at class load
-private static final String WILDCARD_JS = loadResource("wildcard.js");
+private static final String DRIVER_JS = loadResource("driver.js");
 
 // Inject on-demand before wildcard evaluation
 public Object script(String expression) {
-    if (expression.contains("__karateWildcard")) {
-        ensureWildcardSupport();
+    if (expression.contains("__kjs")) {
+        ensureKjsRuntime();
     }
     return eval(expression);
 }
 
-private void ensureWildcardSupport() {
-    Boolean exists = (Boolean) evalDirect("typeof window.__karateWildcard !== 'undefined'");
+private void ensureKjsRuntime() {
+    Boolean exists = (Boolean) evalDirect("typeof window.__kjs !== 'undefined'");
     if (!Boolean.TRUE.equals(exists)) {
-        evalDirect(WILDCARD_JS);
+        evalDirect(DRIVER_JS);
     }
 }
 ```
 
 ### Multi-Backend Considerations
 
-The `wildcard.js` is pure browser JavaScript - any driver backend can use it:
+The `driver.js` is pure browser JavaScript - any driver backend can use it:
 
 | Backend | Implementation |
 |---------|----------------|
@@ -810,8 +817,8 @@ The `wildcard.js` is pure browser JavaScript - any driver backend can use it:
 | WebDriver | Inject via `executeScript` |
 
 Future backends should implement the same injection pattern:
-1. Load `wildcard.js` from resources
-2. Check if `window.__karateWildcard` exists
+1. Load `driver.js` from resources
+2. Check if `window.__kjs` exists
 3. Inject if missing
 4. Execute the resolver call
 

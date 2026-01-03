@@ -58,8 +58,8 @@ public class CdpDriver implements Driver {
 
     private static final Logger logger = LogContext.RUNTIME_LOGGER;
 
-    // Wildcard locator support script
-    private static final String WILDCARD_JS = loadResource("wildcard.js");
+    // Karate JS runtime (wildcard resolver, shared utilities)
+    private static final String DRIVER_JS = loadResource("driver.js");
 
     private static String loadResource(String name) {
         try (InputStream is = CdpDriver.class.getResourceAsStream("/io/karatelabs/driver/" + name)) {
@@ -397,13 +397,13 @@ public class CdpDriver implements Driver {
     // ========== JavaScript Evaluation ==========
 
     /**
-     * Ensure wildcard locator support script is injected.
+     * Ensure Karate JS runtime is injected (wildcard locators, shared utilities).
      */
-    private void ensureWildcardSupport() {
+    private void ensureKjsRuntime() {
         try {
-            Boolean exists = (Boolean) evalDirect("typeof window.__karateWildcard !== 'undefined'");
+            Boolean exists = (Boolean) evalDirect("typeof window.__kjs !== 'undefined'");
             if (!Boolean.TRUE.equals(exists)) {
-                evalDirect(WILDCARD_JS);
+                evalDirect(DRIVER_JS);
             }
         } catch (Exception e) {
             // Ignore - may fail during navigation
@@ -414,9 +414,9 @@ public class CdpDriver implements Driver {
      * Execute JavaScript and return result.
      */
     public Object script(String expression) {
-        // Inject wildcard support if needed
-        if (expression.contains("__karateWildcard")) {
-            ensureWildcardSupport();
+        // Inject Karate JS runtime if needed
+        if (expression.contains("__kjs")) {
+            ensureKjsRuntime();
         }
         CdpResponse response = eval(expression);
         return extractJsValue(response);

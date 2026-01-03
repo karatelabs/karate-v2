@@ -119,10 +119,10 @@ public class Locators {
      * Expand wildcard locator to JavaScript resolver call.
      * Uses browser-side JS that matches the same logic as locator generation.
      * <ul>
-     *   <li>{tag}text     → window.__karateWildcard.resolve('tag', 'text', 1, false)</li>
-     *   <li>{^tag}text    → window.__karateWildcard.resolve('tag', 'text', 1, true)</li>
-     *   <li>{tag:2}text   → window.__karateWildcard.resolve('tag', 'text', 2, false)</li>
-     *   <li>{:2}text      → window.__karateWildcard.resolve('*', 'text', 2, false)</li>
+     *   <li>{tag}text     → window.__kjs.resolve('tag', 'text', 1, false)</li>
+     *   <li>{^tag}text    → window.__kjs.resolve('tag', 'text', 1, true)</li>
+     *   <li>{tag:2}text   → window.__kjs.resolve('tag', 'text', 2, false)</li>
+     *   <li>{:2}text      → window.__kjs.resolve('*', 'text', 2, false)</li>
      * </ul>
      */
     public static String expandWildcard(String locator) {
@@ -142,7 +142,7 @@ public class Locators {
         // Build JS resolver call
         String escapedTag = escapeForJs(tag);
         String escapedText = escapeForJs(text);
-        return "window.__karateWildcard.resolve(\"" + escapedTag + "\", \"" + escapedText + "\", " + index + ", " + contains + ")";
+        return "window.__kjs.resolve(\"" + escapedTag + "\", \"" + escapedText + "\", " + index + ", " + contains + ")";
     }
 
     // ========== XPath Selector ==========

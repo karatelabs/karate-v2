@@ -114,44 +114,44 @@ class LocatorsTest {
     @Test
     void testWildcardExact() {
         String result = Locators.expandWildcard("{div}Login");
-        assertEquals("window.__karateWildcard.resolve(\"div\", \"Login\", 1, false)", result);
+        assertEquals("window.__kjs.resolve(\"div\", \"Login\", 1, false)", result);
     }
 
     @Test
     void testWildcardContains() {
         String result = Locators.expandWildcard("{^div}Log");
-        assertEquals("window.__karateWildcard.resolve(\"div\", \"Log\", 1, true)", result);
+        assertEquals("window.__kjs.resolve(\"div\", \"Log\", 1, true)", result);
     }
 
     @Test
     void testWildcardAnyTag() {
         String result = Locators.expandWildcard("{}Submit");
-        assertEquals("window.__karateWildcard.resolve(\"*\", \"Submit\", 1, false)", result);
+        assertEquals("window.__kjs.resolve(\"*\", \"Submit\", 1, false)", result);
     }
 
     @Test
     void testWildcardWithIndex() {
         String result = Locators.expandWildcard("{div:2}Item");
-        assertEquals("window.__karateWildcard.resolve(\"div\", \"Item\", 2, false)", result);
+        assertEquals("window.__kjs.resolve(\"div\", \"Item\", 2, false)", result);
     }
 
     @Test
     void testWildcardAnyTagWithIndex() {
         String result = Locators.expandWildcard("{:3}Option");
-        assertEquals("window.__karateWildcard.resolve(\"*\", \"Option\", 3, false)", result);
+        assertEquals("window.__kjs.resolve(\"*\", \"Option\", 3, false)", result);
     }
 
     @Test
     void testWildcardContainsWithIndex() {
         String result = Locators.expandWildcard("{^span:1}Click");
-        assertEquals("window.__karateWildcard.resolve(\"span\", \"Click\", 1, true)", result);
+        assertEquals("window.__kjs.resolve(\"span\", \"Click\", 1, true)", result);
     }
 
     @Test
     void testWildcardToSelector() {
         // Wildcard selector returns JS resolver call directly
         String result = Locators.selector("{button}Submit");
-        assertEquals("window.__karateWildcard.resolve(\"button\", \"Submit\", 1, false)", result);
+        assertEquals("window.__kjs.resolve(\"button\", \"Submit\", 1, false)", result);
     }
 
     @Test
@@ -164,16 +164,16 @@ class LocatorsTest {
     @Test
     void testExpandWildcardReturnsJsResolver() {
         // Basic wildcard
-        assertEquals("window.__karateWildcard.resolve(\"div\", \"Save\", 1, false)",
+        assertEquals("window.__kjs.resolve(\"div\", \"Save\", 1, false)",
             Locators.expandWildcard("{div}Save"));
         // Contains syntax
-        assertEquals("window.__karateWildcard.resolve(\"div\", \"Sav\", 1, true)",
+        assertEquals("window.__kjs.resolve(\"div\", \"Sav\", 1, true)",
             Locators.expandWildcard("{^div}Sav"));
         // With index
-        assertEquals("window.__karateWildcard.resolve(\"button\", \"Submit\", 2, false)",
+        assertEquals("window.__kjs.resolve(\"button\", \"Submit\", 2, false)",
             Locators.expandWildcard("{button:2}Submit"));
         // Any element
-        assertEquals("window.__karateWildcard.resolve(\"*\", \"Click\", 1, false)",
+        assertEquals("window.__kjs.resolve(\"*\", \"Click\", 1, false)",
             Locators.expandWildcard("{}Click"));
     }
 
@@ -234,7 +234,7 @@ class LocatorsTest {
     void testSelectorAllWildcard() {
         // Wildcard selectorAll wraps single result in array
         String result = Locators.selectorAll("{li}Option");
-        assertTrue(result.contains("window.__karateWildcard.resolve(\"li\", \"Option\", 1, false)"));
+        assertTrue(result.contains("window.__kjs.resolve(\"li\", \"Option\", 1, false)"));
         assertTrue(result.contains("return e ? [e] : []"));
     }
 
