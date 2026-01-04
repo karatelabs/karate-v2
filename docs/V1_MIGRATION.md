@@ -55,6 +55,7 @@ Fixed docstring parser failing when closing `"""` has trailing spaces.
 - **Configure cookies JS function**: `configure cookies = read('cookies.js')` now works with JS functions (was only supporting Maps)
 - **Cookie auto-send**: `responseCookies` from previous requests are now automatically sent on subsequent requests within the same scenario
 - **Empty cell placeholder substitution**: `<placeholder>` in Scenario Outline steps now replaced with empty string when Examples cell is empty (was leaving literal `<placeholder>` text)
+- **Call expressions in RHS**: `header X = call fun { arg: 1 }` now works - `call` expressions evaluated via `evalMarkupExpression`
 
 ## Pending
 

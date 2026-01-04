@@ -407,6 +407,25 @@ class GherkinParserTest {
         assertTrue(step.getDocString().contains("["));
     }
 
+    // ========== Call Syntax Tests ==========
+
+    @Test
+    void testCallWithInlineJsonArg() {
+        // V1 syntax: call fun { key: 'value' } - inline JSON argument
+        feature("""
+                Feature: call test
+                Scenario: call with inline json
+                  * def fun = function(arg){ return arg.first }
+                  * def result = call fun { first: 'dummy', second: 'other' }
+                  * match result == 'dummy'
+                """);
+        assertNotNull(scenario);
+        assertEquals(3, scenario.getSteps().size());
+        Step step = scenario.getSteps().get(1);
+        assertEquals("def", step.getKeyword());
+        assertEquals("result = call fun { first: 'dummy', second: 'other' }", step.getText());
+    }
+
     @Test
     void testDocStringWithTrailingSpaces() {
         // Test that closing """ with trailing spaces is parsed correctly

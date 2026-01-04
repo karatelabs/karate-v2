@@ -1478,6 +1478,14 @@ public class StepExecutor {
 
         expr = expr.trim();
 
+        // Handle call/callonce expressions (V1 compatibility for RHS usage like: header X = call fun {...})
+        if (expr.startsWith("call ")) {
+            return evalCallExpression(expr.substring(5).trim());
+        }
+        if (expr.startsWith("callonce ")) {
+            return evalCallOnceExpression(expr.substring(9).trim());
+        }
+
         // Handle $varname patterns - could be jsonpath OR xpath on XML variable
         if (expr.startsWith("$")) {
             return evalDollarPrefixedExpression(expr);
@@ -1635,7 +1643,8 @@ public class StepExecutor {
             String text = step.getText();
             int eqIndex = StepUtils.findAssignmentOperator(text);
             String name = text.substring(0, eqIndex).trim();
-            Object value = runtime.eval(text.substring(eqIndex + 1).trim());
+            // Use evalMarkupExpression to handle call expressions like: header X = call fun {...}
+            Object value = evalMarkupExpression(text.substring(eqIndex + 1).trim());
             http().header(name, value.toString());
         }
     }
@@ -2555,6 +2564,26 @@ public class StepExecutor {
             return headerValue;
         }
         return null;
+    }
+
+    /**
+     * Evaluates a call expression and returns the result.
+     * Used for RHS expressions like: header X = call fun { arg: 1 }
+     */
+    private Object evalCallExpression(String callExpr) {
+        String tempVar = "__callResult__" + System.nanoTime();
+        executeCallWithResult(callExpr, tempVar);
+        return runtime.getVariable(tempVar);
+    }
+
+    /**
+     * Evaluates a callonce expression and returns the result.
+     * Used for RHS expressions like: def x = callonce read('setup.feature')
+     */
+    private Object evalCallOnceExpression(String callExpr) {
+        String tempVar = "__callOnceResult__" + System.nanoTime();
+        executeCallOnceWithResult(callExpr, tempVar);
+        return runtime.getVariable(tempVar);
     }
 
     /**

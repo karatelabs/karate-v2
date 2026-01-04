@@ -691,6 +691,45 @@ class StepCallTest {
         assertTrue(result.isPassed(), "call read(variable) for feature should work: " + getFailureMessage(result));
     }
 
+    @Test
+    void testCallFunctionWithInlineJson() throws Exception {
+        // Tests V1 syntax: call fun { key: 'value' } with inline JSON argument
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Call with inline JSON
+            Scenario:
+            * def fun = function(arg){ return [arg.first, arg.second] }
+            * def result = call fun { first: 'dummy', second: 'other' }
+            * match result == ['dummy', 'other']
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "call with inline JSON should work: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testCallInRhsOfHeader() throws Exception {
+        // Tests V1 syntax: header X = call fun { key: 'value' }
+        // The call expression in the RHS should be evaluated as Karate expression, not pure JS
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Call in header RHS
+            Scenario:
+            * def fun = function(arg){ return arg.first + '-' + arg.second }
+            * def expected = call fun { first: 'hello', second: 'world' }
+            * match expected == 'hello-world'
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "call in expression RHS should work: " + getFailureMessage(result));
+    }
+
     private String getFailureMessage(SuiteResult result) {
         if (result.isPassed()) return "none";
         for (FeatureResult fr : result.getFeatureResults()) {
