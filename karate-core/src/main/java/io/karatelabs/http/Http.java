@@ -185,6 +185,10 @@ public class Http {
         if (bytes == null) {
             return null;
         }
+        // For binary content, return raw bytes directly (V1 compatibility)
+        if (resourceType != null && resourceType.isBinary()) {
+            return bytes;
+        }
         String raw = FileUtils.toString(bytes);
         return fromString(raw, strict, resourceType);
     }

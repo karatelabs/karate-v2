@@ -90,6 +90,10 @@ class UploadE2eTest {
             Scenario: pathMatches('/download')
               * def response = read('classpath:io/karatelabs/core/upload/test.pdf.zip')
 
+            Scenario: pathMatches('/download/pdf')
+              * def responseHeaders = { 'Content-Type': 'application/pdf' }
+              * def response = read('classpath:io/karatelabs/core/upload/test.pdf.zip')
+
             # ===== Response Type Scenarios =====
 
             Scenario: pathMatches('/json')
@@ -281,6 +285,26 @@ class UploadE2eTest {
             * method get
             * status 200
             * match responseBytes == '#notnull'
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testBinaryResponseMatchesRead() {
+        // V1 compatibility: response for binary content-type should be byte[]
+        // and should match read() of the same file
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Binary Response Matches Read
+
+            Scenario: Binary response should match read() of same file
+            * url 'http://localhost:%d'
+            * path '/download/pdf'
+            * method get
+            * status 200
+            * def expected = read('classpath:io/karatelabs/core/upload/test.pdf.zip')
+            * match response == expected
+            * match responseBytes == expected
             """.formatted(port));
 
         assertPassed(sr);
