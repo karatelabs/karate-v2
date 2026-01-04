@@ -85,6 +85,9 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
     private PerfEvent prevPerfEvent;
     private boolean driverFromProvider;  // true if driver came from provider (use release, not quit)
 
+    // Cookie jar for auto-sending responseCookies on subsequent requests (V1 compatibility)
+    private final Map<String, Map<String, Object>> cookieJar = new LinkedHashMap<>();
+
     public ScenarioRuntime(FeatureRuntime featureRuntime, Scenario scenario) {
         this.featureRuntime = featureRuntime;
         this.scenario = scenario;
@@ -823,6 +826,38 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
 
     public KarateJs getKarate() {
         return karate;
+    }
+
+    /**
+     * Get the cookie jar for auto-sending cookies on subsequent requests.
+     * Returns a map of cookie name to cookie details (value, path, domain, etc.).
+     */
+    public Map<String, Map<String, Object>> getCookieJar() {
+        return cookieJar;
+    }
+
+    /**
+     * Add cookies from responseCookies to the cookie jar for auto-send.
+     * Called after each HTTP response to persist cookies.
+     */
+    @SuppressWarnings("unchecked")
+    public void updateCookieJar(Object responseCookies) {
+        if (responseCookies instanceof Map<?, ?> cookies) {
+            for (Map.Entry<?, ?> entry : cookies.entrySet()) {
+                String name = entry.getKey().toString();
+                Object cookieData = entry.getValue();
+                if (cookieData instanceof Map) {
+                    cookieJar.put(name, (Map<String, Object>) cookieData);
+                }
+            }
+        }
+    }
+
+    /**
+     * Clear the cookie jar (for clearCookies functionality).
+     */
+    public void clearCookieJar() {
+        cookieJar.clear();
     }
 
     public void configure(String key, Object value) {

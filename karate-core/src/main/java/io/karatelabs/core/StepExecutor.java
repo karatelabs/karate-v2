@@ -1554,6 +1554,12 @@ public class StepExecutor {
         return runtime.getHttp();
     }
 
+    private void applyCookiesFromMap(Map<?, ?> cookieMap) {
+        for (Map.Entry<?, ?> entry : cookieMap.entrySet()) {
+            http().cookie(entry.getKey().toString(), entry.getValue().toString());
+        }
+    }
+
     private void executeUrl(Step step) {
         String urlExpr = step.getText();
         String url = (String) runtime.eval(urlExpr);
@@ -1702,13 +1708,29 @@ public class StepExecutor {
     private void executeMethod(Step step) {
         String method = step.getText().trim().toUpperCase();
 
-        // Apply configured cookies before invoking request
         KarateConfig config = runtime.getConfig();
-        Object configCookies = config.getCookies();
-        if (configCookies instanceof Map<?, ?> cookieMap) {
-            for (Map.Entry<?, ?> entry : cookieMap.entrySet()) {
-                http().cookie(entry.getKey().toString(), entry.getValue().toString());
+
+        // Apply cookies from the cookie jar (V1 compatibility: auto-send responseCookies)
+        Map<String, Map<String, Object>> cookieJar = runtime.getCookieJar();
+        for (Map.Entry<String, Map<String, Object>> entry : cookieJar.entrySet()) {
+            String cookieName = entry.getKey();
+            Map<String, Object> cookieData = entry.getValue();
+            Object value = cookieData.get("value");
+            if (value != null) {
+                http().cookie(cookieName, value.toString());
             }
+        }
+
+        // Apply configured cookies before invoking request - may be a Map or a JsCallable function
+        Object configCookies = config.getCookies();
+        if (configCookies instanceof JsCallable cookiesFn) {
+            // Call function to get cookies dynamically
+            Object result = cookiesFn.call(null);
+            if (result instanceof Map<?, ?> cookieMap) {
+                applyCookiesFromMap(cookieMap);
+            }
+        } else if (configCookies instanceof Map<?, ?> cookieMap) {
+            applyCookiesFromMap(cookieMap);
         }
 
         // Apply configured headers - may be a Map or a JsCallable function
@@ -1779,8 +1801,12 @@ public class StepExecutor {
         runtime.setVariable("responseTime", response.getResponseTime());
         // Hidden variables (accessible but not in getAllVariables())
         runtime.setHiddenVariable("responseBytes", response.getBodyBytes());
-        runtime.setHiddenVariable("responseCookies", response.getCookies());
+        Object responseCookies = response.getCookies();
+        runtime.setHiddenVariable("responseCookies", responseCookies);
         runtime.setHiddenVariable("requestTimeStamp", response.getStartTime());
+
+        // Update cookie jar with responseCookies for auto-send on subsequent requests (V1 compatibility)
+        runtime.updateCookieJar(responseCookies);
 
         // Determine response type for V1 compatibility
         String responseType;

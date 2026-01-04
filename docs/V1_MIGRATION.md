@@ -52,6 +52,8 @@ Fixed docstring parser failing when closing `"""` has trailing spaces.
 - **Configure afterFeature**: `configure afterFeature = function() {...}` now supported
 - **Configure afterScenarioOutline**: `configure afterScenarioOutline = function() {...}` now supported
 - **Binary file handling**: `read('file.pdf')` returns `byte[]` for binary files; `response` for binary content-type also returns `byte[]`
+- **Configure cookies JS function**: `configure cookies = read('cookies.js')` now works with JS functions (was only supporting Maps)
+- **Cookie auto-send**: `responseCookies` from previous requests are now automatically sent on subsequent requests within the same scenario
 
 ## Pending
 
@@ -72,12 +74,13 @@ The following fixes have been applied locally but NOT committed (to preserve cle
 - Update test expectations: `domain: '.abc.com'` → `domain: 'abc.com'`
 
 ### 2. Remaining Test Failures
-Current status after fixes: **163/201 scenarios passing (81%)**
+Current status after fixes: **173/201 scenarios passing (86%)**
+(Improved from 163/201 after cookie auto-send and configure cookies JS function fixes)
 
-Remaining issues:
-- Headers tests failing (HTTP 400) - `configure headers` or cookie auto-send not working
+Remaining issues (28 scenarios):
 - Some upload tests - minor issues
 - callonce/calltable tests - possible `callSingle` issues
+- Parser edge cases (e.g., `call fun { first: 'dummy', ...}` syntax)
 
 ### 3. API Improvements to Consider
 Make migration easier by adding backwards-compat methods:

@@ -638,4 +638,236 @@ class StepHttpTest {
         assertPassed(sr);
     }
 
+    // ========== Configure Headers/Cookies with JS Function Tests ==========
+
+    @Test
+    void testConfigureHeadersWithJsFunction() {
+        // V1 supports: configure headers = read('headers.js')
+        // The JS function should be called before each request and return headers
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String auth = req.getHeader("Authorization");
+            String requestId = req.getHeader("X-Request-Id");
+            if ("Bearer secret-token".equals(auth) && requestId != null) {
+                return json("{ \"ok\": true, \"requestId\": \"" + requestId + "\" }");
+            }
+            return json("{ \"error\": \"missing headers\", \"auth\": \"" + auth + "\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * def token = 'secret-token'
+            * def headersFn = function(){ return { 'Authorization': 'Bearer ' + token, 'X-Request-Id': java.util.UUID.randomUUID() + '' } }
+            * configure headers = headersFn
+            * method get
+            * status 200
+            * match response.ok == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureHeadersWithJsFunctionMultipleCalls() {
+        // Headers function should be called for each request
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String requestId = req.getHeader("X-Request-Id");
+            return json("{ \"requestId\": \"" + requestId + "\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * def counter = { value: 0 }
+            * def headersFn = function(){ counter.value++; return { 'X-Request-Id': 'req-' + counter.value } }
+            * configure headers = headersFn
+
+            * method get
+            * status 200
+            * match response.requestId == 'req-1'
+
+            * url 'http://test'
+            * method get
+            * status 200
+            * match response.requestId == 'req-2'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureHeadersAccessesKarateVariables() {
+        // V1 behavior: headers function can access variables via karate.get()
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String auth = req.getHeader("Authorization");
+            if (auth != null && auth.contains("token123") && auth.contains("time456")) {
+                return json("{ \"ok\": true }");
+            }
+            return json("{ \"auth\": \"" + auth + "\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * def token = 'token123'
+            * def time = 'time456'
+            * def headersFn = function(){ var t = karate.get('token'); var tm = karate.get('time'); return { 'Authorization': t + tm } }
+            * configure headers = headersFn
+            * method get
+            * status 200
+            * match response.ok == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureCookiesWithJsFunction() {
+        // V1 supports: configure cookies = read('cookies.js')
+        // The JS function should be called before each request and return cookies
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String cookie = req.getHeader("Cookie");
+            if (cookie != null && cookie.contains("session=abc123") && cookie.contains("tracking=")) {
+                return json("{ \"ok\": true }");
+            }
+            return json("{ \"cookie\": \"" + cookie + "\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * def sessionId = 'abc123'
+            * def cookiesFn = function(){ return { 'session': sessionId, 'tracking': java.util.UUID.randomUUID() + '' } }
+            * configure cookies = cookiesFn
+            * method get
+            * status 200
+            * match response.ok == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureCookiesWithJsFunctionMultipleCalls() {
+        // Cookies function should be called for each request
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String cookie = req.getHeader("Cookie");
+            // Extract counter value from cookie
+            if (cookie != null && cookie.contains("counter=")) {
+                int start = cookie.indexOf("counter=") + 8;
+                int end = cookie.indexOf(";", start);
+                if (end == -1) end = cookie.length();
+                String counterValue = cookie.substring(start, end);
+                return json("{ \"counter\": \"" + counterValue + "\" }");
+            }
+            return json("{ \"cookie\": \"" + cookie + "\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * def counter = { value: 0 }
+            * def cookiesFn = function(){ counter.value++; return { 'counter': counter.value + '' } }
+            * configure cookies = cookiesFn
+
+            * method get
+            * status 200
+            * match response.counter == '1'
+
+            * url 'http://test'
+            * method get
+            * status 200
+            * match response.counter == '2'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testResponseCookiesAutoSend() {
+        // V1 behavior: responseCookies should be auto-sent on subsequent requests
+        // When server sends Set-Cookie, the cookie should be sent back automatically
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String path = req.getPath();
+            if (path.endsWith("/login")) {
+                // First request: set a session cookie
+                HttpResponse resp = json("{ \"token\": \"abc123\" }");
+                resp.setHeader("Set-Cookie", java.util.List.of("session=xyz789; Path=/"));
+                return resp;
+            } else if (path.endsWith("/protected")) {
+                // Second request: check if session cookie was sent
+                String cookie = req.getHeader("Cookie");
+                if (cookie != null && cookie.contains("session=xyz789")) {
+                    return json("{ \"ok\": true }");
+                }
+                return json("{ \"error\": \"no session cookie\", \"cookie\": \"" + cookie + "\" }");
+            }
+            return status(404);
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test/login'
+            * method get
+            * status 200
+            * match responseCookies.session.value == 'xyz789'
+
+            * url 'http://test/protected'
+            * method get
+            * status 200
+            * match response.ok == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testHeadersFeatureFlow() {
+        // This simulates the v1 demo/headers/headers.feature flow:
+        // 1. GET /headers -> returns token and sets 'time' cookie
+        // 2. GET /headers/{token}?url=baseUrl with Authorization header
+        //    - Server validates time cookie + Authorization = token + time + url
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String path = req.getPath();
+            if (path.equals("/headers")) {
+                // Sign-in: return token and set time cookie
+                String token = "my-token-123";
+                String time = System.currentTimeMillis() + "";
+                HttpResponse resp = json("\"" + token + "\""); // Response is the token as a string
+                resp.setHeader("Set-Cookie", java.util.List.of("time=" + time + "; Path=/"));
+                return resp;
+            } else if (path.contains("/headers/")) {
+                // Validate token, time cookie, and Authorization header
+                String cookie = req.getHeader("Cookie");
+                String auth = req.getHeader("Authorization");
+                String url = req.getParam("url");
+
+                // Extract token from path (e.g., /headers/my-token-123)
+                String pathToken = path.substring(path.lastIndexOf("/") + 1);
+
+                // Check if time cookie is present
+                boolean hasTimeCookie = cookie != null && cookie.contains("time=");
+
+                // Check if Authorization matches expected format: token + time + url
+                // We can't check exact value since time is dynamic, just check it contains the token
+                boolean hasAuth = auth != null && auth.contains(pathToken);
+
+                if (hasTimeCookie && hasAuth) {
+                    return json("{ \"ok\": true }");
+                }
+                return status(400);
+            }
+            return status(404);
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * def demoBaseUrl = 'http://test'
+            * url demoBaseUrl
+            * path 'headers'
+            * method get
+            * status 200
+            * def token = response
+            * def time = responseCookies.time.value
+            * match responseCookies contains { time: '#notnull' }
+
+            # Use configure headers with JS function
+            * def headersFn = function(){ var t = karate.get('token'); var tm = karate.get('time'); var url = karate.get('demoBaseUrl'); return { 'Authorization': t + tm + url } }
+            * configure headers = headersFn
+            * path 'headers', token
+            * param url = demoBaseUrl
+            * method get
+            * status 200
+            * match response.ok == true
+            """);
+        assertPassed(sr);
+    }
+
 }
