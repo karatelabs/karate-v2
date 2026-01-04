@@ -54,12 +54,29 @@ Fixed docstring parser failing when closing `"""` has trailing spaces.
 
 ## Pending
 
-### 1. Test Failures
-Tests run but some fail - need investigation:
-- Some match assertions
-- HTTP 500 errors (Spring Boot app issues, not karate-v2)
+### 1. Spring Boot 3 Fixes (karate-demo, not committed)
+The following fixes have been applied locally but NOT committed (to preserve clean diff for study):
 
-### 2. API Improvements to Consider
+**pom.xml**:
+- Add `maven-compiler-plugin` with `<parameters>true</parameters>` - required for Spring Boot 3 to resolve `@PathVariable`/`@RequestParam` names at runtime
+
+**SearchController.java**:
+- Strip leading dot from cookie domain for RFC 6265 compliance:
+  ```java
+  String normalizedDomain = domain.startsWith(".") ? domain.substring(1) : domain;
+  cookie.setDomain(normalizedDomain);
+  ```
+
+**cookies.feature**:
+- Update test expectations: `domain: '.abc.com'` → `domain: 'abc.com'`
+
+### 2. Remaining Test Failures
+After Spring Boot 3 fixes, still have:
+- HTTP 400 errors - likely request validation issues
+- HTTP 403 errors - CSRF not disabled for all endpoints (check WebSecurityConfig)
+- Some match assertions failing
+
+### 3. API Improvements to Consider
 Make migration easier by adding backwards-compat methods:
 - `SuiteResult.getFailCount()` → alias for `getScenarioFailedCount()`
 - `SuiteResult.getErrorMessages()` → returns joined string
