@@ -352,4 +352,25 @@ class StepConfigureTest {
         assertEquals(true, map.get("headless"));
     }
 
+    @Test
+    void testConfigureAfterFeature() {
+        // Test that configure afterFeature is accepted (no error)
+        KarateConfig config = new KarateConfig();
+        config.configure("afterFeature", "function() { }");
+        assertNotNull(config.getAfterFeature());
+    }
+
+    @Test
+    void testAfterFeatureInConfig() {
+        // Verify afterFeature is accessible via karate.config
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * configure afterFeature = function() { karate.log('hook called') }
+            * def cfg = karate.config
+            * match cfg.afterFeature == '#present'
+            """);
+        assertPassed(sr);
+    }
+
 }

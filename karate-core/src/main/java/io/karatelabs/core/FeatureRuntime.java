@@ -139,6 +139,11 @@ public class FeatureRuntime implements Callable<FeatureResult> {
                 }
             }
 
+            // Invoke configured afterFeature hook if present (only for top-level features)
+            if (lastExecuted != null && caller == null) {
+                invokeAfterFeatureHook(lastExecuted);
+            }
+
             // Fire FEATURE_EXIT event (RuntimeHookAdapter calls afterFeature)
             if (suite != null) {
                 suite.fireEvent(FeatureRunEvent.exit(this, result));
@@ -155,6 +160,22 @@ public class FeatureRuntime implements Callable<FeatureResult> {
         }
 
         return result;
+    }
+
+    /**
+     * Invokes the configured afterFeature hook if present.
+     * Uses the last executed scenario's runtime context.
+     */
+    private void invokeAfterFeatureHook(ScenarioRuntime sr) {
+        KarateConfig config = sr.getConfig();
+        Object afterFeature = config.getAfterFeature();
+        if (afterFeature instanceof JsCallable callable) {
+            try {
+                callable.call(null);
+            } catch (Exception e) {
+                logger.warn("afterFeature hook failed: {}", e.getMessage());
+            }
+        }
     }
 
     /**

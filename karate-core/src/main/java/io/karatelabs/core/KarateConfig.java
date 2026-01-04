@@ -85,7 +85,7 @@ public class KarateConfig implements SimpleObject {
             // NTLM Auth
             "ntlmUsername", "ntlmPassword", "ntlmDomain", "ntlmWorkstation",
             // Mock settings
-            "corsEnabled", "responseHeaders", "afterScenario",
+            "corsEnabled", "responseHeaders", "afterScenario", "afterFeature",
             // Driver
             "driverConfig"
     );
@@ -154,6 +154,7 @@ public class KarateConfig implements SimpleObject {
     private boolean corsEnabled;
     private Object responseHeaders;  // Map<String,Object> or JS function
     private Object afterScenario;    // Invokable - hook called after each scenario
+    private Object afterFeature;     // Invokable - hook called after feature completes
 
     // Driver configuration (Map or DriverOptions)
     private Object driverConfig;
@@ -220,6 +221,7 @@ public class KarateConfig implements SimpleObject {
         copy.corsEnabled = this.corsEnabled;
         copy.responseHeaders = this.responseHeaders;
         copy.afterScenario = this.afterScenario;
+        copy.afterFeature = this.afterFeature;
         // Driver
         copy.driverConfig = this.driverConfig;
         return copy;
@@ -343,6 +345,10 @@ public class KarateConfig implements SimpleObject {
             }
             case "afterScenario" -> {
                 this.afterScenario = value;
+                yield false;
+            }
+            case "afterFeature" -> {
+                this.afterFeature = value;
                 yield false;
             }
 
@@ -568,6 +574,7 @@ public class KarateConfig implements SimpleObject {
             case "corsEnabled" -> corsEnabled;
             case "responseHeaders" -> responseHeaders;
             case "afterScenario" -> afterScenario;
+            case "afterFeature" -> afterFeature;
             case "driverConfig" -> driverConfig;
             default -> null;
         };
@@ -745,6 +752,10 @@ public class KarateConfig implements SimpleObject {
 
     public Object getAfterScenario() {
         return afterScenario;
+    }
+
+    public Object getAfterFeature() {
+        return afterFeature;
     }
 
     public Object getDriverConfig() {

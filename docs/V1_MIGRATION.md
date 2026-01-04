@@ -49,6 +49,7 @@ Fixed docstring parser failing when closing `"""` has trailing spaces.
 - **JsonPath deep-scan**: `response..username` deep-scan syntax now works in match expressions
 - **Multipart files map**: `multipart files { key1: {...}, key2: {...} }` map syntax works (keys become part names)
 - **Scenario outline empty cells**: Empty cells in Examples table with type hints (e.g., `active!`) now become `null`
+- **Configure afterFeature**: `configure afterFeature = function() {...}` now supported
 
 ## Pending
 
