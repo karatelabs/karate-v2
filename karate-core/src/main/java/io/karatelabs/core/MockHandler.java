@@ -354,6 +354,9 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
         // Set current request - lazy Suppliers and matcher functions read from this field
         this.currentRequest = request;
 
+        // Parse multipart/form-urlencoded body so fields are available in requestParams
+        request.processBody();
+
         // Set all globals
         for (Map.Entry<String, Object> entry : globals.entrySet()) {
             engine.put(entry.getKey(), entry.getValue());

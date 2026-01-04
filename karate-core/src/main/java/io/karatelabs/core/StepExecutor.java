@@ -1937,6 +1937,7 @@ public class StepExecutor {
 
     /**
      * Handles: multipart fields { name: 'value', other: 'data' }
+     * V1 behavior: if field value is a map with 'value' key, merge it (not nest it)
      */
     @SuppressWarnings("unchecked")
     private void executeMultipartFields(Step step) {
@@ -1946,7 +1947,13 @@ public class StepExecutor {
             for (Map.Entry<String, Object> entry : fields.entrySet()) {
                 Map<String, Object> multipartMap = new HashMap<>();
                 multipartMap.put("name", entry.getKey());
-                multipartMap.put("value", entry.getValue());
+                Object fieldValue = entry.getValue();
+                if (fieldValue instanceof Map) {
+                    // V1 behavior: merge map fields (e.g., { value: 'x', contentType: 'y' })
+                    multipartMap.putAll((Map<String, Object>) fieldValue);
+                } else {
+                    multipartMap.put("value", fieldValue);
+                }
                 http().multiPart(multipartMap);
             }
         } else {

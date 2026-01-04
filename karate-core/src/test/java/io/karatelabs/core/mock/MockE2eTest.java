@@ -215,6 +215,14 @@ class MockE2eTest {
             Scenario: pathMatches('/multipart/fields')
               * def response = { success: true }
 
+            Scenario: pathMatches('/multipart/json-value')
+              # After processBody(), multipart field values are in requestParams
+              * def msgVal = requestParams.message ? requestParams.message[0] : null
+              * def jsonVal = requestParams.json ? requestParams.json[0] : null
+              # Parse JSON string back to object
+              * def jsonObj = jsonVal ? karate.fromJson(jsonVal) : null
+              * def response = { message: msgVal, json: jsonObj }
+
             # ===== Empty/no-headers scenarios =====
 
             Scenario: pathMatches('/noheaders')
@@ -731,6 +739,25 @@ class MockE2eTest {
             * method post
             * status 200
             * match response == { success: true }
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMultipartFieldsWithJsonValue() {
+        // V1 behavior: { value: { foo: 'bar' } } should extract the value, not nest it
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Multipart JSON Value
+
+            Scenario: Multipart fields with JSON value
+            * url 'http://localhost:%d'
+            * path '/multipart/json-value'
+            * multipart fields { message: 'hello', json: { value: { foo: 'bar' } } }
+            * method post
+            * status 200
+            # V1 behavior: json field should be { foo: 'bar' }, not { value: { foo: 'bar' } }
+            * match response == { message: 'hello', json: { foo: 'bar' } }
             """.formatted(port));
 
         assertPassed(sr);
