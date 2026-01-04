@@ -83,6 +83,32 @@ public final class Runner {
         return new Builder();
     }
 
+    /**
+     * Execute a single feature with pre-defined variables.
+     * This is called by karate-gatling for running features with Gatling session variables.
+     *
+     * @param path the feature path (can be classpath: prefixed)
+     * @param arg  variables to inject into the feature (available as top-level variables)
+     * @return the feature result
+     */
+    public static FeatureResult runFeature(String path, Map<String, Object> arg) {
+        Resource resource = Resource.path(path);
+        Feature feature = Feature.read(resource);
+
+        // Create and configure the suite
+        Suite suite = Suite.of(feature)
+                .outputHtmlReport(false)
+                .outputConsoleSummary(false)
+                .writeReport(false);
+
+        // Initialize the suite (loads karate-config.js)
+        suite.init();
+
+        // Run the feature with the arg map
+        FeatureRuntime fr = new FeatureRuntime(suite, feature, null, null, false, arg, null);
+        return fr.call();
+    }
+
     // ========== Builder ==========
 
     public static class Builder {

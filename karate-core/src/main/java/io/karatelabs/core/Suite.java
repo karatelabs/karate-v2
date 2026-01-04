@@ -392,6 +392,14 @@ public class Suite {
         return null;
     }
 
+    /**
+     * Initialize the suite without running tests.
+     * Loads karate-config.js and karate-base.js.
+     * This is used by karate-gatling for running features with pre-loaded config.
+     */
+    public void init() {
+        loadConfig();
+    }
 
     public SuiteResult run() {
         result = new SuiteResult();

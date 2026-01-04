@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.karatelabs</groupId>
+        <artifactId>karate-parent</artifactId>
+        <version>2.0.0.RC1</version>
+    </parent>
+
+    <artifactId>karate-gatling</artifactId>
+    <packaging>jar</packaging>
+    <name>${project.artifactId}</name>
+    <description>Karate integration with Gatling for performance testing</description>
+
+    <properties>
+        <gatling.version>3.12.0</gatling.version>
+        <scala.version>3.4.0</scala.version>
+    </properties>
+
+    <dependencies>
+        <!-- Karate -->
+        <dependency>
+            <groupId>io.karatelabs</groupId>
+            <artifactId>karate-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Gatling 3.12.x -->
+        <dependency>
+            <groupId>io.gatling</groupId>
+            <artifactId>gatling-core-java</artifactId>
+            <version>${gatling.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.gatling.highcharts</groupId>
+            <artifactId>gatling-charts-highcharts</artifactId>
+            <version>${gatling.version}</version>
+        </dependency>
+
+        <!-- Scala 3 (required by Gatling) -->
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala3-library_3</artifactId>
+            <version>${scala.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Scala 3 compiler (for Gatling compatibility) -->
+            <plugin>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
+                <version>4.9.0</version>
+                <configuration>
+                    <scalaVersion>${scala.version}</scalaVersion>
+                </configuration>
+            </plugin>
+
+            <!-- Gatling Maven plugin -->
+            <plugin>
+                <groupId>io.gatling</groupId>
+                <artifactId>gatling-maven-plugin</artifactId>
+                <version>4.9.0</version>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!-- Bundle profile for creating standalone JAR -->
+        <profile>
+            <id>bundle</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-shade-plugin</artifactId>
+                        <version>3.6.1</version>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>shade</goal>
+                                </goals>
+                                <configuration>
+                                    <finalName>karate-gatling-bundle</finalName>
+                                    <artifactSet>
+                                        <includes>
+                                            <include>io.karatelabs:karate-gatling</include>
+                                            <include>io.gatling:*</include>
+                                            <include>io.gatling.highcharts:*</include>
+                                            <include>org.scala-lang:*</include>
+                                        </includes>
+                                        <excludes>
+                                            <!-- Don't include karate-core - user already has it -->
+                                            <exclude>io.karatelabs:karate-core</exclude>
+                                            <exclude>io.karatelabs:karate-js</exclude>
+                                        </excludes>
+                                    </artifactSet>
+                                    <transformers>
+                                        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                    </transformers>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+</project>

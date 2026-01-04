@@ -1666,10 +1666,17 @@ public class StepExecutor {
 
     private void executeRequest(Step step) {
         Object body;
+        String expr;
         if (step.getDocString() != null) {
-            body = runtime.eval(step.getDocString());
+            expr = step.getDocString();
         } else {
-            body = runtime.eval(step.getText());
+            expr = step.getText();
+        }
+        body = runtime.eval(expr);
+        // Process embedded expressions for JSON/JS object literals
+        boolean isLiteral = expr.trim().startsWith("{") || expr.trim().startsWith("[");
+        if (isLiteral && (body instanceof Map || body instanceof List)) {
+            body = processEmbeddedExpressions(body);
         }
         http().body(body);
     }

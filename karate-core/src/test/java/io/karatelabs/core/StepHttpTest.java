@@ -23,6 +23,7 @@
  */
 package io.karatelabs.core;
 
+import io.karatelabs.common.Json;
 import io.karatelabs.http.HttpResponse;
 import org.junit.jupiter.api.Test;
 
@@ -126,6 +127,26 @@ class StepHttpTest {
             * method post
             * status 200
             * match response.received == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testRequestWithEmbeddedExpressions() {
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            // Echo back the request body to verify embedded expressions were resolved
+            Object body = req.getBodyConverted();
+            return json(Json.stringifyStrict(body));
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * def myName = 'John'
+            * def myAge = 30
+            * request { name: '#(myName)', age: '#(myAge)' }
+            * method post
+            * status 200
+            * match response == { name: 'John', age: 30 }
             """);
         assertPassed(sr);
     }

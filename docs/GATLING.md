@@ -580,19 +580,19 @@ This approach validates both karate-gatling and v2's mock server under load.
 ## 7. Features Checklist (V1 Parity)
 
 ### Core Features
-- [ ] `karateProtocol()` with URI patterns
-- [ ] `karateFeature()` with tag selection
-- [ ] `karateSet()` for variable injection
-- [ ] `pauseFor()` method-specific pauses
-- [ ] Custom `nameResolver`
+- [x] `karateProtocol()` with URI patterns
+- [x] `karateFeature()` with tag selection
+- [x] `karateSet()` for variable injection
+- [x] `pauseFor()` method-specific pauses
+- [x] Custom `nameResolver`
 - [ ] `Runner.Builder` exposure via `protocol.runner()`
-- [ ] Silent mode (`.silent()`)
+- [x] Silent mode (`.silent()`)
 
 ### Session Management
-- [ ] `__gatling` map passed to Karate
-- [ ] `__karate` map returned to Gatling
-- [ ] Feature variable chaining
-- [ ] Feeder integration
+- [x] `__gatling` map passed to Karate
+- [x] `__karate` map returned to Gatling
+- [x] Feature variable chaining
+- [x] Feeder integration
 
 ### Metrics & Reporting
 - [ ] HTTP request timing to Gatling StatsEngine
@@ -608,7 +608,7 @@ This approach validates both karate-gatling and v2's mock server under load.
 - [ ] `karateEnv` via Runner.Builder
 - [ ] `configDir` via Runner.Builder
 - [ ] `systemProperty` via Runner.Builder
-- [ ] Tag filtering
+- [x] Tag filtering
 
 ---
 
@@ -619,22 +619,25 @@ This approach validates both karate-gatling and v2's mock server under load.
 - ✅ callOnce race condition fixed (ReentrantLock)
 - ✅ callOnce scope fixed (feature-level)
 
-### Phase 1: Foundation
+### Phase 1: Foundation ✅ COMPLETE
 3. Create `karate-gatling` module with pom.xml
 4. Implement `KarateProtocol` and `KarateProtocolBuilder`
 5. Implement `MethodPause` and `KarateUriPattern`
 
-### Phase 2: Core Actions
-6. Implement `KarateFeatureAction` with PerfHook integration
+### Phase 2: Core Actions ✅ COMPLETE
+6. Implement `KarateFeatureAction` with Runner.runFeature integration
 7. Implement `KarateFeatureBuilder` with `.silent()`
 8. Implement `KarateSetAction` and builder
 9. Implement `KarateDsl` public API
-10. Implement `PooledHttpClientFactory` for Gatling
+10. ~~Implement `PooledHttpClientFactory` for Gatling~~ (deferred - use default client first)
 
-### Phase 3: Testing
-11. Create mock server using v2 Server class
+### Phase 3: Testing ✅ COMPLETE
+11. Create mock server using v2 MockServer class
 12. Port test features (simplified)
 13. Create `GatlingSimulation` comprehensive test
+14. Add `Runner.runFeature(path, arg)` to karate-core
+15. Add `Suite.init()` for config loading
+16. Fix embedded expressions in request body (`StepExecutor.java`)
 
 ### Phase 4: Polish
 14. Port README.md with updated examples (Java-only, no Scala DSL)
@@ -1187,3 +1190,127 @@ When `.silent()` is set on a `karateFeature()`:
 - **Feature execution**: Runs normally, just invisible to reports
 
 Use for warm-up scenarios before actual load test.
+
+---
+
+## 15. Implementation Progress
+
+### 15.1 Current Status
+
+**Phase 1: Foundation - COMPLETE** ✅
+
+| File | Status | Notes |
+|------|--------|-------|
+| `pom.xml` | ✅ Done | Gatling 3.12.0, Scala runtime deps |
+| `MethodPause.java` | ✅ Done | Simple record for method/pause |
+| `KarateUriPattern.java` | ✅ Done | URI pattern with Builder |
+| `KarateProtocol.java` | ✅ Done | Implements `io.gatling.core.protocol.Protocol` |
+| `KarateProtocolBuilder.java` | ✅ Done | Protocol DSL builder |
+| `KarateFeatureAction.java` | ✅ Done | Feature execution logic using v2 Suite API |
+| `KarateFeatureBuilder.java` | ✅ Done | ActionBuilder with SessionHookBuilder |
+| `KarateSetAction.java` | ✅ Done | Session variable setter |
+| `KarateSetBuilder.java` | ✅ Done | ActionBuilder with SessionHookBuilder |
+| `KarateDsl.java` | ✅ Done | Public API entry point |
+| Parent `pom.xml` | ✅ Done | Module added |
+
+**Module compiles successfully with `mvn compile`**
+
+### 15.2 Scala Interop Solution
+
+**Problem Solved:** Gatling's `ActionBuilder.asScala()` requires returning a Scala `ActionBuilder`. The solution uses Gatling's `SessionHookBuilder` with direct instantiation of Scala `Success` case class.
+
+**Implementation Pattern:**
+```java
+@Override
+public io.gatling.core.action.builder.ActionBuilder asScala() {
+    Function<Session, Session> sessionFunc = toSessionFunction();
+    // Create Scala Function1 that wraps Java function
+    scala.Function1<io.gatling.core.session.Session,
+                    io.gatling.commons.validation.Validation<io.gatling.core.session.Session>> scalaFunc =
+            scalaSession -> {
+                Session javaSession = new Session(scalaSession);
+                Session result = sessionFunc.apply(javaSession);
+                // Direct instantiation of Scala Success case class
+                return new io.gatling.commons.validation.Success<>(result.asScala());
+            };
+    return new io.gatling.core.action.builder.SessionHookBuilder(scalaFunc, true);
+}
+```
+
+**Key insight:** While Scala companion object methods like `Validation.success()` are not accessible from Java, the `Success` case class has a public constructor that works from Java.
+
+### 15.3 Files Created
+
+```
+karate-v2/karate-gatling/
+├── pom.xml                    # Maven module config
+└── src/main/java/io/karatelabs/gatling/
+    ├── KarateDsl.java           # Public API entry point
+    ├── KarateProtocol.java      # Protocol with URI pattern matching
+    ├── KarateProtocolBuilder.java
+    ├── KarateUriPattern.java    # URI pattern + pause config
+    ├── MethodPause.java         # Method/pause record
+    ├── KarateFeatureAction.java # Feature execution via v2 Suite
+    ├── KarateFeatureBuilder.java # ActionBuilder implementation
+    ├── KarateSetAction.java     # Session variable logic
+    └── KarateSetBuilder.java    # ActionBuilder implementation
+```
+
+### 15.4 Phase 3: Testing - COMPLETE ✅
+
+| File | Status | Notes |
+|------|--------|-------|
+| `CatsMockServer.java` | ✅ Done | Uses v2 MockServer with feature-based mock |
+| `GatlingSimulation.java` | ✅ Done | Comprehensive test with feeders, chaining, silent mode |
+| `EngineBindingsTest.java` | ✅ Done | Unit tests for Runner.runFeature with arg map |
+| `karate-config.js` | ✅ Done | Test config with mock port |
+| `logback-test.xml` | ✅ Done | Reduced logging for Gatling |
+| `mock/cats-mock.feature` | ✅ Done | CRUD mock for /cats endpoint |
+| `features/cats-crud.feature` | ✅ Done | Basic CRUD operations |
+| `features/cats-create.feature` | ✅ Done | Create with __gatling variables |
+| `features/cats-read.feature` | ✅ Done | Read with __karate variables |
+| `features/test-arg.feature` | ✅ Done | Variable accessibility test |
+
+### 15.5 karate-core Changes for Gatling
+
+| Change | File | Notes |
+|--------|------|-------|
+| `Runner.runFeature(path, arg)` | `Runner.java` | Static method for Gatling to run features with variables |
+| `Suite.init()` | `Suite.java` | Load config without running tests |
+| Embedded expressions in request | `StepExecutor.java` | Fixed: `request { name: '#(var)' }` now resolves |
+| Test for request expressions | `StepHttpTest.java` | Added `testRequestWithEmbeddedExpressions()` |
+
+**Bug Fixed:** `executeRequest()` was not calling `processEmbeddedExpressions()` for JSON literals, causing `#(varName)` to be sent as literal strings.
+
+### 15.6 Variable Flow Implementation
+
+Variables are passed from Gatling to Karate via the `arg` map:
+
+```
+Gatling Session                    Runner.runFeature(path, arg)
+─────────────────                  ────────────────────────────
+karateSet("name", ...)       →     arg["__gatling"]["name"]
+karateSet("age", ...)        →     arg["__gatling"]["age"]
+
+FeatureRuntime(callArg=arg)  →     ScenarioRuntime.initEngine()
+                                   └─ engine.put("__gatling", ...)
+                                   └─ engine.put("__karate", ...)
+
+Feature access:
+  * def name = __gatling.name    ✅ Works
+  * request { name: '#(name)' }  ✅ Works (after fix)
+```
+
+### 15.7 Next Steps
+
+1. **Add HTTP-level metrics** via karate-core PerfHook integration
+   - Currently features execute but don't report timing to Gatling StatsEngine
+   - Need to integrate PerfHook.reportPerfEvent() with StatsEngine.logResponse()
+
+2. **Run full Gatling simulation** via `mvn gatling:test`
+   - Verify HTML reports are generated
+   - Verify request timing appears in reports
+
+3. **Port README.md** with Java-only examples
+
+4. **Phase 4-6** as documented above
