@@ -53,7 +53,9 @@ Fixed docstring parser failing when closing `"""` has trailing spaces.
 
 ### 1. Test Failures
 Tests run but some fail - need investigation:
-- Scenario outline placeholder substitution with empty values from Examples table
+- **Scenario outline empty cells**: Empty cells in Examples table with type hints (e.g., `active!`) should become `null`
+  - File: `demo/outline/examples.feature` lines 35-40
+  - Empty cells like `| bar |  |  | 5 |` should substitute as `null` not empty string
 - Some match assertions
 
 ### 2. API Improvements to Consider
