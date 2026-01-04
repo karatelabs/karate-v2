@@ -38,12 +38,20 @@ All imports updated: `com.intuit.karate.*` → `io.karatelabs.core.*`
 ### 5. Lexer Fix (karate-v2)
 Fixed docstring parser failing when closing `"""` has trailing spaces.
 
+### 6. V1 Compatibility Fixes (karate-v2)
+- **Match header expression**: `match header Content-Type contains '...'` now works
+  - Hyphenated identifiers supported in match expressions
+  - Case-insensitive header lookup
+- **Cookie map value**: `cookie foo = { value: 'bar', domain: '.abc.com' }` extracts value correctly
+- **Multipart fields**: `multipart fields { json: { value: {...} } }` merges map values instead of nesting
+- **Java interop static getters**: `Base64.encoder` works (calls `getEncoder()`)
+- **Null params**: `params { name: 'foo', country: null }` skips null values instead of NPE
+
 ## Pending
 
 ### 1. Test Failures
 Tests run but some fail - need investigation:
-- Multipart file handling differences
-- Cookie/session handling
+- Scenario outline placeholder substitution with empty values from Examples table
 - Some match assertions
 
 ### 2. API Improvements to Consider
