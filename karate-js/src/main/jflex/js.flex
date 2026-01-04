@@ -274,6 +274,9 @@ GM_TAG = "@" {NOT_WSLF}+
 
 <GS_DOC_STRING> {
   {GM_TRIPLE_QUOTE}             { yybegin(GHERKIN); return G_TRIPLE_QUOTE; }
-  {NOT_LF}+                     { return G_EXPR; }
+  // Match content without quotes, or 1-2 quotes (not triple)
+  // This prevents {NOT_LF}+ from matching """ as part of longer content
+  [^\n\"]+                      { return G_EXPR; }
+  \"\"?                         { return G_EXPR; }
   {WS_ONE_LF}                   { return WS_LF; }
 }

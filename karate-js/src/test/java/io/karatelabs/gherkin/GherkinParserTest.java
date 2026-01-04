@@ -385,4 +385,52 @@ class GherkinParserTest {
         assertEquals("NOT_WITHIN", me.getMatchTypeName());
     }
 
+    @Test
+    void testDocStringWithJsonArray() {
+        feature("""
+                Feature: docstring test
+                Scenario: with json array
+                  * def expected =
+                  \"\"\"
+                  [
+                      { name: '#notnull' },
+                      { name: '#notnull' }
+                  ]
+                  \"\"\"
+                  * print expected
+                """);
+        assertNotNull(scenario);
+        assertEquals(2, scenario.getSteps().size());
+        Step step = scenario.getSteps().getFirst();
+        assertEquals("def", step.getKeyword());
+        assertNotNull(step.getDocString());
+        assertTrue(step.getDocString().contains("["));
+    }
+
+    @Test
+    void testDocStringWithTrailingSpaces() {
+        // Test that closing """ with trailing spaces is parsed correctly
+        // This was a bug where {NOT_LF}+ would match """ plus trailing chars
+        feature("""
+                Feature: docstring test
+                Scenario Outline: with trailing spaces
+                  * def expected =
+                  \"\"\"
+                  [
+                      { name: '#notnull' }
+                  ]
+                  \"\"\"
+                  Given path 'search'
+                Examples:
+                  | name |
+                  | foo  |
+                """);
+        assertNotNull(outline);
+        assertEquals(2, outline.getSteps().size());
+        Step step1 = outline.getSteps().get(0);
+        assertEquals("def", step1.getKeyword());
+        assertNotNull(step1.getDocString());
+        assertTrue(step1.getDocString().contains("["));
+    }
+
 }
