@@ -466,6 +466,59 @@ class OutlineTest {
         assertTrue(result.isPassed(), getFailureMessage(result));
     }
 
+    @Test
+    void testEmptyCellsWithTypeHintBecomeNull() throws Exception {
+        // V1 compatibility: empty cells with type hint (!) should become null
+        Path feature = tempDir.resolve("empty-typehint.feature");
+        Files.writeString(feature, """
+            Feature: Empty Cells with Type Hint
+
+            Scenario Outline: Test with value
+            * match value == expected
+
+            Examples:
+            | value! | expected! |
+            | 42     | 42        |
+            |        | null      |
+            | true   | true      |
+            """);
+
+        Suite suite = Suite.of(tempDir, feature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), getFailureMessage(result));
+        assertEquals(3, result.getScenarioCount());
+    }
+
+    @Test
+    void testEmptyCellsInParamsSkipped() throws Exception {
+        // V1 compatibility: empty cells with type hint should be null
+        Path feature = tempDir.resolve("empty-params.feature");
+        Files.writeString(feature, """
+            Feature: Empty Cells in Params
+
+            Scenario Outline: Search test
+            # Verify nulls are set correctly for empty cells with type hints
+            * match name == expectedName
+            * match country == expectedCountry
+            * match limit == expectedLimit
+
+            Examples:
+            | name | country | limit! | expectedName! | expectedCountry! | expectedLimit! |
+            | foo  | IN      |      5 | 'foo'         | 'IN'             | 5              |
+            | bar  |         |     10 | 'bar'         | null             | 10             |
+            | baz  |         |        | 'baz'         | null             | null           |
+            """);
+
+        Suite suite = Suite.of(tempDir, feature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), getFailureMessage(result));
+        assertEquals(3, result.getScenarioCount());
+    }
+
     // ========== Dynamic Outline Tests ==========
 
     @Test

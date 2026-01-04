@@ -48,15 +48,14 @@ Fixed docstring parser failing when closing `"""` has trailing spaces.
 - **Null params**: `params { name: 'foo', country: null }` skips null values instead of NPE
 - **JsonPath deep-scan**: `response..username` deep-scan syntax now works in match expressions
 - **Multipart files map**: `multipart files { key1: {...}, key2: {...} }` map syntax works (keys become part names)
+- **Scenario outline empty cells**: Empty cells in Examples table with type hints (e.g., `active!`) now become `null`
 
 ## Pending
 
 ### 1. Test Failures
 Tests run but some fail - need investigation:
-- **Scenario outline empty cells**: Empty cells in Examples table with type hints (e.g., `active!`) should become `null`
-  - File: `demo/outline/examples.feature` lines 35-40
-  - Empty cells like `| bar |  |  | 5 |` should substitute as `null` not empty string
 - Some match assertions
+- HTTP 500 errors (Spring Boot app issues, not karate-v2)
 
 ### 2. API Improvements to Consider
 Make migration easier by adding backwards-compat methods:

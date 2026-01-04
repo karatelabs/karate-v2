@@ -189,6 +189,10 @@ public class Table {
         try {
             switch (col.type) {
                 case EVALUATED:
+                    // Empty cells in EVALUATED columns should become null (V1 compatibility)
+                    if (StringUtils.isBlank(raw)) {
+                        return null;
+                    }
                     if (StringUtils.looksLikeJson(raw)) {
                         raw = '(' + raw + ')';
                     }
