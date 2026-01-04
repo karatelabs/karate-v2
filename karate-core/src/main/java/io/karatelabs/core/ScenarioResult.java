@@ -24,6 +24,7 @@
 package io.karatelabs.core;
 
 import io.karatelabs.gherkin.Scenario;
+import io.karatelabs.gherkin.Step;
 import io.karatelabs.gherkin.Tag;
 
 import java.util.ArrayList;
@@ -118,6 +119,25 @@ public class ScenarioResult implements Comparable<ScenarioResult> {
                 .findFirst()
                 .map(StepResult::getErrorMessage)
                 .orElse(null);
+    }
+
+    /**
+     * Get the failure message with feature file path and line number for display.
+     * Format: "path/to/feature.feature:LINE step text"
+     *
+     * @return formatted failure message, or null if no failure
+     */
+    public String getFailureMessageForDisplay() {
+        StepResult failedStep = stepResults.stream()
+                .filter(StepResult::isFailed)
+                .findFirst()
+                .orElse(null);
+        if (failedStep == null) {
+            return null;
+        }
+        Step step = failedStep.getStep();
+        String featurePath = scenario.getFeature().getResource().getRelativePath();
+        return featurePath + ":" + step.getLine() + " " + step.getText();
     }
 
     public Throwable getError() {

@@ -78,6 +78,11 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
 
     // Browser driver (lazily initialized)
     private Driver driver;
+
+    // Performance testing - tracks the previous HTTP request's perf event
+    // Events are held until the next HTTP request or scenario end, so that
+    // assertion failures can be attributed to the preceding HTTP request
+    private PerfEvent prevPerfEvent;
     private boolean driverFromProvider;  // true if driver came from provider (use release, not quit)
 
     public ScenarioRuntime(FeatureRuntime featureRuntime, Scenario scenario) {
@@ -732,6 +737,10 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         } finally {
             // Note: afterScenario is called via SCENARIO_EXIT event through RuntimeHookAdapter
 
+            // Report the last perf event (with any failure message including file:line info)
+            // This must happen before the scenario ends so Gatling receives all HTTP metrics
+            logLastPerfEvent(result.getFailureMessageForDisplay());
+
             // Close driver if it was initialized
             closeDriver();
 
@@ -1268,6 +1277,99 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
      */
     public Object getListenResult() {
         return listenResult;
+    }
+
+    // ========== Performance Testing (Gatling Integration) ==========
+
+    /**
+     * Check if performance mode is enabled.
+     * When true, HTTP request timing is reported via PerfHook.
+     */
+    public boolean isPerfMode() {
+        return featureRuntime != null
+                && featureRuntime.getSuite() != null
+                && featureRuntime.getSuite().isPerfMode();
+    }
+
+    /**
+     * Get the PerfHook for reporting performance events.
+     *
+     * @return the PerfHook or null if not in perf mode
+     */
+    public PerfHook getPerfHook() {
+        if (featureRuntime != null && featureRuntime.getSuite() != null) {
+            return featureRuntime.getSuite().getPerfHook();
+        }
+        return null;
+    }
+
+    /**
+     * Capture a performance event for the HTTP request just completed.
+     * <p>
+     * This implements the "deferred reporting" pattern from v1:
+     * - The previous event is reported first (if any)
+     * - The new event is held until the next HTTP request or scenario end
+     * - This allows assertion failures to be attributed to the preceding HTTP request
+     *
+     * @param event the performance event to capture
+     */
+    public void capturePerfEvent(PerfEvent event) {
+        // Report the previous event (if any) without failure
+        logLastPerfEvent(null);
+        // Hold this event for later
+        prevPerfEvent = event;
+    }
+
+    /**
+     * Log (report) the last captured performance event.
+     * <p>
+     * Called:
+     * 1. Before each new HTTP request (to report the previous one)
+     * 2. At scenario end (to report the final request, with any failure message)
+     * <p>
+     * If failureMessage is non-null, the event is marked as failed.
+     *
+     * @param failureMessage the failure message (null if successful)
+     */
+    public void logLastPerfEvent(String failureMessage) {
+        if (prevPerfEvent == null) {
+            return;
+        }
+        if (!isPerfMode()) {
+            prevPerfEvent = null;
+            return;
+        }
+        // Mark as failed if there's a failure message
+        if (failureMessage != null) {
+            prevPerfEvent.setFailed(true);
+            prevPerfEvent.setMessage(failureMessage);
+        }
+        // Report to PerfHook
+        PerfHook hook = getPerfHook();
+        if (hook != null) {
+            hook.reportPerfEvent(prevPerfEvent);
+        }
+        prevPerfEvent = null;
+    }
+
+    /**
+     * Capture a custom performance event (for non-HTTP operations like DB, gRPC).
+     * <p>
+     * Unlike HTTP events, custom events are reported immediately.
+     *
+     * @param name      the event name
+     * @param startTime start time in epoch milliseconds
+     * @param endTime   end time in epoch milliseconds
+     */
+    public void captureCustomPerfEvent(String name, long startTime, long endTime) {
+        if (!isPerfMode()) {
+            return;
+        }
+        PerfEvent event = new PerfEvent(startTime, endTime, name, 200);
+        PerfHook hook = getPerfHook();
+        if (hook != null) {
+            hook.reportPerfEvent(event);
+        }
     }
 
 }

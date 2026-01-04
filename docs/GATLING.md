@@ -6,7 +6,7 @@ This document describes the plan to port karate-gatling from v1 to karate-v2.
 
 | Decision | Choice |
 |----------|--------|
-| Gatling version | 3.12.x (latest stable) |
+| Gatling version | 3.13.x (latest stable) |
 | Scala version | 3.x only (no Scala DSL layer needed) |
 | Integration approach | v2 PerfHook + RunListener event system |
 | DSL strategy | Java-only DSL (Scala users use Java DSL directly) |
@@ -74,16 +74,16 @@ karate-v2/
         <version>${project.version}</version>
     </dependency>
 
-    <!-- Gatling 3.12.x -->
+    <!-- Gatling 3.13.x -->
     <dependency>
         <groupId>io.gatling</groupId>
         <artifactId>gatling-core-java</artifactId>
-        <version>3.12.0</version>
+        <version>3.13.5</version>
     </dependency>
     <dependency>
         <groupId>io.gatling.highcharts</groupId>
         <artifactId>gatling-charts-highcharts</artifactId>
-        <version>3.12.0</version>
+        <version>3.13.5</version>
     </dependency>
 
     <!-- Scala 3 (for Gatling compatibility) -->
@@ -110,7 +110,7 @@ karate-v2/
         <plugin>
             <groupId>io.gatling</groupId>
             <artifactId>gatling-maven-plugin</artifactId>
-            <version>4.9.0</version>
+            <version>4.20.16</version>
         </plugin>
     </plugins>
 </build>
@@ -595,10 +595,10 @@ This approach validates both karate-gatling and v2's mock server under load.
 - [x] Feeder integration
 
 ### Metrics & Reporting
-- [ ] HTTP request timing to Gatling StatsEngine
-- [ ] Status code reporting
-- [ ] Error message capture
-- [ ] Custom perf event capture (via JsCallable)
+- [x] HTTP request timing to Gatling StatsEngine
+- [x] Status code reporting
+- [x] Error message capture
+- [x] Custom perf event capture (via PerfContext)
 
 ### Caching
 - [ ] Leverage v2's `Suite.getCallSingleCache()`
@@ -1314,117 +1314,147 @@ Feature access:
 
 **Completed:**
 - ✅ Variable chaining between features works
-- ✅ Smoke simulation runs during `mvn test`
+- ✅ Smoke simulation runs during `mvn test` (with HTML reports)
 - ✅ DSL unit tests cover protocol, patterns, builders
 - ✅ Gatling assertions work (failedRequests.count, etc.)
 - ✅ Logging optimized for performance (TRACE/DEBUG levels)
+- ✅ HTTP-level metrics via PerfHook integration
+- ✅ URI pattern matching for request names (e.g., `GET /cats/{id}` instead of `GET /cats/2`)
+- ✅ Upgraded to Gatling 3.13.5 and gatling-maven-plugin 4.20.16
 
 **Remaining:**
 
-1. **Add HTTP-level metrics** via karate-core PerfHook integration
-   - Currently features execute but don't report timing to Gatling StatsEngine
-   - Gatling shows `OK=0 KO=0` because no requests are logged
-   - This is required for HTML reports with request timing
+1. **Phase 4: Polish**
+   - Port README.md with Java-only examples
+   - CI/CD integration
 
-2. **Port README.md** with Java-only examples
+2. **Phase 5: Standalone CLI Support**
+   - CommandProvider SPI for `karate perf` command
+   - Dynamic simulation generation from feature files
+   - Bundle JAR creation
 
-3. **Phase 4-6** as documented above
+3. **Phase 6: Profiling & Validation**
+   - Overhead comparison tests
+   - Memory leak detection under sustained load
+
+### 15.8 Phase 3.5: Comprehensive CICD Tests - COMPLETE ✅
+
+Combined load + validation tests for CI/CD pipelines. Replaces separate `load-test` profile.
+
+**Run:** `mvn verify -pl karate-gatling -Pcicd`
+
+**Test Scenarios:**
+
+| Scenario | Purpose | Load | Expected |
+|----------|---------|------|----------|
+| Warm-up | Silent warm-up | 1 user | No metrics |
+| CRUD Operations | Basic load test | 3 users ramp | 0% failures |
+| Chained Operations | Variable passing | 2 users ramp | 0% failures |
+| Java Interop | `PerfContext.capturePerfEvent()` | 2 users | 0% failures |
+| Error Handling | Karate assertion failure | 2 users | gte(1) failures |
+
+**Gatling Assertions:**
+- `GET /cats/{id}`: 0% HTTP failures
+- `POST /cats`: at least 1 failure (from Error Handling scenario)
+- Global: at least 8 requests (validates all scenarios ran)
+
+**Error Reporting:**
+When a Karate assertion fails, the error message in Gatling reports includes the feature file path and line number:
+```
+> cats-create-fail.feature:14 response.name == 'WRONG_NAME...'    2 (100%)
+```
+This matches v1 behavior and makes debugging failures easy.
+
+**Files:**
+- `GatlingCicdSimulation.java` - Combined CICD simulation
+- `TestUtils.java` - Java interop helper with `myRpc()`
+- `features/custom-rpc.feature` - Java interop test
+- `features/cats-create-fail.feature` - Intentional failure test
 
 ---
 
-## 16. PerfHook Integration (Next Priority)
+## 16. PerfHook Integration - COMPLETE ✅
 
-This section provides implementation guidance for wiring HTTP metrics to Gatling.
+HTTP metrics are now reported to Gatling's StatsEngine. The implementation follows the v1 pattern with a "deferred reporting" strategy where events are held until the next HTTP request or scenario end, allowing assertion failures to be attributed to the preceding HTTP request.
 
-### 16.1 Current Gap
+### 16.1 Architecture
 
-Features execute successfully but HTTP request timing is not reported to Gatling:
+**karate-core additions:**
+- `PerfHook.java` - Interface for performance metric reporting
+- `PerfEvent.java` - Data class for timing events
+- `PerfContext.java` - Interface for custom perf event capture (e.g., DB, gRPC)
+- `ScenarioRuntime` - Added `capturePerfEvent()` and `logLastPerfEvent()` methods
+- `StepExecutor` - Captures HTTP request timing in `executeMethod()`
+- `Runner.runFeature(path, arg, perfHook)` - Overload accepting PerfHook
+- `Suite.perfHook()` - Builder method to set PerfHook
+- `KarateJs` implements `PerfContext` for custom event capture
+
+**karate-gatling additions:**
+- `KarateScalaActions.scala` - Scala ActionBuilder and Action with StatsEngine access
+- `KarateFeatureBuilder.java` - Updated to use Scala ActionBuilder
+
+### 16.2 How It Works
+
+```
+Gatling executes scenario
+    └─> KarateScalaAction.execute(session)
+        └─> Creates PerfHook that reports to statsEngine
+        └─> Runner.runFeature(path, arg, perfHook)
+            └─> Suite.perfHook(hook)
+            └─> FeatureRuntime.call()
+                └─> ScenarioRuntime.call()
+                    └─> StepExecutor.executeMethod()
+                        └─> perfHook.getPerfEventName(request)
+                        └─> http().invoke(method)
+                        └─> runtime.capturePerfEvent(event)
+                    └─> [more steps...]
+                    └─> logLastPerfEvent(failureMessage)  // in finally block
+```
+
+### 16.3 Expected Output
+
+With PerfHook integration and URI pattern matching, Gatling groups requests by pattern:
+
 ```
 ---- Requests ------------------------------------------------------------------
-> Global                                                   (OK=0      KO=0     )
+> Global                                                   (OK=12     KO=2     )
+> POST /cats                                               (OK=5      KO=2     )
+> GET /cats/{id}                                           (OK=5      KO=0     )
+> custom-rpc                                               (OK=2      KO=0     )
+---- Errors --------------------------------------------------------------------
+> cats-create-fail.feature:14 response.name == 'WRONG...'  2 (100%)
 ```
 
-### 16.2 Required Changes
+Notes:
+- Requests to `/cats/1`, `/cats/2`, etc. are grouped under `GET /cats/{id}` when the pattern is configured in `karateProtocol(uri("/cats/{id}").nil())`
+- Failed assertions show the feature file path and line number for easy debugging
 
-**In karate-core:**
+### 16.4 Custom Performance Events
 
-1. Add `PerfHook` interface (similar to v1):
+The `PerfContext` interface allows capturing timing for non-HTTP operations:
+
 ```java
-// io/karatelabs/core/PerfHook.java
-public interface PerfHook {
-    String getPerfEventName(HttpRequest request, ScenarioRuntime runtime);
-    void reportPerfEvent(PerfEvent event);
-    void submit(Runnable task);  // For async execution model
+// In Java helper
+public static Object myDatabaseCall(Map args, PerfContext karate) {
+    long start = System.currentTimeMillis();
+    // ... database operation ...
+    long end = System.currentTimeMillis();
+    karate.capturePerfEvent("database-query", start, end);
+    return result;
 }
 ```
 
-2. Add `PerfEvent` record:
-```java
-// io/karatelabs/core/PerfEvent.java
-public record PerfEvent(
-    String name,
-    long startTime,
-    long endTime,
-    int statusCode,
-    boolean failed,
-    String errorMessage
-) {}
+```gherkin
+# In feature file
+* def result = Java.type('utils.DbHelper').myDatabaseCall({}, karate)
 ```
 
-3. Modify `KarateJs` or HTTP execution to call `PerfHook.reportPerfEvent()` after each HTTP request.
+### 16.5 Testing
 
-**In karate-gatling:**
-
-4. Create `GatlingPerfHook` that reports to Gatling's `StatsEngine`:
-```java
-public class GatlingPerfHook implements PerfHook {
-    private final StatsEngine statsEngine;
-    private final Session session;
-    private final KarateProtocol protocol;
-
-    @Override
-    public void reportPerfEvent(PerfEvent event) {
-        String requestName = protocol.resolveRequestName(...);
-        Status status = event.failed() ? Status.KO : Status.OK;
-
-        statsEngine.logResponse(
-            session.scenario(),
-            session.groups(),
-            requestName,
-            event.startTime(),
-            event.endTime(),
-            status,
-            Option.apply(String.valueOf(event.statusCode())),
-            event.errorMessage() != null
-                ? Option.apply(event.errorMessage())
-                : Option.empty()
-        );
-    }
-}
-```
-
-5. Pass `GatlingPerfHook` to feature execution in `KarateFeatureAction`.
-
-### 16.3 V1 Reference
-
-Key v1 files to reference:
-- `karate-gatling/src/main/scala/com/intuit/karate/gatling/KarateAction.scala` - PerfHook usage
-- `karate-core/src/main/java/com/intuit/karate/core/ScenarioRuntime.java` - perfHook integration
-
-### 16.4 Testing
-
-After implementation:
+Run Gatling tests:
 ```bash
-mvn gatling:test -pl karate-gatling
+mvn test -pl karate-gatling           # Smoke test (no reports)
+mvn verify -Pcicd -pl karate-gatling  # Full CICD test with HTML reports
 ```
 
-Expected output:
-```
----- Requests ------------------------------------------------------------------
-> Global                                                   (OK=8      KO=0     )
-> GET /cats                                                (OK=4      KO=0     )
-> POST /cats                                               (OK=2      KO=0     )
-> GET /cats/{id}                                           (OK=2      KO=0     )
-```
-
-HTML reports will be generated in `target/gatling/`.
+HTML reports are generated in `target/gatling/`.

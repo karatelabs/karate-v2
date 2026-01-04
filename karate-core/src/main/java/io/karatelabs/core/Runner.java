@@ -92,6 +92,21 @@ public final class Runner {
      * @return the feature result
      */
     public static FeatureResult runFeature(String path, Map<String, Object> arg) {
+        return runFeature(path, arg, null);
+    }
+
+    /**
+     * Run a single feature file with arguments and optional PerfHook.
+     * <p>
+     * This method is primarily used by Gatling integration for running features
+     * with performance metric collection.
+     *
+     * @param path     the feature path (can be classpath: prefixed)
+     * @param arg      variables to inject into the feature (available as top-level variables)
+     * @param perfHook optional PerfHook for performance metric collection (Gatling)
+     * @return the feature result
+     */
+    public static FeatureResult runFeature(String path, Map<String, Object> arg, PerfHook perfHook) {
         Resource resource = Resource.path(path);
         Feature feature = Feature.read(resource);
 
@@ -100,6 +115,11 @@ public final class Runner {
                 .outputHtmlReport(false)
                 .outputConsoleSummary(false)
                 .writeReport(false);
+
+        // Set PerfHook if provided (for Gatling integration)
+        if (perfHook != null) {
+            suite.perfHook(perfHook);
+        }
 
         // Initialize the suite (loads karate-config.js)
         suite.init();
@@ -112,6 +132,11 @@ public final class Runner {
         ScenarioRuntime lastExecuted = fr.getLastExecuted();
         if (lastExecuted != null) {
             result.setResultVariables(lastExecuted.getAllVariables());
+        }
+
+        // Notify PerfHook of feature completion
+        if (perfHook != null) {
+            perfHook.afterFeature(result);
         }
 
         return result;

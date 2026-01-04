@@ -16,7 +16,7 @@
     <description>Karate integration with Gatling for performance testing</description>
 
     <properties>
-        <gatling.version>3.12.0</gatling.version>
+        <gatling.version>3.13.5</gatling.version>
         <scala.version>3.4.0</scala.version>
     </properties>
 
@@ -51,6 +51,7 @@
     <build>
         <plugins>
             <!-- Scala 3 compiler (for Gatling compatibility) -->
+            <!-- Scala must compile before Java so Java can reference Scala classes -->
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
@@ -58,13 +59,30 @@
                 <configuration>
                     <scalaVersion>${scala.version}</scalaVersion>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>scala-compile-first</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>scala-test-compile</id>
+                        <phase>process-test-resources</phase>
+                        <goals>
+                            <goal>testCompile</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
 
             <!-- Gatling Maven plugin -->
             <plugin>
                 <groupId>io.gatling</groupId>
                 <artifactId>gatling-maven-plugin</artifactId>
-                <version>4.9.0</version>
+                <version>4.20.16</version>
                 <executions>
                     <!-- Smoke test runs during test phase -->
                     <execution>
@@ -75,7 +93,6 @@
                         </goals>
                         <configuration>
                             <simulationClass>io.karatelabs.gatling.GatlingSmokeSimulation</simulationClass>
-                            <noReports>true</noReports>
                         </configuration>
                     </execution>
                 </executions>
@@ -84,24 +101,24 @@
     </build>
 
     <profiles>
-        <!-- Load test profile for running full Gatling simulation with reports -->
+        <!-- CI/CD profile - comprehensive Gatling tests with reports -->
         <profile>
-            <id>load-test</id>
+            <id>cicd</id>
             <build>
                 <plugins>
                     <plugin>
                         <groupId>io.gatling</groupId>
                         <artifactId>gatling-maven-plugin</artifactId>
-                        <version>4.9.0</version>
+                        <version>4.20.16</version>
                         <executions>
                             <execution>
-                                <id>gatling-load-test</id>
+                                <id>gatling-cicd</id>
                                 <phase>integration-test</phase>
                                 <goals>
                                     <goal>test</goal>
                                 </goals>
                                 <configuration>
-                                    <simulationClass>io.karatelabs.gatling.GatlingSimulation</simulationClass>
+                                    <simulationClass>io.karatelabs.gatling.GatlingCicdSimulation</simulationClass>
                                 </configuration>
                             </execution>
                         </executions>

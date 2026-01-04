@@ -70,7 +70,7 @@ import java.util.function.Consumer;
  * @see KarateJsBase for state management and initialization
  * @see KarateJsContext for runtime context interface
  */
-public class KarateJs extends KarateJsBase {
+public class KarateJs extends KarateJsBase implements PerfContext {
 
     private final JsCallable read;
 
@@ -95,6 +95,30 @@ public class KarateJs extends KarateJsBase {
      */
     public void setPrevRequest(io.karatelabs.http.HttpRequest request) {
         this.prevRequest = request;
+    }
+
+    /**
+     * Capture a custom performance event (implements PerfContext).
+     * <p>
+     * When running under Gatling, this event will be reported to the
+     * statistics engine. When not in performance mode, this is a no-op.
+     * <p>
+     * Usage in Java helpers:
+     * <pre>
+     * public static Object myRpc(Map args, PerfContext karate) {
+     *     long start = System.currentTimeMillis();
+     *     // ... custom logic ...
+     *     long end = System.currentTimeMillis();
+     *     karate.capturePerfEvent("myRpc", start, end);
+     *     return result;
+     * }
+     * </pre>
+     */
+    @Override
+    public void capturePerfEvent(String name, long startTime, long endTime) {
+        if (context != null) {
+            context.getRuntime().captureCustomPerfEvent(name, startTime, endTime);
+        }
     }
 
     /**

@@ -1701,6 +1701,18 @@ public class StepExecutor {
             http().headers((Map<String, Object>) headersMap);
         }
 
+        // Get perf event name before request (if in perf mode)
+        String perfEventName = null;
+        if (runtime.isPerfMode()) {
+            // Set method on builder before building so request.getMethod() works
+            http().method(method);
+            HttpRequest builtRequest = http().build();
+            PerfHook perfHook = runtime.getPerfHook();
+            if (perfHook != null) {
+                perfEventName = perfHook.getPerfEventName(builtRequest, runtime);
+            }
+        }
+
         // Check for retry condition
         String retryUntil = http().getRetryUntil();
         HttpResponse response;
@@ -1716,6 +1728,17 @@ public class StepExecutor {
         }
 
         setResponseVariables(response);
+
+        // Capture perf event (if in perf mode)
+        if (perfEventName != null) {
+            PerfEvent perfEvent = new PerfEvent(
+                    response.getStartTime(),
+                    response.getStartTime() + response.getResponseTime(),
+                    perfEventName,
+                    response.getStatus()
+            );
+            runtime.capturePerfEvent(perfEvent);
+        }
 
         // Log HTTP request/response to context
         LogContext ctx = LogContext.get();

@@ -107,6 +107,9 @@ public class Suite {
     // Driver provider (manages driver lifecycle across scenarios)
     private DriverProvider driverProvider;
 
+    // Performance testing hook (for Gatling integration)
+    private PerfHook perfHook;
+
     private Suite() {
     }
 
@@ -788,6 +791,26 @@ public class Suite {
     public Suite driverProvider(DriverProvider provider) {
         this.driverProvider = provider;
         return this;
+    }
+
+    public PerfHook getPerfHook() {
+        return perfHook;
+    }
+
+    /**
+     * Set the performance hook for Gatling integration.
+     * When set, HTTP request timing will be reported via this hook.
+     */
+    public Suite perfHook(PerfHook hook) {
+        this.perfHook = hook;
+        return this;
+    }
+
+    /**
+     * Check if performance mode is enabled (perfHook is set).
+     */
+    public boolean isPerfMode() {
+        return perfHook != null;
     }
 
 }

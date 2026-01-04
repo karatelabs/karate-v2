@@ -108,14 +108,27 @@ public class KarateProtocol implements Protocol {
         if (path == null) {
             path = "/";
         }
+        return resolveName(path);
+    }
+
+    /**
+     * Resolve a path to a matching URI pattern name.
+     *
+     * @param path the request path
+     * @return the matching pattern or null if no match
+     */
+    public String resolveName(String path) {
+        if (path == null) {
+            return null;
+        }
         // Try to match against configured patterns
         for (String pattern : uriPatterns.keySet()) {
             if (pathMatches(pattern, path)) {
                 return pattern;
             }
         }
-        // No pattern match - return the path itself
-        return path;
+        // No pattern match - return null
+        return null;
     }
 
     /**

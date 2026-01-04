@@ -24,11 +24,11 @@
 package io.karatelabs.gatling;
 
 import io.gatling.javaapi.core.ActionBuilder;
-import io.gatling.javaapi.core.Session;
+import scala.collection.immutable.Seq;
+import scala.jdk.javaapi.CollectionConverters;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 
 /**
  * Builder for creating Karate feature execution actions.
@@ -51,6 +51,7 @@ public final class KarateFeatureBuilder implements ActionBuilder {
     private final List<String> featurePaths = new ArrayList<>();
     private final List<String> tags = new ArrayList<>();
     private boolean silent = false;
+    private KarateProtocol protocol;
 
     /**
      * Create a builder with the given feature paths.
@@ -91,29 +92,25 @@ public final class KarateFeatureBuilder implements ActionBuilder {
     }
 
     /**
-     * Convert to a session function for use with Gatling's exec().
+     * Set the protocol for URI pattern matching and name resolution.
+     * This is typically called internally by the DSL.
+     *
+     * @param protocol the KarateProtocol
+     * @return this builder
      */
-    public Function<Session, Session> toSessionFunction() {
-        KarateFeatureAction action = new KarateFeatureAction(
-                featurePaths.toArray(new String[0]),
-                tags.toArray(new String[0]),
-                silent
-        );
-        return action.toSessionFunction();
+    public KarateFeatureBuilder protocol(KarateProtocol protocol) {
+        this.protocol = protocol;
+        return this;
     }
 
     @Override
     public io.gatling.core.action.builder.ActionBuilder asScala() {
-        // Use Gatling's session hook approach
-        Function<Session, Session> sessionFunc = toSessionFunction();
-        // Convert Java function to Scala function that returns Validation[Session]
-        scala.Function1<io.gatling.core.session.Session, io.gatling.commons.validation.Validation<io.gatling.core.session.Session>> scalaFunc =
-                scalaSession -> {
-                    Session javaSession = new Session(scalaSession);
-                    Session result = sessionFunc.apply(javaSession);
-                    return new io.gatling.commons.validation.Success<>(result.asScala());
-                };
-        return new io.gatling.core.action.builder.SessionHookBuilder(scalaFunc, true);
+        // Convert Java lists to Scala Seqs
+        Seq<String> scalaPaths = CollectionConverters.asScala(featurePaths).toSeq();
+        Seq<String> scalaTags = CollectionConverters.asScala(tags).toSeq();
+
+        // Create the Scala ActionBuilder that provides access to StatsEngine
+        return new KarateScalaActionBuilder(scalaPaths, scalaTags, protocol, silent);
     }
 
 }
