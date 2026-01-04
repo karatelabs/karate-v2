@@ -292,6 +292,27 @@ class StepHttpTest {
     }
 
     @Test
+    void testCookieWithMapValue() {
+        // V1 supports cookie with map value: cookie foo = { value: 'bar' }
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String cookie = req.getHeader("Cookie");
+            if (cookie != null && cookie.contains("foo=bar")) {
+                return json("{ \"ok\": true }");
+            }
+            return json("{ \"cookie\": \"" + cookie + "\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * cookie foo = { value: 'bar' }
+            * method get
+            * status 200
+            * match response.ok == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
     void testResponseCookies() {
         InMemoryHttpClient client = new InMemoryHttpClient(req -> {
             HttpResponse resp = json("{ \"ok\": true }");

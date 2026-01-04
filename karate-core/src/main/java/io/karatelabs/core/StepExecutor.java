@@ -1634,13 +1634,21 @@ public class StepExecutor {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void executeCookie(Step step) {
         // Cookies are accumulated in HttpRequestBuilder and combined when request is built
         String text = step.getText();
         int eqIndex = StepUtils.findAssignmentOperator(text);
         String name = text.substring(0, eqIndex).trim();
         Object value = runtime.eval(text.substring(eqIndex + 1).trim());
-        http().cookie(name, value.toString());
+        if (value instanceof Map) {
+            // V1 behavior: cookie foo = { value: 'bar', domain: '.abc.com' }
+            Map<String, Object> map = (Map<String, Object>) value;
+            map.put("name", name);
+            http().cookie(map);
+        } else {
+            http().cookie(name, value.toString());
+        }
     }
 
     @SuppressWarnings("unchecked")
