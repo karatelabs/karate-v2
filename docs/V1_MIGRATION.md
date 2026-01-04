@@ -51,6 +51,7 @@ Fixed docstring parser failing when closing `"""` has trailing spaces.
 - **Scenario outline empty cells**: Empty cells in Examples table with type hints (e.g., `active!`) now become `null`
 - **Configure afterFeature**: `configure afterFeature = function() {...}` now supported
 - **Configure afterScenarioOutline**: `configure afterScenarioOutline = function() {...}` now supported
+- **Binary file handling**: `read('file.pdf')` returns `byte[]` for binary files; `response` for binary content-type also returns `byte[]`
 
 ## Pending
 
@@ -71,10 +72,12 @@ The following fixes have been applied locally but NOT committed (to preserve cle
 - Update test expectations: `domain: '.abc.com'` → `domain: 'abc.com'`
 
 ### 2. Remaining Test Failures
-After Spring Boot 3 fixes, still have:
-- HTTP 400 errors - likely request validation issues
-- HTTP 403 errors - CSRF not disabled for all endpoints (check WebSecurityConfig)
-- Some match assertions failing
+Current status after fixes: **163/201 scenarios passing (81%)**
+
+Remaining issues:
+- Headers tests failing (HTTP 400) - `configure headers` or cookie auto-send not working
+- Some upload tests - minor issues
+- callonce/calltable tests - possible `callSingle` issues
 
 ### 3. API Improvements to Consider
 Make migration easier by adding backwards-compat methods:
