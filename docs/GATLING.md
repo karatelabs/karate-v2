@@ -1262,6 +1262,8 @@ karate-v2/karate-gatling/
 |------|--------|-------|
 | `CatsMockServer.java` | ✅ Done | Uses v2 MockServer with feature-based mock |
 | `GatlingSimulation.java` | ✅ Done | Comprehensive test with feeders, chaining, silent mode |
+| `GatlingSmokeSimulation.java` | ✅ Done | Smoke test runs during `mvn test` with assertions |
+| `GatlingDslTest.java` | ✅ Done | DSL unit tests (protocol, patterns, builders) |
 | `EngineBindingsTest.java` | ✅ Done | Unit tests for Runner.runFeature with arg map |
 | `karate-config.js` | ✅ Done | Test config with mock port |
 | `logback-test.xml` | ✅ Done | Reduced logging for Gatling |
@@ -1271,16 +1273,23 @@ karate-v2/karate-gatling/
 | `features/cats-read.feature` | ✅ Done | Read with __karate variables |
 | `features/test-arg.feature` | ✅ Done | Variable accessibility test |
 
+**Maven Integration:**
+- `mvn test` runs JUnit tests + Gatling smoke simulation (no reports)
+- `mvn verify -Pload-test` runs full Gatling simulation with HTML reports
+
 ### 15.5 karate-core Changes for Gatling
 
 | Change | File | Notes |
 |--------|------|-------|
 | `Runner.runFeature(path, arg)` | `Runner.java` | Static method for Gatling to run features with variables |
+| Result variables capture | `Runner.java` | Captures last scenario's variables for chaining |
 | `Suite.init()` | `Suite.java` | Load config without running tests |
 | Embedded expressions in request | `StepExecutor.java` | Fixed: `request { name: '#(var)' }` now resolves |
 | Test for request expressions | `StepHttpTest.java` | Added `testRequestWithEmbeddedExpressions()` |
 
 **Bug Fixed:** `executeRequest()` was not calling `processEmbeddedExpressions()` for JSON literals, causing `#(varName)` to be sent as literal strings.
+
+**Variable Chaining Fixed:** `Runner.runFeature()` now captures result variables from the last executed scenario and sets them on `FeatureResult.resultVariables`. This enables `__karate` to pass variables between features in a Gatling chain.
 
 ### 15.6 Variable Flow Implementation
 
@@ -1303,14 +1312,119 @@ Feature access:
 
 ### 15.7 Next Steps
 
+**Completed:**
+- ✅ Variable chaining between features works
+- ✅ Smoke simulation runs during `mvn test`
+- ✅ DSL unit tests cover protocol, patterns, builders
+- ✅ Gatling assertions work (failedRequests.count, etc.)
+- ✅ Logging optimized for performance (TRACE/DEBUG levels)
+
+**Remaining:**
+
 1. **Add HTTP-level metrics** via karate-core PerfHook integration
    - Currently features execute but don't report timing to Gatling StatsEngine
-   - Need to integrate PerfHook.reportPerfEvent() with StatsEngine.logResponse()
+   - Gatling shows `OK=0 KO=0` because no requests are logged
+   - This is required for HTML reports with request timing
 
-2. **Run full Gatling simulation** via `mvn gatling:test`
-   - Verify HTML reports are generated
-   - Verify request timing appears in reports
+2. **Port README.md** with Java-only examples
 
-3. **Port README.md** with Java-only examples
+3. **Phase 4-6** as documented above
 
-4. **Phase 4-6** as documented above
+---
+
+## 16. PerfHook Integration (Next Priority)
+
+This section provides implementation guidance for wiring HTTP metrics to Gatling.
+
+### 16.1 Current Gap
+
+Features execute successfully but HTTP request timing is not reported to Gatling:
+```
+---- Requests ------------------------------------------------------------------
+> Global                                                   (OK=0      KO=0     )
+```
+
+### 16.2 Required Changes
+
+**In karate-core:**
+
+1. Add `PerfHook` interface (similar to v1):
+```java
+// io/karatelabs/core/PerfHook.java
+public interface PerfHook {
+    String getPerfEventName(HttpRequest request, ScenarioRuntime runtime);
+    void reportPerfEvent(PerfEvent event);
+    void submit(Runnable task);  // For async execution model
+}
+```
+
+2. Add `PerfEvent` record:
+```java
+// io/karatelabs/core/PerfEvent.java
+public record PerfEvent(
+    String name,
+    long startTime,
+    long endTime,
+    int statusCode,
+    boolean failed,
+    String errorMessage
+) {}
+```
+
+3. Modify `KarateJs` or HTTP execution to call `PerfHook.reportPerfEvent()` after each HTTP request.
+
+**In karate-gatling:**
+
+4. Create `GatlingPerfHook` that reports to Gatling's `StatsEngine`:
+```java
+public class GatlingPerfHook implements PerfHook {
+    private final StatsEngine statsEngine;
+    private final Session session;
+    private final KarateProtocol protocol;
+
+    @Override
+    public void reportPerfEvent(PerfEvent event) {
+        String requestName = protocol.resolveRequestName(...);
+        Status status = event.failed() ? Status.KO : Status.OK;
+
+        statsEngine.logResponse(
+            session.scenario(),
+            session.groups(),
+            requestName,
+            event.startTime(),
+            event.endTime(),
+            status,
+            Option.apply(String.valueOf(event.statusCode())),
+            event.errorMessage() != null
+                ? Option.apply(event.errorMessage())
+                : Option.empty()
+        );
+    }
+}
+```
+
+5. Pass `GatlingPerfHook` to feature execution in `KarateFeatureAction`.
+
+### 16.3 V1 Reference
+
+Key v1 files to reference:
+- `karate-gatling/src/main/scala/com/intuit/karate/gatling/KarateAction.scala` - PerfHook usage
+- `karate-core/src/main/java/com/intuit/karate/core/ScenarioRuntime.java` - perfHook integration
+
+### 16.4 Testing
+
+After implementation:
+```bash
+mvn gatling:test -pl karate-gatling
+```
+
+Expected output:
+```
+---- Requests ------------------------------------------------------------------
+> Global                                                   (OK=8      KO=0     )
+> GET /cats                                                (OK=4      KO=0     )
+> POST /cats                                               (OK=2      KO=0     )
+> GET /cats/{id}                                           (OK=2      KO=0     )
+```
+
+HTML reports will be generated in `target/gatling/`.

@@ -10,11 +10,14 @@
     <logger name="io.gatling" level="WARN"/>
     <logger name="io.netty" level="WARN"/>
 
-    <!-- Karate Gatling logging - show feature execution -->
-    <logger name="io.karatelabs.gatling" level="DEBUG"/>
+    <!-- Karate Gatling - WARN for perf, DEBUG for troubleshooting -->
+    <logger name="io.karatelabs.gatling" level="WARN"/>
 
-    <!-- Karate core - enable for debugging -->
-    <logger name="io.karatelabs" level="INFO"/>
+    <!-- Karate core - WARN for perf, INFO for troubleshooting -->
+    <logger name="io.karatelabs" level="WARN"/>
+
+    <!-- HttpServer startup message -->
+    <logger name="io.karatelabs.http.HttpServer" level="INFO"/>
 
     <root level="WARN">
         <appender-ref ref="STDOUT"/>

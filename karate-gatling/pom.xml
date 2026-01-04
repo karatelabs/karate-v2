@@ -65,11 +65,51 @@
                 <groupId>io.gatling</groupId>
                 <artifactId>gatling-maven-plugin</artifactId>
                 <version>4.9.0</version>
+                <executions>
+                    <!-- Smoke test runs during test phase -->
+                    <execution>
+                        <id>gatling-smoke-test</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <configuration>
+                            <simulationClass>io.karatelabs.gatling.GatlingSmokeSimulation</simulationClass>
+                            <noReports>true</noReports>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
 
     <profiles>
+        <!-- Load test profile for running full Gatling simulation with reports -->
+        <profile>
+            <id>load-test</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>io.gatling</groupId>
+                        <artifactId>gatling-maven-plugin</artifactId>
+                        <version>4.9.0</version>
+                        <executions>
+                            <execution>
+                                <id>gatling-load-test</id>
+                                <phase>integration-test</phase>
+                                <goals>
+                                    <goal>test</goal>
+                                </goals>
+                                <configuration>
+                                    <simulationClass>io.karatelabs.gatling.GatlingSimulation</simulationClass>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
         <!-- Bundle profile for creating standalone JAR -->
         <profile>
             <id>bundle</id>

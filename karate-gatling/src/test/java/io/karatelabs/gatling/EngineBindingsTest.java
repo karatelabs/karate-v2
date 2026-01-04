@@ -56,14 +56,16 @@ public class EngineBindingsTest {
         // __karate vars (from previous features)
         arg.put("__karate", new HashMap<>());
 
-        // Pass the mock port for the feature to use
-        arg.put("mockPort", CatsMockServer.getPort());
-
         // Run the feature with variables
         FeatureResult result = Runner.runFeature("classpath:features/cats-create.feature", arg);
 
         // Check result
         assertFalse(result.isFailed(), "Feature should pass: " + getErrorMessage(result));
+
+        // Verify result variables are captured (for chaining)
+        Map<String, Object> resultVars = result.getResultVariables();
+        assertNotNull(resultVars, "Result variables should be captured");
+        assertNotNull(resultVars.get("catId"), "catId should be in result variables");
     }
 
     private String getErrorMessage(FeatureResult result) {

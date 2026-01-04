@@ -106,7 +106,15 @@ public final class Runner {
 
         // Run the feature with the arg map
         FeatureRuntime fr = new FeatureRuntime(suite, feature, null, null, false, arg, null);
-        return fr.call();
+        FeatureResult result = fr.call();
+
+        // Capture result variables from last executed scenario (for Gatling variable chaining)
+        ScenarioRuntime lastExecuted = fr.getLastExecuted();
+        if (lastExecuted != null) {
+            result.setResultVariables(lastExecuted.getAllVariables());
+        }
+
+        return result;
     }
 
     // ========== Builder ==========
