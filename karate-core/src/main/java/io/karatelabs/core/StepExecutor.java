@@ -1131,6 +1131,13 @@ public class StepExecutor {
             }
         }
 
+        // Handle "header <name>" syntax for accessing response headers (V1 compatibility)
+        // e.g., "match header Content-Type contains 'application/json'"
+        if (expr.startsWith("header ")) {
+            String headerName = expr.substring(7).trim();
+            return getResponseHeader(headerName);
+        }
+
         // Handle get[N] or get syntax (same as in def)
         if (expr.startsWith("get[") || expr.startsWith("get ")) {
             return evalGetExpression(expr);
@@ -2467,6 +2474,26 @@ public class StepExecutor {
     }
 
     // ========== Karate Expression Helpers ==========
+
+    /**
+     * Gets a response header value by name (case-insensitive).
+     * V1 compatibility: "match header Content-Type contains '...'"
+     * Returns the first value if header has multiple values, null if not found.
+     */
+    @SuppressWarnings("unchecked")
+    private Object getResponseHeader(String headerName) {
+        Object responseHeaders = runtime.getVariable("responseHeaders");
+        if (responseHeaders instanceof Map) {
+            Map<String, Object> headers = (Map<String, Object>) responseHeaders;
+            Object headerValue = StringUtils.getIgnoreKeyCase(headers, headerName);
+            if (headerValue instanceof List) {
+                List<?> list = (List<?>) headerValue;
+                return list.isEmpty() ? null : list.get(0);
+            }
+            return headerValue;
+        }
+        return null;
+    }
 
     /**
      * Evaluates get[N] varname path or get varname path syntax.

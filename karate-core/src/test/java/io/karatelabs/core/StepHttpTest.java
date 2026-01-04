@@ -491,4 +491,82 @@ class StepHttpTest {
         assertPassed(sr);
     }
 
+    // ========== Header Name Tests ==========
+
+    @Test
+    void testHeaderWithHyphenatedName() {
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String contentType = req.getHeader("Content-Type");
+            if ("application/json".equals(contentType)) {
+                return json("{ \"ok\": true }");
+            }
+            return json("{ \"contentType\": \"" + contentType + "\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * header Content-Type = 'application/json'
+            * method get
+            * status 200
+            * match response.ok == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testHeaderWithLowercaseHyphenatedName() {
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String contentType = req.getHeader("content-type");
+            if ("application/json".equals(contentType)) {
+                return json("{ \"ok\": true }");
+            }
+            return json("{ \"contentType\": \"" + contentType + "\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * header content-type = 'application/json'
+            * method get
+            * status 200
+            * match response.ok == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMatchResponseHeaderExpression() {
+        // V1 supports "match header <name>" to access response headers
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            HttpResponse resp = json("{ \"ok\": true }");
+            resp.setHeader("Content-Type", "application/json; charset=utf-8");
+            return resp;
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * method get
+            * status 200
+            * match header Content-Type contains 'application/json'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMatchResponseHeaderCaseInsensitive() {
+        // V1 behavior: header name lookup is case-insensitive
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            HttpResponse resp = json("{ \"ok\": true }");
+            resp.setHeader("Content-Type", "application/json");
+            return resp;
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * method get
+            * status 200
+            * match header content-type contains 'application/json'
+            """);
+        assertPassed(sr);
+    }
+
 }

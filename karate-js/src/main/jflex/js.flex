@@ -259,7 +259,7 @@ GM_TAG = "@" {NOT_WSLF}+
   {GM_MATCH_TYPE}               { yybegin(GS_RHS); return G_KEYWORD; }
   {S_STRING}                    { return G_EXPR; } // quoted strings as JS expressions
   {D_STRING}                    { return G_EXPR; } // quoted strings as JS expressions
-  {IDENT}                       { return IDENT; }
+  {IDENT}(-{IDENT})*            { return IDENT; } // allow hyphenated like Content-Type
   ("$"|"@") {IDENT}?            { return IDENT; } // xpath
   "?" "(" [^)]+ ")"             { return IDENT; } // json path
   ".." | ":"                    { return DOT; } // json path
