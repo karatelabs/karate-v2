@@ -590,4 +590,52 @@ class StepHttpTest {
         assertPassed(sr);
     }
 
+    @Test
+    void testParamsWithNullValues() {
+        // V1 behavior: params with null values should be skipped
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String name = req.getParam("name");
+            String country = req.getParam("country");
+            // country should be null/missing since it was set to null
+            if ("foo".equals(name) && country == null) {
+                return json("{ \"ok\": true }");
+            }
+            return json("{ \"error\": \"country should be null\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test/search'
+            * def query = { name: 'foo', country: null }
+            * params query
+            * method get
+            * status 200
+            * match response.ok == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testParamsWithNullValuesInList() {
+        // V1 behavior: null items in list should be skipped
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            // Should only have non-null values
+            java.util.List<String> values = req.getParams().get("items");
+            if (values != null && values.size() == 2
+                && "a".equals(values.get(0)) && "b".equals(values.get(1))) {
+                return json("{ \"ok\": true }");
+            }
+            return json("{ \"error\": \"unexpected items\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test/search'
+            * def query = { items: ['a', null, 'b'] }
+            * params query
+            * method get
+            * status 200
+            * match response.ok == true
+            """);
+        assertPassed(sr);
+    }
+
 }

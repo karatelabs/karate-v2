@@ -1598,9 +1598,15 @@ public class StepExecutor {
             for (Map.Entry<?, ?> entry : map.entrySet()) {
                 String name = entry.getKey().toString();
                 Object v = entry.getValue();
+                // V1 behavior: skip null values
+                if (v == null) {
+                    continue;
+                }
                 if (v instanceof List<?> list) {
                     for (Object item : list) {
-                        http().param(name, item.toString());
+                        if (item != null) {
+                            http().param(name, item.toString());
+                        }
                     }
                 } else {
                     http().param(name, v.toString());
