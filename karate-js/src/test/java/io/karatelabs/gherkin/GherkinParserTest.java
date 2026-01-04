@@ -419,7 +419,7 @@ class GherkinParserTest {
                   [
                       { name: '#notnull' }
                   ]
-                  \"\"\"
+                  \"\"\"  
                   Given path 'search'
                 Examples:
                   | name |
