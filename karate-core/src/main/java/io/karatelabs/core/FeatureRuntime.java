@@ -65,6 +65,7 @@ public class FeatureRuntime implements Callable<FeatureResult> {
     // State
     private ScenarioRuntime lastExecuted;
     private FeatureResult result;
+    private final Map<Integer, Integer> outlineCompletedCounts = new HashMap<>();  // section index -> completed count
 
     public FeatureRuntime(Feature feature) {
         this(null, feature, null, null, false, null);
@@ -131,6 +132,11 @@ public class FeatureRuntime implements Callable<FeatureResult> {
                 result.addScenarioResult(scenarioResult);
                 lastExecuted = sr;
 
+                // Check if this is the last scenario in an outline (only for top-level features)
+                if (caller == null && isLastScenarioInOutline(scenario)) {
+                    invokeAfterScenarioOutlineHook(sr);
+                }
+
                 // Notify listeners of scenario completion (only for top-level features)
                 if (suite != null && caller == null) {
                     for (ResultListener listener : suite.getResultListeners()) {
@@ -174,6 +180,40 @@ public class FeatureRuntime implements Callable<FeatureResult> {
                 callable.call(null);
             } catch (Exception e) {
                 logger.warn("afterFeature hook failed: {}", e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Checks if the given scenario is the last one in its scenario outline.
+     * Tracks completed counts per outline section.
+     */
+    private boolean isLastScenarioInOutline(Scenario scenario) {
+        if (!scenario.isOutlineExample()) {
+            return false;
+        }
+        FeatureSection section = scenario.getSection();
+        int sectionIndex = section.getIndex();
+        ScenarioOutline outline = section.getScenarioOutline();
+
+        // Increment completed count for this outline
+        int completed = outlineCompletedCounts.merge(sectionIndex, 1, Integer::sum);
+
+        // Check if all scenarios in this outline are completed
+        return completed == outline.getNumScenarios();
+    }
+
+    /**
+     * Invokes the configured afterScenarioOutline hook if present.
+     */
+    private void invokeAfterScenarioOutlineHook(ScenarioRuntime sr) {
+        KarateConfig config = sr.getConfig();
+        Object afterScenarioOutline = config.getAfterScenarioOutline();
+        if (afterScenarioOutline instanceof JsCallable callable) {
+            try {
+                callable.call(null);
+            } catch (Exception e) {
+                logger.warn("afterScenarioOutline hook failed: {}", e.getMessage());
             }
         }
     }

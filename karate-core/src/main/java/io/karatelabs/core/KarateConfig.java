@@ -85,7 +85,7 @@ public class KarateConfig implements SimpleObject {
             // NTLM Auth
             "ntlmUsername", "ntlmPassword", "ntlmDomain", "ntlmWorkstation",
             // Mock settings
-            "corsEnabled", "responseHeaders", "afterScenario", "afterFeature",
+            "corsEnabled", "responseHeaders", "afterScenario", "afterScenarioOutline", "afterFeature",
             // Driver
             "driverConfig"
     );
@@ -153,8 +153,9 @@ public class KarateConfig implements SimpleObject {
     // Mock settings
     private boolean corsEnabled;
     private Object responseHeaders;  // Map<String,Object> or JS function
-    private Object afterScenario;    // Invokable - hook called after each scenario
-    private Object afterFeature;     // Invokable - hook called after feature completes
+    private Object afterScenario;         // Invokable - hook called after each scenario
+    private Object afterScenarioOutline;  // Invokable - hook called after all examples of an outline complete
+    private Object afterFeature;          // Invokable - hook called after feature completes
 
     // Driver configuration (Map or DriverOptions)
     private Object driverConfig;
@@ -221,6 +222,7 @@ public class KarateConfig implements SimpleObject {
         copy.corsEnabled = this.corsEnabled;
         copy.responseHeaders = this.responseHeaders;
         copy.afterScenario = this.afterScenario;
+        copy.afterScenarioOutline = this.afterScenarioOutline;
         copy.afterFeature = this.afterFeature;
         // Driver
         copy.driverConfig = this.driverConfig;
@@ -345,6 +347,10 @@ public class KarateConfig implements SimpleObject {
             }
             case "afterScenario" -> {
                 this.afterScenario = value;
+                yield false;
+            }
+            case "afterScenarioOutline" -> {
+                this.afterScenarioOutline = value;
                 yield false;
             }
             case "afterFeature" -> {
@@ -574,6 +580,7 @@ public class KarateConfig implements SimpleObject {
             case "corsEnabled" -> corsEnabled;
             case "responseHeaders" -> responseHeaders;
             case "afterScenario" -> afterScenario;
+            case "afterScenarioOutline" -> afterScenarioOutline;
             case "afterFeature" -> afterFeature;
             case "driverConfig" -> driverConfig;
             default -> null;
@@ -752,6 +759,10 @@ public class KarateConfig implements SimpleObject {
 
     public Object getAfterScenario() {
         return afterScenario;
+    }
+
+    public Object getAfterScenarioOutline() {
+        return afterScenarioOutline;
     }
 
     public Object getAfterFeature() {

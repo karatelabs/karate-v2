@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests for Scenario Outline expansion and execution.
  * Includes both static Examples tables and dynamic outlines via @setup scenarios.
  */
-class OutlineTest {
+public class OutlineTest {
 
     @TempDir
     Path tempDir;
@@ -1026,6 +1026,110 @@ class OutlineTest {
 
         assertTrue(result.isPassed(), "CSV-based outline should pass: " + getFailureMessage(result));
         assertEquals(2, result.getScenarioCount(), "Should have 2 scenarios from CSV");
+    }
+
+    // ========== Lifecycle Hook Tests ==========
+
+    // Static counter for testing hooks (reset before each test)
+    private static int afterScenarioOutlineCount = 0;
+
+    @Test
+    void testAfterScenarioOutlineHook() throws Exception {
+        // Test that configure afterScenarioOutline is called once after all examples complete
+        afterScenarioOutlineCount = 0;  // Reset counter
+
+        Path feature = tempDir.resolve("after-outline-hook.feature");
+        Files.writeString(feature, """
+            Feature: afterScenarioOutline Hook
+
+            Scenario Outline: Test <name>
+            * configure afterScenarioOutline = function(){ Java.type('io.karatelabs.core.OutlineTest').incrementAfterOutlineCount() }
+            * match '<name>' != ''
+
+            Examples:
+            | name  |
+            | alice |
+            | bob   |
+            | carol |
+            """);
+
+        Suite suite = Suite.of(tempDir, feature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), getFailureMessage(result));
+        assertEquals(3, result.getScenarioCount());
+        // Verify hook was called exactly once (after all 3 examples completed)
+        assertEquals(1, afterScenarioOutlineCount, "afterScenarioOutline should be called once after all examples complete");
+    }
+
+    @Test
+    void testAfterScenarioOutlineHookMultipleOutlines() throws Exception {
+        // Test that afterScenarioOutline is called once per outline
+        afterScenarioOutlineCount = 0;  // Reset counter
+
+        Path feature = tempDir.resolve("after-outline-multi.feature");
+        Files.writeString(feature, """
+            Feature: Multiple Outlines with Hook
+
+            Scenario Outline: First outline <val>
+            * configure afterScenarioOutline = function(){ Java.type('io.karatelabs.core.OutlineTest').incrementAfterOutlineCount() }
+            * match <val> == <val>
+
+            Examples:
+            | val! |
+            | 1    |
+            | 2    |
+
+            Scenario Outline: Second outline <val>
+            * configure afterScenarioOutline = function(){ Java.type('io.karatelabs.core.OutlineTest').incrementAfterOutlineCount() }
+            * match <val> == <val>
+
+            Examples:
+            | val! |
+            | 10   |
+            | 20   |
+            """);
+
+        Suite suite = Suite.of(tempDir, feature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), getFailureMessage(result));
+        assertEquals(4, result.getScenarioCount());
+        // Verify hook was called twice (once per outline)
+        assertEquals(2, afterScenarioOutlineCount, "afterScenarioOutline should be called once per outline");
+    }
+
+    @Test
+    void testAfterScenarioOutlineHookNotCalledForRegularScenario() throws Exception {
+        // Test that afterScenarioOutline is NOT called for regular scenarios
+        afterScenarioOutlineCount = 0;  // Reset counter
+
+        Path feature = tempDir.resolve("after-outline-regular.feature");
+        Files.writeString(feature, """
+            Feature: Regular Scenario Should Not Trigger Outline Hook
+
+            Scenario: Regular scenario with outline hook configured
+            * configure afterScenarioOutline = function(){ Java.type('io.karatelabs.core.OutlineTest').incrementAfterOutlineCount() }
+            * def x = 1
+
+            Scenario: Another regular scenario
+            * def y = 2
+            """);
+
+        Suite suite = Suite.of(tempDir, feature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), getFailureMessage(result));
+        // Verify hook was NOT called (since there are no outlines)
+        assertEquals(0, afterScenarioOutlineCount, "afterScenarioOutline should not be called for regular scenarios");
+    }
+
+    // Static method for test hooks to call
+    public static void incrementAfterOutlineCount() {
+        afterScenarioOutlineCount++;
     }
 
     // ========== Helper Methods ==========
