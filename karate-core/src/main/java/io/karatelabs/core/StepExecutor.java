@@ -1198,17 +1198,19 @@ public class StepExecutor {
             }
         }
 
-        // Check if expression contains jsonpath wildcard [*] or filter [?(...)]
-        if (expr.contains("[*]") || expr.contains("[?")) {
-            // Check if it's var[*].path or var[?...].path pattern
+        // Check if expression contains jsonpath wildcard [*], filter [?(...)] or deep-scan (..)
+        if (expr.contains("[*]") || expr.contains("[?") || expr.contains("..")) {
+            // Check if it's var[*].path, var[?...].path, or var..path pattern
             int bracketIdx = expr.indexOf('[');
-            if (bracketIdx > 0) {
-                String varName = expr.substring(0, bracketIdx);
-                // Verify it's a simple variable name (no dots before bracket)
+            int doubleDotIdx = expr.indexOf("..");
+            int splitIdx = bracketIdx > 0 ? bracketIdx : doubleDotIdx;
+            if (splitIdx > 0) {
+                String varName = expr.substring(0, splitIdx);
+                // Verify it's a simple variable name (no dots before the jsonpath operator)
                 if (!varName.contains(".") && varName.matches("[a-zA-Z_][a-zA-Z0-9_]*")) {
                     Object target = runtime.getVariable(varName);
                     if (target != null) {
-                        String jsonPath = "$" + expr.substring(bracketIdx);
+                        String jsonPath = "$" + expr.substring(splitIdx);
                         return JsonPath.read(target, jsonPath);
                     }
                 }
@@ -1969,6 +1971,8 @@ public class StepExecutor {
 
     /**
      * Handles: multipart files [{ read: 'file1.txt', name: 'file1' }, { read: 'file2.txt', name: 'file2' }]
+     * Also handles V1 map syntax: multipart files { myFile1: {...}, myFile2: {...} }
+     * where map keys become the part names.
      */
     @SuppressWarnings("unchecked")
     private void executeMultipartFiles(Step step) {
@@ -1976,51 +1980,62 @@ public class StepExecutor {
         if (value instanceof List) {
             List<Object> files = (List<Object>) value;
             for (Object item : files) {
-                if (item instanceof Map) {
-                    Map<String, Object> fileMap = (Map<String, Object>) item;
-                    Map<String, Object> multipartMap = new HashMap<>();
-
-                    // Name is required
-                    String name = (String) fileMap.get("name");
-                    if (name == null) {
-                        throw new RuntimeException("multipart files entry requires 'name': " + item);
-                    }
-                    multipartMap.put("name", name);
-
-                    // Handle file read
-                    Object readPath = fileMap.get("read");
-                    if (readPath != null) {
-                        Resource resource = resolveResource(readPath.toString());
-                        File file = getFileFromResource(resource);
-                        if (file != null) {
-                            multipartMap.put("value", file);
-                        } else {
-                            try (InputStream is = resource.getStream()) {
-                                byte[] bytes = is.readAllBytes();
-                                multipartMap.put("value", bytes);
-                            } catch (Exception e) {
-                                throw new RuntimeException("failed to read file: " + readPath, e);
-                            }
-                        }
-                    } else if (fileMap.get("value") != null) {
-                        multipartMap.put("value", fileMap.get("value"));
-                    }
-
-                    // Copy other properties
-                    if (fileMap.get("filename") != null) {
-                        multipartMap.put("filename", fileMap.get("filename"));
-                    }
-                    if (fileMap.get("contentType") != null) {
-                        multipartMap.put("contentType", fileMap.get("contentType"));
-                    }
-
-                    http().multiPart(multipartMap);
-                } else {
-                    throw new RuntimeException("multipart files entry must be a map: " + item);
-                }
+                processMultipartFileEntry(item, null);
+            }
+        } else if (value instanceof Map) {
+            // V1 compatibility: map where keys are part names
+            Map<String, Object> filesMap = (Map<String, Object>) value;
+            for (Map.Entry<String, Object> entry : filesMap.entrySet()) {
+                processMultipartFileEntry(entry.getValue(), entry.getKey());
             }
         } else {
-            throw new RuntimeException("multipart files expects a list: " + step.getText());
+            throw new RuntimeException("multipart files expects a list or map: " + step.getText());
+        }
+    }
+
+    private void processMultipartFileEntry(Object item, String defaultName) {
+        if (item instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> fileMap = (Map<String, Object>) item;
+            Map<String, Object> multipartMap = new HashMap<>();
+
+            // Name from map entry key (V1 compat) or from 'name' property
+            String name = defaultName != null ? defaultName : (String) fileMap.get("name");
+            if (name == null) {
+                throw new RuntimeException("multipart files entry requires 'name': " + item);
+            }
+            multipartMap.put("name", name);
+
+            // Handle file read
+            Object readPath = fileMap.get("read");
+            if (readPath != null) {
+                Resource resource = resolveResource(readPath.toString());
+                File file = getFileFromResource(resource);
+                if (file != null) {
+                    multipartMap.put("value", file);
+                } else {
+                    try (InputStream is = resource.getStream()) {
+                        byte[] bytes = is.readAllBytes();
+                        multipartMap.put("value", bytes);
+                    } catch (Exception e) {
+                        throw new RuntimeException("failed to read file: " + readPath, e);
+                    }
+                }
+            } else if (fileMap.get("value") != null) {
+                multipartMap.put("value", fileMap.get("value"));
+            }
+
+            // Copy other properties
+            if (fileMap.get("filename") != null) {
+                multipartMap.put("filename", fileMap.get("filename"));
+            }
+            if (fileMap.get("contentType") != null) {
+                multipartMap.put("contentType", fileMap.get("contentType"));
+            }
+
+            http().multiPart(multipartMap);
+        } else {
+            throw new RuntimeException("multipart files entry must be a map: " + item);
         }
     }
 

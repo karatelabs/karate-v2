@@ -398,4 +398,46 @@ class StepMatchTest {
         assertPassed(sr);
     }
 
+    // ========== JsonPath Deep Scan (..) ==========
+
+    @Test
+    void testMatchDeepScanSimple() {
+        // var..property deep-scan pattern (V1 compatibility)
+        ScenarioRuntime sr = run("""
+            * def data = { user: { name: 'john' } }
+            * match data..name contains 'john'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMatchDeepScanNested() {
+        // Deep scan finds values at any depth
+        ScenarioRuntime sr = run("""
+            * def data = { level1: { level2: { username: 'alice' } } }
+            * match data..username contains 'alice'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMatchDeepScanMultipleResults() {
+        // Deep scan returns all matching values
+        ScenarioRuntime sr = run("""
+            * def data = { users: [{ name: 'alice' }, { name: 'bob' }] }
+            * match data..name == ['alice', 'bob']
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMatchDeepScanContains() {
+        // Deep scan with contains assertion
+        ScenarioRuntime sr = run("""
+            * def response = { data: { user: { username: 'Bret' } } }
+            * match response..username contains 'Bret'
+            """);
+        assertPassed(sr);
+    }
+
 }

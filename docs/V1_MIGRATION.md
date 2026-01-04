@@ -46,6 +46,8 @@ Fixed docstring parser failing when closing `"""` has trailing spaces.
 - **Multipart fields**: `multipart fields { json: { value: {...} } }` merges map values instead of nesting
 - **Java interop static getters**: `Base64.encoder` works (calls `getEncoder()`)
 - **Null params**: `params { name: 'foo', country: null }` skips null values instead of NPE
+- **JsonPath deep-scan**: `response..username` deep-scan syntax now works in match expressions
+- **Multipart files map**: `multipart files { key1: {...}, key2: {...} }` map syntax works (keys become part names)
 
 ## Pending
 

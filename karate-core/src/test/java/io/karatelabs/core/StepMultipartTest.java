@@ -200,12 +200,35 @@ class StepMultipartTest {
     }
 
     @Test
-    void testMultipartFilesMissingListFails() {
+    void testMultipartFilesMap() {
+        // V1 compatibility: map where keys are part names
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String contentType = req.getHeader("Content-Type");
+            if (contentType != null && contentType.contains("multipart")) {
+                return json("{ \"received\": true }");
+            }
+            return status(400);
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * def json = {}
+            * set json.myFile1 = { value: 'content1', filename: 'file1.txt', contentType: 'text/plain' }
+            * set json.myFile2 = { value: 'content2', filename: 'file2.txt', contentType: 'text/plain' }
+            * url 'http://test/upload'
+            * multipart files json
+            * method post
+            * status 200
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMultipartFilesInvalidTypeFails() {
         InMemoryHttpClient client = new InMemoryHttpClient(req -> json("{}"));
 
         ScenarioRuntime sr = run(client, """
             * url 'http://test/upload'
-            * multipart files { notAList: true }
+            * multipart files 'not a list or map'
             * method post
             """);
         assertFailed(sr);
