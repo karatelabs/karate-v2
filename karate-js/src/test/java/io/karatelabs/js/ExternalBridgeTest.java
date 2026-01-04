@@ -200,6 +200,15 @@ class ExternalBridgeTest extends EvalBase {
     }
 
     @Test
+    void testStaticGetterPropertyAccess() {
+        // V1 compatibility: Base64.encoder should work like Base64.getEncoder()
+        assertEquals("aGVsbG8=", eval("var Base64 = Java.type('java.util.Base64'); Base64.encoder.encodeToString('hello'.getBytes())"));
+        // Also test decoder - note: byte[] is converted to List by JS engine
+        Object result = eval("var Base64 = Java.type('java.util.Base64'); Base64.decoder.decode('aGVsbG8=')");
+        assertInstanceOf(List.class, result);
+    }
+
+    @Test
     void testJavaInteropArrayListMethodCall() {
         // This replicates the pattern used in V1's sort-array.js
         // Test with fully qualified name (like Properties test above)

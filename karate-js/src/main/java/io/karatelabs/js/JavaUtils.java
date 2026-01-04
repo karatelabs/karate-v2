@@ -69,6 +69,16 @@ public class JavaUtils {
             return field.get(null);
         } catch (Exception e) {
             if (clazz != null) {
+                // Try getter method first (e.g., Base64.encoder -> Base64.getEncoder())
+                Method getter = findStaticGetter(clazz, name);
+                if (getter != null) {
+                    try {
+                        return getter.invoke(null, EMPTY);
+                    } catch (Exception ex) {
+                        throw new RuntimeException("cannot invoke static getter " + clazz.getName() + "#" + getter.getName() + ": " + ex);
+                    }
+                }
+                // Fall back to method reference
                 for (Method m : clazz.getMethods()) {
                     if (m.getName().equals(name)) {
                         JavaType jc = new JavaType(clazz);
@@ -78,6 +88,25 @@ public class JavaUtils {
             }
             throw new RuntimeException("cannot get static field " + clazz.getName() + "#" + name + ": " + e);
         }
+    }
+
+    private static Method findStaticGetter(Class<?> clazz, String name) {
+        String getterSuffix = name.substring(0, 1).toUpperCase() + name.substring(1);
+        Method method = findStaticMethod(clazz, "get" + getterSuffix);
+        if (method == null) {
+            method = findStaticMethod(clazz, "is" + getterSuffix);
+        }
+        return method;
+    }
+
+    private static Method findStaticMethod(Class<?> clazz, String name) {
+        for (Method method : clazz.getMethods()) {
+            if (method.getName().equals(name) && Modifier.isStatic(method.getModifiers())
+                    && method.getParameterCount() == 0) {
+                return method;
+            }
+        }
+        return null;
     }
 
     static void setStatic(Class<?> clazz, String name, Object value) {
