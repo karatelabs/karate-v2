@@ -1132,6 +1132,69 @@ public class OutlineTest {
         afterScenarioOutlineCount++;
     }
 
+    // ========== Empty Cell Placeholder Tests ==========
+
+    @Test
+    void testEmptyCellPlaceholderSubstitution() throws Exception {
+        // Issue: When Examples table cell is empty, <placeholder> should become empty string
+        // Bug: Currently leaves literal <placeholder> text instead of substituting
+        Path feature = tempDir.resolve("empty-cell-placeholder.feature");
+        Files.writeString(feature, """
+            Feature: Empty Cell Placeholder Substitution
+
+            Scenario Outline: Test with empty cells
+            * def query = { name: '<name>', country: '<country>' }
+            * print query
+            * match query.name == '<name>'
+            * match query.country == '<country>'
+
+            Examples:
+            | name | country |
+            | foo  | US      |
+            |      | JP      |
+            | bar  |         |
+            """);
+
+        Suite suite = Suite.of(tempDir, feature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), getFailureMessage(result));
+        assertEquals(3, result.getScenarioCount());
+    }
+
+    @Test
+    void testEmptyCellPlaceholderDoesNotContainLiteralPlaceholder() throws Exception {
+        // Issue: When Examples table cell is empty, the placeholder text should NOT appear literally
+        // Verify that <name> doesn't show up as the string "<name>" when cell is empty
+        Path feature = tempDir.resolve("empty-cell-no-literal.feature");
+        Files.writeString(feature, """
+            Feature: Empty Cell Should Not Leave Literal Placeholder
+
+            Scenario Outline: Test row <__num>
+            * def nameVal = '<name>'
+            * def countryVal = '<country>'
+            * print 'nameVal=' + nameVal + ', countryVal=' + countryVal
+            # When cell is empty, the placeholder should be replaced with empty string, not literal '<name>'
+            * match nameVal != '<' + 'name>'
+            * match countryVal != '<' + 'country>'
+
+            Examples:
+            | name | country |
+            | foo  | US      |
+            |      | JP      |
+            | bar  |         |
+            |      |         |
+            """);
+
+        Suite suite = Suite.of(tempDir, feature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), getFailureMessage(result));
+        assertEquals(4, result.getScenarioCount());
+    }
+
     // ========== Helper Methods ==========
 
     private String getFailureMessage(SuiteResult result) {

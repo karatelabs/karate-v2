@@ -54,6 +54,7 @@ Fixed docstring parser failing when closing `"""` has trailing spaces.
 - **Binary file handling**: `read('file.pdf')` returns `byte[]` for binary files; `response` for binary content-type also returns `byte[]`
 - **Configure cookies JS function**: `configure cookies = read('cookies.js')` now works with JS functions (was only supporting Maps)
 - **Cookie auto-send**: `responseCookies` from previous requests are now automatically sent on subsequent requests within the same scenario
+- **Empty cell placeholder substitution**: `<placeholder>` in Scenario Outline steps now replaced with empty string when Examples cell is empty (was leaving literal `<placeholder>` text)
 
 ## Pending
 
@@ -74,10 +75,10 @@ The following fixes have been applied locally but NOT committed (to preserve cle
 - Update test expectations: `domain: '.abc.com'` → `domain: 'abc.com'`
 
 ### 2. Remaining Test Failures
-Current status after fixes: **173/201 scenarios passing (86%)**
-(Improved from 163/201 after cookie auto-send and configure cookies JS function fixes)
+Current status after fixes: **177/201 scenarios passing (88%)**
+(Improved from 173/201 after empty cell placeholder substitution fix)
 
-Remaining issues (28 scenarios):
+Remaining issues (24 scenarios):
 - Some upload tests - minor issues
 - callonce/calltable tests - possible `callSingle` issues
 - Parser edge cases (e.g., `call fun { first: 'dummy', ...}` syntax)

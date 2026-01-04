@@ -329,7 +329,8 @@ public class FeatureRuntime implements Callable<FeatureResult> {
                             // Substitute placeholders in steps
                             for (String key : exampleData.keySet()) {
                                 Object value = exampleData.get(key);
-                                scenario.replace("<" + key + ">", value != null ? value.toString() : null);
+                                // Empty cells become null but should be replaced with empty string
+                                scenario.replace("<" + key + ">", value != null ? value.toString() : "");
                             }
 
                             // Check if scenario should be selected
@@ -384,7 +385,8 @@ public class FeatureRuntime implements Callable<FeatureResult> {
                     // Substitute placeholders in steps
                     for (String key : exampleData.keySet()) {
                         Object value = exampleData.get(key);
-                        scenario.replace("<" + key + ">", value != null ? value.toString() : null);
+                        // Empty cells become null but should be replaced with empty string
+                        scenario.replace("<" + key + ">", value != null ? value.toString() : "");
                     }
 
                     if (shouldSelect(scenario)) {
