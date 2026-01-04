@@ -1065,4 +1065,103 @@ class MockE2eTest {
         assertPassed(sr);
     }
 
+    // ===== Embedded Expression Tests =====
+    // Tests for V1 compatibility: embedded expressions like #(varName) in JSON literals
+
+    @Test
+    void testParamsWithEmbeddedExpressions() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Params with Embedded Expressions
+
+            Scenario: params with embedded expressions should evaluate variables
+            * url 'http://localhost:%d'
+            * def myQuery = 'karate'
+            * def myLimit = '25'
+            * params { q: '#(myQuery)', limit: '#(myLimit)' }
+            * path '/search'
+            * method get
+            * status 200
+            * match response.query == 'karate'
+            * match response.limit == '25'
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testHeadersWithEmbeddedExpressions() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Headers with Embedded Expressions
+
+            Scenario: headers with embedded expressions should evaluate variables
+            * url 'http://localhost:%d'
+            * def myToken = 'token123'
+            * def myCustom = 'custom-value'
+            * headers { Authorization: 'Bearer #(myToken)', 'X-Custom': '#(myCustom)' }
+            * path '/headers'
+            * method get
+            * status 200
+            * match response.auth == 'Bearer token123'
+            * match response.custom == 'custom-value'
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testCookiesWithEmbeddedExpressions() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Cookies with Embedded Expressions
+
+            Scenario: cookies with embedded expressions should evaluate variables
+            * url 'http://localhost:%d'
+            * def sessionId = 'abc123'
+            * def username = 'john'
+            * cookies { session: '#(sessionId)', user: '#(username)' }
+            * path '/echo-cookies-parsed'
+            * method get
+            * status 200
+            * match response == { session: 'abc123', user: 'john' }
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testRequestWithEmbeddedExpressions() {
+        // Create a temporary mock server for this test
+        MockServer reqServer = MockServer.featureString("""
+            Feature: Request Echo Mock
+
+            Scenario: pathMatches('/echo')
+              * def response = request
+            """)
+            .port(0)
+            .start();
+
+        try {
+            int testPort = reqServer.getPort();
+            ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+                Feature: Test Request with Embedded Expressions
+
+                Scenario: request body with embedded expressions
+                * url 'http://localhost:%d'
+                * def myName = 'John'
+                * def myAge = 30
+                * def myItems = ['a', 'b', 'c']
+                * request { name: '#(myName)', age: '#(myAge)', items: '#(myItems)' }
+                * path '/echo'
+                * method post
+                * status 200
+                * match response.name == 'John'
+                * match response.age == 30
+                * match response.items == ['a', 'b', 'c']
+                """.formatted(testPort));
+
+            assertPassed(sr);
+        } finally {
+            reqServer.stopAsync();
+        }
+    }
+
 }

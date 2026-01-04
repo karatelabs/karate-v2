@@ -1586,7 +1586,7 @@ public class StepExecutor {
 
     @SuppressWarnings("unchecked")
     private void executeParams(Step step) {
-        Object value = runtime.eval(step.getText());
+        Object value = evalWithEmbedded(step.getText());
         if (value instanceof Map<?, ?> map) {
             for (Map.Entry<?, ?> entry : map.entrySet()) {
                 String name = entry.getKey().toString();
@@ -1621,7 +1621,7 @@ public class StepExecutor {
 
     @SuppressWarnings("unchecked")
     private void executeHeaders(Step step) {
-        Object value = runtime.eval(step.getText());
+        Object value = evalWithEmbedded(step.getText());
         if (value instanceof Map<?, ?> map) {
             http().headers((Map<String, Object>) map);
         }
@@ -1638,7 +1638,7 @@ public class StepExecutor {
 
     @SuppressWarnings("unchecked")
     private void executeCookies(Step step) {
-        Object value = runtime.eval(step.getText());
+        Object value = evalWithEmbedded(step.getText());
         if (value instanceof Map<?, ?> map) {
             for (Map.Entry<?, ?> entry : map.entrySet()) {
                 http().cookie(entry.getKey().toString(), entry.getValue().toString());
@@ -1656,7 +1656,7 @@ public class StepExecutor {
 
     @SuppressWarnings("unchecked")
     private void executeFormFields(Step step) {
-        Object value = runtime.eval(step.getText());
+        Object value = evalWithEmbedded(step.getText());
         if (value instanceof Map<?, ?> map) {
             for (Map.Entry<?, ?> entry : map.entrySet()) {
                 http().formField(entry.getKey().toString(), entry.getValue().toString());
@@ -1665,19 +1665,8 @@ public class StepExecutor {
     }
 
     private void executeRequest(Step step) {
-        Object body;
-        String expr;
-        if (step.getDocString() != null) {
-            expr = step.getDocString();
-        } else {
-            expr = step.getText();
-        }
-        body = runtime.eval(expr);
-        // Process embedded expressions for JSON/JS object literals
-        boolean isLiteral = expr.trim().startsWith("{") || expr.trim().startsWith("[");
-        if (isLiteral && (body instanceof Map || body instanceof List)) {
-            body = processEmbeddedExpressions(body);
-        }
+        String expr = step.getDocString() != null ? step.getDocString() : step.getText();
+        Object body = evalWithEmbedded(expr);
         http().body(body);
     }
 
@@ -1836,7 +1825,7 @@ public class StepExecutor {
         String name = text.substring(0, eqIndex).trim();
         String expr = text.substring(eqIndex + 1).trim();
 
-        Object value = runtime.eval(expr);
+        Object value = evalWithEmbedded(expr);
 
         Map<String, Object> multipartMap = new HashMap<>();
         multipartMap.put("name", name);
@@ -1913,7 +1902,7 @@ public class StepExecutor {
      */
     @SuppressWarnings("unchecked")
     private void executeMultipartFields(Step step) {
-        Object value = runtime.eval(step.getText());
+        Object value = evalWithEmbedded(step.getText());
         if (value instanceof Map) {
             Map<String, Object> fields = (Map<String, Object>) value;
             for (Map.Entry<String, Object> entry : fields.entrySet()) {
@@ -1932,7 +1921,7 @@ public class StepExecutor {
      */
     @SuppressWarnings("unchecked")
     private void executeMultipartFiles(Step step) {
-        Object value = runtime.eval(step.getText());
+        Object value = evalWithEmbedded(step.getText());
         if (value instanceof List) {
             List<Object> files = (List<Object>) value;
             for (Object item : files) {
@@ -1990,12 +1979,8 @@ public class StepExecutor {
      */
     @SuppressWarnings("unchecked")
     private void executeMultipartEntity(Step step) {
-        Object value;
-        if (step.getDocString() != null) {
-            value = runtime.eval(step.getDocString());
-        } else {
-            value = runtime.eval(step.getText());
-        }
+        String expr = step.getDocString() != null ? step.getDocString() : step.getText();
+        Object value = evalWithEmbedded(expr);
 
         if (value instanceof Map) {
             // Single entity map with name, value, etc.
@@ -2554,6 +2539,24 @@ public class StepExecutor {
     }
 
     // ========== Embedded Expression Processing ==========
+
+    /**
+     * Evaluates an expression and processes embedded expressions if the result is a Map or List
+     * and the expression looks like a JSON literal (starts with { or [).
+     * This provides V1 compatibility for embedded expressions like '#(varName)' in JSON literals.
+     */
+    private Object evalWithEmbedded(String expr) {
+        if (expr == null || expr.isEmpty()) {
+            return null;
+        }
+        Object value = runtime.eval(expr);
+        String trimmed = expr.trim();
+        boolean isLiteral = trimmed.startsWith("{") || trimmed.startsWith("[");
+        if (isLiteral && (value instanceof Map || value instanceof List)) {
+            return processEmbeddedExpressions(value);
+        }
+        return value;
+    }
 
     /**
      * Marker object to indicate a key should be removed (for ##() optional expressions).

@@ -115,6 +115,10 @@ public class HttpRequestBuilder implements SimpleObject {
             request.setBody(Json.toBytes(body));
         }
         request.setHeaders(headers);
+        // Also set params on request so InMemoryHttpClient and others can access them
+        if (params != null) {
+            request.setParams(params);
+        }
         return request;
     }
 

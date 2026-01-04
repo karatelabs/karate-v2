@@ -354,4 +354,141 @@ class StepHttpTest {
         assertPassed(sr);
     }
 
+    // ========== Embedded Expression Tests ==========
+    // Tests for V1 compatibility: embedded expressions like #(varName) in JSON literals
+
+    @Test
+    void testParamsWithEmbeddedExpressions() {
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String page = req.getParam("page");
+            String size = req.getParam("size");
+            if ("5".equals(page) && "20".equals(size)) {
+                return json("{ \"ok\": true }");
+            }
+            return json("{ \"page\": \"" + page + "\", \"size\": \"" + size + "\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * def myPage = 5
+            * def mySize = 20
+            * params { page: '#(myPage)', size: '#(mySize)' }
+            * method get
+            * status 200
+            * match response.ok == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testHeadersWithEmbeddedExpressions() {
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String auth = req.getHeader("Authorization");
+            String custom = req.getHeader("X-Custom");
+            if ("Bearer secret123".equals(auth) && "myvalue".equals(custom)) {
+                return json("{ \"ok\": true }");
+            }
+            return json("{ \"auth\": \"" + auth + "\", \"custom\": \"" + custom + "\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * def token = 'secret123'
+            * def customVal = 'myvalue'
+            * headers { Authorization: 'Bearer #(token)', 'X-Custom': '#(customVal)' }
+            * method get
+            * status 200
+            * match response.ok == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testCookiesWithEmbeddedExpressions() {
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String cookie = req.getHeader("Cookie");
+            if (cookie != null && cookie.contains("session=abc123") && cookie.contains("user=john")) {
+                return json("{ \"ok\": true }");
+            }
+            return json("{ \"cookie\": \"" + cookie + "\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * def sessionId = 'abc123'
+            * def username = 'john'
+            * cookies { session: '#(sessionId)', user: '#(username)' }
+            * method get
+            * status 200
+            * match response.ok == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testFormFieldsWithEmbeddedExpressions() {
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String contentType = req.getHeader("Content-Type");
+            Object body = req.getBodyConverted();
+            // For form data, body is typically a string like "username=admin&password=secret"
+            String bodyStr = body != null ? body.toString() : "";
+            if (contentType != null && contentType.contains("form")
+                && bodyStr.contains("admin") && bodyStr.contains("secret123")) {
+                return json("{ \"ok\": true }");
+            }
+            return json("{ \"body\": \"" + bodyStr + "\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * def user = 'admin'
+            * def pass = 'secret123'
+            * form fields { username: '#(user)', password: '#(pass)' }
+            * method post
+            * status 200
+            * match response.ok == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testRequestWithNestedEmbeddedExpressions() {
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            Object body = req.getBodyConverted();
+            return json(Json.stringifyStrict(body));
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * def user = { name: 'John', age: 30 }
+            * def items = ['a', 'b', 'c']
+            * request { user: '#(user)', items: '#(items)', count: '#(items.length)' }
+            * method post
+            * status 200
+            * match response.user == { name: 'John', age: 30 }
+            * match response.items == ['a', 'b', 'c']
+            * match response.count == 3
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testRequestWithOptionalEmbeddedExpressions() {
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            Object body = req.getBodyConverted();
+            return json(Json.stringifyStrict(body));
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * def name = 'John'
+            * def missing = null
+            * request { name: '#(name)', optional: '##(missing)' }
+            * method post
+            * status 200
+            * match response == { name: 'John' }
+            """);
+        assertPassed(sr);
+    }
+
 }
