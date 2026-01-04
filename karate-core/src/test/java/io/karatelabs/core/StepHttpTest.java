@@ -870,4 +870,57 @@ class StepHttpTest {
         assertPassed(sr);
     }
 
+    @Test
+    void testRequestWithInlineXml() {
+        // Tests V1 syntax: And request <name>value</name>
+        // Inline XML should be parsed and sent as body
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            // Check raw bytes for XML content
+            byte[] bodyBytes = req.getBody();
+            String bodyStr = bodyBytes != null ? new String(bodyBytes) : "";
+            if (bodyStr.contains("Müller") || bodyStr.contains("M\\u00FCller")) {
+                return json("{ \"ok\": true }");
+            }
+            return status(400);
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test/echo'
+            * request <name>Müller</name>
+            * method post
+            * status 200
+            * match response.ok == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testRequestWithXmlDocstring() {
+        // Tests XML in docstring
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            byte[] bodyBytes = req.getBody();
+            String bodyStr = bodyBytes != null ? new String(bodyBytes) : "";
+            if (bodyStr.contains("Add") && bodyStr.contains("intA")) {
+                return json("{ \"result\": 5 }");
+            }
+            return status(400);
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test/soap'
+            * request
+            \"\"\"
+            <?xml version="1.0"?>
+            <Add>
+              <intA>2</intA>
+              <intB>3</intB>
+            </Add>
+            \"\"\"
+            * method post
+            * status 200
+            * match response.result == 5
+            """);
+        assertPassed(sr);
+    }
+
 }

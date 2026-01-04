@@ -244,6 +244,19 @@ class MockE2eTest {
             Scenario: pathMatches('/multi-param')
               * def vals = requestParams['tags']
               * def response = { tags: vals, count: vals ? vals.length : 0 }
+
+            # ===== XML scenarios =====
+
+            Scenario: pathMatches('/xml/echo')
+              # Echo back XML request - request should be an XML Node
+              * def response = { name: karate.xmlPath(request, '/name') }
+
+            Scenario: pathMatches('/soap')
+              # SOAP-style endpoint - request should be XML Node, use XPath
+              * def intA = karate.xmlPath(request, '/Add/intA')
+              * def intB = karate.xmlPath(request, '/Add/intB')
+              * def result = parseInt(intA) + parseInt(intB)
+              * def response = { result: result }
             """)
             .port(0)
             .start();
@@ -1189,6 +1202,69 @@ class MockE2eTest {
         } finally {
             reqServer.stopAsync();
         }
+    }
+
+    // ===== XML Request Tests =====
+
+    @Test
+    void testXmlRequestInline() {
+        // Test inline XML request - V1 syntax: request <name>value</name>
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test XML Request Inline
+
+            Scenario: Inline XML in request
+            * url 'http://localhost:%d'
+            * path '/xml/echo'
+            * request <name>Müller</name>
+            * method post
+            * status 200
+            * match response.name == 'Müller'
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testXmlRequestDocstring() {
+        // Test XML in docstring - SOAP-style request
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test XML Request Docstring
+
+            Scenario: XML docstring in request
+            * url 'http://localhost:%d'
+            * path '/soap'
+            * request
+            \"\"\"
+            <Add>
+              <intA>2</intA>
+              <intB>3</intB>
+            </Add>
+            \"\"\"
+            * method post
+            * status 200
+            * match response.result == 5
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testXmlRequestWithVariable() {
+        // Test XML assigned to variable then used in request
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test XML Request with Variable
+
+            Scenario: XML variable in request
+            * url 'http://localhost:%d'
+            * path '/soap'
+            * def body = <Add><intA>10</intA><intB>20</intB></Add>
+            * request body
+            * method post
+            * status 200
+            * match response.result == 30
+            """.formatted(port));
+
+        assertPassed(sr);
     }
 
 }

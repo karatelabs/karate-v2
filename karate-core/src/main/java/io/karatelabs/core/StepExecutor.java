@@ -259,7 +259,7 @@ public class StepExecutor {
             // - <xml> literals
             // - varname/xpath (XML XPath shorthand)
             // - Regular JS expressions
-            Object value = evalMarkupExpression(expr);
+            Object value = evalKarateExpression(expr);
             runtime.setVariable(name, value);
         }
     }
@@ -727,7 +727,7 @@ public class StepExecutor {
                     String fullPath = basePath + "[" + indexStr + "]/" + rowPath;
 
                     // Evaluate the value expression
-                    Object value = evalMarkupExpression(valueExpr);
+                    Object value = evalKarateExpression(valueExpr);
 
                     // Set the value at the XPath
                     if (value instanceof org.w3c.dom.Node) {
@@ -752,8 +752,8 @@ public class StepExecutor {
                 // Build the full XPath: basePath + "/" + rowPath
                 String fullPath = basePath + "/" + rowPath;
 
-                // Evaluate the value expression (use evalMarkupExpression for XML literal support)
-                Object value = evalMarkupExpression(valueExpr);
+                // Evaluate the value expression (use evalKarateExpression for XML literal support)
+                Object value = evalKarateExpression(valueExpr);
 
                 // Set the value at the XPath
                 if (value instanceof org.w3c.dom.Node) {
@@ -832,8 +832,8 @@ public class StepExecutor {
         int eqIndex = StepUtils.findAssignmentOperator(text);
         String name = text.substring(0, eqIndex).trim();
         String expr = text.substring(eqIndex + 1).trim();
-        // Use evalMarkupExpression to handle XML literals like: json foo = <bar>baz</bar>
-        Object value = evalMarkupExpression(expr);
+        // Use evalKarateExpression to handle XML literals like: json foo = <bar>baz</bar>
+        Object value = evalKarateExpression(expr);
         // Convert to JSON map/object
         if (value instanceof Node) {
             value = Xml.toObject((Node) value);
@@ -861,7 +861,7 @@ public class StepExecutor {
             expr = text.substring(eqIndex + 1).trim();
         }
         // Evaluate expression using Karate expression evaluation (handles $var /xpath, etc.)
-        Object value = evalMarkupExpression(expr);
+        Object value = evalKarateExpression(expr);
         if (value instanceof String) {
             value = Xml.toXmlDoc((String) value);
         } else if (value instanceof Node) {
@@ -1471,7 +1471,7 @@ public class StepExecutor {
      * - varname/xpath (XML XPath shorthand)
      * - Regular JS expressions with embedded expression processing
      */
-    private Object evalMarkupExpression(String expr) {
+    private Object evalKarateExpression(String expr) {
         if (expr == null || expr.isEmpty()) {
             return null;
         }
@@ -1609,7 +1609,7 @@ public class StepExecutor {
 
     @SuppressWarnings("unchecked")
     private void executeParams(Step step) {
-        Object value = evalWithEmbedded(step.getText());
+        Object value = evalKarateExpression(step.getText());
         if (value instanceof Map<?, ?> map) {
             for (Map.Entry<?, ?> entry : map.entrySet()) {
                 String name = entry.getKey().toString();
@@ -1643,15 +1643,15 @@ public class StepExecutor {
             String text = step.getText();
             int eqIndex = StepUtils.findAssignmentOperator(text);
             String name = text.substring(0, eqIndex).trim();
-            // Use evalMarkupExpression to handle call expressions like: header X = call fun {...}
-            Object value = evalMarkupExpression(text.substring(eqIndex + 1).trim());
+            // Use evalKarateExpression to handle call expressions like: header X = call fun {...}
+            Object value = evalKarateExpression(text.substring(eqIndex + 1).trim());
             http().header(name, value.toString());
         }
     }
 
     @SuppressWarnings("unchecked")
     private void executeHeaders(Step step) {
-        Object value = evalWithEmbedded(step.getText());
+        Object value = evalKarateExpression(step.getText());
         if (value instanceof Map<?, ?> map) {
             http().headers((Map<String, Object>) map);
         }
@@ -1676,7 +1676,7 @@ public class StepExecutor {
 
     @SuppressWarnings("unchecked")
     private void executeCookies(Step step) {
-        Object value = evalWithEmbedded(step.getText());
+        Object value = evalKarateExpression(step.getText());
         if (value instanceof Map<?, ?> map) {
             for (Map.Entry<?, ?> entry : map.entrySet()) {
                 http().cookie(entry.getKey().toString(), entry.getValue().toString());
@@ -1694,7 +1694,7 @@ public class StepExecutor {
 
     @SuppressWarnings("unchecked")
     private void executeFormFields(Step step) {
-        Object value = evalWithEmbedded(step.getText());
+        Object value = evalKarateExpression(step.getText());
         if (value instanceof Map<?, ?> map) {
             for (Map.Entry<?, ?> entry : map.entrySet()) {
                 http().formField(entry.getKey().toString(), entry.getValue().toString());
@@ -1704,7 +1704,7 @@ public class StepExecutor {
 
     private void executeRequest(Step step) {
         String expr = step.getDocString() != null ? step.getDocString() : step.getText();
-        Object body = evalWithEmbedded(expr);
+        Object body = evalKarateExpression(expr);
         http().body(body);
     }
 
@@ -1906,7 +1906,7 @@ public class StepExecutor {
         String name = text.substring(0, eqIndex).trim();
         String expr = text.substring(eqIndex + 1).trim();
 
-        Object value = evalWithEmbedded(expr);
+        Object value = evalKarateExpression(expr);
 
         Map<String, Object> multipartMap = new HashMap<>();
         multipartMap.put("name", name);
@@ -1984,7 +1984,7 @@ public class StepExecutor {
      */
     @SuppressWarnings("unchecked")
     private void executeMultipartFields(Step step) {
-        Object value = evalWithEmbedded(step.getText());
+        Object value = evalKarateExpression(step.getText());
         if (value instanceof Map) {
             Map<String, Object> fields = (Map<String, Object>) value;
             for (Map.Entry<String, Object> entry : fields.entrySet()) {
@@ -2011,7 +2011,7 @@ public class StepExecutor {
      */
     @SuppressWarnings("unchecked")
     private void executeMultipartFiles(Step step) {
-        Object value = evalWithEmbedded(step.getText());
+        Object value = evalKarateExpression(step.getText());
         if (value instanceof List) {
             List<Object> files = (List<Object>) value;
             for (Object item : files) {
@@ -2081,7 +2081,7 @@ public class StepExecutor {
     @SuppressWarnings("unchecked")
     private void executeMultipartEntity(Step step) {
         String expr = step.getDocString() != null ? step.getDocString() : step.getText();
-        Object value = evalWithEmbedded(expr);
+        Object value = evalKarateExpression(expr);
 
         if (value instanceof Map) {
             // Single entity map with name, value, etc.
@@ -2681,23 +2681,7 @@ public class StepExecutor {
 
     // ========== Embedded Expression Processing ==========
 
-    /**
-     * Evaluates an expression and processes embedded expressions if the result is a Map or List
-     * and the expression looks like a JSON literal (starts with { or [).
-     * This provides V1 compatibility for embedded expressions like '#(varName)' in JSON literals.
-     */
-    private Object evalWithEmbedded(String expr) {
-        if (expr == null || expr.isEmpty()) {
-            return null;
-        }
-        Object value = runtime.eval(expr);
-        String trimmed = expr.trim();
-        boolean isLiteral = trimmed.startsWith("{") || trimmed.startsWith("[");
-        if (isLiteral && (value instanceof Map || value instanceof List)) {
-            return processEmbeddedExpressions(value);
-        }
-        return value;
-    }
+    // evalKarateExpression removed - use evalKarateExpression which handles all Karate patterns
 
     /**
      * Marker object to indicate a key should be removed (for ##() optional expressions).
