@@ -99,14 +99,14 @@ public class Markup {
                 throw new TemplateOutputException("error flushing output writer", content, -1, -1, e);
             }
         } catch (Exception e) {
-            logTemplateError(content, e);
+            logTemplateError(isPath, content, e);
             throw new RuntimeException(e);
         }
     }
 
     private static final int CONTEXT_LINES = 2;
 
-    private void logTemplateError(String template, Exception e) {
+    private void logTemplateError(boolean isPath, String template, Exception e) {
         StringBuilder sb = new StringBuilder();
         sb.append("\n========== TEMPLATE ERROR ==========\n");
 
@@ -126,8 +126,11 @@ public class Markup {
             current = current.getCause();
         }
 
-        // Show file path if it's different from template content (file-based template)
-        if (templateName != null && !templateName.equals(template)) {
+        // Show resource path for path-based templates
+        if (isPath) {
+            sb.append("Resource: ").append(template).append("\n");
+        } else if (templateName != null && !templateName.equals(template)) {
+            // For string templates, show file if different from content
             sb.append("File: ").append(templateName).append("\n");
         }
 
