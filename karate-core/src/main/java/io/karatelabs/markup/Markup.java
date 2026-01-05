@@ -23,6 +23,7 @@
  */
 package io.karatelabs.markup;
 
+import io.karatelabs.common.ResourceNotFoundException;
 import io.karatelabs.common.StringUtils;
 import io.karatelabs.js.Engine;
 import org.slf4j.Logger;
@@ -98,6 +99,8 @@ public class Markup {
             } catch (IOException e) {
                 throw new TemplateOutputException("error flushing output writer", content, -1, -1, e);
             }
+        } catch (ResourceNotFoundException e) {
+            throw e; // Let 404s bubble up without logging
         } catch (Exception e) {
             logTemplateError(isPath, content, e);
             throw new RuntimeException(e);

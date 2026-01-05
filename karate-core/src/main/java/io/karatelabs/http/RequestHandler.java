@@ -25,6 +25,7 @@ package io.karatelabs.http;
 
 import io.karatelabs.common.FileUtils;
 import io.karatelabs.common.Resource;
+import io.karatelabs.common.ResourceNotFoundException;
 import io.karatelabs.common.ResourceType;
 import io.karatelabs.js.Engine;
 import io.karatelabs.markup.Markup;
@@ -367,17 +368,6 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
         }
 
         try {
-            // Check if template exists
-            Resource templateResource;
-            try {
-                templateResource = resolver.resolve(templatePath, null);
-            } catch (RuntimeException e) {
-                return notFound(response, path);
-            }
-            if (templateResource == null) {
-                return notFound(response, path);
-            }
-
             // Set template name in context
             context.setTemplateName(templatePath);
 
@@ -409,6 +399,8 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
 
             return response;
 
+        } catch (ResourceNotFoundException e) {
+            return notFound(response, path);
         } catch (Exception e) {
             return handleError(request, response, e);
         }

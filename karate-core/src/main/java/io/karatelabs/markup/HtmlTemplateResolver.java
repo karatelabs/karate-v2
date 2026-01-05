@@ -24,6 +24,7 @@
 package io.karatelabs.markup;
 
 import io.karatelabs.common.Resource;
+import io.karatelabs.common.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.thymeleaf.IEngineConfiguration;
@@ -80,6 +81,9 @@ class HtmlTemplateResolver implements ITemplateResolver {
                 caller = prevCaller;
             }
             Resource resource = resolver.resolve(content, caller);
+            if (resource == null || !resource.exists()) {
+                throw new ResourceNotFoundException(content);
+            }
             prevCaller = resource;
             HtmlTemplateResource templateResource = new HtmlTemplateResource(ownerTemplate, resource);
             return new TemplateResolution(templateResource, TemplateMode.HTML,

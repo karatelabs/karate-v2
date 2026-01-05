@@ -774,19 +774,27 @@ class Interpreter {
                     return exitResult.returnValue;
                 }
             }
-            Token first = node.getFirstToken();
-            String message = "js failed:\n==========\n" + first.getLineText() + "\n";
-            if (first.resource.isFile()) {
-                message = message + first.resource + ":" + first.getPositionDisplay() + " ";
-            } else if (first.line != 0) {
-                message = message + first.getPositionDisplay() + " ";
+            // Avoid wrapping already-wrapped JS errors (prevents duplicate error messages)
+            if (e instanceof EngineException) {
+                throw e;
             }
-            message = message + e.getMessage();
-            message = message.trim() + "\n----------\n";
+            Token first = node.getFirstToken();
+            StringBuilder sb = new StringBuilder();
+            sb.append("js failed:\n");
+            sb.append("==========\n");
+            if (first.resource.isFile()) {
+                sb.append("  File: ").append(first.resource).append("\n");
+            }
+            if (first.line != 0) {
+                sb.append("  Line: ").append(first.line).append(", Col: ").append(first.col).append("\n");
+            }
+            sb.append("  Code: ").append(first.getLineText().trim()).append("\n");
+            sb.append("  Error: ").append(e.getMessage()).append("\n");
+            sb.append("==========");
             if (first.resource.isFile()) {
                 System.err.println("file://" + first.resource.getUri().getPath() + ":" + first.getPositionDisplay() + " " + e);
             }
-            throw new RuntimeException(message, e);
+            throw new EngineException(sb.toString(), e);
         }
     }
 
