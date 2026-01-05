@@ -221,6 +221,15 @@ class Interpreter {
                 argsList.add(arg);
             }
         }
+        // Convert undefined to null at JS/Java boundary
+        // External calls: SimpleObject methods, Java POJOs via bridge, or lambdas put via engine.put()
+        // Exclude: built-in JS types (JsObject and subclasses like JsString, JsFunction)
+        boolean isExternalCall = (prop.object instanceof SimpleObject)
+                || (prop.object != null && !(prop.object instanceof JsObject))
+                || (prop.object == null && !(callable instanceof JsObject));
+        if (isExternalCall) {
+            argsList.replaceAll(arg -> arg == Terms.UNDEFINED ? null : arg);
+        }
         Object[] args = argsList.toArray();
         CoreContext callContext = new CoreContext(context, node, ContextScope.FUNCTION);
         callContext.thisObject = prop.object == null ? callable : prop.object;

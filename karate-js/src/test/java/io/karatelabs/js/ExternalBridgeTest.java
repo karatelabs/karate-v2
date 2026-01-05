@@ -557,4 +557,84 @@ class ExternalBridgeTest extends EvalBase {
         assertEquals("bar", engine.eval("myKarate.xmlPath(doc, '/root/foo')"));
     }
 
+    // =================================================================================================================
+    // Undefined → Null Conversion at JS/Java Boundary Tests
+    // =================================================================================================================
+
+    @Test
+    void testUndefinedPropertyPassedToJavaMethodBecomesNull() {
+        // Simulates: var user = { name: 'John' }; pojo.echoValue(user.version)
+        // user.version is undefined, should become null when passed to Java
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        engine.eval("""
+                var DemoPojo = Java.type('io.karatelabs.js.DemoPojo');
+                var pojo = new DemoPojo();
+                var user = { name: 'John' };
+                var result = pojo.describeValue(user.version);
+                """);
+        // user.version is undefined, should be converted to null at Java boundary
+        assertEquals("null", engine.get("result"));
+    }
+
+    @Test
+    void testExplicitUndefinedPassedToJavaMethodBecomesNull() {
+        // Simulates: pojo.echoValue(undefined)
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        engine.eval("""
+                var DemoPojo = Java.type('io.karatelabs.js.DemoPojo');
+                var pojo = new DemoPojo();
+                var result = pojo.describeValue(undefined);
+                """);
+        assertEquals("null", engine.get("result"));
+    }
+
+    @Test
+    void testUndefinedFromMapMissingKeyPassedToJava() {
+        // Simulates the exact DynamoDB scenario:
+        // var user = utils.getUserById(userId); // Returns Map from DynamoDB
+        // utils.updateUser(user.version);  // version field doesn't exist
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        Map<String, Object> user = new HashMap<>();
+        user.put("userId", "123");
+        user.put("name", "John");
+        // Note: 'version' key is intentionally missing
+        engine.put("user", user);
+        engine.eval("""
+                var DemoPojo = Java.type('io.karatelabs.js.DemoPojo');
+                var pojo = new DemoPojo();
+                var result = pojo.describeValue(user.version);
+                """);
+        assertEquals("null", engine.get("result"));
+    }
+
+    @Test
+    void testNullPassedToJavaMethodRemainsNull() {
+        // Explicit null should still work
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        engine.eval("""
+                var DemoPojo = Java.type('io.karatelabs.js.DemoPojo');
+                var pojo = new DemoPojo();
+                var result = pojo.describeValue(null);
+                """);
+        assertEquals("null", engine.get("result"));
+    }
+
+    @Test
+    void testDefinedValuePassedToJavaMethodWorks() {
+        // Sanity check: defined values should pass through normally
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        engine.eval("""
+                var DemoPojo = Java.type('io.karatelabs.js.DemoPojo');
+                var pojo = new DemoPojo();
+                var user = { name: 'John', version: 42 };
+                var result = pojo.echoValue(user.version);
+                """);
+        assertEquals(42, engine.get("result"));
+    }
+
 }

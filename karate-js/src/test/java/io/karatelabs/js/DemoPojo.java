@@ -98,4 +98,16 @@ public class DemoPojo {
         return integerArray;
     }
 
+    // For testing undefined → null conversion at JS/Java boundary
+    public Object echoValue(Object value) {
+        return value;
+    }
+
+    public String describeValue(Object value) {
+        if (value == null) {
+            return "null";
+        }
+        return value.getClass().getSimpleName() + ":" + value;
+    }
+
 }
