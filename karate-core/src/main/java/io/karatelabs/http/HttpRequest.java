@@ -67,7 +67,7 @@ public class HttpRequest implements SimpleObject {
 
     public void setUrl(String url) {
         urlAndPath = url;
-        Pair<String> pair = Http.parseUriIntoUrlBaseAndPath(url);
+        Pair<String> pair = HttpUtils.parseUriIntoUrlBaseAndPath(url);
         urlBase = pair.left;
         QueryStringDecoder qsd = new QueryStringDecoder(pair.right);
         setPath(qsd.path());
@@ -120,7 +120,7 @@ public class HttpRequest implements SimpleObject {
     }
 
     public boolean pathMatches(String pattern) {
-        Map<String, String> temp = Http.parseUriPattern(pattern, path);
+        Map<String, String> temp = HttpUtils.parseUriPattern(pattern, path);
         if (temp == null) {
             return false;
         }
@@ -221,7 +221,7 @@ public class HttpRequest implements SimpleObject {
     }
 
     public String getContentType() {
-        return getHeader(Http.Header.CONTENT_TYPE.key);
+        return getHeader(HttpUtils.Header.CONTENT_TYPE.key);
     }
 
     /**
@@ -254,7 +254,7 @@ public class HttpRequest implements SimpleObject {
     }
 
     public void setContentType(String contentType) {
-        putHeader(Http.Header.CONTENT_TYPE.key, contentType);
+        putHeader(HttpUtils.Header.CONTENT_TYPE.key, contentType);
     }
 
     public ResourceType getResourceType() {
@@ -380,7 +380,7 @@ public class HttpRequest implements SimpleObject {
         if (rt != null && rt.isBinary()) {
             return body;
         }
-        return Http.fromBytes(body, false, rt);
+        return HttpUtils.fromBytes(body, false, rt);
     }
 
     public Map<String, Object> toBlockData() {

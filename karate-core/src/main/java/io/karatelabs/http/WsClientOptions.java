@@ -129,7 +129,7 @@ public class WsClientOptions {
         private final URI uri;
         private Map<String, String> headers;
         private boolean compression = false;
-        private int maxPayloadSize = Http.MEGABYTE;
+        private int maxPayloadSize = HttpUtils.MEGABYTE;
         private Duration connectTimeout = Duration.ofSeconds(30);
         private Duration pingInterval = Duration.ofSeconds(30);
         private boolean trustAllCerts = true;

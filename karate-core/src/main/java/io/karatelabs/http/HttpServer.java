@@ -127,7 +127,7 @@ public class HttpServer {
         workerGroup = new MultiThreadIoEventLoopGroup(daemonThreadFactory("http-worker-"), NioIoHandler.newFactory());
         CorsConfig corsConfig = CorsConfigBuilder
                 .forAnyOrigin().allowNullOrigin()
-                .allowedRequestHeaders(Http.Header.keys())
+                .allowedRequestHeaders(HttpUtils.Header.keys())
                 .allowedRequestMethods(HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT,
                         HttpMethod.DELETE, HttpMethod.PATCH, HttpMethod.HEAD)
                 .build();
@@ -143,7 +143,7 @@ public class HttpServer {
                                 p.addLast(sslContext.newHandler(c.alloc()));
                             }
                             p.addLast(new HttpServerCodec());
-                            p.addLast(new HttpObjectAggregator(Http.MEGABYTE));
+                            p.addLast(new HttpObjectAggregator(HttpUtils.MEGABYTE));
                             p.addLast(new CorsHandler(corsConfig));
                             p.addLast(new HttpServerHandler(HttpServer.this));
                         }

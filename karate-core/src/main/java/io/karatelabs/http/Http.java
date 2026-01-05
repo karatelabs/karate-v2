@@ -23,275 +23,137 @@
  */
 package io.karatelabs.http;
 
-import io.karatelabs.common.*;
-import net.minidev.json.JSONValue;
+import io.karatelabs.common.Json;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.netty.handler.codec.http.QueryStringDecoder;
-import io.netty.handler.codec.http.QueryStringEncoder;
-
-import java.net.URI;
-import java.nio.charset.Charset;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
+/**
+ * Fluent HTTP client API for making HTTP requests from Java code.
+ * <p>
+ * Example usage:
+ * <pre>
+ * HttpResponse response = Http.to("https://api.example.com")
+ *     .path("users")
+ *     .header("Authorization", "Bearer token")
+ *     .get();
+ * </pre>
+ */
 public class Http {
 
     private static final Logger logger = LoggerFactory.getLogger(Http.class);
 
-    public static final byte[] ZERO_BYTES = new byte[0];
-    public static final int MEGABYTE = 1024 * 1024;
+    public final String urlBase;
+    private final HttpClient client;
+    private final HttpRequestBuilder builder;
 
-    public enum Method {
-
-        GET("GET"),
-        POST("POST"),
-        PUT("PUT"),
-        DELETE("DELETE"),
-        HEAD("HEAD"),
-        OPTIONS("OPTIONS"),
-        TRACE("TRACE"),
-        CONNECT("CONNECT"),
-        PATCH("PATCH");
-
-        public final String key;
-
-        Method(String key) {
-            this.key = key;
-        }
-
+    public static Http to(String url) {
+        return new Http(url);
     }
 
-    public enum Header {
-
-        ACCEPT("Accept"),
-        ALLOW("Allow"),
-        CACHE_CONTROL("Cache-Control"),
-        CONTENT_LENGTH("Content-Length"),
-        CONTENT_TYPE("Content-Type"),
-        COOKIE("Cookie"),
-        LOCATION("Location"),
-        SET_COOKIE("Set-Cookie"),
-        TRANSFER_ENCODING("Transfer-Encoding");
-
-        public final String key;
-
-        Header(String key) {
-            this.key = key;
-        }
-
-        public static String[] keys() {
-            return Arrays.stream(values()).map(v -> v.key).toArray(String[]::new);
-        }
-
+    private Http(String urlBase) {
+        this.urlBase = urlBase;
+        this.client = new DefaultHttpClientFactory().create();
+        this.builder = new HttpRequestBuilder(client);
+        builder.url(urlBase);
     }
 
-    public static Charset parseContentTypeCharset(String mimeType) {
-        Map<String, String> map = parseContentTypeParams(mimeType);
-        if (map == null) {
-            return null;
-        }
-        String cs = map.get("charset");
-        if (cs == null) {
-            return null;
-        }
-        return Charset.forName(cs);
+    public Http url(String url) {
+        builder.url(url);
+        return this;
     }
 
-    public static Map<String, String> parseContentTypeParams(String mimeType) {
-        List<String> items = StringUtils.split(mimeType, ';', false);
-        int count = items.size();
-        if (count <= 1) {
-            return null;
-        }
-        Map<String, String> map = new LinkedHashMap<>(count - 1);
-        for (int i = 1; i < count; i++) {
-            String item = items.get(i);
-            int pos = item.indexOf('=');
-            if (pos == -1) {
-                continue;
-            }
-            String key = item.substring(0, pos).trim();
-            String val = item.substring(pos + 1).trim();
-            map.put(key, val);
-        }
-        return map;
+    public Http param(String key, String... values) {
+        builder.param(key, values);
+        return this;
     }
 
-    public static Map<String, String> parseUriPattern(String pattern, String url) {
-        int qpos = url.indexOf('?');
-        if (qpos != -1) {
-            url = url.substring(0, qpos);
-        }
-        List<String> leftList = StringUtils.split(pattern, '/', false);
-        List<String> rightList = StringUtils.split(url, '/', false);
-        int leftSize = leftList.size();
-        int rightSize = rightList.size();
-        if (rightSize != leftSize) {
-            return null;
-        }
-        Map<String, String> map = new LinkedHashMap<>(leftSize);
-        for (int i = 0; i < leftSize; i++) {
-            String left = leftList.get(i);
-            String right = rightList.get(i);
-            if (left.equals(right)) {
-                continue;
-            }
-            if (left.startsWith("{") && left.endsWith("}")) {
-                left = left.substring(1, left.length() - 1);
-                map.put(left, right);
-            } else {
-                return null; // match failed
-            }
-        }
-        return map;
+    public Http path(String... paths) {
+        builder.paths(paths);
+        return this;
     }
 
-    public static String normaliseUriPath(String uri) {
-        uri = uri.indexOf('?') == -1 ? uri : uri.substring(0, uri.indexOf('?'));
-        if (uri.endsWith("/")) {
-            uri = uri.substring(0, uri.length() - 1);
-        }
-        if (!uri.startsWith("/")) {
-            uri = "/" + uri;
-        }
-        return uri;
+    public Http header(String name, String value) {
+        builder.header(name, value);
+        return this;
     }
 
-    public static Pair<String> parseUriIntoUrlBaseAndPath(String rawUri) {
-        int pos = rawUri.indexOf('/');
-        if (pos == -1) {
-            return Pair.of(null, "");
-        }
-        URI uri;
-        try {
-            uri = new URI(rawUri);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        if (uri.getHost() == null) {
-            return Pair.of(null, rawUri);
-        }
-        String path = uri.getRawPath();
-        pos = rawUri.lastIndexOf(path); // edge case that path is just "/"
-        String urlBase = rawUri.substring(0, pos);
-        return Pair.of(urlBase, rawUri.substring(pos));
+    public Http body(Object body) {
+        builder.body(body);
+        return this;
     }
 
-    public static Object fromBytes(byte[] bytes, boolean strict, ResourceType resourceType) {
-        if (bytes == null) {
-            return null;
-        }
-        // For binary content, return raw bytes directly (V1 compatibility)
-        if (resourceType != null && resourceType.isBinary()) {
-            return bytes;
-        }
-        String raw = FileUtils.toString(bytes);
-        return fromString(raw, strict, resourceType);
+    public Http contentType(String contentType) {
+        builder.contentType(contentType);
+        return this;
     }
 
-    public static Object fromString(String raw, boolean strict, ResourceType resourceType) {
-        String trimmed = raw.trim();
-        if (trimmed.isEmpty()) {
-            return raw;
+    public Http configure(String key, Object value) {
+        client.config(key, value);
+        return this;
+    }
+
+    public Http configure(Map<String, Object> map) {
+        map.forEach(this::configure);
+        return this;
+    }
+
+    public HttpResponse method(String method, Object body) {
+        if (body != null) {
+            builder.body(body instanceof Json ? ((Json) body).value() : body);
         }
-        if (resourceType != null && resourceType.isBinary()) {
-            return raw;
+        builder.method(method);
+        HttpResponse response = builder.invoke();
+        if (response.getStatus() >= 400) {
+            logger.warn("http response code: {}, response: {}, url: {}",
+                    response.getStatus(), response.getBodyString(), builder.getUri());
         }
-        switch (trimmed.charAt(0)) {
-            case '{':
-            case '[':
-                if (strict) {
-                    return Json.parseStrict(raw);
-                }
-                try {
-                    return JSONValue.parseKeepingOrder(raw);
-                } catch (Exception e) {
-                    logger.trace("failed to parse json: {}", e.getMessage());
-                    return raw;
-                }
-            case '<':
-                if (resourceType == null || resourceType.isXml()) {
-                    try {
-                        return Xml.toXmlDoc(raw);
-                    } catch (Exception e) {
-                        logger.trace("failed to parse xml: {}", e.getMessage());
-                        if (strict) {
-                            throw e;
-                        }
-                        return raw;
-                    }
-                } else {
-                    return raw;
-                }
-            default:
-                return raw;
-        }
+        return response;
     }
 
-    // ========== Query String Utilities ==========
-
-    /**
-     * Parse a URI path that may contain query parameters.
-     * Returns a Pair where left is the path (without query string) and right is the params map.
-     * <p>
-     * Examples:
-     * - "/test?name=john" -> Pair.of("/test", {name: [john]})
-     * - "/test" -> Pair.of("/test", {})
-     * - "/api/users?id=1&id=2" -> Pair.of("/api/users", {id: [1, 2]})
-     */
-    public static Pair<Object> parsePathAndParams(String uri) {
-        QueryStringDecoder decoder = new QueryStringDecoder(uri);
-        String path = decoder.path();
-        Map<String, List<String>> params = decoder.parameters();
-        return Pair.of(path, params);
+    public HttpResponse method(String method) {
+        return method(method, null);
     }
 
-    /**
-     * Build a URI with query parameters from a path and params map.
-     * <p>
-     * Example: buildUri("/test", Map.of("name", List.of("john"))) -> "/test?name=john"
-     */
-    public static String buildUri(String path, Map<String, List<String>> params) {
-        if (params == null || params.isEmpty()) {
-            return path;
-        }
-        QueryStringEncoder encoder = new QueryStringEncoder(path);
-        params.forEach((name, values) -> {
-            if (values != null) {
-                values.forEach(value -> encoder.addParam(name, value));
-            }
-        });
-        return encoder.toString();
+    public HttpResponse methodJson(String method, String body) {
+        return method(method, Json.of(body));
     }
 
-    /**
-     * Extract just the path portion from a URI (strips query string).
-     */
-    public static String extractPath(String uri) {
-        int qpos = uri.indexOf('?');
-        return qpos == -1 ? uri : uri.substring(0, qpos);
+    public HttpResponse get() {
+        return method("GET");
     }
 
-    /**
-     * Extract just the query string from a URI (without the leading '?').
-     * Returns null if no query string present.
-     */
-    public static String extractQueryString(String uri) {
-        int qpos = uri.indexOf('?');
-        return qpos == -1 ? null : uri.substring(qpos + 1);
+    public HttpResponse post(Object body) {
+        return method("POST", body);
     }
 
-    /**
-     * Parse query string parameters from a URI.
-     * Returns empty map if no query string present.
-     */
-    public static Map<String, List<String>> parseQueryParams(String uri) {
-        QueryStringDecoder decoder = new QueryStringDecoder(uri);
-        return decoder.parameters();
+    public HttpResponse postJson(String body) {
+        return post(Json.of(body).value());
+    }
+
+    public HttpResponse put(Object body) {
+        return method("PUT", body);
+    }
+
+    public HttpResponse putJson(String body) {
+        return put(Json.of(body).value());
+    }
+
+    public HttpResponse patch(Object body) {
+        return method("PATCH", body);
+    }
+
+    public HttpResponse patchJson(String body) {
+        return patch(Json.of(body).value());
+    }
+
+    public HttpResponse delete() {
+        return method("DELETE");
+    }
+
+    public HttpResponse delete(Object body) {
+        return method("DELETE", body);
     }
 
 }

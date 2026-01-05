@@ -41,7 +41,7 @@ class WsClientOptionsTest {
         assertEquals(8080, options.getPort());
         assertFalse(options.isSsl());
         assertFalse(options.isCompression());
-        assertEquals(Http.MEGABYTE, options.getMaxPayloadSize());
+        assertEquals(HttpUtils.MEGABYTE, options.getMaxPayloadSize());
         assertEquals(Duration.ofSeconds(30), options.getConnectTimeout());
         assertEquals(Duration.ofSeconds(30), options.getPingInterval());
         assertTrue(options.isTrustAllCerts());
@@ -72,14 +72,14 @@ class WsClientOptionsTest {
     void testCustomOptions() {
         WsClientOptions options = WsClientOptions.builder("ws://localhost:9222")
                 .compression(true)
-                .maxPayloadSize(2 * Http.MEGABYTE)
+                .maxPayloadSize(2 * HttpUtils.MEGABYTE)
                 .connectTimeout(Duration.ofSeconds(10))
                 .pingInterval(Duration.ofSeconds(15))
                 .trustAllCerts(false)
                 .build();
 
         assertTrue(options.isCompression());
-        assertEquals(2 * Http.MEGABYTE, options.getMaxPayloadSize());
+        assertEquals(2 * HttpUtils.MEGABYTE, options.getMaxPayloadSize());
         assertEquals(Duration.ofSeconds(10), options.getConnectTimeout());
         assertEquals(Duration.ofSeconds(15), options.getPingInterval());
         assertFalse(options.isTrustAllCerts());

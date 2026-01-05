@@ -359,7 +359,7 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
             if (request.getBody() != null) {
                 EntityBuilder entityBuilder = EntityBuilder.create().setBinary(request.getBody());
                 // Apply charset to content type
-                String contentTypeHeader = request.getHeader(Http.Header.CONTENT_TYPE.key);
+                String contentTypeHeader = request.getHeader(HttpUtils.Header.CONTENT_TYPE.key);
                 if (contentTypeHeader != null) {
                     try {
                         ContentType parsed = ContentType.parse(contentTypeHeader);
@@ -373,7 +373,7 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
                         LOGGER.debug("could not parse content-type: {}", contentTypeHeader);
                     }
                 }
-                List<String> transferEncoding = request.getHeaderValues(Http.Header.TRANSFER_ENCODING.key);
+                List<String> transferEncoding = request.getHeaderValues(HttpUtils.Header.TRANSFER_ENCODING.key);
                 if (transferEncoding != null) {
                     for (String te : transferEncoding) {
                         if (te == null) {
@@ -386,7 +386,7 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
                             entityBuilder.setContentEncoding("gzip");
                         }
                     }
-                    request.removeHeader(Http.Header.TRANSFER_ENCODING.key);
+                    request.removeHeader(HttpUtils.Header.TRANSFER_ENCODING.key);
                 }
                 requestBuilder.setEntity(entityBuilder.build());
             }
@@ -488,7 +488,7 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
             headers = new LinkedHashMap<>();
             response.setHeaders(headers);
         }
-        List<String> responseCookies = headers.get(Http.Header.SET_COOKIE.key);
+        List<String> responseCookies = headers.get(HttpUtils.Header.SET_COOKIE.key);
         if (responseCookies == null) {
             responseCookies = new ArrayList<>();
         }
@@ -530,7 +530,7 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
             }
         }
         if (!mergedCookies.isEmpty()) {
-            headers.put(Http.Header.SET_COOKIE.key, mergedCookies);
+            headers.put(HttpUtils.Header.SET_COOKIE.key, mergedCookies);
         }
         // Clear cookie store for next request - Karate manages cookies at a higher level
         cookieStore.clear();

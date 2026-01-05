@@ -25,6 +25,7 @@ package io.karatelabs.core.mock;
 
 import io.karatelabs.core.MockServer;
 import io.karatelabs.http.ApacheHttpClient;
+import io.karatelabs.http.Http;
 import io.karatelabs.http.HttpClient;
 import io.karatelabs.http.HttpRequestBuilder;
 import io.karatelabs.http.HttpResponse;
@@ -181,6 +182,66 @@ class MockServerTest {
         assertTrue(server.getPort() > 0);
         assertTrue(server.isSsl());
         assertEquals("https://localhost:" + server.getPort(), server.getUrl());
+    }
+
+    // ========== Http.to() API Tests ==========
+
+    @Test
+    void testHttpToGet() {
+        HttpResponse response = Http.to(server.getUrl())
+                .configure("ssl", true)
+                .path("/echo")
+                .get();
+
+        assertEquals(200, response.getStatus());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) response.getBodyConverted();
+        assertEquals("GET", body.get("method"));
+        assertEquals("/echo", body.get("path"));
+    }
+
+    @Test
+    void testHttpToPost() {
+        HttpResponse response = Http.to(server.getUrl())
+                .configure("ssl", true)
+                .path("/users")
+                .postJson("{\"name\": \"Alice\", \"email\": \"alice@test.com\"}");
+
+        assertEquals(201, response.getStatus());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) response.getBodyConverted();
+        assertEquals("Alice", body.get("name"));
+        assertNotNull(body.get("id"));
+    }
+
+    @Test
+    void testHttpToWithParams() {
+        HttpResponse response = Http.to(server.getUrl())
+                .configure("ssl", true)
+                .path("/echo")
+                .param("foo", "bar")
+                .param("count", "42")
+                .get();
+
+        assertEquals(200, response.getStatus());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) response.getBodyConverted();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> params = (Map<String, Object>) body.get("params");
+        // Params are returned as lists
+        assertTrue(params.get("foo").toString().contains("bar"));
+        assertTrue(params.get("count").toString().contains("42"));
+    }
+
+    @Test
+    void testHttpToWithHeader() {
+        HttpResponse response = Http.to(server.getUrl())
+                .configure("ssl", true)
+                .path("/echo")
+                .header("X-Custom-Header", "test-value")
+                .get();
+
+        assertEquals(200, response.getStatus());
     }
 
 }

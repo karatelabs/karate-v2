@@ -173,7 +173,7 @@ public class MultiPartBuilder {
                         cs = Charset.forName(charset);
                     }
                 }
-                byte[] encoded = value == null ? Http.ZERO_BYTES : Json.toBytes(value);
+                byte[] encoded = value == null ? HttpUtils.ZERO_BYTES : Json.toBytes(value);
                 String filename = (String) map.get("filename");
                 if (filename == null) {
                     filename = ""; // will be treated as an inline value, behaves like null
@@ -290,7 +290,7 @@ public class MultiPartBuilder {
         }
         try {
             io.netty.handler.codec.http.HttpRequest request = encoder.finalizeRequest();
-            contentTypeHeader = request.headers().get(Http.Header.CONTENT_TYPE.key);
+            contentTypeHeader = request.headers().get(HttpUtils.Header.CONTENT_TYPE.key);
             // logger.debug("content type header: {}", contentTypeHeader);
             ByteBuf content;
             if (request instanceof FullHttpRequest fullRequest) {

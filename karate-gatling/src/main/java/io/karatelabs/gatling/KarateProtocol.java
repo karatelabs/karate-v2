@@ -24,7 +24,7 @@
 package io.karatelabs.gatling;
 
 import io.gatling.core.protocol.Protocol;
-import io.karatelabs.http.Http;
+import io.karatelabs.http.HttpUtils;
 import io.karatelabs.http.HttpRequest;
 
 import java.util.Collections;
@@ -136,7 +136,7 @@ public class KarateProtocol implements Protocol {
      * Patterns can contain path parameters like "/users/{id}".
      */
     public boolean pathMatches(String pattern, String path) {
-        Map<String, String> params = Http.parseUriPattern(pattern, path);
+        Map<String, String> params = HttpUtils.parseUriPattern(pattern, path);
         return params != null;
     }
 

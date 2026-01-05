@@ -23,7 +23,7 @@
  */
 package io.karatelabs.driver.cdp;
 
-import io.karatelabs.http.Http;
+import io.karatelabs.http.HttpUtils;
 import io.karatelabs.http.WsClient;
 import io.karatelabs.http.WsClientOptions;
 import io.karatelabs.http.WsException;
@@ -63,7 +63,7 @@ public class CdpClient {
     public static CdpClient connect(String webSocketUrl, Duration defaultTimeout) {
         WsClientOptions options = WsClientOptions.builder(webSocketUrl)
                 .disablePing() // CDP handles its own keepalive
-                .maxPayloadSize(Http.MEGABYTE * 16) // Screenshots can be large
+                .maxPayloadSize(HttpUtils.MEGABYTE * 16) // Screenshots can be large
                 .build();
         WsClient ws = WsClient.connect(options);
         return new CdpClient(ws, defaultTimeout);

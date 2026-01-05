@@ -142,9 +142,9 @@ public class ServerTestHarness implements AutoCloseable {
         HttpRequestBuilder builder = new HttpRequestBuilder(client);
         builder.url(getBaseUrl());
 
-        // Parse query params from path using Http utility
-        builder.path(Http.extractPath(path));
-        Map<String, List<String>> params = Http.parseQueryParams(path);
+        // Parse query params from path using HttpUtils utility
+        builder.path(HttpUtils.extractPath(path));
+        Map<String, List<String>> params = HttpUtils.parseQueryParams(path);
         params.forEach((name, values) -> {
             if (values != null && !values.isEmpty()) {
                 builder.param(name, values.toArray(new String[0]));

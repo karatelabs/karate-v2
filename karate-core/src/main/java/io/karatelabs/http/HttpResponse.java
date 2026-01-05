@@ -62,7 +62,7 @@ public class HttpResponse implements SimpleObject {
     }
 
     public String getContentType() {
-        return getHeader(Http.Header.CONTENT_TYPE.key);
+        return getHeader(HttpUtils.Header.CONTENT_TYPE.key);
     }
 
     public String getHeader(String name) {
@@ -103,7 +103,7 @@ public class HttpResponse implements SimpleObject {
     }
 
     public void setContentType(String contentType) {
-        setHeader(Http.Header.CONTENT_TYPE.key, contentType);
+        setHeader(HttpUtils.Header.CONTENT_TYPE.key, contentType);
     }
 
     public void setHeader(String name, List<String> values) {
@@ -192,7 +192,7 @@ public class HttpResponse implements SimpleObject {
         if (rt != null && rt.isBinary()) {
             return body;
         }
-        return Http.fromBytes(body, false, rt);
+        return HttpUtils.fromBytes(body, false, rt);
     }
 
     public long getResponseTime() {
@@ -221,7 +221,7 @@ public class HttpResponse implements SimpleObject {
      * This matches V1 behavior where cookies are accessed as: responseCookies['name'].value
      */
     public Map<String, Map<String, Object>> getCookies() {
-        List<String> setCookieHeaders = getHeaderValues(Http.Header.SET_COOKIE.key);
+        List<String> setCookieHeaders = getHeaderValues(HttpUtils.Header.SET_COOKIE.key);
         if (setCookieHeaders == null || setCookieHeaders.isEmpty()) {
             return java.util.Collections.emptyMap();
         }

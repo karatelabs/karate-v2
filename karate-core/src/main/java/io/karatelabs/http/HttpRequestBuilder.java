@@ -237,7 +237,7 @@ public class HttpRequestBuilder implements SimpleObject {
     }
 
     public String getContentType() {
-        return getHeader(Http.Header.CONTENT_TYPE.key);
+        return getHeader(HttpUtils.Header.CONTENT_TYPE.key);
     }
 
     public HttpRequestBuilder removeHeader(String name) {
@@ -283,7 +283,7 @@ public class HttpRequestBuilder implements SimpleObject {
 
     public HttpRequestBuilder contentType(String contentType) {
         if (contentType != null) {
-            header(Http.Header.CONTENT_TYPE.key, contentType);
+            header(HttpUtils.Header.CONTENT_TYPE.key, contentType);
         }
         return this;
     }
@@ -440,7 +440,7 @@ public class HttpRequestBuilder implements SimpleObject {
         if (multiPart != null) {
             if (body == null) { // this is not-null only for a re-try, don't rebuild multi-part
                 body = multiPart.build();
-                String userContentType = getHeader(Http.Header.CONTENT_TYPE.key);
+                String userContentType = getHeader(HttpUtils.Header.CONTENT_TYPE.key);
                 if (userContentType != null) {
                     String boundary = multiPart.getBoundary();
                     if (boundary != null) {
@@ -457,7 +457,7 @@ public class HttpRequestBuilder implements SimpleObject {
                 String cookieValue = ClientCookieEncoder.LAX.encode(c);
                 cookieValues.add(cookieValue);
             }
-            header(Http.Header.COOKIE.key, StringUtils.join(cookieValues, "; "));
+            header(HttpUtils.Header.COOKIE.key, StringUtils.join(cookieValues, "; "));
         }
         if (body != null) {
             if (multiPart == null) {
@@ -468,7 +468,7 @@ public class HttpRequestBuilder implements SimpleObject {
                         contentType = rt.contentType;
                     }
                 }
-                Charset cs = contentType == null ? null : Http.parseContentTypeCharset(contentType);
+                Charset cs = contentType == null ? null : HttpUtils.parseContentTypeCharset(contentType);
                 if (cs == null) {
                     if (charset != null) {
                         // edge case, support setting content type to an empty string
