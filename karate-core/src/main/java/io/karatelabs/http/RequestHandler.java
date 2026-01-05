@@ -194,8 +194,14 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
             return null;
         }
 
-        // Validate the token
+        // Skip if no session exists - nothing to protect from CSRF
+        // This allows signin/signup pages to work without a session
         Session session = context.getSession();
+        if (session == null) {
+            return null;
+        }
+
+        // Validate the token
         if (!CsrfProtection.validate(request, session)) {
             HttpResponse response = new HttpResponse();
             response.setStatus(403);

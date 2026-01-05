@@ -315,6 +315,18 @@ class RequestHandlerTest {
     }
 
     @Test
+    void testCsrfValidationAllowsPostWithoutSession() {
+        // POST without session should be allowed (e.g., signin page)
+        // This is important for signin/signup pages that need to work without a session
+        HttpResponse response = harness.request()
+                .path("/api/hello?name=world")
+                .post();
+
+        // Should succeed - no session means nothing to protect from CSRF
+        assertEquals(200, response.getStatus());
+    }
+
+    @Test
     void testCsrfValidationBlocksInvalidToken() {
         // Create a session
         Session session = sessionStore.create(600);
