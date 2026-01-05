@@ -2,12 +2,16 @@ package io.karatelabs.http;
 
 import io.karatelabs.common.Resource;
 import io.karatelabs.core.KarateJs;
+import io.karatelabs.js.JsCallable;
+import io.karatelabs.js.SimpleObject;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -278,6 +282,141 @@ class ServerIntegrationTest {
 
         assertEquals("hello world", context.engine.get("body1"));
         assertEquals("hello world", context.engine.get("body2"));
+    }
+
+    // ========== SimpleObject / JsCallable Tests ==========
+
+    /**
+     * Test utility object that implements SimpleObject to expose methods as JsCallable.
+     * This pattern allows Java methods to be called from JavaScript/templates.
+     */
+    static class TestUtils implements SimpleObject {
+
+        @Override
+        public Object jsGet(String name) {
+            return switch (name) {
+                case "uppercase" -> (JsCallable) (ctx, args) -> {
+                    if (args.length > 0 && args[0] != null) {
+                        return args[0].toString().toUpperCase();
+                    }
+                    return "";
+                };
+                case "formatPrice" -> (JsCallable) (ctx, args) -> {
+                    if (args.length > 0 && args[0] instanceof Number n) {
+                        return String.format("$%.2f", n.doubleValue());
+                    }
+                    return "$0.00";
+                };
+                case "greet" -> (JsCallable) (ctx, args) -> {
+                    String name1 = args.length > 0 && args[0] != null ? args[0].toString() : "World";
+                    return "Hello, " + name1 + "!";
+                };
+                case "appName" -> "TestApp";
+                default -> null;
+            };
+        }
+
+        @Override
+        public Collection<String> keys() {
+            return List.of("uppercase", "formatPrice", "greet", "appName");
+        }
+    }
+
+    @Test
+    void testSimpleObjectInTemplate() {
+        TestUtils utils = new TestUtils();
+
+        harness.setHandler(ctx -> {
+            // Pass utils as a template variable
+            String html = ctx.renderString(
+                    "<span th:text=\"utils.uppercase('hello')\"></span>",
+                    Map.of("utils", utils)
+            );
+            ctx.response().setBody(html);
+            return ctx.response();
+        });
+
+        HttpResponse response = harness.get("/test");
+        assertEquals("<span>HELLO</span>", response.getBodyString());
+    }
+
+    @Test
+    void testSimpleObjectMethodWithArg() {
+        TestUtils utils = new TestUtils();
+
+        harness.setHandler(ctx -> {
+            String html = ctx.renderString(
+                    "<span th:text=\"utils.formatPrice(19.99)\"></span>",
+                    Map.of("utils", utils)
+            );
+            ctx.response().setBody(html);
+            return ctx.response();
+        });
+
+        HttpResponse response = harness.get("/test");
+        assertEquals("<span>$19.99</span>", response.getBodyString());
+    }
+
+    @Test
+    void testSimpleObjectPropertyAccess() {
+        TestUtils utils = new TestUtils();
+
+        harness.setHandler(ctx -> {
+            // Access property (non-callable)
+            String html = ctx.renderString(
+                    "<span th:text=\"utils.appName\"></span>",
+                    Map.of("utils", utils)
+            );
+            ctx.response().setBody(html);
+            return ctx.response();
+        });
+
+        HttpResponse response = harness.get("/test");
+        assertEquals("<span>TestApp</span>", response.getBodyString());
+    }
+
+    @Test
+    void testSimpleObjectInJsEval() {
+        TestUtils utils = new TestUtils();
+
+        harness.setHandler(ctx -> {
+            // Use utils in JS evaluation
+            ctx.engine().put("utils", utils);
+            ctx.eval("var result = utils.greet('Karate')");
+            ctx.eval("response.body = result");
+            return ctx.response();
+        });
+
+        HttpResponse response = harness.get("/test");
+        assertEquals("Hello, Karate!", response.getBodyString());
+    }
+
+    @Test
+    void testSimpleObjectInServerScope() {
+        TestUtils utils = new TestUtils();
+
+        harness.setHandler(ctx -> {
+            // Simulate ka:scope="global" usage - utils available in JS, result in template
+            ctx.engine().put("utils", utils);
+            String html = ctx.renderString(
+                    """
+                    <script ka:scope="global">
+                      _.message = utils.greet('World');
+                      _.price = utils.formatPrice(42.5);
+                    </script>
+                    <div th:text="message"></div>
+                    <div th:text="price"></div>
+                    """,
+                    Map.of("utils", utils)
+            );
+            ctx.response().setBody(html);
+            return ctx.response();
+        });
+
+        HttpResponse response = harness.get("/test");
+        String body = response.getBodyString();
+        assertTrue(body.contains("<div>Hello, World!</div>"), "Should contain greeting");
+        assertTrue(body.contains("<div>$42.50</div>"), "Should contain formatted price");
     }
 
 }

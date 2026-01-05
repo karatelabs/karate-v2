@@ -1,12 +1,16 @@
 package io.karatelabs.http;
 
 import io.karatelabs.common.Resource;
+import io.karatelabs.js.JsCallable;
+import io.karatelabs.js.SimpleObject;
 import io.karatelabs.markup.ResourceResolver;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -360,6 +364,195 @@ class RequestHandlerTest {
 
         assertEquals(403, response.getStatus());
         assertTrue(response.getBodyString().contains("Forbidden"));
+    }
+
+    // ========== Global Variables Tests ==========
+
+    /**
+     * Utility object implementing SimpleObject to expose methods as JsCallable.
+     * This pattern allows Java methods to be called from JavaScript/templates.
+     */
+    static class TestUtils implements SimpleObject {
+
+        @Override
+        public Object jsGet(String name) {
+            return switch (name) {
+                case "uppercase" -> (JsCallable) (ctx, args) -> {
+                    if (args.length > 0 && args[0] != null) {
+                        return args[0].toString().toUpperCase();
+                    }
+                    return "";
+                };
+                case "formatPrice" -> (JsCallable) (ctx, args) -> {
+                    if (args.length > 0 && args[0] instanceof Number n) {
+                        return String.format("$%.2f", n.doubleValue());
+                    }
+                    return "$0.00";
+                };
+                case "greet" -> (JsCallable) (ctx, args) -> {
+                    String name1 = args.length > 0 && args[0] != null ? args[0].toString() : "World";
+                    return "Hello, " + name1 + "!";
+                };
+                case "appName" -> "TestApp";
+                default -> null;
+            };
+        }
+
+        @Override
+        public Collection<String> keys() {
+            return List.of("uppercase", "formatPrice", "greet", "appName");
+        }
+    }
+
+    @Test
+    void testGlobalVariablesInApiHandler() {
+        // Create utils object
+        TestUtils utils = new TestUtils();
+
+        // Set up resources with API that uses utils
+        Map<String, String> testResources = new HashMap<>();
+        testResources.put("api/test.js", "response.body = { greeting: utils.greet('Karate'), price: utils.formatPrice(99.5) }");
+
+        ResourceResolver resolver = (path, caller) -> {
+            String content = testResources.get(path);
+            return content != null ? Resource.text(content) : null;
+        };
+
+        // Configure server with globalVariables
+        ServerConfig config = new ServerConfig()
+                .apiPrefix("/api/")
+                .globalVariables(Map.of("utils", utils));
+
+        RequestHandler handler = new RequestHandler(config, resolver);
+        InMemoryTestHarness testHarness = new InMemoryTestHarness(handler);
+
+        // Make request
+        HttpResponse response = testHarness.get("/api/test");
+
+        assertEquals(200, response.getStatus());
+        String body = response.getBodyString();
+        assertTrue(body.contains("Hello, Karate!"), "Should contain greeting from utils.greet()");
+        assertTrue(body.contains("$99.50"), "Should contain formatted price from utils.formatPrice()");
+    }
+
+    @Test
+    void testGlobalVariablesInTemplate() {
+        // Create utils object
+        TestUtils utils = new TestUtils();
+
+        // Set up resources with template that uses utils
+        Map<String, String> testResources = new HashMap<>();
+        testResources.put("index.html", """
+                <html>
+                <body>
+                <h1 th:text="utils.appName">App</h1>
+                <p th:text="utils.greet('World')">Greeting</p>
+                <span th:text="utils.formatPrice(42.99)">Price</span>
+                </body>
+                </html>
+                """);
+
+        ResourceResolver resolver = (path, caller) -> {
+            String content = testResources.get(path);
+            return content != null ? Resource.text(content) : null;
+        };
+
+        // Configure server with globalVariables
+        ServerConfig config = new ServerConfig()
+                .globalVariables(Map.of("utils", utils));
+
+        RequestHandler handler = new RequestHandler(config, resolver);
+        InMemoryTestHarness testHarness = new InMemoryTestHarness(handler);
+
+        // Make request
+        HttpResponse response = testHarness.get("/");
+
+        assertEquals(200, response.getStatus());
+        String body = response.getBodyString();
+        assertTrue(body.contains("<h1>TestApp</h1>"), "Should contain app name from utils.appName");
+        assertTrue(body.contains("Hello, World!"), "Should contain greeting from utils.greet()");
+        assertTrue(body.contains("$42.99"), "Should contain formatted price from utils.formatPrice()");
+    }
+
+    @Test
+    void testGlobalVariablesInServerScopeScript() {
+        // Create utils object
+        TestUtils utils = new TestUtils();
+
+        // Set up resources with template that uses utils in ka:scope
+        Map<String, String> testResources = new HashMap<>();
+        testResources.put("index.html", """
+                <html>
+                <body>
+                <script ka:scope="global">
+                  _.message = utils.uppercase('hello world');
+                  _.price = utils.formatPrice(19.99);
+                </script>
+                <p th:text="message">Message</p>
+                <span th:text="price">Price</span>
+                </body>
+                </html>
+                """);
+
+        ResourceResolver resolver = (path, caller) -> {
+            String content = testResources.get(path);
+            return content != null ? Resource.text(content) : null;
+        };
+
+        // Configure server with globalVariables
+        ServerConfig config = new ServerConfig()
+                .globalVariables(Map.of("utils", utils));
+
+        RequestHandler handler = new RequestHandler(config, resolver);
+        InMemoryTestHarness testHarness = new InMemoryTestHarness(handler);
+
+        // Make request
+        HttpResponse response = testHarness.get("/");
+
+        assertEquals(200, response.getStatus());
+        String body = response.getBodyString();
+        assertTrue(body.contains("HELLO WORLD"), "Should contain uppercased text from utils.uppercase()");
+        assertTrue(body.contains("$19.99"), "Should contain formatted price from utils.formatPrice()");
+    }
+
+    @Test
+    void testMultipleGlobalVariables() {
+        // Create multiple utility objects
+        TestUtils utils = new TestUtils();
+
+        // Set up resources
+        Map<String, String> testResources = new HashMap<>();
+        testResources.put("api/test.js", """
+                response.body = {
+                    greeting: utils.greet(appName),
+                    version: appVersion
+                }
+                """);
+
+        ResourceResolver resolver = (path, caller) -> {
+            String content = testResources.get(path);
+            return content != null ? Resource.text(content) : null;
+        };
+
+        // Configure server with multiple globalVariables
+        ServerConfig config = new ServerConfig()
+                .apiPrefix("/api/")
+                .globalVariables(Map.of(
+                        "utils", utils,
+                        "appName", "MyApp",
+                        "appVersion", "2.0"
+                ));
+
+        RequestHandler handler = new RequestHandler(config, resolver);
+        InMemoryTestHarness testHarness = new InMemoryTestHarness(handler);
+
+        // Make request
+        HttpResponse response = testHarness.get("/api/test");
+
+        assertEquals(200, response.getStatus());
+        String body = response.getBodyString();
+        assertTrue(body.contains("Hello, MyApp!"), "Should use appName in greeting");
+        assertTrue(body.contains("2.0"), "Should contain appVersion");
     }
 
 }

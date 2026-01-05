@@ -26,6 +26,7 @@ package io.karatelabs.http;
 import io.karatelabs.js.ExternalBridge;
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
@@ -66,6 +67,9 @@ public class ServerConfig {
 
     // Java interop bridge (default allows all classes)
     private ExternalBridge externalBridge = new ExternalBridge() {};
+
+    // Global variables available in all templates and API handlers
+    private Map<String, Object> globalVariables;
 
     public ServerConfig() {
     }
@@ -170,6 +174,10 @@ public class ServerConfig {
 
     public ExternalBridge getExternalBridge() {
         return externalBridge;
+    }
+
+    public Map<String, Object> getGlobalVariables() {
+        return globalVariables;
     }
 
     // Fluent setters (builder pattern)
@@ -296,6 +304,15 @@ public class ServerConfig {
      */
     public ServerConfig externalBridge(ExternalBridge externalBridge) {
         this.externalBridge = externalBridge;
+        return this;
+    }
+
+    /**
+     * Set global variables that will be available in all templates and API handlers.
+     * These variables are injected into the JavaScript engine context.
+     */
+    public ServerConfig globalVariables(Map<String, Object> globalVariables) {
+        this.globalVariables = globalVariables;
         return this;
     }
 

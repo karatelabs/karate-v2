@@ -312,6 +312,10 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
             if (config.getExternalBridge() != null) {
                 reqEngine.setExternalBridge(config.getExternalBridge());
             }
+            // Inject global variables
+            if (config.getGlobalVariables() != null) {
+                config.getGlobalVariables().forEach(reqEngine::put);
+            }
             reqEngine.put("request", request);
             reqEngine.put("response", response);
             reqEngine.put("context", context);
@@ -368,6 +372,10 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
 
             // Prepare variables for template
             Map<String, Object> vars = new HashMap<>();
+            // Inject global variables first (can be overridden by request-specific vars)
+            if (config.getGlobalVariables() != null) {
+                vars.putAll(config.getGlobalVariables());
+            }
             vars.put("request", request);
             vars.put("response", response);
             vars.put("context", context);

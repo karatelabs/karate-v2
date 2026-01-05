@@ -1428,6 +1428,7 @@ HttpServer server = HttpServer.start(8080, handler);
 | `apiPrefix(prefix)` | `"/api/"` | URL prefix for API routes |
 | `staticPrefix(prefix)` | `"/pub/"` | URL prefix for static files |
 | `devMode(bool)` | false | Enable hot reload and disable caching |
+| `globalVariables(map)` | null | Global variables for templates/APIs (see below) |
 | `csrfEnabled(bool)` | true | Enable CSRF protection |
 | `securityHeadersEnabled(bool)` | true | Add security headers to responses |
 | `contentSecurityPolicy(csp)` | null | Custom CSP header value |
@@ -1514,6 +1515,210 @@ engine.setExternalBridge((name, args) -> {
 // Use in templates
 <span th:text="utils.formatDate(item.createdAt)">2024-01-01</span>
 ```
+
+### Global Variables with SimpleObject
+
+For web applications, the recommended way to inject Java utilities is via `ServerConfig.globalVariables()`. This makes objects available in all templates and API handlers without manual wiring.
+
+#### Basic Setup
+
+```java
+import io.karatelabs.http.*;
+import io.karatelabs.js.JsCallable;
+import io.karatelabs.js.SimpleObject;
+import java.util.*;
+
+// 1. Create utility class implementing SimpleObject
+public class AppUtils implements SimpleObject {
+
+    private final MyDatabase db;
+    private final MyAuthService auth;
+
+    public AppUtils(MyDatabase db, MyAuthService auth) {
+        this.db = db;
+        this.auth = auth;
+    }
+
+    @Override
+    public Object jsGet(String name) {
+        return switch (name) {
+            case "formatDate" -> (JsCallable) (ctx, args) -> {
+                // Args are untyped - manual validation required
+                if (args.length == 0 || args[0] == null) {
+                    return "";
+                }
+                long timestamp = ((Number) args[0]).longValue();
+                return new SimpleDateFormat("yyyy-MM-dd").format(new Date(timestamp));
+            };
+            case "formatPrice" -> (JsCallable) (ctx, args) -> {
+                if (args.length == 0 || !(args[0] instanceof Number)) {
+                    return "$0.00";
+                }
+                return String.format("$%.2f", ((Number) args[0]).doubleValue());
+            };
+            case "findUser" -> (JsCallable) (ctx, args) -> {
+                if (args.length == 0) return null;
+                String id = args[0].toString();
+                return db.findUser(id);  // Returns Map or domain object
+            };
+            case "authenticate" -> (JsCallable) (ctx, args) -> {
+                if (args.length < 2) return Map.of("error", "Missing credentials");
+                String email = args[0].toString();
+                String password = args[1].toString();
+                return auth.login(email, password);
+            };
+            // Non-callable properties
+            case "appName" -> "My Application";
+            case "appVersion" -> "2.0.0";
+            default -> null;
+        };
+    }
+
+    @Override
+    public Collection<String> keys() {
+        return List.of("formatDate", "formatPrice", "findUser",
+                       "authenticate", "appName", "appVersion");
+    }
+}
+
+// 2. Configure server with globalVariables
+MyDatabase db = new MyDatabase(connectionPool);
+MyAuthService auth = new MyAuthService(db);
+AppUtils utils = new AppUtils(db, auth);
+
+ServerConfig config = new ServerConfig()
+    .resourceRoot("classpath:web")
+    .sessionStore(new InMemorySessionStore())
+    .globalVariables(Map.of(
+        "utils", utils,
+        "config", Map.of("maxItems", 100, "debug", false)
+    ));
+
+RequestHandler handler = new RequestHandler(config, resolver);
+HttpServer server = HttpServer.start(8080, handler);
+```
+
+#### Usage in Templates
+
+Global variables are available directly in Thymeleaf expressions and `ka:scope` scripts:
+
+```html
+<!-- Direct property access -->
+<h1 th:text="utils.appName">App Name</h1>
+<span th:text="utils.appVersion">1.0</span>
+
+<!-- Method calls in expressions -->
+<span th:text="utils.formatDate(item.createdAt)">2024-01-01</span>
+<span th:text="utils.formatPrice(product.price)">$0.00</span>
+
+<!-- In ka:scope scripts -->
+<script ka:scope="global">
+  _.user = utils.findUser(request.param('userId'));
+  _.formattedDate = utils.formatDate(_.user.createdAt);
+</script>
+
+<div th:if="user">
+  <h2 th:text="user.name">Name</h2>
+  <p th:text="formattedDate">Date</p>
+</div>
+```
+
+#### Usage in API Handlers
+
+Global variables are also available in `.js` API files:
+
+```javascript
+// api/users.js
+if (request.get) {
+    let userId = request.param('id');
+    let user = utils.findUser(userId);
+    if (user) {
+        response.body = {
+            ...user,
+            formattedDate: utils.formatDate(user.createdAt)
+        };
+    } else {
+        response.status = 404;
+        response.body = { error: 'User not found' };
+    }
+}
+
+if (request.post) {
+    let result = utils.authenticate(
+        request.param('email'),
+        request.param('password')
+    );
+    if (result.user) {
+        session.user = result.user;
+        response.body = { success: true };
+    } else {
+        response.status = 401;
+        response.body = { error: result.error };
+    }
+}
+```
+
+#### JsCallable Limitations
+
+**Important:** The `JsCallable` approach lacks compile-time type safety. Each method must:
+
+1. **Validate argument count** - Check `args.length` before accessing
+2. **Handle null arguments** - JavaScript may pass `null` or `undefined`
+3. **Cast arguments manually** - Numbers come as `Number`, strings as `String`, objects as `Map`
+4. **Return compatible types** - Return `Map`, `List`, primitives, or other `SimpleObject` instances
+
+```java
+// Example with full validation
+case "createOrder" -> (JsCallable) (ctx, args) -> {
+    // Validate argument count
+    if (args.length < 2) {
+        throw new RuntimeException("createOrder requires (userId, items)");
+    }
+
+    // Validate and cast first argument
+    if (args[0] == null) {
+        throw new RuntimeException("userId cannot be null");
+    }
+    String userId = args[0].toString();
+
+    // Validate and cast second argument (expected: List of Maps)
+    if (!(args[1] instanceof List)) {
+        throw new RuntimeException("items must be an array");
+    }
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> items = (List<Map<String, Object>>) args[1];
+
+    // Validate item structure
+    for (Map<String, Object> item : items) {
+        if (!item.containsKey("productId") || !item.containsKey("quantity")) {
+            throw new RuntimeException("Each item must have productId and quantity");
+        }
+    }
+
+    // Proceed with business logic
+    return orderService.create(userId, items);
+};
+```
+
+#### Type Conversion Reference
+
+| JavaScript Type | Java Type Received |
+|-----------------|-------------------|
+| `number` | `Number` (Integer, Long, or Double) |
+| `string` | `String` |
+| `boolean` | `Boolean` |
+| `null` / `undefined` | `null` |
+| `array` | `List<Object>` |
+| `object` | `Map<String, Object>` |
+| Date | `Number` (milliseconds since epoch) |
+
+#### Best Practices
+
+1. **Create a single utils object** - Consolidate related functionality into one `SimpleObject`
+2. **Inject dependencies via constructor** - Pass database, services, etc. to the utils class
+3. **Return Maps for complex data** - JavaScript/templates work well with `Map<String, Object>`
+4. **Log errors, don't swallow them** - Failed operations should be traceable
+5. **Keep methods focused** - Each JsCallable should do one thing well
 
 ### Programmatic Template Rendering
 
@@ -1937,4 +2142,5 @@ karateJs.setOnDoc(html -> {
 | HTMX target | `ka:target="#id"` | Update target element |
 | HTMX swap | `ka:swap="outerHTML"` | How to update content |
 | Alpine binding | `ka:data="var:expr"` | Bind server data to AlpineJS form |
+| Global vars | `ServerConfig.globalVariables(map)` | Inject Java utils into all templates/APIs |
 | Karate doc | `* doc 'template.html'` | Render template from feature file |
