@@ -637,4 +637,185 @@ class ExternalBridgeTest extends EvalBase {
         assertEquals(42, engine.get("result"));
     }
 
+    // =================================================================================================================
+    // JavaMirror → Java Conversion at JS/Java Boundary Tests
+    // These tests verify that JsDate, JsUint8Array, etc. are unwrapped to their Java equivalents
+    // =================================================================================================================
+
+    @Test
+    void testJsDatePassedToJavaMethodBecomesJavaDate() {
+        // new Date() returns JsDate (a JavaMirror), should be unwrapped to java.util.Date
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        engine.eval("""
+                var DemoPojo = Java.type('io.karatelabs.js.DemoPojo');
+                var pojo = new DemoPojo();
+                var d = new Date(1609459200000);
+                var result = pojo.describeType(d);
+                """);
+        // JsDate implements JavaMirror, should be unwrapped to java.util.Date
+        assertEquals("java.util.Date", engine.get("result"));
+    }
+
+    @Test
+    void testJsDateFromExpressionPassedToJavaMethod() {
+        // Date stored in object property, then passed to Java
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        engine.eval("""
+                var DemoPojo = Java.type('io.karatelabs.js.DemoPojo');
+                var pojo = new DemoPojo();
+                var obj = { created: new Date(1609459200000) };
+                var result = pojo.describeType(obj.created);
+                """);
+        assertEquals("java.util.Date", engine.get("result"));
+    }
+
+    @Test
+    void testJsDatePassedToTypedJavaMethod() {
+        // Java method with Date parameter type should receive java.util.Date
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        engine.eval("""
+                var DemoPojo = Java.type('io.karatelabs.js.DemoPojo');
+                var pojo = new DemoPojo();
+                var d = new Date(1609459200000);
+                var result = pojo.getDateMillis(d);
+                """);
+        assertEquals(1609459200000L, engine.get("result"));
+    }
+
+    @Test
+    void testJsDateFromArrayPassedToJavaMethod() {
+        // Date stored in array, then passed to Java
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        engine.eval("""
+                var DemoPojo = Java.type('io.karatelabs.js.DemoPojo');
+                var pojo = new DemoPojo();
+                var arr = [new Date(1609459200000), new Date(1609545600000)];
+                var result = pojo.describeType(arr[0]);
+                """);
+        assertEquals("java.util.Date", engine.get("result"));
+    }
+
+    @Test
+    void testJsDateFromFunctionReturnPassedToJavaMethod() {
+        // Date returned from a function, then passed to Java
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        engine.eval("""
+                var DemoPojo = Java.type('io.karatelabs.js.DemoPojo');
+                var pojo = new DemoPojo();
+                function getDate() { return new Date(1609459200000); }
+                var result = pojo.describeType(getDate());
+                """);
+        assertEquals("java.util.Date", engine.get("result"));
+    }
+
+    @Test
+    void testJsDateFromTernaryExpressionPassedToJavaMethod() {
+        // Date from conditional expression
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        engine.eval("""
+                var DemoPojo = Java.type('io.karatelabs.js.DemoPojo');
+                var pojo = new DemoPojo();
+                var flag = true;
+                var d = flag ? new Date(1609459200000) : null;
+                var result = pojo.describeType(d);
+                """);
+        assertEquals("java.util.Date", engine.get("result"));
+    }
+
+    @Test
+    void testJsUint8ArrayPassedToJavaMethodBecomesByteArray() {
+        // Uint8Array (JsUint8Array is a JavaMirror) should be unwrapped to byte[]
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        engine.eval("""
+                var DemoPojo = Java.type('io.karatelabs.js.DemoPojo');
+                var pojo = new DemoPojo();
+                var bytes = new Uint8Array([1, 2, 3, 255]);
+                var result = pojo.describeType(bytes);
+                """);
+        // JsUint8Array should be unwrapped to byte[]
+        assertEquals("[B", engine.get("result")); // [B is the JVM name for byte[]
+    }
+
+    @Test
+    void testJsUint8ArrayPassedToTypedJavaMethod() {
+        // Java method with byte[] parameter should receive byte[]
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        engine.eval("""
+                var DemoPojo = Java.type('io.karatelabs.js.DemoPojo');
+                var pojo = new DemoPojo();
+                var bytes = new Uint8Array([1, 2, 3, 255]);
+                var result = pojo.getByteArrayLength(bytes);
+                """);
+        assertEquals(4, engine.get("result"));
+    }
+
+    @Test
+    void testJsUint8ArrayFromPropertyPassedToJavaMethod() {
+        // Uint8Array stored in object property
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        engine.eval("""
+                var DemoPojo = Java.type('io.karatelabs.js.DemoPojo');
+                var pojo = new DemoPojo();
+                var obj = { data: new Uint8Array([10, 20, 30]) };
+                var result = pojo.getByteArrayLength(obj.data);
+                """);
+        assertEquals(3, engine.get("result"));
+    }
+
+    @Test
+    void testMultipleJavaMirrorArgsPassedToJavaMethod() {
+        // Multiple JavaMirror args in one call
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        // Use a SimpleObject to capture args
+        java.util.List<Object> capturedArgs = new java.util.ArrayList<>();
+        SimpleObject utils = name -> {
+            if ("capture".equals(name)) {
+                return (JsCallable) (context, args) -> {
+                    for (Object arg : args) {
+                        capturedArgs.add(arg);
+                    }
+                    return null;
+                };
+            }
+            return null;
+        };
+        engine.put("utils", utils);
+        engine.eval("""
+                var d = new Date(1609459200000);
+                var bytes = new Uint8Array([1, 2, 3]);
+                utils.capture(d, bytes, undefined);
+                """);
+        assertEquals(3, capturedArgs.size());
+        // JsDate should be unwrapped to java.util.Date
+        assertInstanceOf(Date.class, capturedArgs.get(0), "JsDate should be unwrapped to Date");
+        // JsUint8Array should be unwrapped to byte[]
+        assertInstanceOf(byte[].class, capturedArgs.get(1), "JsUint8Array should be unwrapped to byte[]");
+        // undefined should be null
+        assertNull(capturedArgs.get(2), "undefined should be null");
+    }
+
+    @Test
+    void testDateNowPassedToJavaMethod() {
+        // Date.now() returns a number, not a Date - this should work already
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        engine.eval("""
+                var DemoPojo = Java.type('io.karatelabs.js.DemoPojo');
+                var pojo = new DemoPojo();
+                var result = pojo.describeType(Date.now());
+                """);
+        // Date.now() returns a long/number, not JsDate
+        assertEquals("java.lang.Long", engine.get("result"));
+    }
+
 }

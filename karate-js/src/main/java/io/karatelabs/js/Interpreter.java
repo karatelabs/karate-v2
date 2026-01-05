@@ -221,14 +221,21 @@ class Interpreter {
                 argsList.add(arg);
             }
         }
-        // Convert undefined to null at JS/Java boundary
+        // Convert JS types to Java types at JS/Java boundary:
+        // - undefined → null
+        // - JavaMirror (JsDate, etc.) → unwrapped via getJavaValue()
         // External calls: SimpleObject methods, Java POJOs via bridge, or lambdas put via engine.put()
         // Exclude: built-in JS types (JsObject and subclasses like JsString, JsFunction)
         boolean isExternalCall = (prop.object instanceof SimpleObject)
                 || (prop.object != null && !(prop.object instanceof JsObject))
                 || (prop.object == null && !(callable instanceof JsObject));
         if (isExternalCall) {
-            argsList.replaceAll(arg -> arg == Terms.UNDEFINED ? null : arg);
+            argsList.replaceAll(arg -> {
+                if (arg == Terms.UNDEFINED) return null;
+                // Unwrap JavaMirror (JsDate, JsUint8Array) but not JsPrimitive (Boolean/String/Number constructors)
+                if (arg instanceof JavaMirror jm && !(arg instanceof JsPrimitive)) return jm.getJavaValue();
+                return arg;
+            });
         }
         Object[] args = argsList.toArray();
         CoreContext callContext = new CoreContext(context, node, ContextScope.FUNCTION);

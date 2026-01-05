@@ -110,4 +110,24 @@ public class DemoPojo {
         return value.getClass().getSimpleName() + ":" + value;
     }
 
+    // For testing JavaMirror → Java conversion at JS/Java boundary
+    public String describeType(Object value) {
+        if (value == null) {
+            return "null";
+        }
+        return value.getClass().getName();
+    }
+
+    public long getDateMillis(java.util.Date date) {
+        return date.getTime();
+    }
+
+    public int getByteArrayLength(byte[] bytes) {
+        return bytes.length;
+    }
+
+    public byte getByteAt(byte[] bytes, int index) {
+        return bytes[index];
+    }
+
 }
