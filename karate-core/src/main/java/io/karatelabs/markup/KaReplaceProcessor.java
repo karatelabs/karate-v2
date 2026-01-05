@@ -41,7 +41,8 @@ class KaReplaceProcessor extends AbstractStandardFragmentInsertionTagProcessor {
 
     @Override
     protected void doProcess(ITemplateContext context, IProcessableElementTag tag, AttributeName attributeName, String attributeValue, IElementTagStructureHandler structureHandler) {
-        super.doProcess(context, tag, attributeName, "~{" + attributeValue + "}", structureHandler);
+        String fragmentExpr = attributeValue.startsWith("~{") ? attributeValue : "~{" + attributeValue + "}";
+        super.doProcess(context, tag, attributeName, fragmentExpr, structureHandler);
     }
 
 }

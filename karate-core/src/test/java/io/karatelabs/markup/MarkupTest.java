@@ -396,4 +396,54 @@ class MarkupTest {
         assertTrue(rendered.contains("data-id=\"42\""), "Should have data-id: " + rendered);
     }
 
+    // ========== Fragment Syntax Tests ==========
+
+    @Test
+    void testInsertWithSimpleSyntax() {
+        // Test th:insert with simple syntax (auto-wrapped with ~{})
+        Engine js = new Engine();
+        Markup markup = Markup.init(js, new RootResourceResolver("classpath:markup"));
+
+        String html = "<div th:insert=\"temp.html\">placeholder</div>";
+        String rendered = markup.processString(html, null);
+
+        assertTrue(rendered.contains("temp"), "Should include temp.html content: " + rendered);
+    }
+
+    @Test
+    void testInsertWithFragmentSyntax() {
+        // Test th:insert with full ~{} fragment syntax (should not double-wrap)
+        Engine js = new Engine();
+        Markup markup = Markup.init(js, new RootResourceResolver("classpath:markup"));
+
+        String html = "<div th:insert=\"~{fragment-test :: nav}\">placeholder</div>";
+        String rendered = markup.processString(html, null);
+
+        assertTrue(rendered.contains("nav-content"), "Should include nav fragment: " + rendered);
+    }
+
+    @Test
+    void testReplaceWithSimpleSyntax() {
+        // Test th:replace with simple syntax (auto-wrapped with ~{})
+        Engine js = new Engine();
+        Markup markup = Markup.init(js, new RootResourceResolver("classpath:markup"));
+
+        String html = "<div th:replace=\"temp.html\">placeholder</div>";
+        String rendered = markup.processString(html, null);
+
+        assertEquals("<div>temp</div>", rendered.trim());
+    }
+
+    @Test
+    void testReplaceWithFragmentSyntax() {
+        // Test th:replace with full ~{} fragment syntax (should not double-wrap)
+        Engine js = new Engine();
+        Markup markup = Markup.init(js, new RootResourceResolver("classpath:markup"));
+
+        String html = "<div th:replace=\"~{fragment-test :: footer}\">placeholder</div>";
+        String rendered = markup.processString(html, null);
+
+        assertEquals("<div>footer-content</div>", rendered.trim());
+    }
+
 }

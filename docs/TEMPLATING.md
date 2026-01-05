@@ -210,19 +210,33 @@ Iteration status properties:
 
 #### `th:replace` / `th:insert` - Template Inclusion
 
-Include other templates.
+Include other templates. Karate auto-wraps simple paths with `~{}`, so you can use either syntax:
 
 ```html
-<!-- Replace this element with template content -->
+<!-- Simple syntax (auto-wrapped with ~{}) -->
 <div th:replace="header.html"></div>
-<div th:replace="~{header}"></div>
-
-<!-- Insert template content inside this element -->
-<div th:insert="~{footer}"></div>
+<div th:insert="footer.html"></div>
 
 <!-- Fragment with context -->
 <div th:insert="this:with-called" th:with="foo: 'bar', msg: message"></div>
 ```
+
+For advanced fragment selectors (named fragments, CSS selectors), use the full `~{}` syntax:
+
+```html
+<!-- Named fragment selector -->
+<div th:replace="~{header :: nav}"></div>
+<div th:insert="~{components :: button}"></div>
+
+<!-- Same-file fragment -->
+<div th:insert="~{:: localFragment}"></div>
+```
+
+| Standard Thymeleaf | Karate (simplified) | Notes |
+|--------------------|---------------------|-------|
+| `th:insert="~{header}"` | `th:insert="header"` | Auto-wrapped |
+| `th:replace="~{footer}"` | `th:replace="footer"` | Auto-wrapped |
+| `th:replace="~{layout :: content}"` | `th:replace="~{layout :: content}"` | Use full syntax for selectors |
 
 #### `th:fragment` - Fragment Definition
 
@@ -235,8 +249,14 @@ Define reusable fragments.
   <script src="pub/app.js"></script>
 </head>
 
+<nav th:fragment="nav">
+  <a href="/">Home</a>
+  <a href="/about">About</a>
+</nav>
+
 <!-- Usage -->
-<head th:replace="~{header::head}"></head>
+<head th:replace="~{header :: head}"></head>
+<nav th:replace="~{header :: nav}"></nav>
 ```
 
 ### Attribute Manipulation
@@ -2070,6 +2090,32 @@ The iteration status variable syntax differs slightly:
 ```
 
 Available properties: `iter.index`, `iter.count`, `iter.first`, `iter.last`, `iter.even`, `iter.odd`
+
+### Fragment Expression Auto-Wrapping
+
+Karate auto-wraps simple template paths with `~{}` for convenience:
+
+```html
+<!-- Standard Thymeleaf requires explicit ~{} -->
+<div th:insert="~{header}"></div>
+
+<!-- Karate allows simplified syntax -->
+<div th:insert="header"></div>
+```
+
+Both syntaxes work in Karate. If you include `~{}`, it won't be double-wrapped:
+
+| Standard Thymeleaf | Karate Equivalent | Notes |
+|--------------------|-------------------|-------|
+| `th:insert="~{header}"` | `th:insert="header"` | Simplified |
+| `th:replace="~{footer}"` | `th:replace="footer"` | Simplified |
+| `th:replace="~{layout :: content}"` | Same | Use full syntax for selectors |
+| `th:insert="~{:: localFrag}"` | Same | Use full syntax for same-file fragments |
+
+**When to use full `~{}` syntax:**
+- Named fragment selectors: `~{template :: fragmentName}`
+- CSS selectors: `~{template :: .css-class}`
+- Same-file fragments: `~{:: fragmentName}`
 
 ---
 
