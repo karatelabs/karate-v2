@@ -1228,20 +1228,63 @@ For more control or custom serialization, use the textarea pattern:
 
 ### Flash Messages
 
+Flash messages are one-time notifications that survive redirects. They're stored in the session and automatically cleared after being displayed.
+
+**Setting flash messages (before redirect):**
+
 ```html
+<!-- create-item.html -->
 <script ka:scope="global">
   if (request.post) {
     try {
-      processData(request.body);
+      let item = db.createItem(request.paramJson('form'));
+      context.flash.success = 'Item "' + item.name + '" created successfully!';
+      context.flash.itemId = item.id;
+      context.redirect('/items');  // Flash survives this redirect
     } catch (e) {
       context.flash.error = e.message;
+      // Stay on same page to show error
     }
   }
 </script>
 
+<!-- Show error if staying on same page -->
 <div th:if="context.flash.error" class="alert alert-danger" th:text="context.flash.error"></div>
-<div th:if="context.flash.success" class="alert alert-success" th:text="context.flash.success"></div>
+
+<form method="post" th:action="context.template">
+  <!-- form fields -->
+</form>
 ```
+
+**Displaying flash messages (after redirect):**
+
+```html
+<!-- items.html -->
+<script ka:scope="global">
+  _.items = db.findAllItems();
+</script>
+
+<!-- Flash messages from previous request -->
+<div th:if="context.flash.success" class="alert alert-success" th:text="context.flash.success"></div>
+<div th:if="context.flash.error" class="alert alert-danger" th:text="context.flash.error"></div>
+
+<!-- Use flash data -->
+<div th:if="context.flash.itemId">
+  <a th:href="'/items/' + context.flash.itemId">View created item</a>
+</div>
+
+<!-- Page content -->
+<table>
+  <tr th:each="item : items">...</tr>
+</table>
+```
+
+**Key behaviors:**
+- Flash messages are stored in the session when `context.redirect()` is called
+- They're automatically loaded and cleared on the next request
+- Messages only display once (cleared after loading)
+- Requires sessions to be enabled (`sessionStore` in ServerConfig)
+- Access via `context.flash.key` in `ka:scope` scripts and Thymeleaf expressions
 
 ### Partial Rendering for AJAX
 

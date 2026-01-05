@@ -53,6 +53,11 @@ import java.util.function.Function;
  */
 public class ServerMarkupContext implements MarkupContext {
 
+    /**
+     * Session key used to persist flash messages across redirects.
+     */
+    public static final String FLASH_SESSION_KEY = "_flash";
+
     private final HttpRequest request;
     private final HttpResponse response;
     private final ServerConfig config;
@@ -316,6 +321,33 @@ public class ServerMarkupContext implements MarkupContext {
 
     public Map<String, Object> getFlash() {
         return flash;
+    }
+
+    /**
+     * Load flash messages from session (if any) and clear them from session.
+     * Called at the start of request processing to retrieve messages set before a redirect.
+     */
+    @SuppressWarnings("unchecked")
+    public void loadFlashFromSession() {
+        if (session == null) {
+            return;
+        }
+        Object stored = session.get(FLASH_SESSION_KEY);
+        if (stored instanceof Map) {
+            flash.putAll((Map<String, Object>) stored);
+            session.remove(FLASH_SESSION_KEY);
+        }
+    }
+
+    /**
+     * Persist current flash messages to session.
+     * Called before redirect so messages survive to the next request.
+     */
+    public void persistFlashToSession() {
+        if (session == null || flash.isEmpty()) {
+            return;
+        }
+        session.put(FLASH_SESSION_KEY, new HashMap<>(flash));
     }
 
     /**

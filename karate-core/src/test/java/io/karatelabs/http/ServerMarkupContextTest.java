@@ -338,6 +338,59 @@ class ServerMarkupContextTest {
     }
 
     @Test
+    void testFlashPersistToSession() {
+        context.init();
+        context.getFlash().put("error", "Something went wrong");
+        context.getFlash().put("info", "Please try again");
+
+        // Persist flash to session
+        context.persistFlashToSession();
+
+        // Verify flash is stored in session
+        @SuppressWarnings("unchecked")
+        Map<String, Object> storedFlash = (Map<String, Object>) context.getSession().get(ServerMarkupContext.FLASH_SESSION_KEY);
+        assertNotNull(storedFlash);
+        assertEquals("Something went wrong", storedFlash.get("error"));
+        assertEquals("Please try again", storedFlash.get("info"));
+    }
+
+    @Test
+    void testFlashLoadFromSession() {
+        context.init();
+
+        // Simulate flash stored from previous request
+        Map<String, Object> previousFlash = new java.util.HashMap<>();
+        previousFlash.put("success", "Item created!");
+        context.getSession().put(ServerMarkupContext.FLASH_SESSION_KEY, previousFlash);
+
+        // Load flash from session
+        context.loadFlashFromSession();
+
+        // Verify flash is loaded
+        assertEquals("Item created!", context.getFlash().get("success"));
+
+        // Verify flash is cleared from session (one-time display)
+        assertNull(context.getSession().get(ServerMarkupContext.FLASH_SESSION_KEY));
+    }
+
+    @Test
+    void testFlashPersistWithoutSession() {
+        // No session initialized
+        context.getFlash().put("message", "Test");
+
+        // Should not throw
+        context.persistFlashToSession();
+    }
+
+    @Test
+    void testFlashLoadWithoutSession() {
+        // No session initialized
+        // Should not throw
+        context.loadFlashFromSession();
+        assertTrue(context.getFlash().isEmpty());
+    }
+
+    @Test
     void testRequestProperty() {
         assertSame(request, context.jsGet("request"));
     }

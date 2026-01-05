@@ -94,6 +94,9 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
             // Load existing session from cookie if present
             loadSession(request, context);
 
+            // Load flash messages from previous request (if any)
+            context.loadFlashFromSession();
+
             // CSRF validation for state-changing requests (skip static files)
             if (!config.isStaticPath(path)) {
                 HttpResponse csrfError = validateCsrf(request, context);
@@ -112,6 +115,8 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
 
             // Handle redirect if set
             if (context.hasRedirect()) {
+                // Persist flash messages to session so they survive the redirect
+                context.persistFlashToSession();
                 result.setStatus(302);
                 result.setHeader("Location", context.getRedirectPath());
                 result.setBody("");

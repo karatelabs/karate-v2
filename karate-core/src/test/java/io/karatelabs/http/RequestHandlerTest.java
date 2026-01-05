@@ -366,6 +366,118 @@ class RequestHandlerTest {
         assertTrue(response.getBodyString().contains("Forbidden"));
     }
 
+    // ========== Flash Message Tests ==========
+
+    @Test
+    void testFlashMessagesSurviveRedirect() {
+        // Set up resources
+        Map<String, String> testResources = new HashMap<>();
+        // First page sets flash and redirects
+        testResources.put("set-flash.html", """
+                <script ka:scope="global">
+                  context.init();
+                  context.flash.success = 'Item created successfully!';
+                  context.flash.itemId = 42;
+                  context.redirect('/show-flash');
+                </script>
+                """);
+        // Second page displays flash
+        testResources.put("show-flash.html", """
+                <html>
+                <body>
+                <div th:if="context.flash.success" class="alert" th:text="context.flash.success">Message</div>
+                <span th:if="context.flash.itemId" th:text="context.flash.itemId">ID</span>
+                </body>
+                </html>
+                """);
+
+        ResourceResolver resolver = (path, caller) -> {
+            String content = testResources.get(path);
+            return content != null ? Resource.text(content) : null;
+        };
+
+        InMemorySessionStore testSessionStore = new InMemorySessionStore();
+        ServerConfig config = new ServerConfig()
+                .sessionStore(testSessionStore);
+
+        RequestHandler handler = new RequestHandler(config, resolver);
+        InMemoryTestHarness testHarness = new InMemoryTestHarness(handler);
+
+        // First request - sets flash and redirects
+        HttpResponse response1 = testHarness.get("/set-flash");
+        assertEquals(302, response1.getStatus());
+        assertEquals("/show-flash", response1.getHeader("Location"));
+
+        // Get session cookie
+        String setCookie = response1.getHeader("Set-Cookie");
+        assertNotNull(setCookie, "Session cookie should be set");
+        String sessionCookie = setCookie.split(";")[0];
+
+        // Second request - should see flash message
+        HttpResponse response2 = testHarness.request()
+                .path("/show-flash")
+                .header("Cookie", sessionCookie)
+                .get();
+
+        assertEquals(200, response2.getStatus());
+        String body = response2.getBodyString();
+        assertTrue(body.contains("Item created successfully!"), "Should contain flash success message");
+        assertTrue(body.contains("42"), "Should contain flash itemId");
+    }
+
+    @Test
+    void testFlashMessagesOnlyShowOnce() {
+        // Set up resources
+        Map<String, String> testResources = new HashMap<>();
+        testResources.put("index.html", """
+                <html>
+                <body>
+                <div th:if="context.flash.message" th:text="context.flash.message">Message</div>
+                <p>Welcome</p>
+                </body>
+                </html>
+                """);
+
+        ResourceResolver resolver = (path, caller) -> {
+            String content = testResources.get(path);
+            return content != null ? Resource.text(content) : null;
+        };
+
+        InMemorySessionStore testSessionStore = new InMemorySessionStore();
+        ServerConfig config = new ServerConfig()
+                .sessionStore(testSessionStore);
+
+        RequestHandler handler = new RequestHandler(config, resolver);
+        InMemoryTestHarness testHarness = new InMemoryTestHarness(handler);
+
+        // Create session and store flash message directly
+        Session session = testSessionStore.create(600);
+        Map<String, Object> flashData = new HashMap<>();
+        flashData.put("message", "One-time notification!");
+        session.put(ServerMarkupContext.FLASH_SESSION_KEY, flashData);
+        String sessionCookie = "karate.sid=" + session.getId();
+
+        // First request - should see flash message
+        HttpResponse response1 = testHarness.request()
+                .path("/")
+                .header("Cookie", sessionCookie)
+                .get();
+
+        assertTrue(response1.getBodyString().contains("One-time notification!"),
+                "First request should show flash message");
+
+        // Second request - flash should be gone
+        HttpResponse response2 = testHarness.request()
+                .path("/")
+                .header("Cookie", sessionCookie)
+                .get();
+
+        assertFalse(response2.getBodyString().contains("One-time notification!"),
+                "Second request should NOT show flash message");
+        assertTrue(response2.getBodyString().contains("Welcome"),
+                "Page content should still render");
+    }
+
     // ========== Global Variables Tests ==========
 
     /**
