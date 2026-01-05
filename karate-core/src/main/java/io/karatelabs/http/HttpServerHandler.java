@@ -79,6 +79,15 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<FullHttpReque
             list.add(entry.getValue());
         });
         request.setHeaders(headers);
+        // Build urlBase from Host header for server-side templates
+        String host = hh.get("Host");
+        if (host != null) {
+            String proto = hh.get("X-Forwarded-Proto");
+            if (proto == null) {
+                proto = "http";
+            }
+            request.setUrlBase(proto + "://" + host);
+        }
         ByteBuf buf = req.content();
         int len = buf.readableBytes();
         if (len > 0) {
