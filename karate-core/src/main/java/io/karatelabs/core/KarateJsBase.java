@@ -468,6 +468,7 @@ abstract class KarateJsBase implements SimpleObject {
 
     /**
      * karate.prevRequest - Returns the previous HTTP request made in this scenario.
+     * V1 compatibility: body is raw byte[] (not parsed)
      */
     Map<String, Object> getPrevRequest() {
         if (prevRequest == null) {
@@ -477,7 +478,7 @@ abstract class KarateJsBase implements SimpleObject {
         map.put("method", prevRequest.getMethod());
         map.put("url", prevRequest.getUrlAndPath());
         map.put("headers", prevRequest.getHeaders());
-        map.put("body", prevRequest.getBodyConverted());
+        map.put("body", prevRequest.getBody());
         return map;
     }
 

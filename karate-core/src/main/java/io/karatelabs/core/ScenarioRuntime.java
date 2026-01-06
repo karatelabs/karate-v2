@@ -158,6 +158,11 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
             }
         }
 
+        // Set __loop for loop calls (V1 compatibility)
+        if (featureRuntime != null && featureRuntime.getLoopIndex() >= 0) {
+            karate.engine.putRootBinding("__loop", featureRuntime.getLoopIndex());
+        }
+
         // Set example data for outline scenarios
         if (scenario.getExampleData() != null) {
             Map<String, Object> exampleData = scenario.getExampleData();

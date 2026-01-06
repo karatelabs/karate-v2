@@ -730,6 +730,107 @@ class StepCallTest {
         assertTrue(result.isPassed(), "call in expression RHS should work: " + getFailureMessage(result));
     }
 
+    @Test
+    void testCallLoopWithReadFeature() throws Exception {
+        // Tests V1 syntax: call read('feature') array
+        // Each element in array should be passed to the called feature
+        // __loop should contain the iteration index (0, 1, 2, ...)
+        // __arg should contain the current element
+        Path calledFeature = tempDir.resolve("called.feature");
+        Files.writeString(calledFeature, """
+            Feature: Called
+            Scenario:
+            * def loopIndex = __loop
+            * def argValue = __arg
+            * def nameValue = name
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Call Loop
+            Scenario:
+            * def data = [{ name: 'Bob' }, { name: 'Alice' }, { name: 'Eve' }]
+            * def result = call read('called.feature') data
+            * match result[0].loopIndex == 0
+            * match result[1].loopIndex == 1
+            * match result[2].loopIndex == 2
+            * match result[0].nameValue == 'Bob'
+            * match result[1].nameValue == 'Alice'
+            * match result[2].nameValue == 'Eve'
+            * match result[0].argValue == { name: 'Bob' }
+            * match result[1].argValue == { name: 'Alice' }
+            * match result[2].argValue == { name: 'Eve' }
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "call loop with __loop and __arg should work: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testCallOnceLoopWithReadFeature() throws Exception {
+        // Tests V1 syntax: callonce read('feature') array
+        // Result should be cached and returned on subsequent calls
+        Path calledFeature = tempDir.resolve("called.feature");
+        Files.writeString(calledFeature, """
+            Feature: Called
+            Scenario:
+            * def result = name + '-' + __loop
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Callonce Loop
+            Background:
+            * def data = [{ name: 'A' }, { name: 'B' }]
+            * def result = callonce read('called.feature') data
+
+            Scenario: First
+            * match result[0].result == 'A-0'
+            * match result[1].result == 'B-1'
+
+            Scenario: Second
+            * match result[0].result == 'A-0'
+            * match result[1].result == 'B-1'
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "callonce loop should work: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testCallLoopAccessParentVariable() throws Exception {
+        // Tests that loop call can access parent variables via __arg reference
+        // V1 pattern: match __arg == parentVar[__loop]
+        Path calledFeature = tempDir.resolve("called.feature");
+        Files.writeString(calledFeature, """
+            Feature: Called
+            Scenario:
+            * match __arg == data[__loop]
+            * def processed = name + '-processed'
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Loop with parent access
+            Scenario:
+            * def data = [{ name: 'first' }, { name: 'second' }]
+            * def result = call read('called.feature') data
+            * match result[*].processed == ['first-processed', 'second-processed']
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "loop call should access parent variables: " + getFailureMessage(result));
+    }
+
     private String getFailureMessage(SuiteResult result) {
         if (result.isPassed()) return "none";
         for (FeatureResult fr : result.getFeatureResults()) {

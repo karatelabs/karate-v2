@@ -331,6 +331,7 @@ public class StepExecutor {
         // Check if it's an array loop call
         if (call.argList != null) {
             List<Map<String, Object>> results = new ArrayList<>();
+            int loopIndex = 0;
             for (Object item : call.argList) {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> callArg = item instanceof Map ? (Map<String, Object>) item : null;
@@ -344,6 +345,7 @@ public class StepExecutor {
                         callArg,
                         call.tagSelector
                 );
+                nestedFr.setLoopIndex(loopIndex);
 
                 FeatureResult featureResult = nestedFr.call();
                 addCallResult(featureResult);
@@ -351,6 +353,7 @@ public class StepExecutor {
                 if (nestedFr.getLastExecuted() != null) {
                     results.add(nestedFr.getLastExecuted().getAllVariables());
                 }
+                loopIndex++;
             }
             runtime.setVariable(resultVar, results);
             return;
@@ -395,8 +398,7 @@ public class StepExecutor {
         java.util.concurrent.locks.ReentrantLock lock = fr.getCallOnceLock();
 
         // Fast path - check cache without lock
-        @SuppressWarnings("unchecked")
-        Map<String, Object> cached = (Map<String, Object>) cache.get(cacheKey);
+        Object cached = cache.get(cacheKey);
         if (cached != null) {
             // Return deep copy to prevent cross-scenario mutation
             runtime.setVariable(resultVar, StepUtils.deepCopy(cached));
@@ -407,8 +409,7 @@ public class StepExecutor {
         lock.lock();
         try {
             // Double-check after acquiring lock
-            @SuppressWarnings("unchecked")
-            Map<String, Object> rechecked = (Map<String, Object>) cache.get(cacheKey);
+            Object rechecked = cache.get(cacheKey);
             if (rechecked != null) {
                 runtime.setVariable(resultVar, StepUtils.deepCopy(rechecked));
                 return;
@@ -417,11 +418,10 @@ public class StepExecutor {
             // Not cached - execute the call
             executeCallWithResult(callExpr, resultVar);
 
-            // Cache a deep copy of the result
-            @SuppressWarnings("unchecked")
-            Map<String, Object> resultVars = (Map<String, Object>) runtime.getVariable(resultVar);
-            if (resultVars != null) {
-                cache.put(cacheKey, StepUtils.deepCopy(resultVars));
+            // Cache a deep copy of the result (may be Map for single call or List for loop call)
+            Object resultValue = runtime.getVariable(resultVar);
+            if (resultValue != null) {
+                cache.put(cacheKey, StepUtils.deepCopy(resultValue));
             }
         } finally {
             lock.unlock();
@@ -2203,6 +2203,44 @@ public class StepExecutor {
             calledFeature = Feature.read(calledResource);
         }
 
+        // Check if it's an array loop call
+        if (call.argList != null) {
+            List<Map<String, Object>> results = new ArrayList<>();
+            int loopIndex = 0;
+
+            for (Object item : call.argList) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> callArg = item instanceof Map ? (Map<String, Object>) item : null;
+
+                // Create nested FeatureRuntime for each iteration
+                FeatureRuntime nestedFr = new FeatureRuntime(
+                        fr != null ? fr.getSuite() : null,
+                        calledFeature,
+                        fr,
+                        runtime,
+                        false,  // Always isolated scope for array loop
+                        callArg,
+                        call.tagSelector
+                );
+                nestedFr.setLoopIndex(loopIndex);
+
+                FeatureResult featureResult = nestedFr.call();
+
+                // Capture feature result for HTML report display (V1 style)
+                addCallResult(featureResult);
+
+                if (nestedFr.getLastExecuted() != null) {
+                    results.add(nestedFr.getLastExecuted().getAllVariables());
+                }
+                loopIndex++;
+            }
+
+            if (call.resultVar != null) {
+                runtime.setVariable(call.resultVar, results);
+            }
+            return;
+        }
+
         // Determine if shared scope (no resultVar) or isolated scope (has resultVar)
         boolean sharedScope = call.resultVar == null;
 
@@ -2277,6 +2315,7 @@ public class StepExecutor {
         if (argObj instanceof List) {
             List<?> argList = (List<?>) argObj;
             List<Map<String, Object>> results = new ArrayList<>();
+            int loopIndex = 0;
 
             for (Object item : argList) {
                 Map<String, Object> callArg = null;
@@ -2294,6 +2333,7 @@ public class StepExecutor {
                         callArg,
                         tagSelector
                 );
+                nestedFr.setLoopIndex(loopIndex);
 
                 FeatureResult featureResult = nestedFr.call();
 
@@ -2303,6 +2343,7 @@ public class StepExecutor {
                 if (nestedFr.getLastExecuted() != null) {
                     results.add(nestedFr.getLastExecuted().getAllVariables());
                 }
+                loopIndex++;
             }
 
             if (resultVar != null) {

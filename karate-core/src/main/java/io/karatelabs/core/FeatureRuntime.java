@@ -66,6 +66,7 @@ public class FeatureRuntime implements Callable<FeatureResult> {
     private ScenarioRuntime lastExecuted;
     private FeatureResult result;
     private final Map<Integer, Integer> outlineCompletedCounts = new HashMap<>();  // section index -> completed count
+    private int loopIndex = -1;  // -1 means not a loop call; 0+ is the iteration index
 
     public FeatureRuntime(Feature feature) {
         this(null, feature, null, null, false, null);
@@ -575,6 +576,14 @@ public class FeatureRuntime implements Callable<FeatureResult> {
 
     public Map<String, Object> getCallArg() {
         return callArg;
+    }
+
+    public int getLoopIndex() {
+        return loopIndex;
+    }
+
+    public void setLoopIndex(int loopIndex) {
+        this.loopIndex = loopIndex;
     }
 
     public ScenarioRuntime getLastExecuted() {

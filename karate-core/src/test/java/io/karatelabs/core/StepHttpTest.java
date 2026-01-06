@@ -349,7 +349,24 @@ class StepHttpTest {
             * def prev = karate.prevRequest
             * match prev.method == 'POST'
             * match prev.url contains '/users'
-            * match prev.body == { name: 'John' }
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testPrevRequestBodyIsBytes() {
+        // V1 compatibility: karate.prevRequest.body returns byte[], not parsed body
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> json("{ \"ok\": true }"));
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test/users'
+            * request { name: 'Billie' }
+            * method post
+            * status 200
+            * def requestBody = karate.prevRequest.body
+            # convert byte array to string
+            * def requestString = new java.lang.String(requestBody, 'utf-8')
+            * match requestString == '{"name":"Billie"}'
             """);
         assertPassed(sr);
     }

@@ -200,6 +200,18 @@ class ExternalBridgeTest extends EvalBase {
     }
 
     @Test
+    void testJavaStringConstructorWithByteArrayAndCharset() {
+        // V1 compatibility: new java.lang.String(byteArray, 'utf-8') should work
+        // This pattern is used in karate-demo request.feature to convert request body bytes to string
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        byte[] bytes = "hello".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        engine.put("requestBody", bytes);
+        Object result = engine.eval("new java.lang.String(requestBody, 'utf-8')");
+        assertEquals("hello", result);
+    }
+
+    @Test
     void testStaticGetterPropertyAccess() {
         // V1 compatibility: Base64.encoder should work like Base64.getEncoder()
         assertEquals("aGVsbG8=", eval("var Base64 = Java.type('java.util.Base64'); Base64.encoder.encodeToString('hello'.getBytes())"));
