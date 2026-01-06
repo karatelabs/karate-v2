@@ -100,6 +100,11 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         this.result = new ScenarioResult(scenario);
         this.config = new KarateConfig();
 
+        // Initialize HTTP builder with default charset from config (V1 compatibility)
+        if (config.getCharset() != null) {
+            karate.http.charset(config.getCharset().name());
+        }
+
         initEngine();
     }
 
@@ -113,6 +118,11 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         this.executor = new StepExecutor(this);
         this.result = new ScenarioResult(scenario);
         this.config = new KarateConfig();
+
+        // Initialize HTTP builder with default charset from config (V1 compatibility)
+        if (config.getCharset() != null) {
+            karate.http.charset(config.getCharset().name());
+        }
 
         // Wire up KarateJsContext - all karate.* API methods use this
         karate.setContext(this);
@@ -875,8 +885,9 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
             Map<String, Object> headers = (Map<String, Object>) value;
             karate.http.headers(headers);
         }
-        if ("charset".equals(key) && value instanceof String) {
-            karate.http.charset((String) value);
+        if ("charset".equals(key)) {
+            // Handle both String charset and null (to disable auto-charset)
+            karate.http.charset(value == null ? null : value.toString());
         }
 
         // When continueOnStepFailure is set to false, check for deferred failures

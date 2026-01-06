@@ -655,6 +655,7 @@ class MockE2eTest {
 
     @Test
     void testGermanUmlauts() {
+        // Response is auto-converted to XML because it starts with '<' (V1 behavior)
         ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
             Feature: Test German Encoding
 
@@ -663,7 +664,7 @@ class MockE2eTest {
             * path '/german'
             * method get
             * status 200
-            * match response == '<name>Müller</name>'
+            * match response == <name>Müller</name>
             """.formatted(port));
 
         assertPassed(sr);

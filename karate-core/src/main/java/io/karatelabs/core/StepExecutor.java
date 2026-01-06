@@ -150,6 +150,7 @@ public class StepExecutor {
                     case "request" -> executeRequest(step);
                     case "retry until" -> executeRetryUntil(step);
                     case "method" -> executeMethod(step);
+                    case "soap action" -> executeSoapAction(step);
                     case "status" -> executeStatus(step);
                     case "multipart file" -> executeMultipartFile(step);
                     case "multipart field" -> executeMultipartField(step);
@@ -1713,10 +1714,25 @@ public class StepExecutor {
         http().retryUntil(condition);
     }
 
-    @SuppressWarnings("unchecked")
+    private void executeSoapAction(Step step) {
+        String text = step.getText();
+        String action = "";
+        if (text != null && !text.isBlank()) {
+            Object result = runtime.eval(text.trim());
+            action = result != null ? result.toString() : "";
+        }
+        http().header("SOAPAction", action);
+        http().contentType("text/xml");
+        doMethod("POST");
+    }
+
     private void executeMethod(Step step) {
         String method = step.getText().trim().toUpperCase();
+        doMethod(method);
+    }
 
+    @SuppressWarnings("unchecked")
+    private void doMethod(String method) {
         KarateConfig config = runtime.getConfig();
 
         // Apply cookies from the cookie jar (V1 compatibility: auto-send responseCookies)

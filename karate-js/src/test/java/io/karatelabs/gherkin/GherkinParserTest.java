@@ -386,6 +386,16 @@ class GherkinParserTest {
     }
 
     @Test
+    void testParseMatchExpressionBareXPath() {
+        // V1 SOAP syntax: match /Envelope/Body/AddResponse/AddResult == '5'
+        MatchExpression me = GherkinParser.parseMatchExpression("/Envelope/Body/AddResponse/AddResult == '5'");
+        assertFalse(me.isEach());
+        assertEquals("/Envelope/Body/AddResponse/AddResult", me.getActualExpr());
+        assertEquals("==", me.getOperator());
+        assertEquals("'5'", me.getExpectedExpr());
+    }
+
+    @Test
     void testDocStringWithJsonArray() {
         feature("""
                 Feature: docstring test

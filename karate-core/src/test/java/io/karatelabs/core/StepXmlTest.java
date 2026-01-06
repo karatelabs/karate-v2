@@ -626,4 +626,43 @@ class StepXmlTest {
         assertPassed(sr);
     }
 
+    @Test
+    void testMatchBareXpathOnResponse() {
+        // V1 SOAP syntax: match /Envelope/Body/AddResponse == ...
+        // Bare XPath starting with / should use implicit 'response' variable
+        ScenarioRuntime sr = run("""
+            * def response =
+              \"\"\"
+              <Envelope>
+                <Body>
+                  <AddResponse>
+                    <AddResult>5</AddResult>
+                  </AddResponse>
+                </Body>
+              </Envelope>
+              \"\"\"
+            * match /Envelope/Body/AddResponse/AddResult == '5'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMatchBareXpathOnResponseNested() {
+        // Match bare XPath on response with nested structure
+        ScenarioRuntime sr = run("""
+            * def response =
+              \"\"\"
+              <Envelope>
+                <Body>
+                  <AddResponse>
+                    <AddResult>5</AddResult>
+                  </AddResponse>
+                </Body>
+              </Envelope>
+              \"\"\"
+            * match /Envelope/Body/AddResponse == <AddResponse><AddResult>5</AddResult></AddResponse>
+            """);
+        assertPassed(sr);
+    }
+
 }

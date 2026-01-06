@@ -214,7 +214,9 @@ public class HttpUtils {
                     return raw;
                 }
             case '<':
-                if (resourceType == null || resourceType.isXml()) {
+                // Try XML parsing for null, XML, or TEXT resourceTypes (V1 compatibility)
+                // TEXT is included because servers may return XML with text/plain content-type
+                if (resourceType == null || resourceType.isXml() || resourceType.isText()) {
                     try {
                         return Xml.toXmlDoc(raw);
                     } catch (Exception e) {

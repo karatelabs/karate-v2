@@ -266,7 +266,8 @@ public class KarateConfig implements SimpleObject {
                 yield true;
             }
             case "charset" -> {
-                this.charset = Charset.forName(toString(value));
+                // null value means disable auto-charset (V1 compatibility)
+                this.charset = value == null ? null : Charset.forName(toString(value));
                 yield true;
             }
             case "ntlmAuth" -> {

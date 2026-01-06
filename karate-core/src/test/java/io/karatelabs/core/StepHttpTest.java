@@ -923,4 +923,120 @@ class StepHttpTest {
         assertPassed(sr);
     }
 
+    @Test
+    void testSoapAction() {
+        // V1 syntax: When soap action 'http://tempuri.org/Add'
+        // Sets SOAPAction header, Content-Type: text/xml, and does POST
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String method = req.getMethod();
+            String soapAction = req.getHeader("SOAPAction");
+            String contentType = req.getHeader("Content-Type");
+            if ("POST".equals(method)
+                && "http://tempuri.org/Add".equals(soapAction)
+                && contentType != null && contentType.contains("text/xml")) {
+                return json("{ \"ok\": true }");
+            }
+            return json("{ \"method\": \"" + method + "\", \"soapAction\": \"" + soapAction + "\", \"contentType\": \"" + contentType + "\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test/soap'
+            * request
+            \"\"\"
+            <?xml version="1.0"?>
+            <Add>
+              <intA>2</intA>
+              <intB>3</intB>
+            </Add>
+            \"\"\"
+            * soap action 'http://tempuri.org/Add'
+            * status 200
+            * match response.ok == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testSoapActionWithExpression() {
+        // Test that soap action evaluates expressions
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String soapAction = req.getHeader("SOAPAction");
+            if ("http://example.com/MyAction".equals(soapAction)) {
+                return json("{ \"ok\": true }");
+            }
+            return json("{ \"soapAction\": \"" + soapAction + "\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test/soap'
+            * def action = 'http://example.com/MyAction'
+            * request <test/>
+            * soap action action
+            * status 200
+            * match response.ok == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testDefaultCharsetAddedToContentType() {
+        // V1 behavior: charset=utf-8 is auto-added to JSON content-type
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String contentType = req.getHeader("Content-Type");
+            return json("{ \"contentType\": \"" + contentType + "\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * request { foo: 'bar' }
+            * method post
+            * status 200
+            * match response.contentType contains 'application/json'
+            * match response.contentType contains 'charset=UTF-8'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testCharsetAddedToCustomContentType() {
+        // V1 behavior: charset=utf-8 is auto-added even for custom JSON content-types
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String contentType = req.getHeader("Content-Type");
+            return json("{ \"contentType\": \"" + contentType + "\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * header Content-Type = 'application/vnd.app.test+json;version=1'
+            * request { foo: 'bar' }
+            * method post
+            * status 200
+            * match response.contentType contains 'application/vnd.app.test+json'
+            * match response.contentType contains 'charset=UTF-8'
+            * match response.contentType contains 'version=1'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureCharsetNull() {
+        // V1 behavior: configure charset = null disables auto-charset
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String contentType = req.getHeader("Content-Type");
+            return json("{ \"contentType\": \"" + contentType + "\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * configure charset = null
+            * header Content-Type = 'application/json'
+            * request { foo: 'bar' }
+            * method post
+            * status 200
+            * match response.contentType == 'application/json'
+            * match response.contentType !contains 'charset'
+            """);
+        assertPassed(sr);
+    }
+
 }
