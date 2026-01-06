@@ -594,6 +594,20 @@ class StepJsTest {
         assertPassed(sr);
     }
 
+    @Test
+    void testEmbeddedExpressionsOptionalUndefinedVariable() {
+        // ##() with undefined variable should remove key (V1 compatibility)
+        // This tests the pattern used in search-complex.feature: ##(exists(name))
+        // where 'name' may not be defined
+        ScenarioRuntime sr = run("""
+            * def exists = function(v){ return v ? 'present' : null }
+            * def name = 'foo'
+            * def json = { name: '##(exists(name))', country: '##(exists(country))' }
+            * match json == { name: 'present' }
+            """);
+        assertPassed(sr);
+    }
+
     // ========== Not Present Check ==========
 
     @Test

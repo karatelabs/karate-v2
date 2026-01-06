@@ -1201,15 +1201,23 @@ public class StepExecutor {
 
         // Check if expression contains jsonpath wildcard [*], filter [?(...)] or deep-scan (..)
         if (expr.contains("[*]") || expr.contains("[?") || expr.contains("..")) {
-            // Check if it's var[*].path, var[?...].path, or var..path pattern
+            // Check if it's var[*].path, var[?...].path, var..path, or var.prop[*].path pattern
             int bracketIdx = expr.indexOf('[');
             int doubleDotIdx = expr.indexOf("..");
             int splitIdx = bracketIdx > 0 ? bracketIdx : doubleDotIdx;
             if (splitIdx > 0) {
-                String varName = expr.substring(0, splitIdx);
-                // Verify it's a simple variable name (no dots before the jsonpath operator)
-                if (!varName.contains(".") && varName.matches("[a-zA-Z_][a-zA-Z0-9_]*")) {
-                    Object target = runtime.getVariable(varName);
+                String basePath = expr.substring(0, splitIdx);
+                // Verify it starts with a valid identifier
+                int firstDot = basePath.indexOf('.');
+                String varName = firstDot > 0 ? basePath.substring(0, firstDot) : basePath;
+                if (varName.matches("[a-zA-Z_][a-zA-Z0-9_]*")) {
+                    Object target;
+                    if (firstDot > 0) {
+                        // Evaluate dotted path (e.g., "response.kittens") via JS
+                        target = runtime.eval(basePath);
+                    } else {
+                        target = runtime.getVariable(varName);
+                    }
                     if (target != null) {
                         String jsonPath = "$" + expr.substring(splitIdx);
                         return JsonPath.read(target, jsonPath);
@@ -2789,8 +2797,17 @@ public class StepExecutor {
         // Check for optional embedded: ##(...)
         if (str.startsWith("##(") && str.endsWith(")")) {
             String expr = str.substring(3, str.length() - 1);
-            Object result = runtime.eval(expr);
-            return result == null ? REMOVE_MARKER : result;
+            try {
+                Object result = runtime.eval(expr);
+                return result == null ? REMOVE_MARKER : result;
+            } catch (Exception e) {
+                // For optional ##() expressions, treat undefined variables as null (remove)
+                // V1 compatibility: undefined variables in ##() should result in removal
+                if (e.getMessage() != null && e.getMessage().contains("is not defined")) {
+                    return REMOVE_MARKER;
+                }
+                throw e;
+            }
         }
         // Check for regular embedded: #(...)
         if (str.startsWith("#(") && str.endsWith(")")) {

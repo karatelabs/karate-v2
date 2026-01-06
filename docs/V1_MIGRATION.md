@@ -56,6 +56,10 @@ Fixed docstring parser failing when closing `"""` has trailing spaces.
 - **Cookie auto-send**: `responseCookies` from previous requests are now automatically sent on subsequent requests within the same scenario
 - **Empty cell placeholder substitution**: `<placeholder>` in Scenario Outline steps now replaced with empty string when Examples cell is empty (was leaving literal `<placeholder>` text)
 - **Call expressions in RHS**: `header X = call fun { arg: 1 }` now works - `call` expressions evaluated via `evalMarkupExpression`
+- **JsonPath [*] wildcard for nested paths**: `response.kittens[*].name` now works (was only supporting simple `var[*].path`)
+- **Optional embedded expressions with undefined variables**: `##(exists(name))` where `name` is undefined now removes the key (V1 behavior) instead of throwing
+- **Invalid JSON response fallback**: Responses like `'{ "foo": }'` (malformed JSON) now return as string instead of null
+- **Multipart with retry**: Retry with multipart upload now works (was failing with "Header already encoded")
 
 ## Pending
 
@@ -76,13 +80,12 @@ The following fixes have been applied locally but NOT committed (to preserve cle
 - Update test expectations: `domain: '.abc.com'` → `domain: 'abc.com'`
 
 ### 2. Remaining Test Failures
-Current status after fixes: **177/201 scenarios passing (88%)**
-(Improved from 173/201 after empty cell placeholder substitution fix)
+Current status after fixes: **192/200 scenarios passing (96%)**
 
-Remaining issues (24 scenarios):
-- Some upload tests - minor issues
-- callonce/calltable tests - possible `callSingle` issues
-- Parser edge cases (e.g., `call fun { first: 'dummy', ...}` syntax)
+Remaining issues (8 scenarios):
+- 6x `expected status: 200, actual: 400` - Spring Boot 3 @PathVariable/compiler issue (see fix above)
+- 1x `application/problem+json` - Spring Boot 3 error response format
+- 1x cookie domain - RFC 6265 compliance (`'.abc.com'` → `'abc.com'`)
 
 ### 3. API Improvements to Consider
 Make migration easier by adding backwards-compat methods:

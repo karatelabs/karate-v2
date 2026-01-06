@@ -208,7 +208,9 @@ public class HttpUtils {
                     return Json.parseStrict(raw);
                 }
                 try {
-                    return JSONValue.parseKeepingOrder(raw);
+                    Object parsed = JSONValue.parseKeepingOrder(raw);
+                    // JSONValue returns null for invalid JSON instead of throwing
+                    return parsed != null ? parsed : raw;
                 } catch (Exception e) {
                     logger.trace("failed to parse json: {}", e.getMessage());
                     return raw;

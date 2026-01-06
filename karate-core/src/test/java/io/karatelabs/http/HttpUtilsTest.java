@@ -113,4 +113,13 @@ class HttpUtilsTest {
         assertEquals("/", HttpUtils.normaliseUriPath("/"));
     }
 
+    @Test
+    void testInvalidJsonFallsBackToString() {
+        // JSONValue.parseKeepingOrder returns null for invalid JSON instead of throwing
+        // This test verifies we fall back to raw string
+        String invalidJson = "{ \"foo\": }";
+        Object result = HttpUtils.fromString(invalidJson, false, null);
+        assertEquals(invalidJson, result);
+    }
+
 }

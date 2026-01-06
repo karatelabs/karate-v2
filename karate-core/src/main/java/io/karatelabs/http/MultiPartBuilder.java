@@ -51,6 +51,7 @@ public class MultiPartBuilder {
     private final StringBuilder bodyForDisplay = new StringBuilder();
 
     private String contentTypeHeader;
+    private byte[] builtBytes; // Cache for retry support
 
     public String getBoundary() {
         if (contentTypeHeader == null) {
@@ -284,6 +285,10 @@ public class MultiPartBuilder {
     }
 
     public byte[] build() {
+        // Return cached bytes if already built (for retry support)
+        if (builtBytes != null) {
+            return builtBytes;
+        }
         // TODO move this to getter if possible
         for (InterfaceHttpData part : encoder.getBodyListAttributes()) {
             bodyForDisplay.append('\n').append(part.toString()).append('\n');
@@ -304,6 +309,7 @@ public class MultiPartBuilder {
             }
             byte[] bytes = new byte[content.readableBytes()];
             content.readBytes(bytes);
+            builtBytes = bytes; // Cache for retry
             return bytes;
         } catch (Exception e) {
             throw new RuntimeException(e);

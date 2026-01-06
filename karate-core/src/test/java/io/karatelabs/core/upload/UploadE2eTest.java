@@ -462,6 +462,31 @@ class UploadE2eTest {
         assertPassed(sr);
     }
 
+    // ===== Retry with Multipart Tests =====
+
+    @Test
+    void testMultipartWithRetry() {
+        // Regression test: retry with multipart should not fail with "Header already encoded"
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Multipart with Retry
+
+            Scenario: Retry multipart upload
+            * def count = { value: 0 }
+            * configure retry = { interval: 100 }
+            * def done = function(){ return count.value++ == 1 }
+            * url 'http://localhost:%d'
+            * path '/multipart'
+            * multipart file myFile = { read: 'classpath:io/karatelabs/core/upload/test.pdf.zip', filename: 'test.pdf.zip', contentType: 'application/octet-stream' }
+            * multipart field message = 'retry test'
+            * retry until done()
+            * method post
+            * status 200
+            * match response == { success: true }
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
     // ===== Call Within Mock Tests =====
 
     @Test
