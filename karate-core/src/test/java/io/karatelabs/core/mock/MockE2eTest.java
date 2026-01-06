@@ -25,12 +25,19 @@ package io.karatelabs.core.mock;
 
 import io.karatelabs.core.MockServer;
 import io.karatelabs.core.ScenarioRuntime;
+import io.karatelabs.core.Suite;
+import io.karatelabs.core.SuiteResult;
 import io.karatelabs.http.ApacheHttpClient;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static io.karatelabs.core.TestUtils.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * End-to-end tests for mock features.
@@ -1266,6 +1273,84 @@ class MockE2eTest {
             """.formatted(port));
 
         assertPassed(sr);
+    }
+
+    // ===== Cookie Jar Propagation Test =====
+    // This tests V1 compatibility: cookies collected in a called feature (shared scope)
+    // should be auto-sent on subsequent requests in the caller feature.
+
+    @TempDir
+    Path tempDir;
+
+    @Test
+    void testCookieJarPropagationInSharedScopeCall() throws Exception {
+        // This replicates the pattern from karate-demo's call-updates-config.feature:
+        // 1. Caller calls a common.feature with shared scope (no assignment)
+        // 2. common.feature makes an HTTP request that receives a Set-Cookie
+        // 3. Caller makes another HTTP request - cookie should be auto-sent
+        //
+        // Without cookie jar propagation, the second request fails because the cookie is missing.
+
+        Path commonFeature = tempDir.resolve("common.feature");
+        Files.writeString(commonFeature, """
+            @ignore
+            Feature: Common routine that collects cookies from HTTP response
+
+            Scenario:
+            * url 'http://localhost:%d'
+            * path '/set-cookie'
+            * method get
+            * status 200
+            # responseCookies now contains 'session=abc123'
+            # This should be stored in the cookie jar
+            * def token = 'authenticated'
+            """.formatted(port));
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Cookie jar should propagate from called feature
+
+            Background:
+            # Shared scope call - cookie jar should propagate back
+            * callonce read('common.feature')
+
+            Scenario: Cookie from called feature should be auto-sent
+            # Verify variable propagated
+            * match token == 'authenticated'
+            # Make another request - the 'session' cookie should be auto-sent
+            * url 'http://localhost:%d'
+            * path '/echo-cookies'
+            * method get
+            * status 200
+            # If cookie jar propagation works, 'session=abc123' should be present
+            * match response.receivedCookies contains 'session=abc123'
+
+            Scenario: Second scenario should also have cookies from cache
+            * url 'http://localhost:%d'
+            * path '/echo-cookies'
+            * method get
+            * status 200
+            * match response.receivedCookies contains 'session=abc123'
+            """.formatted(port, port));
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertEquals(2, result.getScenarioCount());
+        assertTrue(result.isPassed(), "Cookie jar should propagate from called feature: " + getFailureMessage(result));
+    }
+
+    private String getFailureMessage(SuiteResult result) {
+        if (result.isPassed()) return "none";
+        for (var fr : result.getFeatureResults()) {
+            for (var sr : fr.getScenarioResults()) {
+                if (sr.isFailed()) {
+                    return sr.getFailureMessage();
+                }
+            }
+        }
+        return "unknown";
     }
 
 }

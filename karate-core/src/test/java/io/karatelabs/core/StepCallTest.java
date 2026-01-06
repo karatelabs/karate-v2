@@ -897,6 +897,166 @@ class StepCallTest {
         assertTrue(result.isPassed(), "Callonce should cache and restore config: " + getFailureMessage(result));
     }
 
+    @Test
+    void testCallOnceSharedScopeWithHeadersFunction() throws Exception {
+        // V1 compatibility: When using shared scope, both variables and config should propagate.
+        // This tests the pattern from karate-demo where headers.js uses karate.get() to access variables.
+        Path headersJs = tempDir.resolve("headers.js");
+        Files.writeString(headersJs, """
+            function fn() {
+              var token = karate.get('token');
+              var time = karate.get('time');
+              if (token && time) {
+                return { 'Authorization': token + '-' + time };
+              } else {
+                return {};
+              }
+            }
+            """);
+
+        Path calledFeature = tempDir.resolve("common.feature");
+        Files.writeString(calledFeature, """
+            @ignore
+            Feature: Common routine that sets variables and headers function
+            Scenario:
+            * def token = 'my-token'
+            * def time = 'my-time'
+            * configure headers = read('headers.js')
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Shared scope with headers function
+            Background:
+            # Shared scope - config AND variables should propagate
+            * callonce read('common.feature')
+
+            Scenario: Variables and headers function should be available
+            # Variables should be accessible
+            * match token == 'my-token'
+            * match time == 'my-time'
+            # Headers function should return correct value using the variables
+            * def headersResult = karate.config.headers()
+            * match headersResult == { 'Authorization': 'my-token-my-time' }
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "Shared scope should propagate both vars and headers function: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testCallSharedScopePropagatesCookieJar() throws Exception {
+        // V1 compatibility: When using shared scope, cookies collected from HTTP responses
+        // in the called feature should be available in the caller's cookie jar.
+        // This is the pattern used in karate-demo's common.feature where responseCookies
+        // from a login request should be auto-sent on subsequent requests.
+        //
+        // We test this by using configure cookies in the called feature, which updates
+        // the cookie jar, and verifying it's accessible in the caller.
+        Path calledFeature = tempDir.resolve("common.feature");
+        Files.writeString(calledFeature, """
+            @ignore
+            Feature: Common routine that sets cookies
+            Scenario:
+            # Set a cookie via configure - this updates the cookie jar
+            * configure cookies = { session: 'abc123' }
+            * def setupDone = true
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Shared scope should propagate cookie jar
+            Scenario: Cookie config should propagate from called feature
+            # Shared scope - cookies should propagate
+            * call read('common.feature')
+            # Verify variable propagated
+            * match setupDone == true
+            # Verify cookie config propagated
+            * def cookies = karate.config.cookies
+            * match cookies == { session: 'abc123' }
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "Shared scope should propagate cookies config: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testCallOnceIsolatedScopeDoesNotPropagateConfig() throws Exception {
+        // V1 compatibility: When using isolated scope (def x = callonce read(...)),
+        // configure statements in the called feature should NOT affect the caller's config.
+        // This is the pattern used in call-isolated-config.feature.
+        Path calledFeature = tempDir.resolve("common.feature");
+        Files.writeString(calledFeature, """
+            @ignore
+            Feature: Common routine that updates config
+            Scenario:
+            * def token = 'my-auth-token'
+            * def time = 'my-time'
+            * configure headers = { 'Authorization': '#(token)' }
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Call with isolated scope does not update config
+            Background:
+            # Using assignment - should NOT propagate config
+            * def setup = callonce read('common.feature')
+
+            Scenario: Config should NOT be updated by called feature (isolated scope)
+            # Use intermediate variable to avoid match expression evaluation issue
+            * def actualHeaders = karate.config.headers
+            * match actualHeaders == null
+
+            Scenario: But the returned variables should be accessible
+            * match setup.token == 'my-auth-token'
+            * match setup.time == 'my-time'
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertEquals(2, result.getScenarioCount());
+        assertTrue(result.isPassed(), "Isolated scope call should NOT propagate config: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testCallIsolatedScopeDoesNotPropagateConfig() throws Exception {
+        // Same as above but with regular call (not callonce)
+        Path calledFeature = tempDir.resolve("common.feature");
+        Files.writeString(calledFeature, """
+            @ignore
+            Feature: Common routine that updates config
+            Scenario:
+            * def myVar = 'value'
+            * configure headers = { 'X-Test': 'from-called' }
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Call with isolated scope does not update config
+            Scenario: Config should NOT be updated by called feature (isolated scope)
+            # Using assignment - should NOT propagate config
+            * def result = call read('common.feature')
+            # Use intermediate variable to avoid match expression evaluation issue
+            * def actualHeaders = karate.config.headers
+            * match actualHeaders == null
+            * match result.myVar == 'value'
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "Isolated scope call should NOT propagate config: " + getFailureMessage(result));
+    }
+
     private String getFailureMessage(SuiteResult result) {
         if (result.isPassed()) return "none";
         for (FeatureResult fr : result.getFeatureResults()) {

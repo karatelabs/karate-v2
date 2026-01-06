@@ -2282,6 +2282,8 @@ public class StepExecutor {
                 }
                 // V1 compatibility: Also propagate config changes back to caller
                 runtime.getConfig().copyFrom(nestedFr.getLastExecuted().getConfig());
+                // V1 compatibility: Also propagate cookie jar back to caller
+                runtime.getCookieJar().putAll(nestedFr.getLastExecuted().getCookieJar());
             }
         }
     }
@@ -2399,6 +2401,8 @@ public class StepExecutor {
                 }
                 // V1 compatibility: Also propagate config changes back to caller
                 runtime.getConfig().copyFrom(nestedFr.getLastExecuted().getConfig());
+                // V1 compatibility: Also propagate cookie jar back to caller
+                runtime.getCookieJar().putAll(nestedFr.getLastExecuted().getCookieJar());
             }
         }
     }
@@ -2438,19 +2442,21 @@ public class StepExecutor {
             // Not cached - execute the call
             executeCall(step);
 
-            // Cache variables and config (executeCall already copied vars to runtime)
+            // Cache variables, config, and cookie jar (executeCall already copied vars to runtime)
             @SuppressWarnings("unchecked")
             Map<String, Object> vars = (Map<String, Object>) StepUtils.deepCopy(runtime.getAllVariables());
-            cache.put(cacheKey, new CallOnceResult(vars, runtime.getConfig().copy()));
+            @SuppressWarnings("unchecked")
+            Map<String, Map<String, Object>> cookieJarCopy = (Map<String, Map<String, Object>>) StepUtils.deepCopy(runtime.getCookieJar());
+            cache.put(cacheKey, new CallOnceResult(vars, runtime.getConfig().copy(), cookieJarCopy));
         } finally {
             lock.unlock();
         }
     }
 
     /**
-     * Cached result from a callonce execution, containing both variables and config.
+     * Cached result from a callonce execution, containing variables, config, and cookie jar.
      */
-    private record CallOnceResult(Map<String, Object> vars, KarateConfig config) {}
+    private record CallOnceResult(Map<String, Object> vars, KarateConfig config, Map<String, Map<String, Object>> cookieJar) {}
 
     @SuppressWarnings("unchecked")
     private void applyCachedCallOnceResult(CallOnceResult cached) {
@@ -2459,6 +2465,11 @@ public class StepExecutor {
             runtime.setVariable(entry.getKey(), entry.getValue());
         }
         runtime.getConfig().copyFrom(cached.config());
+        // V1 compatibility: Also restore cookie jar from cache
+        if (cached.cookieJar() != null) {
+            Map<String, Map<String, Object>> cookieJarCopy = (Map<String, Map<String, Object>>) StepUtils.deepCopy(cached.cookieJar());
+            runtime.getCookieJar().putAll(cookieJarCopy);
+        }
     }
 
     /**
