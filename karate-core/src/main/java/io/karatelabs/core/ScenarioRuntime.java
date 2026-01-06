@@ -890,6 +890,10 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
             Map<String, Object> headers = (Map<String, Object>) value;
             karate.http.headers(headers);
         }
+        if ("cookies".equals(key) && value == null) {
+            // V1 compatibility: configure cookies = null should also clear the cookie jar
+            clearCookieJar();
+        }
         if ("charset".equals(key)) {
             // Handle both String charset and null (to disable auto-charset)
             karate.http.charset(value == null ? null : value.toString());

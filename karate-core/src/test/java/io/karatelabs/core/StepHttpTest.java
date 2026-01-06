@@ -827,6 +827,184 @@ class StepHttpTest {
     }
 
     @Test
+    void testResponseCookiesAutoSendAcrossMultipleRequests() {
+        // V1 behavior: cookies set by client and echoed back by server should persist
+        // This mirrors the karate-demo cookies.feature test
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String cookie = req.getHeader("Cookie");
+            if (cookie != null && cookie.contains("foo=bar")) {
+                // Echo back the cookies as response
+                HttpResponse resp = json("[{ \"name\": \"foo\", \"value\": \"bar\" }]");
+                resp.setHeader("Set-Cookie", java.util.List.of("foo=bar; Path=/"));
+                return resp;
+            }
+            return json("[]");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test/cookies'
+            * cookie foo = 'bar'
+            * method get
+            * status 200
+            * match response == '#[1]'
+            * match response[0] contains { name: 'foo', value: 'bar' }
+
+            # Second request - cookie should be auto-sent
+            * url 'http://test/cookies'
+            * request {}
+            * method post
+            * status 200
+            * match response == '#[1]'
+            * match response[0] contains { name: 'foo', value: 'bar' }
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testCookieResetWithConfigureNull() {
+        // V1 behavior: configure cookies = null should clear all cookies
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String cookie = req.getHeader("Cookie");
+            if (cookie != null && cookie.contains("foo=bar")) {
+                HttpResponse resp = json("[{ \"name\": \"foo\", \"value\": \"bar\" }]");
+                resp.setHeader("Set-Cookie", java.util.List.of("foo=bar; Path=/"));
+                return resp;
+            }
+            return json("[]");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test/cookies'
+            * cookie foo = 'bar'
+            * method get
+            * status 200
+            * match response == '#[1]'
+
+            # Reset cookies
+            * configure cookies = null
+            * url 'http://test/cookies'
+            * method get
+            * status 200
+            * match response == []
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testCookieOverrideOnSubsequentRequest() {
+        // V1 behavior: explicit cookie should override persisted cookies
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String cookie = req.getHeader("Cookie");
+            if (cookie != null && cookie.contains("foo=blah")) {
+                HttpResponse resp = json("[{ \"name\": \"foo\", \"value\": \"blah\" }]");
+                resp.setHeader("Set-Cookie", java.util.List.of("foo=blah; Path=/"));
+                return resp;
+            } else if (cookie != null && cookie.contains("foo=bar")) {
+                HttpResponse resp = json("[{ \"name\": \"foo\", \"value\": \"bar\" }]");
+                resp.setHeader("Set-Cookie", java.util.List.of("foo=bar; Path=/"));
+                return resp;
+            }
+            return json("[]");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test/cookies'
+            * cookie foo = 'bar'
+            * method get
+            * status 200
+            * match response[0].value == 'bar'
+
+            # Reset and send different cookie
+            * configure cookies = null
+            * url 'http://test/cookies'
+            * cookie foo = 'blah'
+            * request {}
+            * method post
+            * status 200
+            * match response[0].value == 'blah'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMultipleResponseCookiesPersisted() {
+        // V1 behavior: multiple Set-Cookie headers should all be persisted
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String path = req.getPath();
+            if (path.endsWith("/login")) {
+                HttpResponse resp = json("{ \"ok\": true }");
+                resp.setHeader("Set-Cookie", java.util.List.of(
+                    "session=abc123; Path=/",
+                    "token=xyz789; Path=/",
+                    "user=john; Path=/"
+                ));
+                return resp;
+            } else if (path.endsWith("/check")) {
+                String cookie = req.getHeader("Cookie");
+                boolean hasSession = cookie != null && cookie.contains("session=abc123");
+                boolean hasToken = cookie != null && cookie.contains("token=xyz789");
+                boolean hasUser = cookie != null && cookie.contains("user=john");
+                if (hasSession && hasToken && hasUser) {
+                    return json("{ \"allCookies\": true }");
+                }
+                return json("{ \"cookie\": \"" + cookie + "\" }");
+            }
+            return status(404);
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test/login'
+            * method get
+            * status 200
+            * match responseCookies.session.value == 'abc123'
+            * match responseCookies.token.value == 'xyz789'
+            * match responseCookies.user.value == 'john'
+
+            # All three cookies should be sent on next request
+            * url 'http://test/check'
+            * method get
+            * status 200
+            * match response.allCookies == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testResponseCookiesFromPostSentInGet() {
+        // V1 behavior: cookies from POST response should be sent in subsequent GET
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String path = req.getPath();
+            if (path.endsWith("/login") && "POST".equals(req.getMethod())) {
+                HttpResponse resp = json("{ \"loggedIn\": true }");
+                resp.setHeader("Set-Cookie", java.util.List.of("auth=secret123; Path=/"));
+                return resp;
+            } else if (path.endsWith("/profile") && "GET".equals(req.getMethod())) {
+                String cookie = req.getHeader("Cookie");
+                if (cookie != null && cookie.contains("auth=secret123")) {
+                    return json("{ \"profile\": \"visible\" }");
+                }
+                return json("{ \"error\": \"unauthorized\" }");
+            }
+            return status(404);
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test/login'
+            * request { username: 'admin', password: 'secret' }
+            * method post
+            * status 200
+            * match responseCookies.auth.value == 'secret123'
+
+            # Cookie from POST should be sent in GET
+            * url 'http://test/profile'
+            * method get
+            * status 200
+            * match response.profile == 'visible'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
     void testHeadersFeatureFlow() {
         // This simulates the v1 demo/headers/headers.feature flow:
         // 1. GET /headers -> returns token and sets 'time' cookie
@@ -880,6 +1058,79 @@ class StepHttpTest {
             * configure headers = headersFn
             * path 'headers', token
             * param url = demoBaseUrl
+            * method get
+            * status 200
+            * match response.ok == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureHeadersWithEmbeddedExpressions() {
+        // V1 behavior: configure headers = { key: '#(variable)' } should evaluate embedded expressions
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String auth = req.getHeader("Authorization");
+            if ("token123time456".equals(auth)) {
+                return json("{ \"ok\": true }");
+            }
+            return json("{ \"auth\": \"" + auth + "\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * def token = 'token123'
+            * def time = 'time456'
+            * configure headers = { Authorization: '#(token + time)' }
+            * method get
+            * status 200
+            * match response.ok == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureCookiesWithEmbeddedExpressions() {
+        // V1 behavior: configure cookies = { key: '#(variable)' } should evaluate embedded expressions
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String cookie = req.getHeader("Cookie");
+            if (cookie != null && cookie.contains("session=abc123") && cookie.contains("time=456")) {
+                return json("{ \"ok\": true }");
+            }
+            return json("{ \"cookie\": \"" + cookie + "\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * def sessionId = 'abc123'
+            * def timeValue = '456'
+            * configure cookies = { session: '#(sessionId)', time: '#(timeValue)' }
+            * method get
+            * status 200
+            * match response.ok == true
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureHeadersAndCookiesWithEmbeddedExpressions() {
+        // Combined test: both headers and cookies with embedded expressions
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String cookie = req.getHeader("Cookie");
+            String auth = req.getHeader("Authorization");
+            boolean hasTimeCookie = cookie != null && cookie.contains("time=time789");
+            boolean hasAuth = auth != null && auth.contains("token123");
+            if (hasTimeCookie && hasAuth) {
+                return json("{ \"ok\": true }");
+            }
+            return json("{ \"cookie\": \"" + cookie + "\", \"auth\": \"" + auth + "\" }");
+        });
+
+        ScenarioRuntime sr = run(client, """
+            * url 'http://test'
+            * def token = 'token123'
+            * def time = 'time789'
+            * configure headers = { Authorization: '#(token + time)' }
+            * configure cookies = { time: '#(time)' }
             * method get
             * status 200
             * match response.ok == true

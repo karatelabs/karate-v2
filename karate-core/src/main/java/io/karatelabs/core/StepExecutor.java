@@ -2575,7 +2575,15 @@ public class StepExecutor {
             throw new RuntimeException("configure requires '=' assignment: " + text);
         }
         String key = text.substring(0, eqIndex).trim();
-        Object value = runtime.eval(text.substring(eqIndex + 1).trim());
+        String expr = text.substring(eqIndex + 1).trim();
+        // For headers and cookies, use evalKarateExpression to process embedded expressions
+        // e.g., configure cookies = { time: '#(setup.time)' }
+        Object value;
+        if ("headers".equals(key) || "cookies".equals(key)) {
+            value = evalKarateExpression(expr);
+        } else {
+            value = runtime.eval(expr);
+        }
         runtime.configure(key, value);
     }
 
