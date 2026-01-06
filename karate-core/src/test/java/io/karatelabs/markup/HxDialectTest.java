@@ -62,8 +62,8 @@ class HxDialectTest {
         MarkupConfig config = new MarkupConfig();
         config.setResolver(new RootResourceResolver("classpath:templates"));
         config.setContextPath(contextPath);
-        config.setDevMode(true);
-        return Markup.init(engine, config, new HxDialect(config));
+        config.setEngineSupplier(() -> engine);
+        return Markup.init(config, new HxDialect(config));
     }
 
     @Test
@@ -149,11 +149,10 @@ class HxDialectTest {
 
     @Test
     void testThisKeyword() {
-        Engine engine = new Engine();
         MarkupConfig config = new MarkupConfig();
         config.setResolver(new RootResourceResolver("classpath:markup"));
-        config.setDevMode(true);
-        Markup markup = Markup.init(engine, config, new HxDialect(config));
+        config.setEngineSupplier(Engine::new);
+        Markup markup = Markup.init(config, new HxDialect(config));
 
         String result = markup.processPath("htmx-this.html", Map.of());
         assertEquals("<button hx-get=\"/htmx-this\">Reload</button>", result);
@@ -161,12 +160,11 @@ class HxDialectTest {
 
     @Test
     void testThisKeywordWithContextPath() {
-        Engine engine = new Engine();
         MarkupConfig config = new MarkupConfig();
         config.setResolver(new RootResourceResolver("classpath:markup"));
         config.setContextPath("/app");
-        config.setDevMode(true);
-        Markup markup = Markup.init(engine, config, new HxDialect(config));
+        config.setEngineSupplier(Engine::new);
+        Markup markup = Markup.init(config, new HxDialect(config));
 
         String result = markup.processPath("htmx-this.html", Map.of());
         assertEquals("<button hx-get=\"/app/htmx-this\">Reload</button>", result);

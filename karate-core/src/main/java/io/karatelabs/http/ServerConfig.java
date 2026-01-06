@@ -23,11 +23,12 @@
  */
 package io.karatelabs.http;
 
-import io.karatelabs.js.ExternalBridge;
+import io.karatelabs.js.Engine;
 
 import java.util.Arrays;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Configuration for the HTTP server including routing, sessions, and security settings.
@@ -65,13 +66,14 @@ public class ServerConfig {
     private Consumer<HttpRequest> requestInterceptor;
     private Consumer<String> logHandler;
 
-    // Java interop bridge (default allows all classes)
-    private ExternalBridge externalBridge = new ExternalBridge() {};
+    // Engine supplier - default gets engine from current RequestCycle (for template processing)
+    private Supplier<Engine> engineSupplier = () -> ServerRequestCycle.get().getEngine();
 
     // Global variables available in all templates and API handlers
     private Map<String, Object> globalVariables;
 
     public ServerConfig() {
+
     }
 
     public ServerConfig(String resourceRoot) {
@@ -172,8 +174,8 @@ public class ServerConfig {
         return logHandler;
     }
 
-    public ExternalBridge getExternalBridge() {
-        return externalBridge;
+    public Supplier<Engine> getEngineSupplier() {
+        return engineSupplier;
     }
 
     public Map<String, Object> getGlobalVariables() {
@@ -302,8 +304,8 @@ public class ServerConfig {
      * Override forType() to restrict which Java classes can be accessed from templates.
      * By default, all classes are accessible.
      */
-    public ServerConfig externalBridge(ExternalBridge externalBridge) {
-        this.externalBridge = externalBridge;
+    public ServerConfig engineSupplier(Supplier<Engine> engineSupplier) {
+        this.engineSupplier = engineSupplier;
         return this;
     }
 

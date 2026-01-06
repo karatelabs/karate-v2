@@ -27,6 +27,7 @@ import io.karatelabs.js.Engine;
 import org.thymeleaf.IEngineConfiguration;
 import org.thymeleaf.context.IEngineContext;
 import org.thymeleaf.context.IdentifierSequences;
+import org.thymeleaf.engine.IterationStatusVar;
 import org.thymeleaf.engine.TemplateData;
 import org.thymeleaf.expression.IExpressionObjects;
 import org.thymeleaf.inline.IInliner;
@@ -42,22 +43,19 @@ public class MarkupTemplateContext implements IEngineContext {
     private final Engine engine;
     private final Map<String, Object> vars = new HashMap<>();
 
-    MarkupTemplateContext(IEngineContext wrapped, Engine engine, ResourceResolver resolver) {
+    MarkupTemplateContext(IEngineContext wrapped, MarkupConfig config) {
         this.wrapped = wrapped;
-        this.engine = engine;
+        this.engine = config.getEngineSupplier().get();
         this.engine.put("_", vars);
         // Use existing MarkupContext from template variables if present (e.g., ServerMarkupContext in server mode)
         // Otherwise create a SimpleMarkupContext for plain templating mode
+        // Note: In server mode, the engine is shared with ServerRequestCycle (via ThreadLocal supplier)
+        // and session binding is already managed by ServerRequestCycle.bindSession()
         Object existingContext = wrapped.getVariable("context");
         if (existingContext instanceof MarkupContext) {
             this.engine.put("context", existingContext);
-            if (existingContext instanceof io.karatelabs.http.ServerMarkupContext sc) {
-                sc.setOnSessionInit(session -> {
-                    engine.put("session", session);
-                });
-            }
         } else {
-            this.engine.put("context", new SimpleMarkupContext(this, resolver));
+            this.engine.put("context", new SimpleMarkupContext(this, config.getResolver()));
         }
     }
 
@@ -156,7 +154,22 @@ public class MarkupTemplateContext implements IEngineContext {
 
     @Override
     public Object getVariable(String name) {
-        return wrapped.getVariable(name);
+        Object value = wrapped.getVariable(name);
+        // Convert Thymeleaf's IterationStatusVar to a JS-friendly Map
+        // This enables iteration status properties like iter.first, iter.last, iter.index
+        if (value instanceof IterationStatusVar status) {
+            Map<String, Object> statusMap = new LinkedHashMap<>();
+            statusMap.put("index", status.getIndex());
+            statusMap.put("count", status.getCount());
+            statusMap.put("size", status.getSize());
+            statusMap.put("current", status.getCurrent());
+            statusMap.put("even", status.isEven());
+            statusMap.put("odd", status.isOdd());
+            statusMap.put("first", status.isFirst());
+            statusMap.put("last", status.isLast());
+            return statusMap;
+        }
+        return value;
     }
 
     @Override

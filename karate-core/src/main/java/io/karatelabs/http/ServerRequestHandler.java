@@ -25,16 +25,12 @@ package io.karatelabs.http;
 
 import io.karatelabs.common.FileUtils;
 import io.karatelabs.common.Resource;
-import io.karatelabs.common.ResourceNotFoundException;
 import io.karatelabs.common.ResourceType;
-import io.karatelabs.js.Engine;
 import io.karatelabs.markup.Markup;
 import io.karatelabs.markup.MarkupConfig;
 import io.karatelabs.markup.ResourceResolver;
 import io.karatelabs.markup.HxDialect;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Function;
 
 /**
@@ -52,32 +48,28 @@ import java.util.function.Function;
  * <pre>
  * ServerConfig config = new ServerConfig()
  *     .resourceRoot("classpath:web")
- *     .sessionStore(new InMemorySessionStore());
+ *     .sessionStore(new InMemorySessionStore())
+ *     .engineSupplier(Engine::new);
  *
- * RequestHandler handler = new RequestHandler(config, resolver);
+ * ServerRequestHandler handler = new ServerRequestHandler(config, resolver);
  * HttpServer server = HttpServer.start(8080, handler);
  * </pre>
  */
-public class RequestHandler implements Function<HttpRequest, HttpResponse> {
+public class ServerRequestHandler implements Function<HttpRequest, HttpResponse> {
 
     private final ServerConfig config;
     private final ResourceResolver resolver;
     private final Markup markup;
-    private final Engine engine;
 
-    public RequestHandler(ServerConfig config, ResourceResolver resolver) {
+    public ServerRequestHandler(ServerConfig config, ResourceResolver resolver) {
         this.config = config;
         this.resolver = resolver;
-        this.engine = new Engine();
-        // Enable Java interop with configured bridge
-        if (config.getExternalBridge() != null) {
-            this.engine.setExternalBridge(config.getExternalBridge());
-        }
         // Initialize markup with HxDialect for HTMX support
         MarkupConfig markupConfig = new MarkupConfig();
         markupConfig.setResolver(resolver);
         markupConfig.setDevMode(config.isDevMode());
-        this.markup = Markup.init(engine, markupConfig, new HxDialect(markupConfig));
+        markupConfig.setEngineSupplier(config.getEngineSupplier());
+        this.markup = Markup.init(markupConfig, new HxDialect(markupConfig));
     }
 
     @Override
@@ -89,6 +81,11 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
             // Process form/multipart body if present
             request.processBody();
 
+            // 1. Static files - handle early, no session/engine needed
+            if (config.isStaticPath(path)) {
+                return handleStatic(request, response);
+            }
+
             // Create context for this request
             ServerMarkupContext context = createContext(request, response);
 
@@ -98,12 +95,10 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
             // Load flash messages from previous request (if any)
             context.loadFlashFromSession();
 
-            // CSRF validation for state-changing requests (skip static files)
-            if (!config.isStaticPath(path)) {
-                HttpResponse csrfError = validateCsrf(request, context);
-                if (csrfError != null) {
-                    return csrfError;
-                }
+            // CSRF validation for state-changing requests
+            HttpResponse csrfError = validateCsrf(request, context);
+            if (csrfError != null) {
+                return csrfError;
             }
 
             // Call request interceptor if configured
@@ -111,8 +106,9 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
                 config.getRequestInterceptor().accept(request);
             }
 
-            // Route the request
-            HttpResponse result = route(request, response, context);
+            // 2. Create RequestCycle and delegate routing (API or HTML)
+            ServerRequestCycle rc = ServerRequestCycle.init(config, context, resolver, markup);
+            HttpResponse result = rc.handle();
 
             // Handle redirect if set
             if (context.hasRedirect()) {
@@ -139,7 +135,10 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
             return response;
 
         } catch (Exception e) {
-            return handleError(request, response, e);
+            response.setStatus(500);
+            response.setBody("Internal Server Error: " + e.getMessage());
+            response.setHeader("Content-Type", "text/plain");
+            return response;
         }
     }
 
@@ -230,24 +229,7 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
         response.setHeader("Set-Cookie", cookieValue);
     }
 
-    private HttpResponse route(HttpRequest request, HttpResponse response, ServerMarkupContext context) {
-        String path = request.getPath();
-
-        // 1. Static files
-        if (config.isStaticPath(path)) {
-            return handleStatic(request, response, context);
-        }
-
-        // 2. API routes
-        if (config.isApiPath(path)) {
-            return handleApi(request, response, context);
-        }
-
-        // 3. Template routes
-        return handleTemplate(request, response, context);
-    }
-
-    private HttpResponse handleStatic(HttpRequest request, HttpResponse response, ServerMarkupContext context) {
+    private HttpResponse handleStatic(HttpRequest request, HttpResponse response) {
         String path = request.getPath();
 
         // Path traversal protection
@@ -291,161 +273,8 @@ public class RequestHandler implements Function<HttpRequest, HttpResponse> {
         }
     }
 
-    private HttpResponse handleApi(HttpRequest request, HttpResponse response, ServerMarkupContext context) {
-        String path = request.getPath();
-
-        // Path traversal protection
-        if (!PathSecurity.isSafe(path)) {
-            return forbidden(response, "Invalid path");
-        }
-
-        // Convert API path to JS file path: /api/users -> api/users.js
-        String jsPath = path.substring(1); // Remove leading /
-        if (!jsPath.endsWith(".js")) {
-            jsPath = jsPath + ".js";
-        }
-
-        try {
-            Resource resource;
-            try {
-                resource = resolver.resolve(jsPath, null);
-            } catch (RuntimeException e) {
-                return notFound(response, path);
-            }
-            if (resource == null) {
-                return notFound(response, path);
-            }
-
-            String jsCode = resource.getText();
-
-            // Create fresh engine for this request
-            Engine reqEngine = new Engine();
-            // Enable Java interop with configured bridge
-            if (config.getExternalBridge() != null) {
-                reqEngine.setExternalBridge(config.getExternalBridge());
-            }
-            // Inject global variables
-            if (config.getGlobalVariables() != null) {
-                config.getGlobalVariables().forEach(reqEngine::put);
-            }
-            reqEngine.put("request", request);
-            reqEngine.put("response", response);
-            reqEngine.put("context", context);
-            if (context.getSession() != null) {
-                reqEngine.put("session", context.getSession());
-            }
-
-            // Execute the JS
-            reqEngine.eval(jsCode);
-
-            // Set default content type if not set
-            if (response.getHeader("Content-Type") == null) {
-                Object body = response.getBody();
-                if (body instanceof Map || body instanceof java.util.List) {
-                    response.setHeader("Content-Type", "application/json");
-                }
-            }
-
-            return response;
-
-        } catch (Exception e) {
-            return handleError(request, response, e);
-        }
-    }
-
-    private HttpResponse handleTemplate(HttpRequest request, HttpResponse response, ServerMarkupContext context) {
-        String path = request.getPath();
-
-        // Path traversal protection
-        if (!PathSecurity.isSafe(path)) {
-            return forbidden(response, "Invalid path");
-        }
-
-        // Convert path to template: /signin -> signin.html, / -> index.html
-        String templatePath = path.equals("/") ? "index.html" : path.substring(1);
-        if (!templatePath.endsWith(".html")) {
-            templatePath = templatePath + ".html";
-        }
-
-        try {
-            // Set template name in context
-            context.setTemplateName(templatePath);
-
-            // Prepare variables for template
-            Map<String, Object> vars = new HashMap<>();
-            // Inject global variables first (can be overridden by request-specific vars)
-            if (config.getGlobalVariables() != null) {
-                vars.putAll(config.getGlobalVariables());
-            }
-            vars.put("request", request);
-            vars.put("response", response);
-            vars.put("context", context);
-            if (context.getSession() != null) {
-                vars.put("session", context.getSession());
-            }
-
-            // Render template
-            String html = markup.processPath(templatePath, vars);
-
-            // Check if template switched
-            if (context.isSwitched()) {
-                String newTemplate = context.getSwitchTemplate();
-                context.setTemplateName(newTemplate);
-                html = markup.processPath(newTemplate, vars);
-            }
-
-            response.setBody(html);
-            response.setHeader("Content-Type", "text/html; charset=utf-8");
-
-            return response;
-
-        } catch (ResourceNotFoundException e) {
-            return notFound(response, path);
-        } catch (Exception e) {
-            return handleError(request, response, e);
-        }
-    }
-
-    private HttpResponse handleError(HttpRequest request, HttpResponse response, Exception e) {
-        response.setStatus(500);
-
-        // Try custom error template
-        if (config.getErrorTemplate500() != null) {
-            try {
-                Map<String, Object> vars = new HashMap<>();
-                vars.put("error", e.getMessage());
-                vars.put("request", request);
-                String html = markup.processPath(config.getErrorTemplate500(), vars);
-                response.setBody(html);
-                response.setHeader("Content-Type", "text/html; charset=utf-8");
-                return response;
-            } catch (Exception ignored) {
-            }
-        }
-
-        // Fallback to simple text
-        response.setBody("Internal Server Error: " + e.getMessage());
-        response.setHeader("Content-Type", "text/plain");
-        return response;
-    }
-
     private HttpResponse notFound(HttpResponse response, String path) {
         response.setStatus(404);
-
-        // Try custom 404 template
-        if (config.getErrorTemplate404() != null) {
-            try {
-                Map<String, Object> vars = new HashMap<>();
-                vars.put("path", path);
-                String html = markup.processPath(config.getErrorTemplate404(), vars);
-                response.setBody(html);
-                response.setHeader("Content-Type", "text/html; charset=utf-8");
-                return response;
-            } catch (Exception ignored) {
-            }
-        }
-
-        // Fallback to simple text
         response.setBody("Not Found: " + path);
         response.setHeader("Content-Type", "text/plain");
         return response;

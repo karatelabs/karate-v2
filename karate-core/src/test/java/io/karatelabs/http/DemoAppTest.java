@@ -36,7 +36,7 @@ class DemoAppTest {
                 .logHandler(message -> logMessages.add(message));
 
         RootResourceResolver resolver = new RootResourceResolver("classpath:demo");
-        RequestHandler handler = new RequestHandler(config, resolver);
+        ServerRequestHandler handler = new ServerRequestHandler(config, resolver);
         harness = new InMemoryTestHarness(handler);
     }
 

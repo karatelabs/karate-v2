@@ -23,8 +23,8 @@ class KaDataTest {
         Engine engine = new Engine();
         MarkupConfig config = new MarkupConfig();
         config.setResolver(new RootResourceResolver("classpath:templates"));
-        config.setDevMode(true);
-        markup = Markup.init(engine, config, new HxDialect(config));
+        config.setEngineSupplier(() -> engine);
+        markup = Markup.init(config, new HxDialect(config));
     }
 
     // =============================================================================

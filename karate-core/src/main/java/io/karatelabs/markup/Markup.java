@@ -56,12 +56,12 @@ public class Markup {
     private final StandardEngineContextFactory standardFactory;
     private final TemplateEngine wrapped;
 
-    Markup(Engine engine, ResourceResolver resolver, IDialect... dialects) {
+    Markup(MarkupConfig config, IDialect... dialects) {
         standardFactory = new StandardEngineContextFactory();
         wrapped = new TemplateEngine();
         wrapped.setEngineContextFactory((IEngineConfiguration ec, TemplateData data, Map<String, Object> attrs, IContext context) -> {
             IEngineContext engineContext = standardFactory.createEngineContext(ec, data, attrs, context);
-            return new MarkupTemplateContext(engineContext, engine, resolver);
+            return new MarkupTemplateContext(engineContext, config);
         });
         // the next line is a set which clears and replaces all existing / default
         wrapped.setDialect(new MarkupStandardDialect());
@@ -181,28 +181,24 @@ public class Markup {
         }
     }
 
+    public static Markup init(Engine engine, String root) {
+        return init(engine, new RootResourceResolver(root));
+    }
+
     public static Markup init(Engine engine, ResourceResolver resolver) {
         MarkupConfig config = new MarkupConfig();
         config.setResolver(resolver);
-        config.setDevMode(true);
-        return init(engine, config);
+        config.setEngineSupplier(() -> engine);
+        return init(config);
     }
 
-    public static Markup init(Engine engine, MarkupConfig config) {
-        return init(engine, config, new IDialect[0]);
-    }
-
-    public static Markup init(Engine engine, MarkupConfig config, IDialect... additionalDialects) {
+    public static Markup init(MarkupConfig config, IDialect... additionalDialects) {
         IDialect[] dialects = new IDialect[1 + additionalDialects.length];
         dialects[0] = new KaDialect(config);
         System.arraycopy(additionalDialects, 0, dialects, 1, additionalDialects.length);
-        Markup markup = new Markup(engine, config.getResolver(), dialects);
+        Markup markup = new Markup(config, dialects);
         markup.wrapped.setTemplateResolver(new HtmlTemplateResolver(config));
         return markup;
-    }
-
-    public static Markup init(Engine je, String root) {
-        return init(je, new RootResourceResolver(root));
     }
 
     static class MarkupEngineContext implements IContext {

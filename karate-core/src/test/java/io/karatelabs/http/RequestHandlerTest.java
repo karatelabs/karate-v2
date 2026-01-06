@@ -54,7 +54,7 @@ class RequestHandlerTest {
                 .apiPrefix("/api/")
                 .staticPrefix("/pub/");
 
-        RequestHandler handler = new RequestHandler(config, resolver);
+        ServerRequestHandler handler = new ServerRequestHandler(config, resolver);
         harness = new InMemoryTestHarness(handler);
     }
 
@@ -412,7 +412,7 @@ class RequestHandlerTest {
         ServerConfig config = new ServerConfig()
                 .sessionStore(testSessionStore);
 
-        RequestHandler handler = new RequestHandler(config, resolver);
+        ServerRequestHandler handler = new ServerRequestHandler(config, resolver);
         InMemoryTestHarness testHarness = new InMemoryTestHarness(handler);
 
         // First request - sets flash and redirects
@@ -459,7 +459,7 @@ class RequestHandlerTest {
         ServerConfig config = new ServerConfig()
                 .sessionStore(testSessionStore);
 
-        RequestHandler handler = new RequestHandler(config, resolver);
+        ServerRequestHandler handler = new ServerRequestHandler(config, resolver);
         InMemoryTestHarness testHarness = new InMemoryTestHarness(handler);
 
         // Create session and store flash message directly
@@ -547,7 +547,7 @@ class RequestHandlerTest {
                 .apiPrefix("/api/")
                 .globalVariables(Map.of("utils", utils));
 
-        RequestHandler handler = new RequestHandler(config, resolver);
+        ServerRequestHandler handler = new ServerRequestHandler(config, resolver);
         InMemoryTestHarness testHarness = new InMemoryTestHarness(handler);
 
         // Make request
@@ -585,7 +585,7 @@ class RequestHandlerTest {
         ServerConfig config = new ServerConfig()
                 .globalVariables(Map.of("utils", utils));
 
-        RequestHandler handler = new RequestHandler(config, resolver);
+        ServerRequestHandler handler = new ServerRequestHandler(config, resolver);
         InMemoryTestHarness testHarness = new InMemoryTestHarness(handler);
 
         // Make request
@@ -627,7 +627,7 @@ class RequestHandlerTest {
         ServerConfig config = new ServerConfig()
                 .globalVariables(Map.of("utils", utils));
 
-        RequestHandler handler = new RequestHandler(config, resolver);
+        ServerRequestHandler handler = new ServerRequestHandler(config, resolver);
         InMemoryTestHarness testHarness = new InMemoryTestHarness(handler);
 
         // Make request
@@ -667,7 +667,7 @@ class RequestHandlerTest {
                         "appVersion", "2.0"
                 ));
 
-        RequestHandler handler = new RequestHandler(config, resolver);
+        ServerRequestHandler handler = new ServerRequestHandler(config, resolver);
         InMemoryTestHarness testHarness = new InMemoryTestHarness(handler);
 
         // Make request

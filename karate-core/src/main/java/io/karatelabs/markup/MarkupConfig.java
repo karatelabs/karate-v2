@@ -23,8 +23,13 @@
  */
 package io.karatelabs.markup;
 
+import io.karatelabs.js.Engine;
+
+import java.util.function.Supplier;
+
 public class MarkupConfig {
 
+    private Supplier<Engine> engineSupplier;
     private ResourceResolver resolver;
     private String contextPath;
     private boolean devMode;
@@ -60,6 +65,14 @@ public class MarkupConfig {
 
     public void setServerMode(boolean serverMode) {
         this.serverMode = serverMode;
+    }
+
+    public void setEngineSupplier(Supplier<Engine> engineSupplier) {
+        this.engineSupplier = engineSupplier;
+    }
+
+    public Supplier<Engine> getEngineSupplier() {
+        return engineSupplier;
     }
 
 }
