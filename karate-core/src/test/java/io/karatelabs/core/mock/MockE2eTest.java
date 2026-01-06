@@ -105,7 +105,7 @@ class MockE2eTest {
 
             # Headers test
             Scenario: pathMatches('/headers')
-              * def response = { auth: requestHeaders['Authorization'][0], custom: requestHeaders['X-Custom'][0] }
+              * def response = { auth: requestHeaders['Authorization'] ? requestHeaders['Authorization'][0] : null, custom: requestHeaders['X-Custom'] ? requestHeaders['X-Custom'][0] : null, headers: requestHeaders }
 
             # ===== Redirect scenarios =====
 
@@ -235,6 +235,12 @@ class MockE2eTest {
             Scenario: pathMatches('/noheaders')
               * def responseStatus = 404
               * def response = ''
+
+            # 404 JSON error response (like Spring Boot error format)
+            Scenario: pathMatches('/not-found-endpoint')
+              * def responseStatus = 404
+              * def responseHeaders = { 'Content-Type': 'application/json' }
+              * def response = { status: 404, error: 'Not Found', path: '/not-found-endpoint' }
 
             # ===== Query param scenarios =====
 
@@ -1351,6 +1357,71 @@ class MockE2eTest {
             }
         }
         return "unknown";
+    }
+
+    // ===== V1 Compatibility: Path Encoding and Multi-Value Headers =====
+
+    @Test
+    void testPathEncodingSpecialCharacters() {
+        // Test that special characters like "<>#{}|\^[]` are properly URL-encoded in path
+        // This replicates demo/encoding/encoding.feature:31-36 from karate-demo
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Path encoding special characters
+
+            Scenario: Special characters in path should be URL-encoded
+            * url 'http://localhost:%d'
+            * path 'encoding', '"<>#{}|\\^[]`'
+            * method get
+            * status 200
+            * match response.path == '"<>#{}|\\^[]`'
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMultiValueHeaderUsingFunctionCall() {
+        // Test that multi-value headers work when set via function call
+        // This replicates demo/headers/headers.feature:75-82 from karate-demo
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Multi-value headers via function call
+
+            Scenario: Multi-value header set via function call
+            * def fun = function(arg){ return [arg.first, arg.second] }
+            * header X-Multi = call fun { first: 'value1', second: 'value2' }
+            * url 'http://localhost:%d'
+            * path 'headers'
+            * method get
+            * status 200
+            * match response.headers['X-Multi'] == ['value1', 'value2']
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testLowerCaseResponseHeadersAnd404JsonError() {
+        // Tests the functionality from demo/error/no-url.feature:
+        // 1. configure lowerCaseResponseHeaders = true
+        // 2. match header content-type contains 'application/json'
+        // 3. 404 status with JSON error body
+        // Note: Spring Boot 3 returns 'application/problem+json' instead of 'application/json',
+        // but the karate-v2 features work correctly - it's just a server response format change.
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: 404 JSON error with lowercase headers
+
+            Scenario: Invalid URL returns proper error response
+            * url 'http://localhost:%d'
+            * configure lowerCaseResponseHeaders = true
+            * path 'not-found-endpoint'
+            * method get
+            * status 404
+            * match header content-type contains 'application/json'
+            * match response.status == 404
+            * match response.error == 'Not Found'
+            """.formatted(port));
+
+        assertPassed(sr);
     }
 
 }

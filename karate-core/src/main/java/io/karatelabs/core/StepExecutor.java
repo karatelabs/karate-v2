@@ -289,6 +289,10 @@ public class StepExecutor {
                         String argExpr = callExpr.substring(spaceIdx + 1).trim();
                         if (!argExpr.isEmpty()) {
                             arg = runtime.eval(argExpr);
+                            // V1 compatibility: process embedded expressions like #(var) in call arguments
+                            if (arg instanceof Map) {
+                                arg = processEmbeddedExpressions((Map<?, ?>) arg);
+                            }
                         }
                     }
                     Object result = arg != null
@@ -1640,6 +1644,7 @@ public class StepExecutor {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void executeHeader(Step step) {
         Table table = step.getTable();
         if (table != null) {
@@ -1654,7 +1659,15 @@ public class StepExecutor {
             String name = text.substring(0, eqIndex).trim();
             // Use evalKarateExpression to handle call expressions like: header X = call fun {...}
             Object value = evalKarateExpression(text.substring(eqIndex + 1).trim());
-            http().header(name, value.toString());
+            // V1 compatibility: function calls can return arrays for multi-value headers
+            if (value instanceof List) {
+                List<String> list = ((List<?>) value).stream()
+                        .map(Object::toString)
+                        .toList();
+                http().header(name, list);
+            } else {
+                http().header(name, value.toString());
+            }
         }
     }
 

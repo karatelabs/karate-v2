@@ -60,6 +60,8 @@ Fixed docstring parser failing when closing `"""` has trailing spaces.
 - **Optional embedded expressions with undefined variables**: `##(exists(name))` where `name` is undefined now removes the key (V1 behavior) instead of throwing
 - **Invalid JSON response fallback**: Responses like `'{ "foo": }'` (malformed JSON) now return as string instead of null
 - **Multipart with retry**: Retry with multipart upload now works (was failing with "Header already encoded")
+- **Multi-value headers via function call**: `header X = call fun { ... }` returning arrays now correctly sets multiple header values (was stringifying array)
+- **Embedded expressions in function call args**: `call fun { key: '#(var)' }` now evaluates `#(var)` before passing to function
 
 ## Pending
 
@@ -80,14 +82,24 @@ The following fixes have been applied locally but NOT committed (to preserve cle
 - Update test expectations: `domain: '.abc.com'` → `domain: 'abc.com'`
 
 ### 2. Remaining Test Failures
-Current status after fixes: **192/200 scenarios passing (96%)**
+Current status: **198/198 scenarios passing (100%)**
 
-Remaining issues (8 scenarios):
-- 6x `expected status: 200, actual: 400` - Spring Boot 3 @PathVariable/compiler issue (see fix above)
-- 1x `application/problem+json` - Spring Boot 3 error response format
-- 1x cookie domain - RFC 6265 compliance (`'.abc.com'` → `'abc.com'`)
+All karate-v2 compatibility issues have been resolved. The remaining skipped tests are Spring Boot 3 server-side issues, not karate-v2 issues.
 
-### 3. API Improvements to Consider
+Skipped tests (tagged @ignore @springboot3):
+- `encoding.feature:31` - path escapes special characters - Spring Boot 3/Tomcat rejects URL-encoded `"<>#{}|\^[]`` chars
+- `no-url.feature` - `application/problem+json` - Spring Boot 3 returns different error content-type (functionality verified in `MockE2eTest#testLowerCaseResponseHeadersAnd404JsonError`)
+
+### 3. TODO: Categorize karate-demo Changes
+Review and categorize all changes in karate-demo (`git diff main` in `/Users/peter/dev/zcode/karate/karate-demo`):
+- Package renames (com.intuit.karate → io.karatelabs)
+- API changes (Results → SuiteResult, MockServer changes, etc.)
+- Deleted files (v1-only features)
+- Spring Boot 2 → 3 changes (javax → jakarta)
+- Test expectation changes
+- Skipped tests (@ignore @springboot3)
+
+### 4. API Improvements to Consider
 Make migration easier by adding backwards-compat methods:
 - `SuiteResult.getFailCount()` → alias for `getScenarioFailedCount()`
 - `SuiteResult.getErrorMessages()` → returns joined string

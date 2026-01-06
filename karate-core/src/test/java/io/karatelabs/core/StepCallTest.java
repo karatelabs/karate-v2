@@ -711,6 +711,31 @@ class StepCallTest {
     }
 
     @Test
+    void testCallFunctionWithEmbeddedExpressionInArg() throws Exception {
+        // Tests V1 compatibility: embedded expressions like #(var) in function call arguments
+        // should be evaluated before passing to the function.
+        // This is used in demo/headers/headers.feature:75-82:
+        //   * header Authorization = call fun { first: 'dummy', second: '#(token + time + demoBaseUrl)' }
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Call with embedded expression in arg
+            Scenario:
+            * def token = 'abc'
+            * def time = '123'
+            * def url = 'http://test'
+            * def fun = function(arg){ return [arg.first, arg.second] }
+            * def result = call fun { first: 'dummy', second: '#(token + time + url)' }
+            * match result == ['dummy', 'abc123http://test']
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "Embedded expressions in function call args should be evaluated: " + getFailureMessage(result));
+    }
+
+    @Test
     void testCallInRhsOfHeader() throws Exception {
         // Tests V1 syntax: header X = call fun { key: 'value' }
         // The call expression in the RHS should be evaluated as Karate expression, not pure JS
