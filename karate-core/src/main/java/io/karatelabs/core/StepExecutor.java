@@ -2280,6 +2280,8 @@ public class StepExecutor {
                 for (Map.Entry<String, Object> entry : resultVars.entrySet()) {
                     runtime.setVariable(entry.getKey(), entry.getValue());
                 }
+                // V1 compatibility: Also propagate config changes back to caller
+                runtime.getConfig().copyFrom(nestedFr.getLastExecuted().getConfig());
             }
         }
     }
@@ -2395,6 +2397,8 @@ public class StepExecutor {
                 for (Map.Entry<String, Object> entry : resultVars.entrySet()) {
                     runtime.setVariable(entry.getKey(), entry.getValue());
                 }
+                // V1 compatibility: Also propagate config changes back to caller
+                runtime.getConfig().copyFrom(nestedFr.getLastExecuted().getConfig());
             }
         }
     }
@@ -2415,10 +2419,8 @@ public class StepExecutor {
         java.util.concurrent.locks.ReentrantLock lock = fr.getCallOnceLock();
 
         // Fast path - check cache without lock
-        @SuppressWarnings("unchecked")
-        Map<String, Object> cached = (Map<String, Object>) cache.get(cacheKey);
+        CallOnceResult cached = (CallOnceResult) cache.get(cacheKey);
         if (cached != null) {
-            // Apply deep copies of cached variables to current runtime
             applyCachedCallOnceResult(cached);
             return;
         }
@@ -2427,8 +2429,7 @@ public class StepExecutor {
         lock.lock();
         try {
             // Double-check after acquiring lock (another thread may have populated cache)
-            @SuppressWarnings("unchecked")
-            Map<String, Object> rechecked = (Map<String, Object>) cache.get(cacheKey);
+            CallOnceResult rechecked = (CallOnceResult) cache.get(cacheKey);
             if (rechecked != null) {
                 applyCachedCallOnceResult(rechecked);
                 return;
@@ -2437,19 +2438,27 @@ public class StepExecutor {
             // Not cached - execute the call
             executeCall(step);
 
-            // Cache a deep copy of the result (executeCall already copied vars to runtime)
-            cache.put(cacheKey, StepUtils.deepCopy(runtime.getAllVariables()));
+            // Cache variables and config (executeCall already copied vars to runtime)
+            @SuppressWarnings("unchecked")
+            Map<String, Object> vars = (Map<String, Object>) StepUtils.deepCopy(runtime.getAllVariables());
+            cache.put(cacheKey, new CallOnceResult(vars, runtime.getConfig().copy()));
         } finally {
             lock.unlock();
         }
     }
 
-    private void applyCachedCallOnceResult(Map<String, Object> cached) {
-        @SuppressWarnings("unchecked")
-        Map<String, Object> copies = (Map<String, Object>) StepUtils.deepCopy(cached);
+    /**
+     * Cached result from a callonce execution, containing both variables and config.
+     */
+    private record CallOnceResult(Map<String, Object> vars, KarateConfig config) {}
+
+    @SuppressWarnings("unchecked")
+    private void applyCachedCallOnceResult(CallOnceResult cached) {
+        Map<String, Object> copies = (Map<String, Object>) StepUtils.deepCopy(cached.vars());
         for (Map.Entry<String, Object> entry : copies.entrySet()) {
             runtime.setVariable(entry.getKey(), entry.getValue());
         }
+        runtime.getConfig().copyFrom(cached.config());
     }
 
     /**

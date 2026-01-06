@@ -831,6 +831,72 @@ class StepCallTest {
         assertTrue(result.isPassed(), "loop call should access parent variables: " + getFailureMessage(result));
     }
 
+    @Test
+    void testCallUpdatesConfigSharedScope() throws Exception {
+        // V1 compatibility: When using shared scope (callonce without assignment),
+        // configure statements in the called feature should affect the caller's config.
+        // This is the pattern used in call-updates-config.feature.
+        Path calledFeature = tempDir.resolve("common.feature");
+        Files.writeString(calledFeature, """
+            @ignore
+            Feature: Common routine that updates config
+            Scenario:
+            * def token = 'my-auth-token'
+            * configure headers = { 'Authorization': '#(token)' }
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Call updates config
+            Background:
+            * callonce read('common.feature')
+
+            Scenario: Config should be updated by called feature
+            * match karate.config.headers != null
+            * match karate.config.headers.Authorization == 'my-auth-token'
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "Shared scope call should propagate config: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testCallOnceUpdatesConfigCached() throws Exception {
+        // V1 compatibility: callonce should cache and restore config changes
+        // When a second scenario uses the same callonce, it should get the same config
+        Path calledFeature = tempDir.resolve("setup.feature");
+        Files.writeString(calledFeature, """
+            @ignore
+            Feature: Setup that configures headers
+            Scenario:
+            * def baseUrl = 'http://example.com'
+            * configure headers = { 'X-Custom': 'value' }
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Callonce config caching
+            Background:
+            * callonce read('setup.feature')
+
+            Scenario: First scenario gets config
+            * match karate.config.headers == { 'X-Custom': 'value' }
+
+            Scenario: Second scenario also gets cached config
+            * match karate.config.headers == { 'X-Custom': 'value' }
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertEquals(2, result.getScenarioCount());
+        assertTrue(result.isPassed(), "Callonce should cache and restore config: " + getFailureMessage(result));
+    }
+
     private String getFailureMessage(SuiteResult result) {
         if (result.isPassed()) return "none";
         for (FeatureResult fr : result.getFeatureResults()) {

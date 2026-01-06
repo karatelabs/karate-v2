@@ -168,65 +168,76 @@ public class KarateConfig implements SimpleObject {
      */
     public KarateConfig copy() {
         KarateConfig copy = new KarateConfig();
-        // HTTP client settings
-        copy.url = this.url;
-        copy.readTimeout = this.readTimeout;
-        copy.connectTimeout = this.connectTimeout;
-        copy.followRedirects = this.followRedirects;
-        copy.localAddress = this.localAddress;
-        copy.charset = this.charset;
-        // SSL
-        copy.sslEnabled = this.sslEnabled;
-        copy.sslAlgorithm = this.sslAlgorithm;
-        copy.sslKeyStore = this.sslKeyStore;
-        copy.sslKeyStorePassword = this.sslKeyStorePassword;
-        copy.sslKeyStoreType = this.sslKeyStoreType;
-        copy.sslTrustStore = this.sslTrustStore;
-        copy.sslTrustStorePassword = this.sslTrustStorePassword;
-        copy.sslTrustStoreType = this.sslTrustStoreType;
-        copy.sslTrustAll = this.sslTrustAll;
-        // Proxy
-        copy.proxyUri = this.proxyUri;
-        copy.proxyUsername = this.proxyUsername;
-        copy.proxyPassword = this.proxyPassword;
-        copy.nonProxyHosts = this.nonProxyHosts != null ? new ArrayList<>(this.nonProxyHosts) : null;
-        // Headers/Cookies (shallow copy - could be function refs)
-        copy.headers = this.headers;
-        copy.cookies = this.cookies;
-        // Logging
-        copy.lowerCaseResponseHeaders = this.lowerCaseResponseHeaders;
-        copy.logPrettyRequest = this.logPrettyRequest;
-        copy.logPrettyResponse = this.logPrettyResponse;
-        copy.printEnabled = this.printEnabled;
-        // Retry
-        copy.retryInterval = this.retryInterval;
-        copy.retryCount = this.retryCount;
-        copy.httpRetryEnabled = this.httpRetryEnabled;
-        // Report
-        copy.showLog = this.showLog;
-        copy.showAllSteps = this.showAllSteps;
-        // callSingleCache
-        copy.callSingleCacheMinutes = this.callSingleCacheMinutes;
-        copy.callSingleCacheDir = this.callSingleCacheDir;
-        // Execution control
-        copy.continueOnStepFailure = this.continueOnStepFailure;
-        copy.abortedStepsShouldPass = this.abortedStepsShouldPass;
-        copy.abortSuiteOnFailure = this.abortSuiteOnFailure;
-        copy.matchEachEmptyAllowed = this.matchEachEmptyAllowed;
-        // NTLM Auth
-        copy.ntlmUsername = this.ntlmUsername;
-        copy.ntlmPassword = this.ntlmPassword;
-        copy.ntlmDomain = this.ntlmDomain;
-        copy.ntlmWorkstation = this.ntlmWorkstation;
-        // Mock settings
-        copy.corsEnabled = this.corsEnabled;
-        copy.responseHeaders = this.responseHeaders;
-        copy.afterScenario = this.afterScenario;
-        copy.afterScenarioOutline = this.afterScenarioOutline;
-        copy.afterFeature = this.afterFeature;
-        // Driver
-        copy.driverConfig = this.driverConfig;
+        copy.copyFrom(this);
         return copy;
+    }
+
+    /**
+     * Copy all configuration values from another KarateConfig.
+     * Used to propagate config changes from called features back to the caller.
+     *
+     * @param other the source config to copy from
+     */
+    public void copyFrom(KarateConfig other) {
+        if (other == null) return;
+        // HTTP client settings
+        this.url = other.url;
+        this.readTimeout = other.readTimeout;
+        this.connectTimeout = other.connectTimeout;
+        this.followRedirects = other.followRedirects;
+        this.localAddress = other.localAddress;
+        this.charset = other.charset;
+        // SSL
+        this.sslEnabled = other.sslEnabled;
+        this.sslAlgorithm = other.sslAlgorithm;
+        this.sslKeyStore = other.sslKeyStore;
+        this.sslKeyStorePassword = other.sslKeyStorePassword;
+        this.sslKeyStoreType = other.sslKeyStoreType;
+        this.sslTrustStore = other.sslTrustStore;
+        this.sslTrustStorePassword = other.sslTrustStorePassword;
+        this.sslTrustStoreType = other.sslTrustStoreType;
+        this.sslTrustAll = other.sslTrustAll;
+        // Proxy
+        this.proxyUri = other.proxyUri;
+        this.proxyUsername = other.proxyUsername;
+        this.proxyPassword = other.proxyPassword;
+        this.nonProxyHosts = other.nonProxyHosts != null ? new ArrayList<>(other.nonProxyHosts) : null;
+        // Headers/Cookies (shallow copy - could be function refs)
+        this.headers = other.headers;
+        this.cookies = other.cookies;
+        // Logging
+        this.lowerCaseResponseHeaders = other.lowerCaseResponseHeaders;
+        this.logPrettyRequest = other.logPrettyRequest;
+        this.logPrettyResponse = other.logPrettyResponse;
+        this.printEnabled = other.printEnabled;
+        // Retry
+        this.retryInterval = other.retryInterval;
+        this.retryCount = other.retryCount;
+        this.httpRetryEnabled = other.httpRetryEnabled;
+        // Report
+        this.showLog = other.showLog;
+        this.showAllSteps = other.showAllSteps;
+        // callSingleCache
+        this.callSingleCacheMinutes = other.callSingleCacheMinutes;
+        this.callSingleCacheDir = other.callSingleCacheDir;
+        // Execution control
+        this.continueOnStepFailure = other.continueOnStepFailure;
+        this.abortedStepsShouldPass = other.abortedStepsShouldPass;
+        this.abortSuiteOnFailure = other.abortSuiteOnFailure;
+        this.matchEachEmptyAllowed = other.matchEachEmptyAllowed;
+        // NTLM Auth
+        this.ntlmUsername = other.ntlmUsername;
+        this.ntlmPassword = other.ntlmPassword;
+        this.ntlmDomain = other.ntlmDomain;
+        this.ntlmWorkstation = other.ntlmWorkstation;
+        // Mock settings
+        this.corsEnabled = other.corsEnabled;
+        this.responseHeaders = other.responseHeaders;
+        this.afterScenario = other.afterScenario;
+        this.afterScenarioOutline = other.afterScenarioOutline;
+        this.afterFeature = other.afterFeature;
+        // Driver
+        this.driverConfig = other.driverConfig;
     }
 
     /**
