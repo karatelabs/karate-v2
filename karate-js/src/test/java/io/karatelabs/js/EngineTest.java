@@ -37,6 +37,69 @@ class EngineTest {
     }
 
     @Test
+    void testEvalWithConstLetIsolation() {
+        Engine engine = new Engine();
+        // First evalWith declares const and let
+        Map<String, Object> vars1 = new HashMap<>();
+        engine.evalWith("const a = 1; let b = 2;", vars1);
+        assertEquals(1, vars1.get("a"));
+        assertEquals(2, vars1.get("b"));
+        // Second evalWith should be able to declare same names without conflict
+        Map<String, Object> vars2 = new HashMap<>();
+        engine.evalWith("const a = 10; let b = 20;", vars2);
+        assertEquals(10, vars2.get("a"));
+        assertEquals(20, vars2.get("b"));
+        // Original vars unchanged
+        assertEquals(1, vars1.get("a"));
+        assertEquals(2, vars1.get("b"));
+        // Engine bindings should not have these
+        assertFalse(engine.getBindings().containsKey("a"));
+        assertFalse(engine.getBindings().containsKey("b"));
+    }
+
+    @Test
+    void testEvalWithImplicitGlobalStaysLocal() {
+        Engine engine = new Engine();
+        // Setup shared object in engine
+        engine.put("shared", new HashMap<String, Object>());
+        // evalWith with implicit global - should stay in vars, not leak to engine
+        Map<String, Object> vars = new HashMap<>();
+        engine.evalWith("implicitVar = 99; shared.value = implicitVar;", vars);
+        // implicit global should be in vars map (evalWith's local scope)
+        assertEquals(99, vars.get("implicitVar"));
+        // shared object mutation should work
+        assertEquals(99, ((Map<?, ?>) engine.get("shared")).get("value"));
+        // but implicit global should NOT leak to engine bindings
+        assertFalse(engine.getBindings().containsKey("implicitVar"));
+    }
+
+    @Test
+    void testIifeConstLetIsolation() {
+        Engine engine = new Engine();
+        // Setup a shared object like Postman's pm
+        engine.put("shared", new HashMap<String, Object>());
+        // First IIFE with const/let - should not conflict with subsequent IIFEs
+        engine.eval("(function(){ const json = {a: 1}; shared.first = json.a; })()");
+        assertEquals(1, ((Map<?, ?>) engine.get("shared")).get("first"));
+        // Second IIFE with same const name - should work without redeclaration error
+        engine.eval("(function(){ const json = {b: 2}; shared.second = json.b; })()");
+        assertEquals(2, ((Map<?, ?>) engine.get("shared")).get("second"));
+        // Third IIFE with let - also no conflict
+        engine.eval("(function(){ let json = {c: 3}; shared.third = json.c; })()");
+        assertEquals(3, ((Map<?, ?>) engine.get("shared")).get("third"));
+        // var declared inside IIFE stays inside (function-scoped)
+        engine.eval("(function(){ var local = 'inside'; shared.local = local; })()");
+        assertEquals("inside", ((Map<?, ?>) engine.get("shared")).get("local"));
+        assertNull(engine.get("local")); // var inside function doesn't leak
+        // implicit global assignment (no var/let/const) persists to global scope
+        engine.eval("(function(){ implicitGlobal = 42; })()");
+        assertEquals(42, engine.get("implicitGlobal"));
+        // subsequent IIFE can access it
+        engine.eval("(function(){ shared.fromImplicit = implicitGlobal; })()");
+        assertEquals(42, ((Map<?, ?>) engine.get("shared")).get("fromImplicit"));
+    }
+
+    @Test
     void testEvalResult() {
         Engine engine = new Engine();
         Object result = engine.eval("""

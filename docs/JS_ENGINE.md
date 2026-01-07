@@ -385,11 +385,153 @@ This reduces per-request `engine.put()` calls from many to just one field assign
 
 ---
 
+## Hidden Root Bindings
+
+`putRootBinding()` creates variables that are accessible in scripts but hidden from `getBindings()`:
+
+```java
+Engine engine = new Engine();
+engine.putRootBinding("magic", "secret");
+engine.put("normal", "visible");
+
+engine.eval("magic");              // "secret" - accessible
+engine.eval("normal");             // "visible" - accessible
+
+engine.getBindings().containsKey("magic");   // false - hidden!
+engine.getBindings().containsKey("normal");  // true - visible
+```
+
+### Use Cases
+
+1. **Internal/system variables** - Variables scripts can use but shouldn't enumerate
+2. **Fallback values** - Suite-level resources that feature scripts can access
+3. **Magic variables** - Built-in helpers that shouldn't pollute user namespace
+
+### With Lazy Evaluation
+
+Root bindings also support `Supplier` for lazy/dynamic values:
+
+```java
+String[] suiteDriver = { null };
+
+engine.putRootBinding("driver", (Supplier<String>) () -> suiteDriver[0]);
+
+engine.eval("driver");  // null initially
+suiteDriver[0] = "suite-driver";
+engine.eval("driver");  // "suite-driver" - lazily resolved
+
+engine.getBindings().containsKey("driver");  // false - still hidden
+```
+
+---
+
+## Variable Scoping and Isolation
+
+The engine provides multiple patterns for controlling variable scope across script executions.
+
+### The Problem: `const`/`let` Redeclaration
+
+When reusing an engine across multiple `eval()` calls, `const` and `let` declarations persist:
+
+```java
+Engine engine = new Engine();
+engine.eval("const a = 1");
+engine.eval("const a = 2");  // ERROR: identifier 'a' has already been declared
+```
+
+This matches ES6 behavior where top-level `const`/`let` cannot be redeclared in the same scope.
+
+### Solution 1: `evalWith()` for Complete Isolation
+
+`evalWith()` creates a fully isolated scope. Variables declared inside don't leak out:
+
+```java
+Engine engine = new Engine();
+engine.put("shared", new HashMap<>());
+
+Map<String, Object> vars1 = new HashMap<>();
+engine.evalWith("const a = 1; shared.x = a;", vars1);
+// vars1.get("a") = 1
+
+Map<String, Object> vars2 = new HashMap<>();
+engine.evalWith("const a = 2; shared.y = a;", vars2);  // No conflict!
+// vars2.get("a") = 2
+
+// Engine bindings unaffected
+engine.getBindings().containsKey("a");  // false
+```
+
+**Key behaviors of `evalWith()`:**
+- `const`/`let`/`var` declarations stay in the vars map
+- Implicit globals (`foo = 42`) also stay in the vars map (don't leak)
+- Can read engine bindings (e.g., `shared` above)
+- Can mutate objects in engine bindings
+
+### Solution 2: IIFE Wrapping for Partial Isolation
+
+Wrap scripts in an Immediately Invoked Function Expression (IIFE) to isolate `const`/`let` while allowing implicit globals to persist:
+
+```java
+Engine engine = new Engine();
+engine.put("shared", new HashMap<>());
+
+// Wrap script in IIFE
+engine.eval("(function(){ const json = {a: 1}; shared.first = json.a; })()");
+engine.eval("(function(){ const json = {b: 2}; shared.second = json.b; })()");  // No conflict!
+
+// Implicit globals persist to engine scope
+engine.eval("(function(){ persistedVar = 42; })()");
+engine.get("persistedVar");  // 42
+```
+
+This pattern is used by Postman's sandbox for script execution.
+
+### Comparison Table
+
+| Behavior | `eval()` | `evalWith()` | IIFE via `eval()` |
+|----------|----------|--------------|-------------------|
+| `const`/`let` isolation | No (persists) | Yes (in vars map) | Yes (function-scoped) |
+| `var` isolation | No (persists) | Yes (in vars map) | Yes (function-scoped) |
+| Implicit globals | Persists to engine | Isolated (in vars map) | **Persists to engine** |
+| Access engine bindings | Yes | Yes | Yes |
+| Mutate shared objects | Yes | Yes | Yes |
+
+### Implicit Global Assignment (ES6 Non-Strict)
+
+Assigning to an undeclared variable creates a global (ES6 non-strict mode behavior):
+
+```java
+Engine engine = new Engine();
+engine.eval("function foo() { implicitGlobal = 42; }");
+engine.eval("foo()");
+engine.get("implicitGlobal");  // 42 - created at global scope
+```
+
+This also works inside IIFEs, making them useful for script runners that need `const`/`let` isolation while allowing intentional global state sharing.
+
+### Use Case: Script Runner (e.g., Postman-like)
+
+For running multiple user scripts that may declare same-named variables:
+
+```java
+public void runScript(String script) {
+    // Wrap in IIFE to isolate const/let but allow global mutations
+    engine.eval("(function(){" + script + "})()");
+}
+
+// User scripts can use const/let freely
+runScript("const json = response.json(); pm.test('ok', () => {});");
+runScript("const json = response.json(); pm.test('ok', () => {});");  // No conflict!
+```
+
+---
+
 ## File References
 
 | Purpose | File |
 |---------|------|
 | Engine | `karate-js/src/main/java/io/karatelabs/js/Engine.java` |
+| CoreContext | `karate-js/src/main/java/io/karatelabs/js/CoreContext.java` |
 | SimpleObject | `karate-js/src/main/java/io/karatelabs/js/SimpleObject.java` |
 | JavaMirror | `karate-js/src/main/java/io/karatelabs/js/JavaMirror.java` |
 | JsPrimitive | `karate-js/src/main/java/io/karatelabs/js/JsPrimitive.java` |

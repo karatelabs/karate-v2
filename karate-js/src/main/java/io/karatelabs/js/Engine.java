@@ -59,7 +59,11 @@ public class Engine {
     }
 
     public Object evalWith(String text, Map<String, Object> vars) {
-        return evalInternal(Resource.text(text), vars);
+        return evalWith(Resource.text(text), vars);
+    }
+
+    public Object evalWith(Resource resource, Map<String, Object> vars) {
+        return evalInternal(resource, vars);
     }
 
     public Object get(String name) {

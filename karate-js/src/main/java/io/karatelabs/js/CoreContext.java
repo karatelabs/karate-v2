@@ -177,7 +177,8 @@ class CoreContext implements Context {
             }
             putBinding(key, value, info); // current scope
             // for top-level declarations, also store BindingInfo in root to persist across evals
-            if (depth == 0 && root != null) {
+            // but only for regular eval (parent == root), not evalWith (which has isolated scope)
+            if (depth == 0 && root != null && parent == root) {
                 root.addBindingInfo(info);
             }
         } else { // hoist var
@@ -202,7 +203,12 @@ class CoreContext implements Context {
         } else if (parent != null && parent.hasKey(key)) {
             parent.update(key, value);
         } else {
-            putBinding(key, value, null);
+            // implicit global: assign to global scope (ES6 non-strict behavior)
+            CoreContext globalContext = this;
+            while (globalContext.depth > 0) {
+                globalContext = globalContext.parent;
+            }
+            globalContext.putBinding(key, value, null);
             if (root.listener != null) {
                 root.listener.onVariableWrite(this, BindingType.VAR, key, value);
             }
@@ -248,7 +254,8 @@ class CoreContext implements Context {
             }
         }
         // check root for top-level const/let declarations from previous evals (only at depth 0)
-        if (depth == 0 && root != null && root._bindingInfos != null) {
+        // but only for regular eval (parent == root), not evalWith (which has isolated scope)
+        if (depth == 0 && root != null && parent == root && root._bindingInfos != null) {
             for (BindingInfo info : root._bindingInfos) {
                 if (info.name.equals(key)) {
                     return info;
