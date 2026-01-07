@@ -172,8 +172,8 @@ class RunnerTest {
 
         // Should find only non-@ignore features: test-report, second-feature, third-feature, http-demo
         assertEquals(4, result.getFeatureCount());
-        // Total scenarios: 9 + 4 + 4 + 5 = 22
-        assertEquals(22, result.getScenarioCount());
+        // Total scenarios: 12 + 4 + 4 + 5 = 25
+        assertEquals(25, result.getScenarioCount());
     }
 
     @Test

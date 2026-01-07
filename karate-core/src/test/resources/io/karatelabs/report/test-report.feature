@@ -1,18 +1,25 @@
 Feature: User Management API
 
 Background:
+# This background runs before each scenario
 * print 'setting up test context'
 
 @smoke @critical @auth
 Scenario: User login succeeds with valid credentials
+# Setup test credentials for authentication
 * def credentials = { username: 'admin', password: 'secret' }
+# Simulate API response with token
 * def response = { token: 'abc123', expires: 3600 }
+# Verify token is returned correctly
 * match response.token == 'abc123'
 * print 'login successful'
 
 @smoke @regression
 Scenario: User profile returns correct data
 * def user = { id: 1, name: 'John Doe', email: 'john@example.com', role: 'admin' }
+# This is a multi-line comment example
+# Line 2: User object contains profile information
+# Line 3: We verify all key fields are correct
 * match user.name == 'John Doe'
 * match user.role == 'admin'
 

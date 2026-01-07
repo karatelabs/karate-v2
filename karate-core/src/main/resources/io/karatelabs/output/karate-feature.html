@@ -154,6 +154,15 @@
                     <!-- Steps -->
                     <template x-for="(step, idx) in scenario.steps" :key="idx">
                         <div>
+                            <!-- Step Comments -->
+                            <template x-if="step.comments && step.comments.length > 0">
+                                <div class="step-comments px-2 py-1 text-muted fst-italic small"
+                                     style="background-color: var(--bs-tertiary-bg);">
+                                    <template x-for="(comment, cidx) in step.comments" :key="cidx">
+                                        <div x-text="comment"></div>
+                                    </template>
+                                </div>
+                            </template>
                             <div class="step-row d-flex align-items-start px-2"
                                  :class="{'clickable': step.hasLogs || step.hasEmbeds || step.hasCallResults}"
                                  @click="(step.hasLogs || step.hasEmbeds || step.hasCallResults) && (step.expanded = !step.expanded)">
@@ -286,15 +295,26 @@
                                                         </span>
                                                     </div>
                                                     <template x-for="(ns, nsidx) in nested.steps" :key="nsidx">
-                                                        <div class="nested-step"
-                                                             :class="{
-                                                                 'text-success': ns.status === 'passed',
-                                                                 'text-danger': ns.status === 'failed',
-                                                                 'text-warning': ns.status === 'skipped'
-                                                             }">
-                                                            <span class="text-muted" x-text="ns.prefix"></span>
-                                                            <span class="fw-bold" x-text="ns.keyword"></span>
-                                                            <span x-text="ns.text"></span>
+                                                        <div>
+                                                            <!-- Nested Step Comments -->
+                                                            <template x-if="ns.comments && ns.comments.length > 0">
+                                                                <div class="text-muted fst-italic small ps-2"
+                                                                     style="font-size: 0.75rem;">
+                                                                    <template x-for="(nc, ncidx) in ns.comments" :key="ncidx">
+                                                                        <div x-text="nc"></div>
+                                                                    </template>
+                                                                </div>
+                                                            </template>
+                                                            <div class="nested-step"
+                                                                 :class="{
+                                                                     'text-success': ns.status === 'passed',
+                                                                     'text-danger': ns.status === 'failed',
+                                                                     'text-warning': ns.status === 'skipped'
+                                                                 }">
+                                                                <span class="text-muted" x-text="ns.prefix"></span>
+                                                                <span class="fw-bold" x-text="ns.keyword"></span>
+                                                                <span x-text="ns.text"></span>
+                                                            </div>
                                                         </div>
                                                     </template>
                                                     <template x-if="nested.error">

@@ -563,6 +563,11 @@ public final class HtmlReportWriter {
             data.put("keyword", step.getStep().getKeyword());
             data.put("text", step.getStep().getText());
             data.put("line", step.getStep().getLine());
+            // Include comments if present
+            List<String> comments = step.getStep().getComments();
+            if (comments != null && !comments.isEmpty()) {
+                data.put("comments", comments);
+            }
         } else {
             // Fake step (e.g., for @fail tag)
             data.put("prefix", "*");
