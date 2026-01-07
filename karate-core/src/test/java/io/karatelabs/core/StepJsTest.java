@@ -997,6 +997,29 @@ class StepJsTest {
         assertPassed(sr);
     }
 
+    // ========== karate.uuid() ==========
+
+    @Test
+    void testUuid() {
+        ScenarioRuntime sr = run("""
+            * def id = karate.uuid()
+            * match id == '#string'
+            * match id == '#uuid'
+            * match id == '#regex [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testUuidUnique() {
+        ScenarioRuntime sr = run("""
+            * def id1 = karate.uuid()
+            * def id2 = karate.uuid()
+            * match id1 != id2
+            """);
+        assertPassed(sr);
+    }
+
     @Test
     void testKarateEmbed() {
         ScenarioRuntime sr = run("""

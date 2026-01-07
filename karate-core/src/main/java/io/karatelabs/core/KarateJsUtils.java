@@ -48,6 +48,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -645,6 +646,14 @@ public class KarateJsUtils {
             }
             return URLDecoder.decode(args[0].toString(), StandardCharsets.UTF_8);
         };
+    }
+
+    /**
+     * Generate a random UUID string.
+     * Usage: karate.uuid() => "550e8400-e29b-41d4-a716-446655440000"
+     */
+    static Invokable uuid() {
+        return args -> UUID.randomUUID().toString();
     }
 
     @SuppressWarnings("unchecked")

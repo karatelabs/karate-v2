@@ -1102,6 +1102,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
             case "typeOf" -> KarateJsUtils.typeOf();
             case "urlDecode" -> KarateJsUtils.urlDecode();
             case "urlEncode" -> KarateJsUtils.urlEncode();
+            case "uuid" -> KarateJsUtils.uuid();
             case "valuesOf" -> KarateJsUtils.valuesOf();
             // Stateful methods that need engine/providers
             case "abort" -> abort();

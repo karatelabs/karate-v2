@@ -264,6 +264,7 @@ Intentional deviations from V1 behavior:
 | `typeOf(value)` | KarateJsUtils | Get Karate type name |
 | `urlDecode(string)` | KarateJsUtils | URL decode |
 | `urlEncode(string)` | KarateJsUtils | URL encode |
+| `uuid()` | KarateJsUtils | Generate random UUID string |
 | `valuesOf(map)` | KarateJsUtils | Get map values |
 | `xmlPath(xml, path)` | KarateJsUtils | Apply XPath expression |
 | `logger` | KarateJs | Log facade (debug/info/warn/error via LogContext) |
