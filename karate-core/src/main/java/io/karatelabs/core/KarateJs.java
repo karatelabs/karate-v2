@@ -42,6 +42,7 @@ import io.karatelabs.js.GherkinParser;
 import io.karatelabs.markup.Markup;
 import io.karatelabs.js.Invokable;
 import io.karatelabs.js.JsCallable;
+import io.karatelabs.match.Expect;
 import io.karatelabs.match.Match;
 import io.karatelabs.match.Result;
 import io.karatelabs.match.Value;
@@ -649,6 +650,26 @@ public class KarateJs extends KarateJsBase implements PerfContext {
         };
     }
 
+    /**
+     * karate.expect() - Chai-style BDD assertion API.
+     * <p>
+     * Usage:
+     * <pre>
+     * karate.expect(actual).to.equal(expected)
+     * karate.expect(actual).to.be.a('string')
+     * karate.expect(actual).to.have.property('name')
+     * karate.expect(actual).to.not.equal(unexpected)
+     * </pre>
+     */
+    private JsCallable expect() {
+        return (context, args) -> {
+            if (args.length == 0) {
+                throw new RuntimeException("expect() needs at least one argument");
+            }
+            return new Expect(args[0], onMatch);
+        };
+    }
+
     private Invokable remove() {
         return args -> {
             if (args.length < 2) {
@@ -1116,6 +1137,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
             case "env" -> env;
             case "eval" -> eval();
             case "exec" -> exec();
+            case "expect" -> expect();
             case "fail" -> KarateJsUtils.fail();
             case "feature" -> getFeatureData();
             case "fork" -> fork();
