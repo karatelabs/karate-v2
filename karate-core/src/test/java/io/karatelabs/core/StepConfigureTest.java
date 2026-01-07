@@ -205,18 +205,6 @@ class StepConfigureTest {
     }
 
     @Test
-    void testConfigurePrintEnabled() {
-        ScenarioRuntime sr = run("""
-            Feature:
-            Scenario:
-            * configure printEnabled = false
-            * def cfg = karate.config
-            * match cfg.printEnabled == false
-            """);
-        assertPassed(sr);
-    }
-
-    @Test
     void testConfigureCallSingleCache() {
         ScenarioRuntime sr = run("""
             Feature:
@@ -238,7 +226,6 @@ class StepConfigureTest {
         assertFalse(config.isSslEnabled());
         assertEquals("TLS", config.getSslAlgorithm());
         assertTrue(config.isSslTrustAll());
-        assertTrue(config.isPrintEnabled());
         assertEquals(3000, config.getRetryInterval());
         assertEquals(3, config.getRetryCount());
         assertTrue(config.isShowLog());
@@ -269,8 +256,9 @@ class StepConfigureTest {
     void testSimpleObjectKeys() {
         KarateConfig config = new KarateConfig();
         assertTrue(config.keys().contains("readTimeout"));
-        assertTrue(config.keys().contains("sslEnabled"));
-        assertTrue(config.keys().contains("proxyUri"));
+        assertTrue(config.keys().contains("ssl"));  // Map-based grouped settings
+        assertTrue(config.keys().contains("proxy"));
+        assertTrue(config.keys().contains("auth"));
         assertTrue(config.keys().contains("headers"));
     }
 

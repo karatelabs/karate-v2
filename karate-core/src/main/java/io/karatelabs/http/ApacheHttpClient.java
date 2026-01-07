@@ -225,7 +225,28 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
                     LOGGER.warn("string expected for: {}", key);
                 }
                 break;
+            case "auth":
+                if (value == null) {
+                    // Clear NTLM config if it was auth type ntlm
+                    ntlmUsername = null;
+                    ntlmPassword = null;
+                    ntlmDomain = null;
+                    ntlmWorkstation = null;
+                } else if (value instanceof Map) {
+                    Map<String, Object> map = (Map<String, Object>) value;
+                    String type = (String) map.get("type");
+                    if ("ntlm".equals(type)) {
+                        LOGGER.warn("NTLM auth is deprecated in HttpClient 5, consider using Basic or Bearer auth with TLS");
+                        ntlmUsername = (String) map.get("username");
+                        ntlmPassword = (String) map.get("password");
+                        ntlmDomain = (String) map.get("domain");
+                        ntlmWorkstation = (String) map.get("workstation");
+                    }
+                    // Other auth types (basic, bearer, oauth2) are handled at the request level
+                }
+                break;
             case "ntlmAuth":
+                // Legacy support - convert to auth with type: 'ntlm'
                 if (value == null) {
                     ntlmUsername = null;
                     ntlmPassword = null;

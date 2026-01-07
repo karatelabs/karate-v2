@@ -33,6 +33,10 @@ import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.MatchExpression;
 import io.karatelabs.gherkin.Step;
 import io.karatelabs.gherkin.Table;
+import io.karatelabs.http.AuthHandler;
+import io.karatelabs.http.BasicAuthHandler;
+import io.karatelabs.http.BearerAuthHandler;
+import io.karatelabs.http.ClientCredentialsAuthHandler;
 import io.karatelabs.http.HttpRequest;
 import io.karatelabs.http.HttpRequestBuilder;
 import io.karatelabs.http.HttpResponse;
@@ -1589,6 +1593,37 @@ public class StepExecutor {
         }
     }
 
+    private AuthHandler buildAuthHandler(KarateConfig config) {
+        Map<String, Object> auth = config.getAuth();
+        if (auth == null || auth.isEmpty()) {
+            return null;
+        }
+        String type = (String) auth.get("type");
+        if (type == null) {
+            return null;
+        }
+        return switch (type) {
+            case "basic" -> new BasicAuthHandler(
+                    (String) auth.get("username"),
+                    (String) auth.get("password")
+            );
+            case "bearer" -> new BearerAuthHandler(
+                    (String) auth.get("token")
+            );
+            case "oauth2" -> {
+                Map<String, Object> oauth2Config = new HashMap<>();
+                oauth2Config.put("url", auth.get("accessTokenUrl"));
+                oauth2Config.put("client_id", auth.get("clientId"));
+                oauth2Config.put("client_secret", auth.get("clientSecret"));
+                if (auth.containsKey("scope")) {
+                    oauth2Config.put("scope", auth.get("scope"));
+                }
+                yield new ClientCredentialsAuthHandler(oauth2Config);
+            }
+            default -> null;
+        };
+    }
+
     private void executeUrl(Step step) {
         String urlExpr = step.getText();
         String url = (String) runtime.eval(urlExpr);
@@ -1798,6 +1833,12 @@ public class StepExecutor {
             }
         } else if (configHeaders instanceof Map<?, ?> headersMap) {
             http().headers((Map<String, Object>) headersMap);
+        }
+
+        // Apply configured auth handler
+        AuthHandler authHandler = buildAuthHandler(config);
+        if (authHandler != null) {
+            http().auth(authHandler);
         }
 
         // Get perf event name before request (if in perf mode)
@@ -2617,10 +2658,11 @@ public class StepExecutor {
         }
         String key = text.substring(0, eqIndex).trim();
         String expr = text.substring(eqIndex + 1).trim();
-        // For headers and cookies, use evalKarateExpression to process embedded expressions
+        // For headers, cookies, and auth, use evalKarateExpression to process embedded expressions
         // e.g., configure cookies = { time: '#(setup.time)' }
+        // e.g., configure auth = { type: 'bearer', token: '#(myToken)' }
         Object value;
-        if ("headers".equals(key) || "cookies".equals(key)) {
+        if ("headers".equals(key) || "cookies".equals(key) || "auth".equals(key)) {
             value = evalKarateExpression(expr);
         } else {
             value = runtime.eval(expr);

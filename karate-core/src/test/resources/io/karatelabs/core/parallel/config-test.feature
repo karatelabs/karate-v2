@@ -1,16 +1,16 @@
 Feature: Test karate.config API
 
   Scenario: verify karate.config returns configure settings
-    * configure printEnabled = false
-    * configure logPrettyRequest = true
-    * match karate.config.printEnabled == false
-    * match karate.config.logPrettyRequest == true
+    * configure readTimeout = 45000
+    * configure connectTimeout = 15000
+    * match karate.config.readTimeout == 45000
+    * match karate.config.connectTimeout == 15000
 
   Scenario: verify karate.config is read-only copy
-    * configure printEnabled = true
+    * configure readTimeout = 30000
     * def config1 = karate.config
-    * configure printEnabled = false
+    * configure readTimeout = 60000
     * def config2 = karate.config
-    # Original reference should still have true (shallow copy)
-    * match config1.printEnabled == true
-    * match config2.printEnabled == false
+    # Original reference should still have old value (shallow copy)
+    * match config1.readTimeout == 30000
+    * match config2.readTimeout == 60000

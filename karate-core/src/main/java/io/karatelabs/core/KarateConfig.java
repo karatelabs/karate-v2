@@ -25,7 +25,6 @@ package io.karatelabs.core;
 
 import io.karatelabs.js.SimpleObject;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import io.karatelabs.output.LogContext;
 import io.karatelabs.output.LogLevel;
 
@@ -33,6 +32,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -65,25 +65,14 @@ public class KarateConfig implements SimpleObject {
     private static final List<String> KEYS = List.of(
             // HTTP client settings
             "url", "readTimeout", "connectTimeout", "followRedirects", "localAddress", "charset",
-            // SSL
-            "sslEnabled", "sslAlgorithm", "sslKeyStore", "sslKeyStorePassword", "sslKeyStoreType",
-            "sslTrustStore", "sslTrustStorePassword", "sslTrustStoreType", "sslTrustAll",
-            // Proxy
-            "proxyUri", "proxyUsername", "proxyPassword", "nonProxyHosts",
+            // Grouped settings (Maps)
+            "ssl", "proxy", "auth", "retry", "report", "callSingleCache",
             // Headers/Cookies
             "headers", "cookies",
-            // Logging
-            "lowerCaseResponseHeaders", "logPrettyRequest", "logPrettyResponse", "printEnabled",
-            // Retry
-            "retryInterval", "retryCount", "httpRetryEnabled",
-            // Report
-            "showLog", "showAllSteps",
-            // callSingleCache
-            "callSingleCacheMinutes", "callSingleCacheDir",
+            // HTTP retry
+            "httpRetryEnabled",
             // Execution control
             "continueOnStepFailure", "abortedStepsShouldPass", "abortSuiteOnFailure", "matchEachEmptyAllowed",
-            // NTLM Auth
-            "ntlmUsername", "ntlmPassword", "ntlmDomain", "ntlmWorkstation",
             // Mock settings
             "corsEnabled", "responseHeaders", "afterScenario", "afterScenarioOutline", "afterFeature",
             // Driver
@@ -98,57 +87,40 @@ public class KarateConfig implements SimpleObject {
     private String localAddress;
     private Charset charset = StandardCharsets.UTF_8;
 
-    // SSL (can be boolean true, String algorithm, or Map with details)
-    private boolean sslEnabled;
-    private String sslAlgorithm = "TLS";
-    private String sslKeyStore;
-    private String sslKeyStorePassword;
-    private String sslKeyStoreType;
-    private String sslTrustStore;
-    private String sslTrustStorePassword;
-    private String sslTrustStoreType;
-    private boolean sslTrustAll = true;
+    // ===== Grouped Settings (Maps) =====
 
-    // Proxy (can be String URI or Map with details)
-    private String proxyUri;
-    private String proxyUsername;
-    private String proxyPassword;
-    private List<String> nonProxyHosts;
+    // SSL configuration: { enabled, algorithm, keyStore, keyStorePassword, keyStoreType,
+    //                      trustStore, trustStorePassword, trustStoreType, trustAll }
+    private Map<String, Object> ssl = new HashMap<>();
+
+    // Proxy configuration: { uri, username, password, nonProxyHosts }
+    private Map<String, Object> proxy = new HashMap<>();
+
+    // Auth: { type, username, password, token, accessTokenUrl, clientId, clientSecret, scope, domain, workstation }
+    // Supported types: basic, bearer, oauth2, ntlm
+    private Map<String, Object> auth = new HashMap<>();
+
+    // Retry: { interval, count }
+    private Map<String, Object> retry = new HashMap<>(Map.of("interval", 3000, "count", 3));
+
+    // Report: { showLog, showAllSteps, logLevel }
+    private Map<String, Object> report = new HashMap<>(Map.of("showLog", true, "showAllSteps", true));
+
+    // CallSingleCache: { minutes, dir }
+    private Map<String, Object> callSingleCache = new HashMap<>();
 
     // ===== Non-HTTP (no client rebuild needed) =====
     private Object headers;  // Map<String,Object> or JS function
     private Object cookies;  // Map<String,Object>
 
-    // Logging
-    private boolean lowerCaseResponseHeaders;
-    private boolean logPrettyRequest;
-    private boolean logPrettyResponse;
-    private boolean printEnabled = true;
-
-    // Retry (Map with interval, count)
-    private int retryInterval = 3000;
-    private int retryCount = 3;
+    // HTTP retry (separate from retry config because it requires client rebuild)
     private boolean httpRetryEnabled;
-
-    // Report (Map with showLog, showAllSteps)
-    private boolean showLog = true;
-    private boolean showAllSteps = true;
-
-    // callSingleCache (Map with minutes, dir)
-    private int callSingleCacheMinutes;
-    private String callSingleCacheDir;
 
     // Execution control
     private boolean continueOnStepFailure;
     private boolean abortedStepsShouldPass;
     private boolean abortSuiteOnFailure;
     private boolean matchEachEmptyAllowed;
-
-    // NTLM Auth (Map with username, password, domain, workstation)
-    private String ntlmUsername;
-    private String ntlmPassword;
-    private String ntlmDomain;
-    private String ntlmWorkstation;
 
     // Mock settings
     private boolean corsEnabled;
@@ -187,49 +159,26 @@ public class KarateConfig implements SimpleObject {
         this.followRedirects = other.followRedirects;
         this.localAddress = other.localAddress;
         this.charset = other.charset;
-        // SSL
-        this.sslEnabled = other.sslEnabled;
-        this.sslAlgorithm = other.sslAlgorithm;
-        this.sslKeyStore = other.sslKeyStore;
-        this.sslKeyStorePassword = other.sslKeyStorePassword;
-        this.sslKeyStoreType = other.sslKeyStoreType;
-        this.sslTrustStore = other.sslTrustStore;
-        this.sslTrustStorePassword = other.sslTrustStorePassword;
-        this.sslTrustStoreType = other.sslTrustStoreType;
-        this.sslTrustAll = other.sslTrustAll;
-        // Proxy
-        this.proxyUri = other.proxyUri;
-        this.proxyUsername = other.proxyUsername;
-        this.proxyPassword = other.proxyPassword;
-        this.nonProxyHosts = other.nonProxyHosts != null ? new ArrayList<>(other.nonProxyHosts) : null;
+        // Grouped settings (deep copy Maps)
+        this.ssl = new HashMap<>(other.ssl);
+        this.proxy = new HashMap<>(other.proxy);
+        if (other.proxy.containsKey("nonProxyHosts") && other.proxy.get("nonProxyHosts") instanceof List<?> list) {
+            this.proxy.put("nonProxyHosts", new ArrayList<>(list));
+        }
+        this.auth = new HashMap<>(other.auth);
+        this.retry = new HashMap<>(other.retry);
+        this.report = new HashMap<>(other.report);
+        this.callSingleCache = new HashMap<>(other.callSingleCache);
         // Headers/Cookies (shallow copy - could be function refs)
         this.headers = other.headers;
         this.cookies = other.cookies;
-        // Logging
-        this.lowerCaseResponseHeaders = other.lowerCaseResponseHeaders;
-        this.logPrettyRequest = other.logPrettyRequest;
-        this.logPrettyResponse = other.logPrettyResponse;
-        this.printEnabled = other.printEnabled;
-        // Retry
-        this.retryInterval = other.retryInterval;
-        this.retryCount = other.retryCount;
+        // HTTP retry
         this.httpRetryEnabled = other.httpRetryEnabled;
-        // Report
-        this.showLog = other.showLog;
-        this.showAllSteps = other.showAllSteps;
-        // callSingleCache
-        this.callSingleCacheMinutes = other.callSingleCacheMinutes;
-        this.callSingleCacheDir = other.callSingleCacheDir;
         // Execution control
         this.continueOnStepFailure = other.continueOnStepFailure;
         this.abortedStepsShouldPass = other.abortedStepsShouldPass;
         this.abortSuiteOnFailure = other.abortSuiteOnFailure;
         this.matchEachEmptyAllowed = other.matchEachEmptyAllowed;
-        // NTLM Auth
-        this.ntlmUsername = other.ntlmUsername;
-        this.ntlmPassword = other.ntlmPassword;
-        this.ntlmDomain = other.ntlmDomain;
-        this.ntlmWorkstation = other.ntlmWorkstation;
         // Mock settings
         this.corsEnabled = other.corsEnabled;
         this.responseHeaders = other.responseHeaders;
@@ -282,8 +231,22 @@ public class KarateConfig implements SimpleObject {
                 yield true;
             }
             case "ntlmAuth" -> {
-                configureNtlm(value);
-                yield true;
+                // Legacy support: convert ntlmAuth to auth with type: 'ntlm'
+                if (value instanceof Map<?, ?> map) {
+                    Map<String, Object> ntlm = new HashMap<>();
+                    ntlm.put("type", "ntlm");
+                    ntlm.putAll((Map<String, Object>) map);
+                    configureAuth(ntlm);
+                } else if (value == null) {
+                    configureAuth(null);
+                }
+                yield true;  // NTLM requires HTTP client rebuild
+            }
+            case "auth" -> {
+                configureAuth(value);
+                // NTLM requires client rebuild, others don't
+                String type = value instanceof Map<?, ?> m ? toString(m.get("type")) : null;
+                yield "ntlm".equals(type);
             }
 
             // Non-HTTP settings (no rebuild)
@@ -297,22 +260,6 @@ public class KarateConfig implements SimpleObject {
             }
             case "cookies" -> {
                 this.cookies = value;
-                yield false;
-            }
-            case "lowerCaseResponseHeaders" -> {
-                this.lowerCaseResponseHeaders = toBoolean(value);
-                yield false;
-            }
-            case "logPrettyRequest" -> {
-                this.logPrettyRequest = toBoolean(value);
-                yield false;
-            }
-            case "logPrettyResponse" -> {
-                this.logPrettyResponse = toBoolean(value);
-                yield false;
-            }
-            case "printEnabled" -> {
-                this.printEnabled = toBoolean(value);
                 yield false;
             }
             case "retry" -> {
@@ -382,98 +329,125 @@ public class KarateConfig implements SimpleObject {
 
     private void configureSsl(Object value) {
         if (value == null) {
-            this.sslEnabled = false;
+            this.ssl.clear();
             return;
         }
         if (value instanceof Boolean b) {
-            this.sslEnabled = b;
+            this.ssl.clear();
+            this.ssl.put("enabled", b);
+            this.ssl.put("trustAll", true);
             return;
         }
         if (value instanceof String s) {
-            this.sslEnabled = true;
-            this.sslAlgorithm = s;
+            this.ssl.clear();
+            this.ssl.put("enabled", true);
+            this.ssl.put("algorithm", s);
+            this.ssl.put("trustAll", true);
             return;
         }
         if (value instanceof Map<?, ?> map) {
-            this.sslEnabled = true;
+            this.ssl.clear();
+            this.ssl.put("enabled", true);
             if (map.containsKey("algorithm")) {
-                this.sslAlgorithm = toString(map.get("algorithm"));
+                this.ssl.put("algorithm", toString(map.get("algorithm")));
             }
             if (map.containsKey("keyStore")) {
-                this.sslKeyStore = toString(map.get("keyStore"));
+                this.ssl.put("keyStore", toString(map.get("keyStore")));
             }
             if (map.containsKey("keyStorePassword")) {
-                this.sslKeyStorePassword = toString(map.get("keyStorePassword"));
+                this.ssl.put("keyStorePassword", toString(map.get("keyStorePassword")));
             }
             if (map.containsKey("keyStoreType")) {
-                this.sslKeyStoreType = toString(map.get("keyStoreType"));
+                this.ssl.put("keyStoreType", toString(map.get("keyStoreType")));
             }
             if (map.containsKey("trustStore")) {
-                this.sslTrustStore = toString(map.get("trustStore"));
+                this.ssl.put("trustStore", toString(map.get("trustStore")));
             }
             if (map.containsKey("trustStorePassword")) {
-                this.sslTrustStorePassword = toString(map.get("trustStorePassword"));
+                this.ssl.put("trustStorePassword", toString(map.get("trustStorePassword")));
             }
             if (map.containsKey("trustStoreType")) {
-                this.sslTrustStoreType = toString(map.get("trustStoreType"));
+                this.ssl.put("trustStoreType", toString(map.get("trustStoreType")));
             }
             if (map.containsKey("trustAll")) {
-                this.sslTrustAll = toBoolean(map.get("trustAll"));
+                this.ssl.put("trustAll", toBoolean(map.get("trustAll")));
+            } else {
+                this.ssl.put("trustAll", true);  // default
             }
         }
     }
 
     private void configureProxy(Object value) {
         if (value == null) {
-            this.proxyUri = null;
+            this.proxy.clear();
             return;
         }
         if (value instanceof String s) {
-            this.proxyUri = s;
+            this.proxy.clear();
+            this.proxy.put("uri", s);
             return;
         }
         if (value instanceof Map<?, ?> map) {
+            this.proxy.clear();
             if (map.containsKey("uri")) {
-                this.proxyUri = toString(map.get("uri"));
+                this.proxy.put("uri", toString(map.get("uri")));
             }
             if (map.containsKey("username")) {
-                this.proxyUsername = toString(map.get("username"));
+                this.proxy.put("username", toString(map.get("username")));
             }
             if (map.containsKey("password")) {
-                this.proxyPassword = toString(map.get("password"));
+                this.proxy.put("password", toString(map.get("password")));
             }
             if (map.containsKey("nonProxyHosts")) {
                 Object nph = map.get("nonProxyHosts");
                 if (nph instanceof List<?> list) {
-                    this.nonProxyHosts = new ArrayList<>();
+                    List<String> hosts = new ArrayList<>();
                     for (Object item : list) {
-                        this.nonProxyHosts.add(toString(item));
+                        hosts.add(toString(item));
                     }
+                    this.proxy.put("nonProxyHosts", hosts);
                 }
             }
         }
     }
 
-    private void configureNtlm(Object value) {
+    private void configureAuth(Object value) {
         if (value == null) {
-            this.ntlmUsername = null;
-            this.ntlmPassword = null;
-            this.ntlmDomain = null;
-            this.ntlmWorkstation = null;
+            this.auth.clear();
             return;
         }
         if (value instanceof Map<?, ?> map) {
-            if (map.containsKey("username")) {
-                this.ntlmUsername = toString(map.get("username"));
-            }
-            if (map.containsKey("password")) {
-                this.ntlmPassword = toString(map.get("password"));
-            }
-            if (map.containsKey("domain")) {
-                this.ntlmDomain = toString(map.get("domain"));
-            }
-            if (map.containsKey("workstation")) {
-                this.ntlmWorkstation = toString(map.get("workstation"));
+            this.auth.clear();
+            String type = toString(map.get("type"));
+            this.auth.put("type", type);
+
+            switch (type != null ? type : "") {
+                case "basic" -> {
+                    this.auth.put("username", toString(map.get("username")));
+                    this.auth.put("password", toString(map.get("password")));
+                }
+                case "bearer" -> {
+                    this.auth.put("token", toString(map.get("token")));
+                }
+                case "oauth2" -> {
+                    this.auth.put("grantType", toString(map.get("grantType")));
+                    this.auth.put("accessTokenUrl", toString(map.get("accessTokenUrl")));
+                    this.auth.put("clientId", toString(map.get("clientId")));
+                    this.auth.put("clientSecret", toString(map.get("clientSecret")));
+                    if (map.containsKey("scope")) {
+                        this.auth.put("scope", toString(map.get("scope")));
+                    }
+                }
+                case "ntlm" -> {
+                    this.auth.put("username", toString(map.get("username")));
+                    this.auth.put("password", toString(map.get("password")));
+                    if (map.containsKey("domain")) {
+                        this.auth.put("domain", toString(map.get("domain")));
+                    }
+                    if (map.containsKey("workstation")) {
+                        this.auth.put("workstation", toString(map.get("workstation")));
+                    }
+                }
             }
         }
     }
@@ -481,29 +455,30 @@ public class KarateConfig implements SimpleObject {
     private void configureRetry(Object value) {
         if (value instanceof Map<?, ?> map) {
             if (map.containsKey("interval")) {
-                this.retryInterval = toInt(map.get("interval"));
+                this.retry.put("interval", toInt(map.get("interval")));
             }
             if (map.containsKey("count")) {
-                this.retryCount = toInt(map.get("count"));
+                this.retry.put("count", toInt(map.get("count")));
             }
         }
     }
 
     private void configureReport(Object value) {
         if (value instanceof Boolean b) {
-            this.showLog = b;
-            this.showAllSteps = b;
+            this.report.put("showLog", b);
+            this.report.put("showAllSteps", b);
             return;
         }
         if (value instanceof Map<?, ?> map) {
             if (map.containsKey("showLog")) {
-                this.showLog = toBoolean(map.get("showLog"));
+                this.report.put("showLog", toBoolean(map.get("showLog")));
             }
             if (map.containsKey("showAllSteps")) {
-                this.showAllSteps = toBoolean(map.get("showAllSteps"));
+                this.report.put("showAllSteps", toBoolean(map.get("showAllSteps")));
             }
             if (map.containsKey("logLevel")) {
                 String levelStr = toString(map.get("logLevel"));
+                this.report.put("logLevel", levelStr);
                 LogLevel level = LogLevel.valueOf(levelStr.toUpperCase());
                 LogContext.setLogLevel(level);
             }
@@ -513,10 +488,10 @@ public class KarateConfig implements SimpleObject {
     private void configureCallSingleCache(Object value) {
         if (value instanceof Map<?, ?> map) {
             if (map.containsKey("minutes")) {
-                this.callSingleCacheMinutes = toInt(map.get("minutes"));
+                this.callSingleCache.put("minutes", toInt(map.get("minutes")));
             }
             if (map.containsKey("dir")) {
-                this.callSingleCacheDir = toString(map.get("dir"));
+                this.callSingleCache.put("dir", toString(map.get("dir")));
             }
         }
     }
@@ -555,40 +530,54 @@ public class KarateConfig implements SimpleObject {
             case "followRedirects" -> followRedirects;
             case "localAddress" -> localAddress;
             case "charset" -> charset != null ? charset.name() : null;
-            case "sslEnabled" -> sslEnabled;
-            case "sslAlgorithm" -> sslAlgorithm;
-            case "sslKeyStore" -> sslKeyStore;
-            case "sslKeyStorePassword" -> sslKeyStorePassword;
-            case "sslKeyStoreType" -> sslKeyStoreType;
-            case "sslTrustStore" -> sslTrustStore;
-            case "sslTrustStorePassword" -> sslTrustStorePassword;
-            case "sslTrustStoreType" -> sslTrustStoreType;
-            case "sslTrustAll" -> sslTrustAll;
-            case "proxyUri" -> proxyUri;
-            case "proxyUsername" -> proxyUsername;
-            case "proxyPassword" -> proxyPassword;
-            case "nonProxyHosts" -> nonProxyHosts;
+            // Grouped settings
+            case "ssl" -> ssl;
+            case "proxy" -> proxy;
+            case "ntlmAuth" -> "ntlm".equals(auth.get("type")) ? auth : null;
+            case "auth" -> auth;
+            case "retry" -> retry;
+            case "report" -> report;
+            case "callSingleCache" -> callSingleCache;
+            // Legacy accessors (for backward compatibility)
+            case "sslEnabled" -> ssl.getOrDefault("enabled", false);
+            case "sslAlgorithm" -> ssl.getOrDefault("algorithm", "TLS");
+            case "sslKeyStore" -> ssl.get("keyStore");
+            case "sslKeyStorePassword" -> ssl.get("keyStorePassword");
+            case "sslKeyStoreType" -> ssl.get("keyStoreType");
+            case "sslTrustStore" -> ssl.get("trustStore");
+            case "sslTrustStorePassword" -> ssl.get("trustStorePassword");
+            case "sslTrustStoreType" -> ssl.get("trustStoreType");
+            case "sslTrustAll" -> ssl.getOrDefault("trustAll", true);
+            case "proxyUri" -> proxy.get("uri");
+            case "proxyUsername" -> proxy.get("username");
+            case "proxyPassword" -> proxy.get("password");
+            case "nonProxyHosts" -> proxy.get("nonProxyHosts");
+            case "ntlmUsername" -> "ntlm".equals(auth.get("type")) ? auth.get("username") : null;
+            case "ntlmPassword" -> "ntlm".equals(auth.get("type")) ? auth.get("password") : null;
+            case "ntlmDomain" -> "ntlm".equals(auth.get("type")) ? auth.get("domain") : null;
+            case "ntlmWorkstation" -> "ntlm".equals(auth.get("type")) ? auth.get("workstation") : null;
+            case "authType" -> auth.get("type");
+            case "authUsername" -> auth.get("username");
+            case "authPassword" -> auth.get("password");
+            case "authToken" -> auth.get("token");
+            case "authAccessTokenUrl" -> auth.get("accessTokenUrl");
+            case "authClientId" -> auth.get("clientId");
+            case "authClientSecret" -> auth.get("clientSecret");
+            case "authScope" -> auth.get("scope");
+            case "retryInterval" -> retry.getOrDefault("interval", 3000);
+            case "retryCount" -> retry.getOrDefault("count", 3);
+            case "showLog" -> report.getOrDefault("showLog", true);
+            case "showAllSteps" -> report.getOrDefault("showAllSteps", true);
+            case "callSingleCacheMinutes" -> callSingleCache.getOrDefault("minutes", 0);
+            case "callSingleCacheDir" -> callSingleCache.get("dir");
+            // Other settings
             case "headers" -> headers;
             case "cookies" -> cookies;
-            case "lowerCaseResponseHeaders" -> lowerCaseResponseHeaders;
-            case "logPrettyRequest" -> logPrettyRequest;
-            case "logPrettyResponse" -> logPrettyResponse;
-            case "printEnabled" -> printEnabled;
-            case "retryInterval" -> retryInterval;
-            case "retryCount" -> retryCount;
             case "httpRetryEnabled" -> httpRetryEnabled;
-            case "showLog" -> showLog;
-            case "showAllSteps" -> showAllSteps;
-            case "callSingleCacheMinutes" -> callSingleCacheMinutes;
-            case "callSingleCacheDir" -> callSingleCacheDir;
             case "continueOnStepFailure" -> continueOnStepFailure;
             case "abortedStepsShouldPass" -> abortedStepsShouldPass;
             case "abortSuiteOnFailure" -> abortSuiteOnFailure;
             case "matchEachEmptyAllowed" -> matchEachEmptyAllowed;
-            case "ntlmUsername" -> ntlmUsername;
-            case "ntlmPassword" -> ntlmPassword;
-            case "ntlmDomain" -> ntlmDomain;
-            case "ntlmWorkstation" -> ntlmWorkstation;
             case "corsEnabled" -> corsEnabled;
             case "responseHeaders" -> responseHeaders;
             case "afterScenario" -> afterScenario;
@@ -625,57 +614,177 @@ public class KarateConfig implements SimpleObject {
         return charset;
     }
 
+    // ===== SSL Getters =====
+
+    public Map<String, Object> getSsl() {
+        return ssl;
+    }
+
     public boolean isSslEnabled() {
-        return sslEnabled;
+        return toBoolean(ssl.get("enabled"));
     }
 
     public String getSslAlgorithm() {
-        return sslAlgorithm;
+        Object val = ssl.get("algorithm");
+        return val != null ? val.toString() : "TLS";
     }
 
     public String getSslKeyStore() {
-        return sslKeyStore;
+        return toString(ssl.get("keyStore"));
     }
 
     public String getSslKeyStorePassword() {
-        return sslKeyStorePassword;
+        return toString(ssl.get("keyStorePassword"));
     }
 
     public String getSslKeyStoreType() {
-        return sslKeyStoreType;
+        return toString(ssl.get("keyStoreType"));
     }
 
     public String getSslTrustStore() {
-        return sslTrustStore;
+        return toString(ssl.get("trustStore"));
     }
 
     public String getSslTrustStorePassword() {
-        return sslTrustStorePassword;
+        return toString(ssl.get("trustStorePassword"));
     }
 
     public String getSslTrustStoreType() {
-        return sslTrustStoreType;
+        return toString(ssl.get("trustStoreType"));
     }
 
     public boolean isSslTrustAll() {
-        return sslTrustAll;
+        Object val = ssl.get("trustAll");
+        return val == null || toBoolean(val);  // default true
+    }
+
+    // ===== Proxy Getters =====
+
+    public Map<String, Object> getProxy() {
+        return proxy;
     }
 
     public String getProxyUri() {
-        return proxyUri;
+        return toString(proxy.get("uri"));
     }
 
     public String getProxyUsername() {
-        return proxyUsername;
+        return toString(proxy.get("username"));
     }
 
     public String getProxyPassword() {
-        return proxyPassword;
+        return toString(proxy.get("password"));
     }
 
+    @SuppressWarnings("unchecked")
     public List<String> getNonProxyHosts() {
-        return nonProxyHosts;
+        Object val = proxy.get("nonProxyHosts");
+        return val instanceof List ? (List<String>) val : null;
     }
+
+    // ===== NTLM Getters (legacy - reads from auth when type is 'ntlm') =====
+
+    public Map<String, Object> getNtlmAuth() {
+        return "ntlm".equals(auth.get("type")) ? auth : null;
+    }
+
+    public String getNtlmUsername() {
+        return "ntlm".equals(auth.get("type")) ? toString(auth.get("username")) : null;
+    }
+
+    public String getNtlmPassword() {
+        return "ntlm".equals(auth.get("type")) ? toString(auth.get("password")) : null;
+    }
+
+    public String getNtlmDomain() {
+        return "ntlm".equals(auth.get("type")) ? toString(auth.get("domain")) : null;
+    }
+
+    public String getNtlmWorkstation() {
+        return "ntlm".equals(auth.get("type")) ? toString(auth.get("workstation")) : null;
+    }
+
+    // ===== Auth Getters =====
+
+    public Map<String, Object> getAuth() {
+        return auth;
+    }
+
+    public String getAuthType() {
+        return toString(auth.get("type"));
+    }
+
+    public String getAuthUsername() {
+        return toString(auth.get("username"));
+    }
+
+    public String getAuthPassword() {
+        return toString(auth.get("password"));
+    }
+
+    public String getAuthToken() {
+        return toString(auth.get("token"));
+    }
+
+    public String getAuthAccessTokenUrl() {
+        return toString(auth.get("accessTokenUrl"));
+    }
+
+    public String getAuthClientId() {
+        return toString(auth.get("clientId"));
+    }
+
+    public String getAuthClientSecret() {
+        return toString(auth.get("clientSecret"));
+    }
+
+    public String getAuthScope() {
+        return toString(auth.get("scope"));
+    }
+
+    // ===== Retry Getters =====
+
+    public Map<String, Object> getRetry() {
+        return retry;
+    }
+
+    public int getRetryInterval() {
+        return toInt(retry.getOrDefault("interval", 3000));
+    }
+
+    public int getRetryCount() {
+        return toInt(retry.getOrDefault("count", 3));
+    }
+
+    // ===== Report Getters =====
+
+    public Map<String, Object> getReport() {
+        return report;
+    }
+
+    public boolean isShowLog() {
+        return toBoolean(report.getOrDefault("showLog", true));
+    }
+
+    public boolean isShowAllSteps() {
+        return toBoolean(report.getOrDefault("showAllSteps", true));
+    }
+
+    // ===== CallSingleCache Getters =====
+
+    public Map<String, Object> getCallSingleCache() {
+        return callSingleCache;
+    }
+
+    public int getCallSingleCacheMinutes() {
+        return toInt(callSingleCache.getOrDefault("minutes", 0));
+    }
+
+    public String getCallSingleCacheDir() {
+        return toString(callSingleCache.get("dir"));
+    }
+
+    // ===== Other Getters =====
 
     public Object getHeaders() {
         return headers;
@@ -685,48 +794,8 @@ public class KarateConfig implements SimpleObject {
         return cookies;
     }
 
-    public boolean isLowerCaseResponseHeaders() {
-        return lowerCaseResponseHeaders;
-    }
-
-    public boolean isLogPrettyRequest() {
-        return logPrettyRequest;
-    }
-
-    public boolean isLogPrettyResponse() {
-        return logPrettyResponse;
-    }
-
-    public boolean isPrintEnabled() {
-        return printEnabled;
-    }
-
-    public int getRetryInterval() {
-        return retryInterval;
-    }
-
-    public int getRetryCount() {
-        return retryCount;
-    }
-
     public boolean isHttpRetryEnabled() {
         return httpRetryEnabled;
-    }
-
-    public boolean isShowLog() {
-        return showLog;
-    }
-
-    public boolean isShowAllSteps() {
-        return showAllSteps;
-    }
-
-    public int getCallSingleCacheMinutes() {
-        return callSingleCacheMinutes;
-    }
-
-    public String getCallSingleCacheDir() {
-        return callSingleCacheDir;
     }
 
     public boolean isContinueOnStepFailure() {
@@ -743,22 +812,6 @@ public class KarateConfig implements SimpleObject {
 
     public boolean isMatchEachEmptyAllowed() {
         return matchEachEmptyAllowed;
-    }
-
-    public String getNtlmUsername() {
-        return ntlmUsername;
-    }
-
-    public String getNtlmPassword() {
-        return ntlmPassword;
-    }
-
-    public String getNtlmDomain() {
-        return ntlmDomain;
-    }
-
-    public String getNtlmWorkstation() {
-        return ntlmWorkstation;
     }
 
     public boolean isCorsEnabled() {

@@ -270,6 +270,23 @@ class MockE2eTest {
               * def intB = karate.xmlPath(request, '/Add/intB')
               * def result = parseInt(intA) + parseInt(intB)
               * def response = { result: result }
+
+            # ===== Auth scenarios =====
+
+            # Endpoint that checks Authorization header and returns what it received
+            Scenario: pathMatches('/auth/check')
+              * def authHeader = requestHeaders['Authorization'] ? requestHeaders['Authorization'][0] : null
+              * def response = { authorization: authHeader }
+
+            # OAuth2 token endpoint for client_credentials flow
+            Scenario: pathMatches('/oauth/token') && methodIs('post')
+              * def clientId = requestParams['client_id'] ? requestParams['client_id'][0] : null
+              * def clientSecret = requestParams['client_secret'] ? requestParams['client_secret'][0] : null
+              * def grantType = requestParams['grant_type'] ? requestParams['grant_type'][0] : null
+              # Simple validation
+              * def valid = clientId == 'test-client' && clientSecret == 'test-secret' && grantType == 'client_credentials'
+              * def responseStatus = valid ? 200 : 401
+              * def response = valid ? { access_token: 'test-access-token-12345', token_type: 'Bearer', expires_in: 3600 } : { error: 'invalid_client' }
             """)
             .port(0)
             .start();
@@ -1400,25 +1417,142 @@ class MockE2eTest {
     }
 
     @Test
-    void testLowerCaseResponseHeadersAnd404JsonError() {
-        // Tests the functionality from demo/error/no-url.feature:
-        // 1. configure lowerCaseResponseHeaders = true
-        // 2. match header content-type contains 'application/json'
-        // 3. 404 status with JSON error body
-        // Note: Spring Boot 3 returns 'application/problem+json' instead of 'application/json',
-        // but the karate-v2 features work correctly - it's just a server response format change.
+    void test404JsonError() {
+        // Tests 404 status with JSON error body
+        // Header matching is case-insensitive by default (via StringUtils.getIgnoreKeyCase)
         ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
-            Feature: 404 JSON error with lowercase headers
+            Feature: 404 JSON error response
 
             Scenario: Invalid URL returns proper error response
             * url 'http://localhost:%d'
-            * configure lowerCaseResponseHeaders = true
             * path 'not-found-endpoint'
             * method get
             * status 404
             * match header content-type contains 'application/json'
             * match response.status == 404
             * match response.error == 'Not Found'
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    // ===== Configure Auth Tests =====
+
+    @Test
+    void testConfigureAuthBasic() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Basic Auth via configure
+
+            Scenario: Basic auth should set Authorization header
+            * url 'http://localhost:%d'
+            * configure auth = { type: 'basic', username: 'testuser', password: 'testpass' }
+            * path '/auth/check'
+            * method get
+            * status 200
+            # Basic auth: base64('testuser:testpass') = 'dGVzdHVzZXI6dGVzdHBhc3M='
+            * match response.authorization == 'Basic dGVzdHVzZXI6dGVzdHBhc3M='
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureAuthBearer() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Bearer Auth via configure
+
+            Scenario: Bearer auth should set Authorization header
+            * url 'http://localhost:%d'
+            * configure auth = { type: 'bearer', token: 'my-jwt-token-12345' }
+            * path '/auth/check'
+            * method get
+            * status 200
+            * match response.authorization == 'Bearer my-jwt-token-12345'
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureAuthBearerWithVariable() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Bearer Auth with variable
+
+            Scenario: Bearer auth token can use embedded expression
+            * url 'http://localhost:%d'
+            * def myToken = 'dynamic-token-xyz'
+            * configure auth = { type: 'bearer', token: '#(myToken)' }
+            * path '/auth/check'
+            * method get
+            * status 200
+            * match response.authorization == 'Bearer dynamic-token-xyz'
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureAuthOAuth2ClientCredentials() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test OAuth2 Client Credentials via configure
+
+            Scenario: OAuth2 should obtain token and set Authorization header
+            * url 'http://localhost:%d'
+            * configure auth = { type: 'oauth2', grantType: 'client_credentials', accessTokenUrl: '/oauth/token', clientId: 'test-client', clientSecret: 'test-secret' }
+            * path '/auth/check'
+            * method get
+            * status 200
+            # OAuth2 obtains token 'test-access-token-12345' from token endpoint
+            * match response.authorization == 'Bearer test-access-token-12345'
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureAuthDisable() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Auth Disable
+
+            Scenario: Auth can be disabled with null
+            * url 'http://localhost:%d'
+            * configure auth = { type: 'basic', username: 'testuser', password: 'testpass' }
+            * path '/auth/check'
+            * method get
+            * status 200
+            * match response.authorization == 'Basic dGVzdHVzZXI6dGVzdHBhc3M='
+
+            # Disable auth
+            * configure auth = null
+            * path '/auth/check'
+            * method get
+            * status 200
+            * match response.authorization == '#notpresent'
+            """.formatted(port));
+
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureAuthOverride() {
+        ScenarioRuntime sr = runFeature(new ApacheHttpClient(), """
+            Feature: Test Auth Override
+
+            Scenario: Auth can be overridden mid-scenario
+            * url 'http://localhost:%d'
+            * configure auth = { type: 'basic', username: 'user1', password: 'pass1' }
+            * path '/auth/check'
+            * method get
+            * status 200
+            # base64('user1:pass1') = 'dXNlcjE6cGFzczE='
+            * match response.authorization == 'Basic dXNlcjE6cGFzczE='
+
+            # Override with bearer
+            * configure auth = { type: 'bearer', token: 'new-token' }
+            * path '/auth/check'
+            * method get
+            * status 200
+            * match response.authorization == 'Bearer new-token'
             """.formatted(port));
 
         assertPassed(sr);
