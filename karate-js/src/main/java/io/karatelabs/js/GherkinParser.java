@@ -438,6 +438,15 @@ public class GherkinParser extends Parser {
                     case G_PREFIX -> {
                         step.setPrefix(child.token.text.trim());
                         step.setLine(child.token.line + 1);
+                        // Extract comments from preceding lines (for assertion labels)
+                        List<Token> tokenComments = child.token.getComments();
+                        if (!tokenComments.isEmpty()) {
+                            List<String> comments = new ArrayList<>();
+                            for (Token t : tokenComments) {
+                                comments.add(t.text.trim());
+                            }
+                            step.setComments(comments);
+                        }
                     }
                     case G_KEYWORD -> step.setKeyword(child.token.text);
                 }

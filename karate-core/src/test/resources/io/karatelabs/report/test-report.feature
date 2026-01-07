@@ -26,6 +26,73 @@ Scenario: This test is still in progress
 * def a = 1
 * match a == 2
 
+@wip @match-failures
+Scenario: Multiple match failures in nested JSON
+* def actual =
+"""
+{
+  "user": {
+    "id": 123,
+    "name": "John",
+    "email": "john@wrong.com",
+    "profile": {
+      "age": 25,
+      "city": "Boston",
+      "settings": {
+        "theme": "dark",
+        "notifications": false
+      }
+    }
+  },
+  "metadata": {
+    "version": "1.0",
+    "timestamp": "2024-01-15"
+  }
+}
+"""
+# user profile should match expected values
+* match actual ==
+"""
+{
+  "user": {
+    "id": 456,
+    "name": "Jane",
+    "email": "jane@example.com",
+    "profile": {
+      "age": 30,
+      "city": "Boston",
+      "settings": {
+        "theme": "light",
+        "notifications": true
+      }
+    }
+  },
+  "metadata": {
+    "version": "2.0",
+    "timestamp": "2024-01-15"
+  }
+}
+"""
+
+@wip @match-failures
+Scenario: Array match failures at multiple positions
+* def items = [{id: 1, name: 'apple', price: 1.50}, {id: 2, name: 'banana', price: 0.75}, {id: 3, name: 'cherry', price: 2.00}]
+# all items should have correct prices
+* match items ==
+"""
+[
+  {id: 1, name: 'apple', price: 1.99},
+  {id: 2, name: 'orange', price: 0.75},
+  {id: 3, name: 'cherry', price: 3.50}
+]
+"""
+
+@wip @match-failures
+Scenario: Contains deep failure with nested objects
+* def response = { data: { users: [{ id: 1, role: 'user' }, { id: 2, role: 'admin' }] } }
+# response should contain expected nested structure
+* match response contains deep { data: { users: [{ id: 1, role: 'admin' }, { id: 2, role: 'guest' }] } }
+
 @slow @integration
 Scenario: Database sync completes successfully
 * def result = 'sync complete'

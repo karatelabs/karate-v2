@@ -1105,7 +1105,15 @@ public class StepExecutor {
         boolean matchEachEmptyAllowed = runtime.getConfig().isMatchEachEmptyAllowed();
         Result result = Match.execute(runtime.getEngine(), matchType, actual, expected, matchEachEmptyAllowed);
         if (!result.pass) {
-            throw new AssertionError(result.message);
+            String message = result.message;
+            // Include comment as assertion label if present
+            List<String> comments = step.getComments();
+            if (comments != null && !comments.isEmpty()) {
+                // Use the last comment as the label (closest to the step)
+                String label = comments.get(comments.size() - 1);
+                message = label + "\n" + message;
+            }
+            throw new AssertionError(message);
         }
     }
 

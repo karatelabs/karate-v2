@@ -437,6 +437,26 @@ class GherkinParserTest {
     }
 
     @Test
+    void testStepComments() {
+        // Test that comments preceding a step are captured
+        feature("""
+                Feature: test
+                Scenario: with comment
+                  * def foo = 1
+                  # this is a comment label
+                  * match foo == 1
+                """);
+        assertNotNull(scenario);
+        assertEquals(2, scenario.getSteps().size());
+        Step matchStep = scenario.getSteps().get(1);
+        assertEquals("match", matchStep.getKeyword());
+        List<String> comments = matchStep.getComments();
+        assertNotNull(comments, "Step should have comments");
+        assertFalse(comments.isEmpty(), "Comments should not be empty");
+        assertTrue(comments.get(0).contains("this is a comment label"));
+    }
+
+    @Test
     void testDocStringWithTrailingSpaces() {
         // Test that closing """ with trailing spaces is parsed correctly
         // This was a bug where {NOT_LF}+ would match """ plus trailing chars

@@ -124,7 +124,7 @@ class HtmlReportWriterTest {
         // Verify the run completed (feature count may vary with @ignore features)
         assertTrue(result.getFeatureCount() >= 4, "Should have at least 4 features (including http-demo)");
         assertTrue(result.getScenarioPassedCount() >= 17, "Should have many passing scenarios including HTTP tests");
-        assertTrue(result.getScenarioFailedCount() >= 1, "Should have at least the @wip failing scenario");
+        assertTrue(result.getScenarioFailedCount() >= 4, "Should have @wip failing scenarios (including match failure demos)");
 
         // Verify HTML reports were generated
         assertTrue(Files.exists(OUTPUT_DIR.resolve("karate-summary.html")));

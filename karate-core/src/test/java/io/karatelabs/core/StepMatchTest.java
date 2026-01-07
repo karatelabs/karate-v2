@@ -440,4 +440,52 @@ class StepMatchTest {
         assertPassed(sr);
     }
 
+    // ========== Comment as Assertion Label ==========
+
+    @Test
+    void testMatchFailureIncludesCommentLabel() {
+        // Comment on the line before a match should appear in failure message
+        ScenarioRuntime sr = run("""
+            * def foo = { name: 'bar' }
+            # user name should be baz
+            * match foo.name == 'baz'
+            """);
+        assertFailedWith(sr, "user name should be baz");
+    }
+
+    @Test
+    void testMatchFailureWithMultipleComments() {
+        // Only the last comment (closest to step) should be used as label
+        ScenarioRuntime sr = run("""
+            * def foo = { status: 'pending' }
+            # first comment
+            # status must be active
+            * match foo.status == 'active'
+            """);
+        assertFailedWith(sr, "status must be active");
+    }
+
+    @Test
+    void testMatchPassWithCommentNoEffect() {
+        // Comments should not affect passing matches
+        ScenarioRuntime sr = run("""
+            * def foo = { name: 'bar' }
+            # this is a label
+            * match foo.name == 'bar'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testMatchFailureWithoutComment() {
+        // Without comment, error message should still work normally
+        ScenarioRuntime sr = run("""
+            * def foo = { name: 'bar' }
+            * match foo.name == 'baz'
+            """);
+        assertFailed(sr);
+        // Should contain the match error but not any label prefix
+        assertFailedWith(sr, "not equal");
+    }
+
 }
