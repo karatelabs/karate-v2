@@ -74,6 +74,8 @@ import java.util.function.Consumer;
  */
 public class KarateJs extends KarateJsBase implements PerfContext {
 
+    private static final Faker FAKER = new Faker();
+
     private final JsCallable read;
 
     public KarateJs(Resource root) {
@@ -1139,6 +1141,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
             case "exec" -> exec();
             case "expect" -> expect();
             case "fail" -> KarateJsUtils.fail();
+            case "faker" -> FAKER;
             case "feature" -> getFeatureData();
             case "fork" -> fork();
             case "get" -> get();
