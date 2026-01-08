@@ -172,9 +172,6 @@ class JunitXmlWriterTest {
                 .outputDir(reportDir)
                 .parallel(1);
 
-        // JSON report should exist
-        assertTrue(Files.exists(reportDir.resolve("karate-summary.json")));
-
         // JUnit XML should NOT exist by default (per-feature file)
         assertFalse(Files.exists(reportDir.resolve("junit-xml/nojunit.xml")),
                 "JUnit XML file should not exist when outputJunitXml is false");

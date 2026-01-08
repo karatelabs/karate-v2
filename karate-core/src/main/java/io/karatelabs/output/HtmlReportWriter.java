@@ -159,7 +159,7 @@ public final class HtmlReportWriter {
      * @param outputDir the root output directory (features/ subdirectory will be used)
      */
     public static void writeFeatureHtml(FeatureResult result, Path outputDir) throws IOException {
-        Path featuresDir = outputDir.resolve("features");
+        Path featuresDir = outputDir.resolve(HtmlReportListener.SUBFOLDER);
         Path embedsDir = outputDir.resolve("embeds");
         Files.createDirectories(featuresDir);
 
@@ -273,7 +273,7 @@ public final class HtmlReportWriter {
                                      List<Map<String, Object>> features,
                                      Path outputDir) throws IOException {
         // Create directories
-        Path featuresDir = outputDir.resolve("features");
+        Path featuresDir = outputDir.resolve(HtmlReportListener.SUBFOLDER);
         Path resDir = outputDir.resolve("res");
         Files.createDirectories(featuresDir);
         Files.createDirectories(resDir);

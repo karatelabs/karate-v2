@@ -78,7 +78,8 @@ public class JsonLinesEventWriter implements RunListener, Closeable {
      * @param threadCount the number of parallel threads
      */
     public JsonLinesEventWriter(Path outputDir, String env, int threadCount) {
-        this.jsonlPath = outputDir.resolve(DEFAULT_FILENAME);
+        // Write to karate-json subfolder for consistency with other JSON outputs
+        this.jsonlPath = outputDir.resolve(io.karatelabs.output.KarateJsonReportListener.SUBFOLDER).resolve(DEFAULT_FILENAME);
         this.env = env;
         this.threadCount = threadCount;
     }

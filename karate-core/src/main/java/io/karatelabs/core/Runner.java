@@ -162,6 +162,7 @@ public final class Runner {
         private boolean outputJsonLines;
         private boolean outputJunitXml;
         private boolean outputCucumberJson;
+        private boolean outputKarateJson;
         private boolean backupReportDir;
         private boolean outputConsoleSummary = true;
         private Map<String, String> systemProperties;
@@ -355,6 +356,15 @@ public final class Runner {
         }
 
         /**
+         * Enable/disable Karate JSON report generation.
+         * Writes per-feature JSON files to karate-json/ subfolder.
+         */
+        public Builder outputKarateJson(boolean enabled) {
+            this.outputKarateJson = enabled;
+            return this;
+        }
+
+        /**
          * Enable/disable backup of existing report directory.
          * When enabled, the existing report directory is renamed with a timestamp
          * suffix (e.g., karate-reports_2025-01-15_143022) before new reports are written.
@@ -496,6 +506,7 @@ public final class Runner {
             suite.outputJsonLines(outputJsonLines);
             suite.outputJunitXml(outputJunitXml);
             suite.outputCucumberJson(outputCucumberJson);
+            suite.outputKarateJson(outputKarateJson);
             suite.backupReportDir(backupReportDir);
             suite.outputConsoleSummary(outputConsoleSummary);
             if (systemProperties != null) {

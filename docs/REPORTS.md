@@ -76,6 +76,7 @@ JSONL HTML  Cucumber   JUnit       karate-summary.json
 | `CucumberJsonWriter` | Cucumber JSON conversion from `FeatureResult` |
 | `JunitXmlReportListener` | Async per-feature JUnit XML (opt-in via `.outputJunitXml(true)`), writes to `junit-xml/` |
 | `JunitXmlWriter` | JUnit XML conversion from `FeatureResult` |
+| `KarateJsonReportListener` | Async per-feature Karate JSON (opt-in via `.outputKarateJson(true)`), writes to `karate-json/` |
 
 ### Runner API
 
@@ -97,6 +98,11 @@ Runner.path("features/")
 // Generate Cucumber JSON (per-feature files, async)
 Runner.path("features/")
     .outputCucumberJson(true)
+    .parallel(5);
+
+// Generate Karate JSON (per-feature files, async)
+Runner.path("features/")
+    .outputKarateJson(true)
     .parallel(5);
 ```
 
@@ -697,14 +703,17 @@ HTML reports use **client-side rendering with Alpine.js**. JSON data is inlined 
 
 ```
 target/karate-reports/
-├── karate-summary.json           # JSON data
-├── karate-events.jsonl           # JSONL event stream (optional)
 ├── index.html                    # Redirect to summary
 ├── karate-summary.html           # Summary view
 ├── karate-timeline.html          # Gantt-style timeline
-├── features/
-│   ├── users.list.html           # Per-feature HTML reports
+├── feature-html/                 # Per-feature HTML reports
+│   ├── users.list.html
 │   └── orders.create.html
+├── karate-json/                  # Karate JSON reports
+│   ├── karate-summary.json       # Suite summary JSON (always written)
+│   ├── karate-events.jsonl       # JSONL event stream (opt-in via .outputJsonLines(true))
+│   ├── users.list.json           # Per-feature JSON (opt-in via .outputKarateJson(true))
+│   └── orders.create.json
 ├── junit-xml/                    # JUnit XML reports (optional)
 │   ├── users.list.xml
 │   └── orders.create.xml
@@ -725,7 +734,7 @@ target/karate-reports/
 - Tag filter chips for scenario-level filtering
 - Expandable feature rows
 
-**Feature Page (`features/*.html`):**
+**Feature Page (`feature-html/*.html`):**
 - Left sidebar with scenario navigation
 - Scenarios displayed with RefId format: `[section.exampleIndex:line]`
 - Step rows with color-coded status (green=pass, red=fail, yellow=skip)
@@ -785,8 +794,8 @@ Merge reports from multiple test runs:
 
 ```java
 HtmlReport.aggregate()
-    .json("target/run1/karate-summary.json")
-    .json("target/run2/karate-summary.json")
+    .json("target/run1/karate-json/karate-events.jsonl")
+    .json("target/run2/karate-json/karate-events.jsonl")
     .outputDir("target/combined-report")
     .generate();
 ```
@@ -889,6 +898,7 @@ open target/karate-reports/karate-summary.html
 | `src/main/java/io/karatelabs/output/HtmlReportListener.java` | Async HTML report generation listener |
 | `src/main/java/io/karatelabs/output/CucumberJsonWriter.java` | Cucumber JSON conversion logic |
 | `src/main/java/io/karatelabs/output/CucumberJsonReportListener.java` | Async Cucumber JSON generation listener |
+| `src/main/java/io/karatelabs/output/KarateJsonReportListener.java` | Async Karate JSON generation listener |
 
 ### Template Architecture
 

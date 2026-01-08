@@ -81,6 +81,7 @@ public class KaratePom {
         private boolean html = true;
         private boolean junitXml;
         private boolean cucumberJson;
+        private boolean karateJson;
         private boolean jsonLines;
         private String logLevel;  // trace, debug, info, warn, error
 
@@ -114,6 +115,14 @@ public class KaratePom {
 
         public void setCucumberJson(boolean cucumberJson) {
             this.cucumberJson = cucumberJson;
+        }
+
+        public boolean isKarateJson() {
+            return karateJson;
+        }
+
+        public void setKarateJson(boolean karateJson) {
+            this.karateJson = karateJson;
         }
 
         public boolean isJsonLines() {
@@ -236,6 +245,7 @@ public class KaratePom {
         builder.outputHtmlReport(output.html);
         builder.outputJunitXml(output.junitXml);
         builder.outputCucumberJson(output.cucumberJson);
+        builder.outputKarateJson(output.karateJson);
         builder.outputJsonLines(output.jsonLines);
         if (output.logLevel != null) {
             builder.logLevel(output.logLevel);

@@ -231,9 +231,6 @@ class CucumberJsonWriterTest {
                 .outputCucumberJson(false)  // explicitly disabled
                 .parallel(1);
 
-        // JSON summary should exist
-        assertTrue(Files.exists(reportDir.resolve("karate-summary.json")));
-
         // Cucumber JSON should NOT exist (check for the packageQualifiedName-based file)
         // Note: Karate JSON writes {featureName}.json, Cucumber JSON writes {packageQualifiedName}.json
         // On case-insensitive filesystems, we need distinct names to avoid collision

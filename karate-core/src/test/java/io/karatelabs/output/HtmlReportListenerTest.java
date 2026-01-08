@@ -71,7 +71,7 @@ class HtmlReportListenerTest {
         // HTML reports should exist
         assertTrue(Files.exists(reportDir.resolve("karate-summary.html")), "Summary HTML should exist");
         assertTrue(Files.exists(reportDir.resolve("index.html")), "Index redirect should exist");
-        assertTrue(Files.exists(reportDir.resolve("features")), "Features directory should exist");
+        assertTrue(Files.exists(reportDir.resolve(HtmlReportListener.SUBFOLDER)), "Features directory should exist");
 
         // JSON Lines should NOT exist (opt-in only)
         assertFalse(Files.exists(reportDir.resolve("karate-results.jsonl")), "JSON Lines should not exist by default");
@@ -105,7 +105,7 @@ class HtmlReportListenerTest {
                 .parallel(1);
 
         // Verify feature HTML files were created
-        Path featuresDir = reportDir.resolve("features");
+        Path featuresDir = reportDir.resolve(HtmlReportListener.SUBFOLDER);
         String[] featureFiles = featuresDir.toFile().list((dir, name) -> name.endsWith(".html"));
         assertNotNull(featureFiles);
         assertEquals(2, featureFiles.length, "Should have 2 feature HTML files");
@@ -130,7 +130,7 @@ class HtmlReportListenerTest {
 
         // HTML reports should NOT exist when disabled
         assertFalse(Files.exists(reportDir.resolve("karate-summary.html")));
-        assertFalse(Files.exists(reportDir.resolve("features")));
+        assertFalse(Files.exists(reportDir.resolve(HtmlReportListener.SUBFOLDER)));
     }
 
     @Test
@@ -182,7 +182,7 @@ class HtmlReportListenerTest {
                 .parallel(1);
 
         // Find the feature HTML file
-        Path featuresDir = reportDir.resolve("features");
+        Path featuresDir = reportDir.resolve(HtmlReportListener.SUBFOLDER);
         String[] featureFiles = featuresDir.toFile().list((dir, name) -> name.endsWith(".html"));
         assertNotNull(featureFiles);
         assertEquals(1, featureFiles.length);

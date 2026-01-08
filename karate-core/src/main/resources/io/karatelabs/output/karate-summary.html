@@ -134,7 +134,7 @@
                                         @click="f.expanded = !f.expanded">
                                     <span x-text="f.expanded ? '\u25BC' : '\u25B6'"></span>
                                 </button>
-                                <a :href="'features/' + f.fileName + '.html'" x-text="f.name || f.relativePath">Feature</a>
+                                <a :href="'feature-html/' + f.fileName + '.html'" x-text="f.name || f.relativePath">Feature</a>
                                 <br/>
                                 <small class="text-muted" x-text="f.relativePath">path</small>
                                 <template x-if="getFeatureTagCounts(f).length > 0">

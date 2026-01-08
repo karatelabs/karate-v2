@@ -54,6 +54,8 @@ public class HtmlReportListener implements ResultListener {
 
     private static final Logger logger = LoggerFactory.getLogger("karate.runtime");
 
+    public static final String SUBFOLDER = "feature-html";
+
     private final Path outputDir;
     private final String env;
     private final ExecutorService executor;
@@ -87,7 +89,7 @@ public class HtmlReportListener implements ResultListener {
 
         // Create directories eagerly
         try {
-            Files.createDirectories(outputDir.resolve("features"));
+            Files.createDirectories(outputDir.resolve(SUBFOLDER));
             Files.createDirectories(outputDir.resolve("res"));
         } catch (Exception e) {
             logger.warn("Failed to create report directories: {}", e.getMessage());

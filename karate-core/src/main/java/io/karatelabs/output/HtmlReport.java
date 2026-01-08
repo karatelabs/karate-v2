@@ -209,9 +209,10 @@ public final class HtmlReport {
 
                 suiteData.put("summary", summary);
 
-                // Write merged JSON Lines
-                Path mergedJsonl = outputDir.resolve("karate-events.jsonl");
-                Files.createDirectories(outputDir);
+                // Write merged JSON Lines to karate-json subfolder
+                Path karateJsonDir = outputDir.resolve(KarateJsonReportListener.SUBFOLDER);
+                Files.createDirectories(karateJsonDir);
+                Path mergedJsonl = karateJsonDir.resolve("karate-events.jsonl");
                 writeMergedJsonLines(mergedJsonl, suiteData, allFeatures, summary);
 
                 // Generate HTML from merged data
