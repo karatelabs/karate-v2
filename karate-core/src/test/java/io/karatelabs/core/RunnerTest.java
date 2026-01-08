@@ -234,4 +234,43 @@ class RunnerTest {
         assertEquals(2, result.getFeatureCount());
     }
 
+    @Test
+    void testRunnerWithMissingDataFile() throws Exception {
+        // Test to verify Runner doesn't crash on data-driven scenarios with missing data
+        // Create a feature with Scenario Outline that references non-existent data file
+
+        // Write karate-config.js
+        Files.writeString(tempDir.resolve("karate-config.js"), """
+            function fn() {
+              return { baseUrl: 'https://httpbin.org' };
+            }
+            """);
+
+        // Write a feature with Scenario Outline that references non-existent data
+        Path feature = tempDir.resolve("data-driven.feature");
+        Files.writeString(feature, """
+            Feature: Data Driven Test
+
+            Scenario Outline: Test with <username>
+              * def result = '<username>'
+              * match result == '#string'
+
+            Examples:
+              | read('missing-file.csv') |
+            """);
+
+        // This should NOT throw - it should return a SuiteResult with failures
+        SuiteResult result = Runner.path(tempDir.toString())
+                .workingDir(tempDir)
+                .configDir(tempDir.toString())
+                .outputDir(tempDir.resolve("reports"))
+                .outputHtmlReport(false)
+                .outputConsoleSummary(false)
+                .parallel(1);
+
+        // The suite should complete (not crash) with the scenario marked as failed
+        assertNotNull(result);
+        assertFalse(result.isPassed()); // Should fail gracefully, not throw
+    }
+
 }

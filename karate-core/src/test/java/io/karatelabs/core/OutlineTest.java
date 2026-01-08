@@ -796,8 +796,10 @@ public class OutlineTest {
         Feature f = Feature.read(Resource.from(feature, tempDir));
         FeatureRuntime fr = new FeatureRuntime(null, f);
 
-        // Should throw an error because @setup scenario is missing
-        assertThrows(RuntimeException.class, fr::call, "Should throw error when @setup scenario is missing");
+        // Should fail gracefully (not crash) when @setup scenario is missing
+        FeatureResult result = fr.call();
+        assertTrue(result.isFailed(), "Should fail when @setup scenario is missing");
+        assertTrue(result.getFailureMessage().contains("setup"), "Error message should mention @setup");
     }
 
     // ========== Generator Function Tests ==========

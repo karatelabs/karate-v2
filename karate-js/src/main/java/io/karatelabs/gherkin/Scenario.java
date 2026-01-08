@@ -51,6 +51,27 @@ public class Scenario {
         this.exampleIndex = exampleIndex;
     }
 
+    /**
+     * Create a synthetic error scenario for error reporting when execution fails.
+     * Used when a feature fails before any scenario can be executed
+     * (e.g., dynamic expression evaluation failure).
+     *
+     * @param feature the feature that failed
+     * @param errorName the name to use for the error scenario
+     * @param line the line number
+     * @return a synthetic Scenario for error reporting
+     */
+    public static Scenario createError(Feature feature, String errorName, int line) {
+        FeatureSection section = new FeatureSection();
+        section.setIndex(0);
+        Scenario scenario = new Scenario(feature, section, -1);
+        scenario.setName(errorName);
+        scenario.setLine(line);
+        scenario.setSteps(Collections.emptyList());
+        section.setScenario(scenario);
+        return scenario;
+    }
+
     public boolean isEqualTo(Scenario other) {
         return other.section.getIndex() == section.getIndex() && other.exampleIndex == exampleIndex;
     }

@@ -24,8 +24,9 @@
 package io.karatelabs.core;
 
 import io.karatelabs.gherkin.Feature;
-import io.karatelabs.output.Console;
+import io.karatelabs.gherkin.Scenario;
 import io.karatelabs.gherkin.Tag;
+import io.karatelabs.output.Console;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -54,6 +55,52 @@ public class FeatureResult {
 
     public FeatureResult(Feature feature) {
         this.feature = feature;
+    }
+
+    /**
+     * Create a failed FeatureResult from an exception that occurred during feature execution.
+     * This is used when an unexpected error prevents normal scenario execution,
+     * such as failures in dynamic expression evaluation for Scenario Outlines.
+     *
+     * @param feature   the feature that failed
+     * @param error     the exception that caused the failure
+     * @param startTime the start time of the feature execution
+     * @return a FeatureResult marked as failed with a synthetic scenario containing the error
+     */
+    public static FeatureResult fromException(Feature feature, Throwable error, long startTime) {
+        FeatureResult result = new FeatureResult(feature);
+        result.setStartTime(startTime);
+        result.setEndTime(System.currentTimeMillis());
+
+        // Create a synthetic failed scenario result to capture the error
+        // Use the first scenario from the feature if available, otherwise create a minimal one
+        Scenario scenario = getFirstScenarioOrCreate(feature);
+
+        ScenarioResult scenarioResult = new ScenarioResult(scenario);
+        scenarioResult.setStartTime(startTime);
+        scenarioResult.setEndTime(System.currentTimeMillis());
+        scenarioResult.setThreadName(Thread.currentThread().getName());
+
+        // Add a synthetic failed step with the error
+        String errorMessage = "Feature execution failed: " + error.getMessage();
+        scenarioResult.addStepResult(StepResult.fakeFailure(errorMessage, startTime, error));
+
+        result.addScenarioResult(scenarioResult);
+        return result;
+    }
+
+    /**
+     * Get the first scenario from a feature, or create a minimal one for error reporting.
+     */
+    private static Scenario getFirstScenarioOrCreate(Feature feature) {
+        if (feature.getSections().isEmpty()) {
+            // Create a minimal scenario via a synthetic FeatureSection
+            return Scenario.createError(feature, "Feature execution failed", feature.getLine());
+        }
+        if (feature.getSections().get(0).isOutline()) {
+            return feature.getSections().get(0).getScenarioOutline().toScenario(null, 0, feature.getLine(), null);
+        }
+        return feature.getSections().get(0).getScenario();
     }
 
     public Feature getFeature() {

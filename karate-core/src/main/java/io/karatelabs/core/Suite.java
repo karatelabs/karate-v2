@@ -535,8 +535,7 @@ public class Suite {
                 if (isFeatureIgnored(feature)) {
                     continue;
                 }
-                FeatureRuntime fr = new FeatureRuntime(this, feature);
-                FeatureResult featureResult = fr.call();
+                FeatureResult featureResult = runFeatureSafely(feature);
                 result.addFeatureResult(featureResult);
                 if (outputConsoleSummary) {
                     featureResult.printSummary();
@@ -544,6 +543,23 @@ public class Suite {
             }
         } finally {
             cleanupThreadListeners();
+        }
+    }
+
+    /**
+     * Run a feature with exception handling.
+     * If an unexpected exception occurs, creates a failed FeatureResult instead of crashing.
+     */
+    private FeatureResult runFeatureSafely(Feature feature) {
+        long startTime = System.currentTimeMillis();
+        try {
+            FeatureRuntime fr = new FeatureRuntime(this, feature);
+            return fr.call();
+        } catch (Exception e) {
+            // Safety net: if FeatureRuntime.call() throws (shouldn't happen with internal handling),
+            // create a failed result instead of crashing the runner
+            logger.error("Unexpected error running feature '{}': {}", feature.getName(), e.getMessage(), e);
+            return FeatureResult.fromException(feature, e, startTime);
         }
     }
 
@@ -562,8 +578,7 @@ public class Suite {
                     semaphore.acquire();
                     initThreadListeners();
                     try {
-                        FeatureRuntime fr = new FeatureRuntime(this, feature);
-                        FeatureResult featureResult = fr.call();
+                        FeatureResult featureResult = runFeatureSafely(feature);
                         if (outputConsoleSummary) {
                             featureResult.printSummary();
                         }
@@ -582,8 +597,9 @@ public class Suite {
                     FeatureResult featureResult = future.get();
                     result.addFeatureResult(featureResult);
                 } catch (Exception e) {
-                    // Handle execution exception
-                    throw new RuntimeException("Feature execution failed", e);
+                    // This should rarely happen now with runFeatureSafely, but handle gracefully
+                    logger.error("Unexpected error collecting feature result: {}", e.getMessage(), e);
+                    // The feature result was already added in the task, so we can continue
                 }
             }
         }

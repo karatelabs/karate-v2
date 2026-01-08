@@ -120,30 +120,16 @@ public class FeatureRuntime implements Callable<FeatureResult> {
                 suite.fireEvent(FeatureRunEvent.enter(this));
             }
 
-            for (Scenario scenario : selectedScenarios()) {
-                // Notify listeners of scenario start (only for top-level features)
-                if (suite != null && caller == null) {
-                    for (ResultListener listener : suite.getResultListeners()) {
-                        listener.onScenarioStart(scenario);
-                    }
+            try {
+                for (Scenario scenario : selectedScenarios()) {
+                    executeScenario(scenario);
                 }
-
-                ScenarioRuntime sr = new ScenarioRuntime(this, scenario);
-                ScenarioResult scenarioResult = sr.call();
-                result.addScenarioResult(scenarioResult);
-                lastExecuted = sr;
-
-                // Check if this is the last scenario in an outline (only for top-level features)
-                if (caller == null && isLastScenarioInOutline(scenario)) {
-                    invokeAfterScenarioOutlineHook(sr);
-                }
-
-                // Notify listeners of scenario completion (only for top-level features)
-                if (suite != null && caller == null) {
-                    for (ResultListener listener : suite.getResultListeners()) {
-                        listener.onScenarioEnd(scenarioResult);
-                    }
-                }
+            } catch (Exception e) {
+                // Handle errors during scenario iteration (e.g., dynamic expression evaluation failure)
+                // Create a synthetic failed scenario result so the feature fails gracefully
+                logger.error("Error during scenario iteration: {}", e.getMessage());
+                ScenarioResult errorResult = createErrorScenarioResult(e);
+                result.addScenarioResult(errorResult);
             }
 
             // Invoke configured afterFeature hook if present (only for top-level features)
@@ -167,6 +153,76 @@ public class FeatureRuntime implements Callable<FeatureResult> {
         }
 
         return result;
+    }
+
+    /**
+     * Execute a single scenario with exception handling.
+     * If the scenario throws an exception, it's captured as a failed scenario result
+     * rather than propagating up and crashing the feature.
+     */
+    private void executeScenario(Scenario scenario) {
+        // Notify listeners of scenario start (only for top-level features)
+        if (suite != null && caller == null) {
+            for (ResultListener listener : suite.getResultListeners()) {
+                listener.onScenarioStart(scenario);
+            }
+        }
+
+        ScenarioResult scenarioResult;
+        try {
+            ScenarioRuntime sr = new ScenarioRuntime(this, scenario);
+            scenarioResult = sr.call();
+            lastExecuted = sr;
+
+            // Check if this is the last scenario in an outline (only for top-level features)
+            if (caller == null && isLastScenarioInOutline(scenario)) {
+                invokeAfterScenarioOutlineHook(sr);
+            }
+        } catch (Exception e) {
+            // Handle unexpected errors during scenario execution
+            logger.error("Error executing scenario '{}': {}", scenario.getName(), e.getMessage());
+            scenarioResult = createErrorScenarioResult(scenario, e);
+        }
+
+        result.addScenarioResult(scenarioResult);
+
+        // Notify listeners of scenario completion (only for top-level features)
+        if (suite != null && caller == null) {
+            for (ResultListener listener : suite.getResultListeners()) {
+                listener.onScenarioEnd(scenarioResult);
+            }
+        }
+    }
+
+    /**
+     * Create a failed ScenarioResult from an exception when no scenario is available.
+     * Used for errors during scenario iteration (e.g., dynamic expression evaluation).
+     */
+    private ScenarioResult createErrorScenarioResult(Exception error) {
+        // Create a minimal scenario for error reporting
+        Scenario errorScenario = feature.getSections().isEmpty()
+                ? Scenario.createError(feature, "Feature execution failed", feature.getLine())
+                : feature.getSections().get(0).isOutline()
+                ? feature.getSections().get(0).getScenarioOutline().toScenario(null, 0, feature.getLine(), null)
+                : feature.getSections().get(0).getScenario();
+
+        return createErrorScenarioResult(errorScenario, error);
+    }
+
+    /**
+     * Create a failed ScenarioResult from an exception for a specific scenario.
+     */
+    private ScenarioResult createErrorScenarioResult(Scenario scenario, Exception error) {
+        long now = System.currentTimeMillis();
+        ScenarioResult scenarioResult = new ScenarioResult(scenario);
+        scenarioResult.setStartTime(now);
+        scenarioResult.setEndTime(now);
+        scenarioResult.setThreadName(Thread.currentThread().getName());
+
+        String errorMessage = "Scenario execution failed: " + error.getMessage();
+        scenarioResult.addStepResult(StepResult.fakeFailure(errorMessage, now, error));
+
+        return scenarioResult;
     }
 
     /**
