@@ -278,6 +278,8 @@ Intentional deviations from V1 behavior:
 | `waitForHttp(url, options)` | KarateJsUtils | Poll HTTP endpoint until available |
 | `waitForPort(host, port)` | KarateJsUtils | Wait for TCP port to become available |
 | `write(value, path)` | KarateJs | Write content to file in output directory |
+| `expect(value)` | KarateJs | Chai-style BDD assertion API (see [karate.expect()](#karateexpect-chai-style-assertions)) |
+| `faker` | KarateJs | Random test data generator (see [karate.faker.*](#karatefaker-api)) |
 
 ### Out of Scope (UI/Extensions)
 
@@ -308,15 +310,154 @@ See [GATLING.md](./GATLING.md) for the karate-gatling module plan, including `Pe
 
 ---
 
+## karate.expect() Chai-Style Assertions
+
+Chai-style BDD assertion API for more expressive test assertions.
+
+```gherkin
+# Basic assertions
+* karate.expect(response.status).to.equal(200)
+* karate.expect(response.name).to.be.a('string')
+* karate.expect(response.items).to.have.length(3)
+
+# Negation
+* karate.expect(response.error).to.not.exist
+* karate.expect(response.count).to.not.equal(0)
+
+# Type checks
+* karate.expect(response.active).to.be.true
+* karate.expect(response.data).to.be.null
+* karate.expect(response.list).to.be.a('array')
+
+# Object assertions
+* karate.expect(response).to.have.property('id')
+* karate.expect(response).to.have.property('name', 'John')
+* karate.expect(response).to.have.keys(['id', 'name', 'email'])
+* karate.expect(response).to.have.all.keys(['id', 'name'])
+* karate.expect(response).to.have.any.keys(['id', 'foo'])
+* karate.expect(response).to.have.nested.property('user.address.city', 'NYC')
+
+# Array assertions
+* karate.expect(response.items).to.include({ id: 1 })
+* karate.expect(response.tags).to.contain('api')
+* karate.expect(response.items).to.deep.include({ user: { name: 'John' } })
+
+# Numeric comparisons
+* karate.expect(response.count).to.be.above(5)
+* karate.expect(response.count).to.be.below(100)
+* karate.expect(response.count).to.be.within(1, 10)
+* karate.expect(response.count).to.be.at.least(1)
+* karate.expect(response.count).to.be.at.most(100)
+* karate.expect(response.price).to.be.closeTo(9.99, 0.01)
+
+# String regex matching
+* karate.expect(response.email).to.match(/^[\w.-]+@[\w.-]+\.\w+$/)
+
+# Membership
+* karate.expect(response.status).to.be.oneOf(['active', 'pending', 'completed'])
+
+# Truthy/empty checks
+* karate.expect(response.data).to.be.ok
+* karate.expect(response.list).to.be.empty
+```
+
+### Assertion Chains
+
+Language chains (`.to`, `.be`, `.that`, `.and`, `.which`) are available for readability:
+
+```gherkin
+* karate.expect(response).to.be.a('object').and.have.property('id')
+* karate.expect(response.items).to.have.length(3).and.include({ id: 1 })
+```
+
+---
+
+## karate.faker.* API
+
+Random test data generators for API testing. Accessible via `karate.faker.*`.
+
+```gherkin
+# Names
+* def firstName = karate.faker.firstName()    # e.g., "Ethan"
+* def lastName = karate.faker.lastName()      # e.g., "Smith"
+* def fullName = karate.faker.fullName()      # e.g., "Sophia Johnson"
+
+# Contact
+* def email = karate.faker.email()            # e.g., "ethan42@gmail.com"
+* def userName = karate.faker.userName()      # e.g., "sophia.johnson"
+* def phone = karate.faker.phoneNumber()      # e.g., "+1-555-123-4567"
+
+# Location
+* def city = karate.faker.city()              # e.g., "San Francisco"
+* def country = karate.faker.country()        # e.g., "United States"
+* def address = karate.faker.streetAddress()  # e.g., "1234 Oak Avenue"
+* def zip = karate.faker.zipCode()            # e.g., "94105"
+* def lat = karate.faker.latitude()           # e.g., 37.7749
+* def lng = karate.faker.longitude()          # e.g., -122.4194
+
+# Numbers
+* def num = karate.faker.randomInt()          # 0-1000
+* def num = karate.faker.randomInt(100)       # 0-100
+* def num = karate.faker.randomInt(18, 65)    # 18-65
+* def flt = karate.faker.randomFloat()        # 0.0-1.0
+* def flt = karate.faker.randomFloat(10, 20)  # 10.0-20.0
+* def bool = karate.faker.randomBoolean()     # true or false
+
+# Text
+* def word = karate.faker.word()              # e.g., "lorem"
+* def sentence = karate.faker.sentence()      # e.g., "Lorem ipsum dolor sit amet."
+* def paragraph = karate.faker.paragraph()    # Multiple sentences
+* def code = karate.faker.alphanumeric(10)    # e.g., "aB3dE5fG7h"
+* def color = karate.faker.hexColor()         # e.g., "#a3f2c1"
+
+# Business
+* def company = karate.faker.companyName()    # e.g., "Smith Technologies"
+* def job = karate.faker.jobTitle()           # e.g., "Software Engineer"
+* def cc = karate.faker.creditCardNumber()    # e.g., "4123456789012345" (fake)
+
+# Timestamps
+* def ts = karate.faker.timestamp()           # Unix timestamp (seconds)
+* def tsMs = karate.faker.timestampMs()       # Unix timestamp (milliseconds)
+* def iso = karate.faker.isoTimestamp()       # ISO 8601 format
+```
+
+---
+
 ## Configure Keys
 
 ### Implemented
-`ssl`, `proxy`, `readTimeout`, `connectTimeout`, `followRedirects`, `headers`, `cookies`, `charset`, `retry`, `report`, `ntlmAuth`, `callSingleCache`, `continueOnStepFailure`, `httpRetryEnabled`, `url`, `localAddress`, `lowerCaseResponseHeaders`, `logPrettyRequest`, `logPrettyResponse`, `printEnabled`
+`ssl`, `proxy`, `readTimeout`, `connectTimeout`, `followRedirects`, `headers`, `cookies`, `charset`, `retry`, `report`, `ntlmAuth`, `callSingleCache`, `continueOnStepFailure`, `httpRetryEnabled`, `url`, `localAddress`, `auth`
+
+### configure auth
+
+Type-discriminated authentication configuration for HTTP requests:
+
+```gherkin
+# Basic auth
+* configure auth = { type: 'basic', username: 'user', password: 'pass' }
+
+# Bearer token
+* configure auth = { type: 'bearer', token: '#(accessToken)' }
+
+# OAuth2 client_credentials
+* configure auth = { type: 'oauth2', grantType: 'client_credentials', tokenUrl: 'https://auth.example.com/token', clientId: 'id', clientSecret: 'secret' }
+
+# NTLM (requires HTTP client rebuild)
+* configure auth = { type: 'ntlm', username: 'user', password: 'pass', domain: 'DOMAIN' }
+
+# Disable auth
+* configure auth = null
+```
+
+Embedded expressions are supported in auth config values (e.g., `token: '#(myVar)'`).
 
 ### TODO
 | Key | Priority |
 |-----|----------|
 | `driver` | Phase 9 - see [DRIVER.md](./DRIVER.md) |
+
+### Removed
+`printEnabled`, `logPrettyRequest`, `logPrettyResponse`, `lowerCaseResponseHeaders`
 
 ### Out of Scope
 `robot`, `driverTarget`, `kafka`, `grpc`, `websocket`, `webhook`, `responseHeaders`, `responseDelay`, `cors`
@@ -431,3 +572,5 @@ Built-in variables (`karate`, `read`, `match`, `__arg`, `__row`, `__num`) are st
 | `CallSingleTest` | karate.callSingle() |
 | `DataUtilsTest` | CSV/YAML parsing |
 | `TagSelectorTest` | Tag selectors: anyOf, allOf, not, valuesFor, @env |
+| `StepExpectTest` | karate.expect() chai-style assertions |
+| `StepFakerTest` | karate.faker.* random data generators |
