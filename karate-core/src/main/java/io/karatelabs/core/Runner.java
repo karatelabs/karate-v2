@@ -148,7 +148,8 @@ public final class Runner {
 
         private final List<String> paths = new ArrayList<>();
         private final List<Feature> features = new ArrayList<>();
-        private final List<RuntimeHook> hooks = new ArrayList<>();
+        private final List<RunListener> listeners = new ArrayList<>();
+        private final List<RunListenerFactory> listenerFactories = new ArrayList<>();
         private final List<ResultListener> resultListeners = new ArrayList<>();
 
         private String env;
@@ -393,21 +394,60 @@ public final class Runner {
         }
 
         /**
-         * Add a runtime hook.
+         * Add a run event listener.
          */
-        public Builder hook(RuntimeHook hook) {
-            if (hook != null) {
-                hooks.add(hook);
+        public Builder listener(RunListener listener) {
+            if (listener != null) {
+                listeners.add(listener);
             }
             return this;
         }
 
         /**
-         * Add multiple runtime hooks.
+         * Add multiple run event listeners.
          */
-        public Builder hooks(Collection<RuntimeHook> values) {
+        public Builder listeners(Collection<RunListener> values) {
             if (values != null) {
-                hooks.addAll(values);
+                listeners.addAll(values);
+            }
+            return this;
+        }
+
+        /**
+         * Add a run listener factory for per-thread listeners.
+         * The factory's create() method is called once per execution thread.
+         */
+        public Builder listenerFactory(RunListenerFactory factory) {
+            if (factory != null) {
+                listenerFactories.add(factory);
+            }
+            return this;
+        }
+
+        /**
+         * Add a run listener factory by class name (supports no-arg constructor).
+         * Used for CLI --listener-factory option.
+         * @param className fully qualified class name
+         */
+        public Builder listenerFactory(String className) {
+            if (className != null && !className.isEmpty()) {
+                try {
+                    Class<?> clazz = Class.forName(className);
+                    Object instance = clazz.getDeclaredConstructor().newInstance();
+                    if (instance instanceof RunListenerFactory factory) {
+                        listenerFactories.add(factory);
+                    } else if (instance instanceof RunListener listener) {
+                        // If it's a RunListener, wrap it in a factory that returns the same instance
+                        listeners.add(listener);
+                    } else {
+                        throw new IllegalArgumentException(
+                                "Class " + className + " must implement RunListenerFactory or RunListener");
+                    }
+                } catch (ClassNotFoundException e) {
+                    throw new IllegalArgumentException("Class not found: " + className, e);
+                } catch (Exception e) {
+                    throw new IllegalArgumentException("Failed to instantiate " + className, e);
+                }
             }
             return this;
         }
@@ -513,9 +553,14 @@ public final class Runner {
                 suite.systemProperties(systemProperties);
             }
 
-            // Add hooks
-            for (RuntimeHook hook : hooks) {
-                suite.hook(hook);
+            // Add listeners
+            for (RunListener listener : listeners) {
+                suite.listener(listener);
+            }
+
+            // Add listener factories
+            for (RunListenerFactory factory : listenerFactories) {
+                suite.listenerFactory(factory);
             }
 
             // Add result listeners

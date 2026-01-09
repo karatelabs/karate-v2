@@ -152,29 +152,6 @@ See [REPORTS.md](./REPORTS.md#jsonl-event-stream) for complete format specificat
 
 ---
 
-## Backward Compatibility
-
-Existing `RuntimeHook` implementations continue to work via `RuntimeHookAdapter`:
-
-```java
-Suite.of("features/")
-    .hook(existingRuntimeHook)  // internally wrapped
-    .run();
-```
-
-| RuntimeHook Method | RunListener Equivalent |
-|-------------------|------------------------|
-| `beforeSuite(Suite)` | `SUITE_ENTER` event |
-| `afterSuite(Suite)` | `SUITE_EXIT` event |
-| `beforeFeature(FeatureRuntime)` | `FEATURE_ENTER` event |
-| `afterFeature(FeatureRuntime)` | `FEATURE_EXIT` event |
-| `beforeScenario(ScenarioRuntime)` | `SCENARIO_ENTER` event |
-| `afterScenario(ScenarioRuntime)` | `SCENARIO_EXIT` event |
-| `beforeStep(Step, ScenarioRuntime)` | `STEP_ENTER` event |
-| `afterStep(StepResult, ScenarioRuntime)` | `STEP_EXIT` event |
-
----
-
 ## Key Design Decisions
 
 | Decision | Rationale |
@@ -206,5 +183,4 @@ Suite.of("features/")
 | `RunEvent.java` | Event interface and record implementations |
 | `RunListener.java` | Listener interface |
 | `RunListenerFactory.java` | Per-thread listener factory |
-| `RuntimeHookAdapter.java` | Backward compatibility wrapper |
 | `JsonLinesEventWriter.java` | JSONL file writer |

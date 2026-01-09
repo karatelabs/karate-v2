@@ -228,15 +228,20 @@ categories:
         license: oss
         tags: [core, milestone-1]
         items:
-          - name: RuntimeHook interface
-            v1: true
+          - name: RunListener interface (unified event system)
+            v1: false
+            v2: implemented
+          - name: RunListenerFactory (per-thread listeners)
+            v1: false
             v2: implemented
           - name: Before/After scenario hooks
             v1: true
             v2: implemented
+            notes: "via SCENARIO_ENTER/EXIT events"
           - name: Before/After feature hooks
             v1: true
             v2: implemented
+            notes: "via FEATURE_ENTER/EXIT events"
           - name: JavaScript hooks
             v1: false
             v2: future

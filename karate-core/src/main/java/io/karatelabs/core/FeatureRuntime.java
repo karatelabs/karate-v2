@@ -115,7 +115,7 @@ public class FeatureRuntime implements Callable<FeatureResult> {
         }
 
         try {
-            // Fire FEATURE_ENTER event (RuntimeHookAdapter calls beforeFeature)
+            // Fire FEATURE_ENTER event
             if (suite != null) {
                 suite.fireEvent(FeatureRunEvent.enter(this));
             }
@@ -137,7 +137,7 @@ public class FeatureRuntime implements Callable<FeatureResult> {
                 invokeAfterFeatureHook(lastExecuted);
             }
 
-            // Fire FEATURE_EXIT event (RuntimeHookAdapter calls afterFeature)
+            // Fire FEATURE_EXIT event
             if (suite != null) {
                 suite.fireEvent(FeatureRunEvent.exit(this, result));
             }

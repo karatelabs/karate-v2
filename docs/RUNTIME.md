@@ -34,7 +34,8 @@ Suite → FeatureRuntime → ScenarioRuntime → StepExecutor
 | `DefaultHttpClientFactory` | Default factory creating per-instance ApacheHttpClient |
 | `CommandProvider` | SPI for CLI subcommand registration (see [CLI.md](./CLI.md)) |
 | `Runner` | Fluent API for test execution |
-| `RuntimeHook` | Lifecycle callbacks for test execution interception (see [EVENTS.md](./EVENTS.md) for new API) |
+| `RunListener` | Unified event listener for test execution (see [EVENTS.md](./EVENTS.md)) |
+| `RunListenerFactory` | Per-thread listener factory for debuggers |
 | `ResultListener` | Observation interface for reporting |
 
 **Reports (io.karatelabs.output):** `HtmlReportListener`, `JunitXmlWriter`, `CucumberJsonWriter`, `JsonLinesReportListener`
@@ -538,8 +539,8 @@ karate-config-dev.js (env-specific)
 |-----------|---------|-----------|--------|
 | `CommandProvider` | CLI subcommands | ServiceLoader | Implemented |
 | `HttpClientFactory` | Custom HTTP clients | Constructor injection | ✅ Implemented |
-| `RuntimeHook` | Lifecycle callbacks | Class.forName (--hook) | V1 pattern |
-| `RunListenerFactory` | Event listeners | ServiceLoader | Planned |
+| `RunListener` | Event listeners | `Runner.listener()` or `--listener` CLI | ✅ Implemented |
+| `RunListenerFactory` | Per-thread listeners | `Runner.listenerFactory()` or `--listener-factory` CLI | ✅ Implemented |
 | `ReportWriterFactory` | Custom report formats | ServiceLoader | Planned |
 
 **ServiceLoader:** User drops JAR in `~/.karate/ext/`, plugin is automatically available via `META-INF/services/`.

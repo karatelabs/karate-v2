@@ -56,7 +56,9 @@ import java.util.List;
  *     "cucumberJson": false,
  *     "jsonLines": false,
  *     "logLevel": "info"
- *   }
+ *   },
+ *   "listeners": ["com.example.MyListener"],
+ *   "listenerFactories": ["com.example.MyListenerFactory"]
  * }
  * </pre>
  */
@@ -72,6 +74,8 @@ public class KaratePom {
     private boolean clean;
     private String workingDir;
     private OutputPom output = new OutputPom();
+    private List<String> listeners = new ArrayList<>();
+    private List<String> listenerFactories = new ArrayList<>();
 
     /**
      * Output configuration nested object.
@@ -209,6 +213,10 @@ public class KaratePom {
             j.<String>getOptional("output.logLevel").ifPresent(output::setLogLevel);
         }
 
+        // Parse listeners
+        j.<List<String>>getOptional("listeners").ifPresent(config::setListeners);
+        j.<List<String>>getOptional("listenerFactories").ifPresent(config::setListenerFactories);
+
         return config;
     }
 
@@ -249,6 +257,14 @@ public class KaratePom {
         builder.outputJsonLines(output.jsonLines);
         if (output.logLevel != null) {
             builder.logLevel(output.logLevel);
+        }
+
+        // Listeners (applied via class name - handles both RunListener and RunListenerFactory)
+        for (String className : listeners) {
+            builder.listenerFactory(className);
+        }
+        for (String className : listenerFactories) {
+            builder.listenerFactory(className);
         }
 
         return builder;
@@ -334,6 +350,22 @@ public class KaratePom {
 
     public void setOutput(OutputPom output) {
         this.output = output != null ? output : new OutputPom();
+    }
+
+    public List<String> getListeners() {
+        return listeners;
+    }
+
+    public void setListeners(List<String> listeners) {
+        this.listeners = listeners != null ? new ArrayList<>(listeners) : new ArrayList<>();
+    }
+
+    public List<String> getListenerFactories() {
+        return listenerFactories;
+    }
+
+    public void setListenerFactories(List<String> listenerFactories) {
+        this.listenerFactories = listenerFactories != null ? new ArrayList<>(listenerFactories) : new ArrayList<>();
     }
 
 }

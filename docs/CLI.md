@@ -126,6 +126,8 @@ karate run tests/
 | `--runtime-log-level <level>` | SLF4J logger level for console output |
 | `-f, --format <formats>` | Output formats (see below) |
 | `--log-mask <presets>` | Log masking presets (comma-separated) |
+| `--listener <classes>` | Comma-separated RunListener class names |
+| `--listener-factory <classes>` | Comma-separated RunListenerFactory class names |
 
 ### Output Formats
 
@@ -242,7 +244,9 @@ The project file name is `karate-pom.json` (inspired by Maven's POM concept). Wh
       {"regex": "secret[=:]\\s*([^\\s]+)", "replacement": "***"}
     ],
     "headers": ["Authorization", "X-Api-Key"]
-  }
+  },
+  "listeners": ["com.example.MyListener"],
+  "listenerFactories": ["com.example.MyListenerFactory"]
 }
 ```
 

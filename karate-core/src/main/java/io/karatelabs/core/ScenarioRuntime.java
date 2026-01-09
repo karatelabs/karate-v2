@@ -698,7 +698,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         result.setThreadName(threadName);
 
         try {
-            // Fire SCENARIO_ENTER event (RuntimeHookAdapter calls beforeScenario)
+            // Fire SCENARIO_ENTER event
             Suite suite = featureRuntime != null ? featureRuntime.getSuite() : null;
             if (suite != null) {
                 boolean proceed = suite.fireEvent(ScenarioRunEvent.enter(this));
@@ -753,7 +753,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
             error = t;
             stopped = true;
         } finally {
-            // Note: afterScenario is called via SCENARIO_EXIT event through RuntimeHookAdapter
+            // Note: SCENARIO_EXIT event was already fired above
 
             // Report the last perf event (with any failure message including file:line info)
             // This must happen before the scenario ends so Gatling receives all HTTP metrics

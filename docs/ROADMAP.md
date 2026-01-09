@@ -27,7 +27,8 @@ The Gherkin parser lives in `karate-js` (reuses the JS lexer). The ScenarioEngin
 - [x] Data tables for parameterized steps
 - [x] Tags parsing
 - [x] Parallel scenario execution (virtual threads)
-- [x] RuntimeHook interface (Before/After suite/feature/scenario)
+- [x] RunListener interface (unified event system for test execution)
+- [x] RunListenerFactory for per-thread listeners (debugger support)
 - [x] ResultListener interface for result streaming
 - [x] JavaScript expression evaluation in steps
 - [x] String interpolation with variable substitution
@@ -83,7 +84,7 @@ The Gherkin parser lives in `karate-js` (reuses the JS lexer). The ScenarioEngin
 
 - [x] `karate-config.js` support for global configuration
 - [x] Environment-based config (`karate.env`)
-- [x] RuntimeHook interface (before/after suite/feature/scenario)
+- [x] RunListener/RunListenerFactory for event-driven extensibility
 - [ ] Plugin system support
 - [x] `karate-base.js` (shared config from classpath JAR)
 
@@ -116,8 +117,9 @@ Integration with [Karate CLI](https://github.com/karatelabs/karate-cli):
 - [x] `-g, --configdir` - Config directory for karate-config.js
 - [x] `-C, --clean` - Clean output before run
 - [ ] `-d, --debug` - Debug mode with port
-- [ ] `-H, --hook` - Runtime hook classes
 - [x] ANSI colored console output
+- [ ] `--listener` - RunListener class by name
+- [ ] `--listener-factory` - RunListenerFactory class by name
 - [ ] Progress indicators (deferred - PROGRESS events)
 - [ ] Interactive mode for LLM sessions
 - [ ] Two-way `karate-pom.json` (deferred - serialize CLI to JSON and back)
@@ -279,7 +281,7 @@ Error-tolerant parsing for IDE features (syntax coloring, code completion, forma
 
 ### Event System (see [EVENTS.md](./EVENTS.md))
 
-Unified event system with backward compatibility for `RuntimeHook`:
+Unified event system for test execution lifecycle:
 
 - [x] `RunEventType` enum (SUITE_ENTER, SCENARIO_EXIT, etc.)
 - [x] `RunEvent` interface with full runtime object access and `isTopLevel()`
@@ -287,7 +289,6 @@ Unified event system with backward compatibility for `RuntimeHook`:
 - [x] `RunListenerFactory` for per-thread listeners (debugger support)
 - [x] Refactor Suite/FeatureRuntime/ScenarioRuntime/StepExecutor to use `fireEvent()`
 - [x] Events fire for all calls (use `isTopLevel()` to filter if needed)
-- [x] `RuntimeHookAdapter` for backward compatibility with existing hooks
 - [x] JSONL event stream for decoupled consumers (replayable, aggregatable)
 - [x] Review event data for reporting platforms (Allure, ReportPortal, JIRA/X-Ray)
 - [x] Cucumber JSON from FeatureResult (async per-feature, same data as JSONL)

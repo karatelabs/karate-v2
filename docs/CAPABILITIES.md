@@ -2,7 +2,7 @@
 
 Complete taxonomy of Karate capabilities - current, in-progress, and planned.
 
-> **Generated:** 2025-12-16 from `CAPABILITIES.yaml`
+> **Generated:** 2026-01-09 from `CAPABILITIES.yaml`
 >
 > See also: [Design Principles](./PRINCIPLES.md) | [Roadmap](./ROADMAP.md)
 
@@ -21,13 +21,13 @@ Complete taxonomy of Karate capabilities - current, in-progress, and planned.
 
 ## Summary
 
-**Total capabilities: 352**
+**Total capabilities: 353**
 
 | Category | Count |
 |----------|-------|
-| v1 features ported to v2 | 51 |
+| v1 features ported to v2 | 50 |
 | v1 features pending | 102 |
-| New in v2 (implemented) | 12 |
+| New in v2 (implemented) | 14 |
 | New in v2 (in progress) | 1 |
 | Planned | 16 |
 | Future / Wish list | 170 |
@@ -114,7 +114,8 @@ Foundation capabilities that power all test types
   - `[1.x  ]` External data sources (CSV, JSON)
 
 - `[1.x ✓]` Extensibility & Hooks
-  - `[1.x ✓]` RuntimeHook interface
+  - `[v2]` RunListener interface (unified event system)
+  - `[v2]` RunListenerFactory (per-thread listeners)
   - `[1.x ✓]` Before/After scenario hooks
   - `[1.x ✓]` Before/After feature hooks
   - `[-]` JavaScript hooks

@@ -86,10 +86,7 @@ public class Suite {
     // System properties (available via karate.properties)
     private Map<String, String> systemProperties;
 
-    // Hooks (legacy)
-    private final List<RuntimeHook> hooks = new ArrayList<>();
-
-    // Run event listeners (new unified event system)
+    // Run event listeners
     private final List<RunListener> listeners = new ArrayList<>();
     private final List<RunListenerFactory> listenerFactories = new ArrayList<>();
     private final ThreadLocal<List<RunListener>> threadListeners = new ThreadLocal<>();
@@ -194,18 +191,6 @@ public class Suite {
 
     public Suite env(String env) {
         this.env = env;
-        return this;
-    }
-
-    /**
-     * Add a runtime hook (legacy API). The hook is wrapped as a RunListener
-     * and receives events through the unified event system.
-     * @param hook the hook
-     * @return this suite for chaining
-     */
-    public Suite hook(RuntimeHook hook) {
-        this.hooks.add(hook);  // Keep for getHooks() backward compatibility
-        this.listeners.add(new RuntimeHookAdapter(hook));  // Wrap as listener
         return this;
     }
 
@@ -756,10 +741,6 @@ public class Suite {
 
     public String getConfigEnvContent() {
         return configEnvContent;
-    }
-
-    public List<RuntimeHook> getHooks() {
-        return hooks;
     }
 
     public List<RunListener> getListeners() {

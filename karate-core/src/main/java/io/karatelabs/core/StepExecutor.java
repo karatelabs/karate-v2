@@ -90,7 +90,7 @@ public class StepExecutor {
         long startNanos = System.nanoTime();
         stepCallResults = null;  // Clear for this step
 
-        // Fire STEP_ENTER event (RuntimeHookAdapter calls beforeStep)
+        // Fire STEP_ENTER event
         Suite suite = getSuite();
         if (suite != null) {
             boolean proceed = suite.fireEvent(StepRunEvent.enter(step, runtime));
@@ -191,7 +191,7 @@ public class StepExecutor {
             StepResult result = StepResult.passed(step, startTime, elapsedNanos);
             collectLogsAndEmbeds(result);
 
-            // Fire STEP_EXIT event (RuntimeHookAdapter calls afterStep)
+            // Fire STEP_EXIT event
             if (suite != null) {
                 suite.fireEvent(StepRunEvent.exit(result, runtime));
             }
@@ -203,7 +203,7 @@ public class StepExecutor {
             StepResult result = StepResult.failed(step, startTime, elapsedNanos, e);
             collectLogsAndEmbeds(result);
 
-            // Fire STEP_EXIT event (RuntimeHookAdapter calls afterStep)
+            // Fire STEP_EXIT event
             if (suite != null) {
                 suite.fireEvent(StepRunEvent.exit(result, runtime));
             }

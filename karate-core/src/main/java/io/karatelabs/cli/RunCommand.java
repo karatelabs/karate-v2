@@ -171,6 +171,21 @@ public class RunCommand implements Callable<Integer> {
     )
     List<String> formats;
 
+    @Option(
+            names = {"--listener"},
+            split = ",",
+            description = "Comma-separated RunListener class names (must have no-arg constructor)"
+    )
+    List<String> listeners;
+
+    @Option(
+            names = {"--listener-factory"},
+            split = ",",
+            description = "Comma-separated RunListenerFactory class names (must have no-arg constructor). "
+                    + "Creates per-thread listener instances."
+    )
+    List<String> listenerFactories;
+
     // Loaded pom config
     private KaratePom pom;
 
@@ -274,6 +289,21 @@ public class RunCommand implements Callable<Integer> {
                 builder.outputCucumberJson(isFormatEnabled("cucumber:json", false));
                 builder.outputJunitXml(isFormatEnabled("junit:xml", false));
                 builder.outputJsonLines(isFormatEnabled("karate:jsonl", false));
+            }
+
+            // Listeners (CLI overrides pom)
+            List<String> effectiveListeners = resolveListeners();
+            if (effectiveListeners != null) {
+                for (String className : effectiveListeners) {
+                    builder.listenerFactory(className);  // handles both RunListener and RunListenerFactory
+                }
+            }
+
+            List<String> effectiveListenerFactories = resolveListenerFactories();
+            if (effectiveListenerFactories != null) {
+                for (String className : effectiveListenerFactories) {
+                    builder.listenerFactory(className);
+                }
             }
 
             // Run tests
@@ -387,6 +417,26 @@ public class RunCommand implements Callable<Integer> {
             return pom.getOutput().getLogLevel();
         }
         return null; // Use default (INFO)
+    }
+
+    private List<String> resolveListeners() {
+        if (listeners != null && !listeners.isEmpty()) {
+            return listeners;
+        }
+        if (pom != null && !pom.getListeners().isEmpty()) {
+            return pom.getListeners();
+        }
+        return null;
+    }
+
+    private List<String> resolveListenerFactories() {
+        if (listenerFactories != null && !listenerFactories.isEmpty()) {
+            return listenerFactories;
+        }
+        if (pom != null && !pom.getListenerFactories().isEmpty()) {
+            return pom.getListenerFactories();
+        }
+        return null;
     }
 
     /**
