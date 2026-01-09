@@ -73,7 +73,7 @@ public class Suite {
     private boolean outputJunitXml = false;
     private boolean outputCucumberJson = false;
     private boolean outputKarateJson = false;
-    private boolean backupReportDir = false;
+    private boolean backupReportDir = true;
     private boolean outputConsoleSummary = true;
 
     // Config content (loaded at Suite level, evaluated per-scenario)

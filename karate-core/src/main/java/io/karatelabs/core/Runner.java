@@ -163,7 +163,7 @@ public final class Runner {
         private boolean outputJunitXml;
         private boolean outputCucumberJson;
         private boolean outputKarateJson;
-        private boolean backupReportDir;
+        private boolean backupReportDir = true;
         private boolean outputConsoleSummary = true;
         private Map<String, String> systemProperties;
         private LogLevel logLevel = LogLevel.INFO;
