@@ -26,6 +26,7 @@ public enum RunEventType {
     FEATURE_ENTER, FEATURE_EXIT,
     SCENARIO_ENTER, SCENARIO_EXIT,
     STEP_ENTER, STEP_EXIT,
+    HTTP_ENTER, HTTP_EXIT,
     ERROR, PROGRESS
 }
 ```
@@ -36,8 +37,10 @@ public enum RunEventType {
 SUITE_ENTER
 ├── FEATURE_ENTER
 │   ├── SCENARIO_ENTER
-│   │   ├── STEP_ENTER → [execute] → STEP_EXIT
-│   │   └── ...
+│   │   ├── STEP_ENTER
+│   │   │   ├── HTTP_ENTER → [http request] → HTTP_EXIT  (if step makes HTTP call)
+│   │   │   └── ...
+│   │   └── STEP_EXIT
 │   └── SCENARIO_EXIT
 └── FEATURE_EXIT
 SUITE_EXIT
@@ -47,6 +50,7 @@ SUITE_EXIT
 - Events fire for **all** features including `call`ed ones - use `event.isTopLevel()` to filter
 - `ERROR` fires on exceptions; `STEP_EXIT` still fires after with failure in `StepResult`
 - Return `false` from `*_ENTER` events to skip execution
+- `HTTP_ENTER`/`HTTP_EXIT` fire for each HTTP request, including retries
 
 ---
 
@@ -61,7 +65,7 @@ public interface RunEvent {
 }
 ```
 
-Core event records: `SuiteRunEvent`, `FeatureRunEvent`, `ScenarioRunEvent`, `StepRunEvent`, `ErrorRunEvent`, `ProgressRunEvent`
+Core event records: `SuiteRunEvent`, `FeatureRunEvent`, `ScenarioRunEvent`, `StepRunEvent`, `HttpRunEvent`, `ErrorRunEvent`, `ProgressRunEvent`
 
 Each provides access to runtime objects (e.g., `ScenarioRuntime` for variable inspection, `FeatureRuntime` for call stack).
 
@@ -131,6 +135,91 @@ Suite.of("features/")
 
 ---
 
+## HTTP Events
+
+HTTP events enable extensions to capture request/response data for custom reports (e.g., OpenAPI coverage, request logging).
+
+### HttpRunEvent
+
+```java
+public record HttpRunEvent(
+    RunEventType type,           // HTTP_ENTER or HTTP_EXIT
+    HttpRequest request,         // The HTTP request
+    HttpResponse response,       // null for ENTER, populated for EXIT
+    ScenarioRuntime scenarioRuntime,
+    long timeStamp
+) implements RunEvent
+```
+
+**Key methods:**
+- `getCurrentStep()` - Returns the step that triggered this HTTP request (for correlation)
+- `request().toMap()` - Serialize request to JSON (url, method, headers, body)
+- `response().toMap()` - Serialize response to JSON (status, headers, body, responseTime)
+- `response().isSkipped()` - Returns true if request was skipped by listener
+
+### Capturing HTTP Data
+
+```java
+Suite.of("features/")
+    .listener(event -> switch (event) {
+        case HttpRunEvent e when e.type() == HTTP_EXIT -> {
+            Step step = e.getCurrentStep();
+            HttpRequest req = e.request();
+            HttpResponse res = e.response();
+
+            // Log or capture for reports
+            System.out.printf("%s %s -> %d%n",
+                req.getMethod(), req.getUrlAndPath(), res.getStatus());
+            yield true;
+        }
+        default -> true;
+    })
+    .run();
+```
+
+### Skipping/Mocking HTTP Requests
+
+Return `false` from `HTTP_ENTER` to skip the actual HTTP call. This enables commercial mocking tools:
+
+```java
+Suite.of("features/")
+    .listener(event -> switch (event) {
+        case HttpRunEvent e when e.type() == HTTP_ENTER -> {
+            // Return false to skip this request
+            yield !shouldMock(e.request());
+        }
+        case HttpRunEvent e when e.type() == HTTP_EXIT && e.response().isSkipped() -> {
+            // Inject mock response into runtime variables
+            e.scenarioRuntime().setVariable("response", mockBody);
+            e.scenarioRuntime().setVariable("responseStatus", 200);
+            yield true;
+        }
+        default -> true;
+    })
+    .run();
+```
+
+### Adding HTTP Data to Embeds
+
+Use `LogContext` to add HTTP data as step embeds (for HTML reports):
+
+```java
+case HttpRunEvent e when e.type() == HTTP_EXIT -> {
+    Map<String, Object> httpData = new LinkedHashMap<>();
+    httpData.put("request", e.request().toMap());
+    httpData.put("response", e.response().toMap());
+
+    LogContext.get().embed(
+        Json.stringify(httpData).getBytes(),
+        "application/json",
+        "http-exchange"
+    );
+    yield true;
+}
+```
+
+---
+
 ## JSONL Event Stream
 
 Karate writes events to `karate-events.jsonl` with a standard envelope:
@@ -138,6 +227,8 @@ Karate writes events to `karate-events.jsonl` with a standard envelope:
 ```json
 {"type":"FEATURE_EXIT","ts":1703500000200,"threadId":"worker-1","data":{...}}
 ```
+
+**Note:** STEP and HTTP events are **not** written to JSONL (too granular). Commercial listeners can capture HTTP data and add to step embeds, which appear in `FEATURE_EXIT` results.
 
 | Field | Description |
 |-------|-------------|
@@ -168,7 +259,6 @@ See [REPORTS.md](./REPORTS.md#jsonl-event-stream) for complete format specificat
 
 | Type | Purpose |
 |------|---------|
-| `HTTP` | Request/response capture with cURL export |
 | `MOCK_REQUEST` | Mock server request handling |
 | `CALL_ENTER` / `CALL_EXIT` | Feature call tracking (opt-in) |
 | `RETRY` | Scenario retry attempts |
@@ -180,7 +270,9 @@ See [REPORTS.md](./REPORTS.md#jsonl-event-stream) for complete format specificat
 | File | Description |
 |------|-------------|
 | `RunEventType.java` | Event type enum |
-| `RunEvent.java` | Event interface and record implementations |
+| `RunEvent.java` | Event interface |
+| `HttpRunEvent.java` | HTTP request/response event record |
+| `StepRunEvent.java` | Step enter/exit event record |
 | `RunListener.java` | Listener interface |
 | `RunListenerFactory.java` | Per-thread listener factory |
 | `JsonLinesEventWriter.java` | JSONL file writer |

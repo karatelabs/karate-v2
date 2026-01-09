@@ -36,6 +36,8 @@ public enum RunEventType {
     SCENARIO_EXIT,
     STEP_ENTER,
     STEP_EXIT,
+    HTTP_ENTER,
+    HTTP_EXIT,
     ERROR,
     PROGRESS
 }

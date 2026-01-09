@@ -102,6 +102,15 @@ public class JsonLinesEventWriter implements RunListener, Closeable {
             return true;
         }
 
+        // Skip step-level and HTTP events - too granular for JSONL stream.
+        // Commercial listeners can capture HTTP data and add to step embeds,
+        // which will appear in FEATURE_EXIT results.
+        RunEventType type = event.getType();
+        if (type == RunEventType.STEP_ENTER || type == RunEventType.STEP_EXIT
+                || type == RunEventType.HTTP_ENTER || type == RunEventType.HTTP_EXIT) {
+            return true;
+        }
+
         try {
             Map<String, Object> envelope = new LinkedHashMap<>();
             envelope.put("type", event.getType().name());

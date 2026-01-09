@@ -94,7 +94,10 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
 
         // KarateJs owns the Engine and HTTP infrastructure
         Resource featureResource = scenario.getFeature().getResource();
-        this.karate = new KarateJs(featureResource);
+        // Use custom HTTP client factory from Suite if configured
+        Suite suite = featureRuntime != null ? featureRuntime.getSuite() : null;
+        io.karatelabs.http.HttpClientFactory factory = suite != null ? suite.getHttpClientFactory() : null;
+        this.karate = factory != null ? new KarateJs(featureResource, factory) : new KarateJs(featureResource);
 
         this.executor = new StepExecutor(this);
         this.result = new ScenarioResult(scenario);

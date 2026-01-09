@@ -1857,9 +1857,31 @@ public class StepExecutor {
         String retryUntil = http().getRetryUntil();
         HttpResponse response;
         if (retryUntil != null) {
+            // Retry logic handles its own HTTP events per attempt
             response = executeMethodWithRetry(method, retryUntil, config);
         } else {
-            response = http().invoke(method);
+            // Build request for HTTP_ENTER event
+            http().method(method);
+            HttpRequest request = http().build();
+
+            // Fire HTTP_ENTER event - listener can return false to skip
+            Suite suite = getSuite();
+            boolean shouldProceed = true;
+            if (suite != null) {
+                shouldProceed = suite.fireEvent(HttpRunEvent.enter(request, runtime));
+            }
+
+            if (shouldProceed) {
+                response = http().invoke(method);
+            } else {
+                // Request skipped by listener
+                response = HttpResponse.skipped(request);
+            }
+
+            // Fire HTTP_EXIT event (always, even for skipped)
+            if (suite != null) {
+                suite.fireEvent(HttpRunEvent.exit(response.getRequest(), response, runtime));
+            }
         }
 
         // Track previous request for karate.prevRequest
@@ -1921,6 +1943,7 @@ public class StepExecutor {
         int maxRetries = config.getRetryCount();
         int sleepInterval = config.getRetryInterval();
         int retryCount = 0;
+        Suite suite = getSuite();
 
         while (true) {
             if (retryCount == maxRetries) {
@@ -1938,7 +1961,29 @@ public class StepExecutor {
 
             // Make a copy of the request builder to preserve state for retry
             HttpRequestBuilder httpCopy = http().copy();
-            HttpResponse response = http().invoke(method);
+
+            // Build request for HTTP_ENTER event
+            http().method(method);
+            HttpRequest request = http().build();
+
+            // Fire HTTP_ENTER event - listener can return false to skip
+            boolean shouldProceed = true;
+            if (suite != null) {
+                shouldProceed = suite.fireEvent(HttpRunEvent.enter(request, runtime));
+            }
+
+            HttpResponse response;
+            if (shouldProceed) {
+                response = http().invoke(method);
+            } else {
+                // Request skipped by listener
+                response = HttpResponse.skipped(request);
+            }
+
+            // Fire HTTP_EXIT event (always, even for skipped)
+            if (suite != null) {
+                suite.fireEvent(HttpRunEvent.exit(response.getRequest(), response, runtime));
+            }
 
             // Set response variables so the condition can access them
             setResponseVariables(response);

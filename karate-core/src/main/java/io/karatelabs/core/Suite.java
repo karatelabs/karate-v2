@@ -108,6 +108,9 @@ public class Suite {
     // Performance testing hook (for Gatling integration)
     private PerfHook perfHook;
 
+    // HTTP client factory (for custom/mock HTTP clients)
+    private io.karatelabs.http.HttpClientFactory httpClientFactory;
+
     private Suite() {
     }
 
@@ -802,6 +805,22 @@ public class Suite {
     public Suite perfHook(PerfHook hook) {
         this.perfHook = hook;
         return this;
+    }
+
+    /**
+     * Set the HTTP client factory for custom/mock HTTP clients.
+     * When set, this factory is used instead of the default Netty client.
+     */
+    public Suite httpClientFactory(io.karatelabs.http.HttpClientFactory factory) {
+        this.httpClientFactory = factory;
+        return this;
+    }
+
+    /**
+     * Get the HTTP client factory, or null if using the default.
+     */
+    public io.karatelabs.http.HttpClientFactory getHttpClientFactory() {
+        return httpClientFactory;
     }
 
     /**

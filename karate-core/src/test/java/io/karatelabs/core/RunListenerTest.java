@@ -25,12 +25,15 @@ package io.karatelabs.core;
 
 import io.karatelabs.common.Resource;
 import io.karatelabs.gherkin.Feature;
+import io.karatelabs.http.HttpRequest;
+import io.karatelabs.http.HttpResponse;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static io.karatelabs.core.InMemoryHttpClient.json;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -42,7 +45,7 @@ class RunListenerTest {
     void testRunEventTypeValues() {
         // Verify all expected event types exist
         RunEventType[] types = RunEventType.values();
-        assertEquals(10, types.length);
+        assertEquals(12, types.length);  // Added HTTP_ENTER, HTTP_EXIT
 
         // Verify specific types
         assertNotNull(RunEventType.SUITE_ENTER);
@@ -429,6 +432,223 @@ class RunListenerTest {
         // Note: Currently skipping via listener doesn't affect the result yet
         // This test verifies the listener receives the event
         assertNotNull(result);
+    }
+
+    // ========== HTTP Event Tests ==========
+
+    @Test
+    void testHttpEventsAreFiredDuringExecution() {
+        List<RunEvent> httpEvents = new ArrayList<>();
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> json("{ \"id\": 1 }"));
+
+        String featureText = """
+            Feature: HTTP Events Test
+              Scenario: Make HTTP request
+                * url 'http://test'
+                * method get
+                * status 200
+            """;
+        Feature feature = Feature.read(Resource.text(featureText));
+
+        Suite suite = Suite.of(feature)
+            .writeReport(false)
+            .outputHtmlReport(false)
+            .outputConsoleSummary(false)
+            .httpClientFactory(() -> client)
+            .listener(event -> {
+                if (event instanceof HttpRunEvent) {
+                    httpEvents.add(event);
+                }
+                return true;
+            });
+
+        SuiteResult result = suite.run();
+
+        // Verify HTTP events were fired
+        assertFalse(result.isFailed());
+        assertEquals(2, httpEvents.size(), "Should have HTTP_ENTER and HTTP_EXIT");
+
+        // Verify HTTP_ENTER
+        HttpRunEvent enterEvent = (HttpRunEvent) httpEvents.get(0);
+        assertEquals(RunEventType.HTTP_ENTER, enterEvent.type());
+        assertNotNull(enterEvent.request());
+        assertEquals("GET", enterEvent.request().getMethod());
+        assertNull(enterEvent.response()); // null for ENTER
+
+        // Verify HTTP_EXIT
+        HttpRunEvent exitEvent = (HttpRunEvent) httpEvents.get(1);
+        assertEquals(RunEventType.HTTP_EXIT, exitEvent.type());
+        assertNotNull(exitEvent.request());
+        assertNotNull(exitEvent.response());
+        assertEquals(200, exitEvent.response().getStatus());
+    }
+
+    @Test
+    void testHttpRunEventToJson() {
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> json("{ \"ok\": true }"));
+        List<Map<String, Object>> jsonEvents = new ArrayList<>();
+
+        String featureText = """
+            Feature: HTTP JSON Test
+              Scenario: Check toJson
+                * url 'http://test/api/users'
+                * method post
+                * status 200
+            """;
+        Feature feature = Feature.read(Resource.text(featureText));
+
+        Suite suite = Suite.of(feature)
+            .writeReport(false)
+            .outputHtmlReport(false)
+            .outputConsoleSummary(false)
+            .httpClientFactory(() -> client)
+            .listener(event -> {
+                if (event instanceof HttpRunEvent e && e.type() == RunEventType.HTTP_EXIT) {
+                    jsonEvents.add(e.toJson());
+                }
+                return true;
+            });
+
+        suite.run();
+
+        assertEquals(1, jsonEvents.size());
+        Map<String, Object> json = jsonEvents.get(0);
+        assertEquals("POST", json.get("method"));
+        assertTrue(json.get("url").toString().contains("/api/users"));
+        assertEquals(200, json.get("status"));
+    }
+
+    @Test
+    void testHttpRunEventGetCurrentStep() {
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> json("{ \"ok\": true }"));
+        List<String> stepTexts = new ArrayList<>();
+
+        String featureText = """
+            Feature: Step Correlation Test
+              Scenario: Correlate HTTP to step
+                * url 'http://test'
+                * method get
+                * status 200
+            """;
+        Feature feature = Feature.read(Resource.text(featureText));
+
+        Suite suite = Suite.of(feature)
+            .writeReport(false)
+            .outputHtmlReport(false)
+            .outputConsoleSummary(false)
+            .httpClientFactory(() -> client)
+            .listener(event -> {
+                if (event instanceof HttpRunEvent e && e.type() == RunEventType.HTTP_EXIT) {
+                    var step = e.getCurrentStep();
+                    if (step != null) {
+                        stepTexts.add(step.getText());
+                    }
+                }
+                return true;
+            });
+
+        suite.run();
+
+        assertEquals(1, stepTexts.size());
+        assertEquals("get", stepTexts.get(0)); // "method get" step
+    }
+
+    @Test
+    void testHttpEnterReturnFalseSkipsRequest() {
+        // Track if the real HTTP client was called
+        boolean[] clientCalled = {false};
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            clientCalled[0] = true;
+            return json("{ \"real\": true }");
+        });
+
+        List<HttpRunEvent> httpEvents = new ArrayList<>();
+
+        String featureText = """
+            Feature: Skip HTTP Test
+              Scenario: Request should be skipped
+                * url 'http://test'
+                * method get
+            """;
+        Feature feature = Feature.read(Resource.text(featureText));
+
+        Suite suite = Suite.of(feature)
+            .writeReport(false)
+            .outputHtmlReport(false)
+            .outputConsoleSummary(false)
+            .httpClientFactory(() -> client)
+            .listener(event -> {
+                if (event instanceof HttpRunEvent e) {
+                    httpEvents.add(e);
+                    if (e.type() == RunEventType.HTTP_ENTER) {
+                        return false; // Skip the request
+                    }
+                }
+                return true;
+            });
+
+        suite.run();
+
+        // Verify client was NOT called
+        assertFalse(clientCalled[0], "HTTP client should not be called when request is skipped");
+
+        // Verify we still got both events
+        assertEquals(2, httpEvents.size());
+
+        // Verify response is marked as skipped
+        HttpRunEvent exitEvent = httpEvents.get(1);
+        assertEquals(RunEventType.HTTP_EXIT, exitEvent.type());
+        assertTrue(exitEvent.response().isSkipped());
+        assertEquals(0, exitEvent.response().getStatus());
+    }
+
+    @Test
+    void testMultipleHttpRequestsFireMultipleEvents() {
+        InMemoryHttpClient client = new InMemoryHttpClient(req -> {
+            String path = req.getPath();
+            if (path.contains("first")) return json("{ \"id\": 1 }");
+            if (path.contains("second")) return json("{ \"id\": 2 }");
+            return json("{}");
+        });
+
+        List<HttpRunEvent> httpEvents = new ArrayList<>();
+
+        String featureText = """
+            Feature: Multiple HTTP Test
+              Scenario: Two requests
+                * url 'http://test/first'
+                * method get
+                * status 200
+                * url 'http://test/second'
+                * method get
+                * status 200
+            """;
+        Feature feature = Feature.read(Resource.text(featureText));
+
+        Suite suite = Suite.of(feature)
+            .writeReport(false)
+            .outputHtmlReport(false)
+            .outputConsoleSummary(false)
+            .httpClientFactory(() -> client)
+            .listener(event -> {
+                if (event instanceof HttpRunEvent e) {
+                    httpEvents.add(e);
+                }
+                return true;
+            });
+
+        suite.run();
+
+        // Should have 4 events: ENTER, EXIT, ENTER, EXIT
+        assertEquals(4, httpEvents.size());
+        assertEquals(RunEventType.HTTP_ENTER, httpEvents.get(0).type());
+        assertEquals(RunEventType.HTTP_EXIT, httpEvents.get(1).type());
+        assertEquals(RunEventType.HTTP_ENTER, httpEvents.get(2).type());
+        assertEquals(RunEventType.HTTP_EXIT, httpEvents.get(3).type());
+
+        // Verify different URLs
+        assertTrue(httpEvents.get(1).request().getUrlAndPath().contains("first"));
+        assertTrue(httpEvents.get(3).request().getUrlAndPath().contains("second"));
     }
 
 }

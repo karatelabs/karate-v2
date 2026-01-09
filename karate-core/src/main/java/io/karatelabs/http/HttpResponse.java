@@ -247,6 +247,26 @@ public class HttpResponse implements SimpleObject {
         return map;
     }
 
+    /**
+     * Creates a skipped response for when a listener returns false from HTTP_ENTER.
+     * The status is set to 0 to indicate the request was not actually made.
+     */
+    public static HttpResponse skipped(HttpRequest request) {
+        HttpResponse response = new HttpResponse();
+        response.setRequest(request);
+        response.setStatus(0);
+        response.setHeaders(java.util.Collections.emptyMap());
+        return response;
+    }
+
+    /**
+     * Returns true if this response represents a skipped request.
+     * A request is skipped when a listener returns false from HTTP_ENTER event.
+     */
+    public boolean isSkipped() {
+        return status == 0;
+    }
+
     private Invokable header() {
         return args -> {
             if (args.length > 0) {
