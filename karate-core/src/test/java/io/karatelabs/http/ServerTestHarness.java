@@ -1,5 +1,6 @@
 package io.karatelabs.http;
 
+import io.karatelabs.common.Resource;
 import io.karatelabs.js.Engine;
 import io.karatelabs.markup.Markup;
 import io.karatelabs.markup.RootResourceResolver;
@@ -55,6 +56,7 @@ public class ServerTestHarness implements AutoCloseable {
     private HttpClient client;
     private Function<RequestContext, HttpResponse> handler;
     private int port;
+    private Session sharedSession;
 
     public ServerTestHarness(String resourceRoot) {
         this.resourceRoot = resourceRoot;
@@ -67,6 +69,7 @@ public class ServerTestHarness implements AutoCloseable {
     }
 
     public void start() {
+        sharedSession = Session.inMemory();
         server = HttpServer.start(0, this::handleRequest);
         port = server.getPort();
         client = new ApacheHttpClient();
@@ -116,7 +119,7 @@ public class ServerTestHarness implements AutoCloseable {
             response.setBody("no handler configured");
             return response;
         }
-        RequestContext ctx = new RequestContext(request, resolver);
+        RequestContext ctx = new RequestContext(request, resolver, sharedSession);
         try {
             return handler.apply(ctx);
         } catch (Exception e) {
@@ -172,9 +175,13 @@ public class ServerTestHarness implements AutoCloseable {
         private Markup markup;
 
         public RequestContext(HttpRequest request, ResourceResolver resolver) {
+            this(request, resolver, Session.inMemory());
+        }
+
+        public RequestContext(HttpRequest request, ResourceResolver resolver, Session session) {
             this.request = request;
             this.response = new HttpResponse();
-            this.session = Session.inMemory();
+            this.session = session;
             this.engine = new Engine();
             this.resolver = resolver;
 
@@ -212,6 +219,19 @@ public class ServerTestHarness implements AutoCloseable {
          */
         public Object evalWith(String js, Map<String, Object> vars) {
             return engine.evalWith(js, vars);
+        }
+
+        /**
+         * Evaluate a JavaScript file from classpath or file system.
+         * The file is evaluated as a block with request/response/session available.
+         *
+         * @param resourcePath path to JS file (supports "classpath:" prefix)
+         * @return evaluation result
+         */
+        public Object evalFile(String resourcePath) {
+            Resource resource = Resource.path(resourcePath);
+            String js = resource.getText();
+            return engine.eval(js);
         }
 
         /**

@@ -391,6 +391,83 @@ class ServerIntegrationTest {
         assertEquals("Hello, Karate!", response.getBodyString());
     }
 
+    // ========== JS File-Based Mock Tests ==========
+
+    @Test
+    void testJsFileMockCrud() {
+        harness.setHandler(ctx -> {
+            ctx.evalFile("classpath:mocks/crud-mock.js");
+            return ctx.response();
+        });
+
+        // POST - create a unique item
+        String uniqueName = "Widget-" + System.currentTimeMillis();
+        HttpResponse response = harness.post("/items", Map.of("name", uniqueName, "price", 9.99));
+        assertEquals(201, response.getStatus());
+        assertTrue(response.getBodyString().contains(uniqueName));
+
+        // Extract ID from response
+        String body = response.getBodyString();
+        // Body is like {"name":"Widget-xxx","price":9.99,"id":"3"}
+        int idStart = body.indexOf("\"id\":\"") + 6;
+        int idEnd = body.indexOf("\"", idStart);
+        String id = body.substring(idStart, idEnd);
+
+        // GET - retrieve the item by ID
+        response = harness.get("/items/" + id);
+        assertEquals(200, response.getStatus());
+        assertTrue(response.getBodyString().contains(uniqueName));
+    }
+
+    @Test
+    void testJsFileMockNotFound() {
+        harness.setHandler(ctx -> {
+            ctx.evalFile("classpath:mocks/crud-mock.js");
+            return ctx.response();
+        });
+
+        // GET non-existent item with unique ID
+        HttpResponse response = harness.get("/items/nonexistent-999");
+        assertEquals(404, response.getStatus());
+        assertTrue(response.getBodyString().contains("Not found"));
+    }
+
+    @Test
+    void testJsFileMockUnknownPath() {
+        harness.setHandler(ctx -> {
+            ctx.evalFile("classpath:mocks/crud-mock.js");
+            return ctx.response();
+        });
+
+        // Request to unknown path
+        HttpResponse response = harness.get("/unknown/path");
+        assertEquals(404, response.getStatus());
+        assertTrue(response.getBodyString().contains("Unknown path"));
+    }
+
+    @Test
+    void testJsFileMockSessionPersistence() {
+        // Test that session persists across requests
+        harness.setHandler(ctx -> {
+            ctx.evalFile("classpath:mocks/crud-mock.js");
+            return ctx.response();
+        });
+
+        // Create item with unique name
+        String name1 = "SessionTest-" + System.currentTimeMillis();
+        harness.post("/items", Map.of("name", name1));
+
+        // Create another item
+        String name2 = "SessionTest2-" + System.currentTimeMillis();
+        harness.post("/items", Map.of("name", name2));
+
+        // List should have both items we just created
+        HttpResponse response = harness.get("/items");
+        assertEquals(200, response.getStatus());
+        assertTrue(response.getBodyString().contains(name1));
+        assertTrue(response.getBodyString().contains(name2));
+    }
+
     @Test
     void testSimpleObjectInServerScope() {
         TestUtils utils = new TestUtils();

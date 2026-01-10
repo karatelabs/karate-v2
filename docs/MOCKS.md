@@ -234,6 +234,111 @@ Scenario: pathMatches('/increment')
 
 ---
 
+## JavaScript File Handlers
+
+For programmatic control, you can use pure JavaScript files instead of feature files. This is useful for:
+- Integration testing with custom server setups
+- Embedding mock logic in Java applications
+- Dynamic request routing without Gherkin overhead
+
+### JS File Structure
+
+```javascript
+// mock.js - evaluated as a block for each request
+// Available: request, response, session
+
+session.items = session.items || {};
+session.counter = session.counter || 1;
+
+if (request.pathMatches('/items/{id}')) {
+    var id = request.pathParams.id;
+    if (request.get) {
+        var item = session.items[id];
+        if (item) {
+            response.body = item;
+        } else {
+            response.status = 404;
+            response.body = { error: 'Not found' };
+        }
+    } else if (request.delete) {
+        delete session.items[id];
+        response.status = 204;
+    }
+} else if (request.pathMatches('/items')) {
+    if (request.get) {
+        response.body = Object.values(session.items);
+    } else if (request.post) {
+        var id = '' + session.counter++;
+        var item = request.body;
+        item.id = id;
+        session.items[id] = item;
+        response.status = 201;
+        response.body = item;
+    }
+} else {
+    response.status = 404;
+    response.body = { error: 'Unknown path' };
+}
+```
+
+### Using JS Files with ServerTestHarness
+
+For integration testing:
+
+```java
+import io.karatelabs.http.ServerTestHarness;
+
+ServerTestHarness harness = new ServerTestHarness("classpath:mocks");
+harness.start();
+
+harness.setHandler(ctx -> {
+    ctx.evalFile("classpath:mocks/crud-mock.js");
+    return ctx.response();
+});
+
+// Make requests
+HttpResponse response = harness.post("/items", Map.of("name", "Widget"));
+assertEquals(201, response.getStatus());
+
+harness.stop();
+```
+
+### Using JS Files with HttpServer Directly
+
+For production use:
+
+```java
+import io.karatelabs.common.Resource;
+import io.karatelabs.http.HttpServer;
+import io.karatelabs.http.Session;
+import io.karatelabs.js.Engine;
+
+Session session = Session.inMemory();
+String mockJs = Resource.path("classpath:mocks/api.js").getText();
+
+HttpServer server = HttpServer.start(8080, request -> {
+    HttpResponse response = new HttpResponse();
+    Engine engine = new Engine();
+    engine.put("request", request);
+    engine.put("response", response);
+    engine.put("session", session);
+    engine.eval(mockJs);
+    return response;
+});
+```
+
+### Available Objects in JS Files
+
+Same as feature file mocks:
+
+| Object | Description |
+|--------|-------------|
+| `request` | HTTP request with `get`, `post`, `put`, `delete`, `pathMatches()`, `pathParams`, `body`, `param()` |
+| `response` | HTTP response with `status`, `body`, `headers` |
+| `session` | Persistent state across requests |
+
+---
+
 ## Proxy Mode
 
 Forward requests to a real backend:
