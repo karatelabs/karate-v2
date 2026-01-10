@@ -619,12 +619,13 @@ public class KarateJsUtils {
                 return "bytes";
             } else if (value instanceof List) {
                 return "list";
+            } else if (value instanceof JsCallable || value instanceof Invokable) {
+                // Check JsCallable BEFORE Map (JsFunction extends JsObject which implements Map)
+                return "function";
             } else if (value instanceof Map) {
                 return "map";
             } else if (value instanceof Node) {
                 return "xml";
-            } else if (value instanceof JsCallable || value instanceof Invokable) {
-                return "function";
             }
             return "object";
         };

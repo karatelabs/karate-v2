@@ -139,8 +139,7 @@ public class StepUtils {
         if (value == null) {
             return null;
         }
-        // JsFunction extends JsObject which implements Map, but we don't want to
-        // deep-copy functions - return them unchanged
+        // JsCallable functions shouldn't be deep-copied - return them unchanged
         if (value instanceof io.karatelabs.js.JsCallable) {
             return value;
         }

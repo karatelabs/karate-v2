@@ -479,9 +479,10 @@ public class Terms {
             return o.toString();
         }
         switch (o) {
-            case JsArray keyValues -> {
+            case JsArray jsArray -> {
                 // Use StringUtils.formatJson to avoid recursion issues with JSONValue
-                return StringUtils.formatJson(keyValues.toList(), false, false, false);
+                // JsArray implements List, so pass it directly
+                return StringUtils.formatJson(jsArray, false, false, false);
             }
             case JsFunction ignored -> {
                 return "[object Object]";

@@ -146,11 +146,16 @@ Collections have two access modes:
 | **JS internal** | `getElement(int)` / `getMember(String)` | Raw (undefined, JsDate) | JS engine internals |
 
 ```java
-// JsArray implements List<Object>
-class JsArray extends JsObject implements List<Object> {
+// JsArray uses composition (has-a JsObject) to avoid method signature conflicts
+class JsArray implements List<Object>, ObjectLike, JsCallable {
+    final List<Object> list;           // Internal storage
+    private final JsObject delegate;   // For named properties (arr.foo = "bar")
 
     // JS internal - raw values, ES6 semantics
     public Object getElement(int index) {
+        if (index < 0 || index >= list.size()) {
+            return Terms.UNDEFINED;  // Out of bounds returns undefined
+        }
         return list.get(index);  // Returns Terms.UNDEFINED, JsDate, etc.
     }
 

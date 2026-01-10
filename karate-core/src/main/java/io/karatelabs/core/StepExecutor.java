@@ -1810,7 +1810,7 @@ public class StepExecutor {
             }
         }
 
-        // Apply configured cookies before invoking request - may be a Map or a JsCallable function
+        // Apply configured cookies before invoking request - may be a Map or a JsCallable
         Object configCookies = config.getCookies();
         if (configCookies instanceof JsCallable cookiesFn) {
             // Call function to get cookies dynamically
@@ -1822,7 +1822,7 @@ public class StepExecutor {
             applyCookiesFromMap(cookieMap);
         }
 
-        // Apply configured headers - may be a Map or a JsCallable function
+        // Apply configured headers - may be a Map or a JsCallable
         Object configHeaders = config.getHeaders();
         if (configHeaders instanceof JsCallable headersFn) {
             // Build request first so function can access current state (for signing etc.)
@@ -2899,8 +2899,7 @@ public class StepExecutor {
             processXmlEmbeddedExpressions((Node) value);
             return value;
         } else if (value instanceof io.karatelabs.js.JsCallable) {
-            // JsFunction extends JsObject which implements Map, but we don't want to
-            // process functions as maps - return them unchanged
+            // JsCallable functions shouldn't be processed as maps - return them unchanged
             return value;
         } else if (value instanceof Map) {
             @SuppressWarnings("unchecked")

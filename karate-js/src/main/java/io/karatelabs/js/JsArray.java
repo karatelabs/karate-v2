@@ -33,7 +33,7 @@ import java.util.*;
  * Implements List<Object> for Java interop with auto-unwrapping - Java code gets clean values.
  * JS internal code uses getElement/setElement for raw access (returns UNDEFINED for out of bounds).
  */
-class JsArray implements List<Object>, ObjectLike, JsCallable {
+class JsArray implements List<Object>, ObjectLike, Invokable {
 
     final List<Object> list;
 
@@ -218,10 +218,8 @@ class JsArray implements List<Object>, ObjectLike, JsCallable {
                         List<Object> thisArray = rawList(context);
                         List<Object> result = new ArrayList<>(thisArray);
                         for (Object arg : args) {
-                            if (arg instanceof List) {
-                                result.addAll((List<Object>) arg);
-                            } else if (arg instanceof JsArray) {
-                                result.addAll(((JsArray) arg).toList());
+                            if (arg instanceof List list) {
+                                result.addAll(list);
                             } else {
                                 result.add(arg);
                             }
@@ -316,14 +314,8 @@ class JsArray implements List<Object>, ObjectLike, JsCallable {
                         int index = 0;
                         for (Object item : thisArray) {
                             Object mapped = callable.call(context, item, index, thisArray);
-                            if (mapped instanceof List || mapped instanceof JsArray) {
-                                List<Object> nestedList;
-                                if (mapped instanceof JsArray) {
-                                    nestedList = ((JsArray) mapped).toList();
-                                } else {
-                                    nestedList = (List<Object>) mapped;
-                                }
-                                mappedResult.addAll(nestedList);
+                            if (mapped instanceof List list) {
+                                mappedResult.addAll(list);
                             } else {
                                 mappedResult.add(mapped);
                             }
@@ -816,7 +808,8 @@ class JsArray implements List<Object>, ObjectLike, JsCallable {
 
     @Override
     public Object get(int index) {
-        return list.get(index);
+        // List.get() auto-unwraps for Java consumers (converts undefined to null, unwraps JavaMirror types)
+        return Engine.toJava(list.get(index));
     }
 
     @Override
@@ -972,14 +965,8 @@ class JsArray implements List<Object>, ObjectLike, JsCallable {
     @SuppressWarnings("unchecked")
     static void flatten(List<Object> source, List<Object> result, int depth) {
         for (Object item : source) {
-            if (depth > 0 && (item instanceof List || item instanceof JsArray)) {
-                List<Object> nestedList;
-                if (item instanceof JsArray) {
-                    nestedList = ((JsArray) item).toList();
-                } else {
-                    nestedList = (List<Object>) item;
-                }
-                flatten(nestedList, result, depth - 1);
+            if (depth > 0 && item instanceof List list) {
+                flatten(list, result, depth - 1);
             } else {
                 result.add(item);
             }
@@ -987,7 +974,7 @@ class JsArray implements List<Object>, ObjectLike, JsCallable {
     }
 
     @Override
-    public Object call(Context context, Object... args) {
+    public Object invoke(Object... args) {
         if (args.length == 1 && args[0] instanceof Number n) {
             int count = n.intValue();
             List<Object> list = new ArrayList<>();

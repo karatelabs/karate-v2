@@ -184,7 +184,8 @@ class JsonTest {
     void testJsonFormat() {
         Object o = Json.of("{redirect:{url:'/index'}}").value();
         String s = StringUtils.formatJson(o, false, false, false);
-        assertEquals("{ \"redirect\": { \"url\": \"/index\" } }", s);
+        // ES6-compliant compact JSON (no spaces)
+        assertEquals("{\"redirect\":{\"url\":\"/index\"}}", s);
     }
 
     @Test

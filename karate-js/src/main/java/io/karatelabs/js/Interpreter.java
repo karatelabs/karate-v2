@@ -211,10 +211,8 @@ class Interpreter {
             Node argNode = fnArgNode.get(0);
             if (argNode.isToken()) { // DOT_DOT_DOT
                 Object arg = eval(fnArgNode.get(1), context);
-                if (arg instanceof List) {
-                    argsList.addAll((List<Object>) arg);
-                } else if (arg instanceof JsArray array) {
-                    argsList.addAll(array.toList());
+                if (arg instanceof List list) {
+                    argsList.addAll(list);
                 }
             } else {
                 Object arg = eval(argNode, context);
@@ -413,7 +411,11 @@ class Interpreter {
                     JsArray restArray = new JsArray();
                     if (bindSource != null) {
                         for (int j = index; j < bindSource.size(); j++) {
-                            restArray.list.add(bindSource.get(j));
+                            // Use raw access for JsArray to preserve undefined values
+                            Object elem_ = bindSource instanceof JsArray arr
+                                    ? arr.getElement(j)
+                                    : bindSource.get(j);
+                            restArray.list.add(elem_);
                         }
                     }
                     context.declare(varName, restArray, toInfo(varName, bindingType, true));
@@ -435,9 +437,13 @@ class Interpreter {
                         value = evalExpr(exprNode.getFirst().getLast(), context);
                     }
                     if (bindSource != null && index < bindSource.size()) {
-                        Object temp = bindSource.get(index);
+                        // Use raw access to get actual value (including undefined)
+                        // JsArray.get() auto-unwraps, but we need raw values for destructuring
+                        Object temp = bindSource instanceof JsArray arr
+                                ? arr.getElement(index)
+                                : bindSource.get(index);
                         if (temp != Terms.UNDEFINED) {
-                            value = bindSource.get(index);
+                            value = temp;
                         }
                     }
                     context.declare(varName, value, toInfo(varName, bindingType, true));
@@ -458,7 +464,7 @@ class Interpreter {
         if (bindSource != null) {
             result = new HashMap<>(bindSource); // use to derive ...rest if it appears
         } else {
-            result = new LinkedHashMap<>(last - 1);
+            result = new JsObject(new LinkedHashMap<>(last - 1));
         }
         for (int i = 1; i < last; i++) {
             Node elem = node.get(i);

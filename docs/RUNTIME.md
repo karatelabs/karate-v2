@@ -309,6 +309,8 @@ See [GATLING.md](./GATLING.md) for the karate-gatling module plan, including `Pe
 | callSingle returning Java fn | `karate.callSingle('file.js')` where JS returns Java Function | Depends on above |
 | Tagged Examples in call/callSingle | `call 'file.feature@tag'` with `@tag` on Examples section | Tag on Examples should filter which outline rows to execute. V1: `call-single-tag-called.feature` |
 
+**RESOLVED:** The `JsCallable` vs `JsFunction` issue has been fixed by changing `JsObject` and `JsArray` to implement `Invokable` instead of `JsCallable`. Now only actual callable functions (`JsFunction`, `JsBoolean`, `JsDate`, `JsNumber`, `JsString`, and Java interop callables) implement `JsCallable`, making `instanceof JsCallable` checks correct for identifying functions.
+
 ---
 
 ## karate.expect() Chai-Style Assertions

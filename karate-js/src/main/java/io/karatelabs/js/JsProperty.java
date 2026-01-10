@@ -226,16 +226,29 @@ class JsProperty {
             }
             throw new RuntimeException("cannot read properties of " + object + " (reading '" + name + "')");
         }
-        // Check JsObject/ObjectLike BEFORE Map (JsObject implements Map)
+        // Check JsObject/JsArray BEFORE generic ObjectLike/Map
         // This ensures prototype chain lookup and raw value access for JS internals
-        if (object instanceof ObjectLike ol) {
-            Object result = ol.getMember(name);
+        if (object instanceof JsObject jsObj) {
+            // For JsObject, check if key exists to distinguish null from undefined
+            if (jsObj.containsKey(name)) {
+                return jsObj.getMember(name);  // Returns raw value including null
+            }
+            // Check prototype chain
+            Object result = jsObj.getMember(name);
             if (result != null && result != Terms.UNDEFINED) {
                 return result;
             }
-            // For JsObject/JsArray, return undefined if not found (no external bridge)
-            if (object instanceof JsObject || object instanceof JsArray) {
-                return Terms.UNDEFINED;
+            return Terms.UNDEFINED;
+        } else if (object instanceof JsArray jsArr) {
+            Object result = jsArr.getMember(name);
+            if (result != null && result != Terms.UNDEFINED) {
+                return result;
+            }
+            return Terms.UNDEFINED;
+        } else if (object instanceof ObjectLike ol) {
+            Object result = ol.getMember(name);
+            if (result != null && result != Terms.UNDEFINED) {
+                return result;
             }
             // For other ObjectLike (JavaObject, SimpleObject), fall through to external bridge
         } else if (object instanceof Map) {

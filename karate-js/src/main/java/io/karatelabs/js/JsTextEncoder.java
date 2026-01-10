@@ -44,7 +44,7 @@ class JsTextEncoder extends JsObject {
     }
 
     @Override
-    public Object call(Context context, Object... args) {
+    public Object invoke(Object... args) {
         return this;
     }
 

@@ -142,4 +142,57 @@ class JsJsonTest extends EvalBase {
         String expected = "{\n  \"keep\": \"yes\"\n}";
         assertEquals(expected, result);
     }
+
+    @Test
+    void testStringifyUndefinedInArray() {
+        // undefined in array becomes null in JSON
+        String result = (String) eval("JSON.stringify([1, undefined, 3])");
+        assertEquals("[1,null,3]", result);
+    }
+
+    @Test
+    void testStringifyJsNumber() {
+        // JsNumber wraps a number but should stringify as number
+        String result = (String) eval("JSON.stringify([new Number(42)])");
+        assertEquals("[42]", result);
+    }
+
+    @Test
+    void testStringifyJsString() {
+        // JsString wraps a string but should stringify as string
+        String result = (String) eval("JSON.stringify([new String('hello')])");
+        assertEquals("[\"hello\"]", result);
+    }
+
+    @Test
+    void testStringifyJsBoolean() {
+        // JsBoolean wraps a boolean but should stringify as boolean
+        String result = (String) eval("JSON.stringify([new Boolean(true)])");
+        assertEquals("[true]", result);
+    }
+
+    @Test
+    void testStringifyJsDate() {
+        // JsDate should stringify as ISO date string
+        String result = (String) eval("JSON.stringify([new Date(0)])");
+        // Date(0) is 1970-01-01T00:00:00.000Z
+        assertEquals("[\"1970-01-01T00:00:00.000Z\"]", result);
+    }
+
+    @Test
+    void testStringifyMixedJsTypes() {
+        // Test array with mixed JS wrapper types
+        String result = (String) eval("""
+            var arr = [new Number(1), new String('two'), new Boolean(false), undefined];
+            JSON.stringify(arr)
+        """);
+        assertEquals("[1,\"two\",false,null]", result);
+    }
+
+    @Test
+    void testStringifyObjectWithUndefinedValue() {
+        // undefined value in object should be omitted
+        String result = (String) eval("JSON.stringify({a: 1, b: undefined, c: 3})");
+        assertEquals("{\"a\":1,\"c\":3}", result);
+    }
 }

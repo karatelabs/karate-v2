@@ -23,9 +23,11 @@
  */
 package io.karatelabs.common;
 
+import io.karatelabs.js.JavaMirror;
 import io.karatelabs.js.JsCallable;
 import io.karatelabs.js.ObjectLike;
 import io.karatelabs.js.SimpleObject;
+import io.karatelabs.js.Terms;
 import net.minidev.json.JSONStyle;
 import net.minidev.json.JSONValue;
 
@@ -507,12 +509,17 @@ public class StringUtils {
     private static void formatRecurse(Object o, boolean pretty, boolean lenient, boolean sort, String indent, StringBuilder sb, int depth) {
         if (o == null) {
             sb.append("null");
+        } else if (o == Terms.UNDEFINED) {
+            // JSON has no undefined, convert to null
+            sb.append("null");
+        } else if (o instanceof JavaMirror jm) {
+            // Unwrap JS wrapper types (JsDate, JsNumber, JsString, JsBoolean) - check BEFORE Map/List
+            // because these types extend JsObject which implements Map
+            formatRecurse(jm.getJavaValue(), pretty, lenient, sort, indent, sb, depth);
         } else if (o instanceof List<?> list) {
             sb.append('[');
             if (pretty) {
                 sb.append('\n');
-            } else if (!list.isEmpty()) {
-                sb.append(' ');
             }
             Iterator<?> iterator = list.iterator();
             while (iterator.hasNext()) {
@@ -523,9 +530,6 @@ public class StringUtils {
                 formatRecurse(child, pretty, lenient, sort, indent, sb, depth + 1);
                 if (iterator.hasNext()) {
                     sb.append(',');
-                    if (!pretty) {
-                        sb.append(' ');
-                    }
                 }
                 if (pretty) {
                     sb.append('\n');
@@ -534,58 +538,44 @@ public class StringUtils {
             if (pretty) {
                 pad(sb, depth, indent);
             }
-            if (!pretty && !list.isEmpty()) {
-                sb.append(' ');
-            }
             sb.append(']');
+        } else if (o instanceof ObjectLike ol) {
+            // Use toMap() to get raw entries (without auto-unwrap) for ObjectLike types
+            // This preserves Terms.UNDEFINED so we can filter it out
+            Map<Object, Object> map = (Map<Object, Object>) (Map<?, ?>) ol.toMap();
+            if (sort) {
+                map = new TreeMap<>(map);
+            }
+            // Filter out undefined values (JSON has no undefined, and in objects they should be omitted)
+            List<Map.Entry<Object, Object>> entries = new ArrayList<>();
+            for (Map.Entry<Object, Object> entry : map.entrySet()) {
+                if (entry.getValue() != Terms.UNDEFINED) {
+                    entries.add(entry);
+                }
+            }
+            formatMap(entries, pretty, lenient, sort, indent, sb, depth);
         } else if (o instanceof Map) {
             // found a rare case where key was a boolean (not string)
             Map<Object, Object> map = (Map<Object, Object>) o;
             if (sort) {
                 map = new TreeMap<>(map);
             }
-            sb.append('{');
-            if (pretty) {
-                sb.append('\n');
-            } else if (!map.isEmpty()) {
-                sb.append(' ');
-            }
-            Iterator<Map.Entry<Object, Object>> iterator = map.entrySet().iterator();
-            while (iterator.hasNext()) {
-                Map.Entry<Object, Object> entry = iterator.next();
-                Object key = entry.getKey();
-                if (pretty) {
-                    pad(sb, depth + 1, indent);
-                }
-                if (lenient) {
-                    String escaped = escapeJsonValue(key == null ? null : key.toString());
-                    if (escaped != null && isValidJsonKey(escaped)) {
-                        sb.append(key);
-                    } else {
-                        sb.append('\'').append(escaped).append('\'');
-                    }
-                } else {
-                    sb.append('"').append(escapeJsonValue(key == null ? null : key.toString())).append('"');
-                }
-                sb.append(':').append(' ');
-                formatRecurse(entry.getValue(), pretty, lenient, sort, indent, sb, depth + 1);
-                if (iterator.hasNext()) {
-                    sb.append(',');
-                    if (!pretty) {
-                        sb.append(' ');
-                    }
-                }
-                if (pretty) {
-                    sb.append('\n');
+            // Filter out undefined values (JSON has no undefined, and in objects they should be omitted)
+            List<Map.Entry<Object, Object>> entries = new ArrayList<>();
+            for (Map.Entry<Object, Object> entry : map.entrySet()) {
+                if (entry.getValue() != Terms.UNDEFINED) {
+                    entries.add(entry);
                 }
             }
-            if (pretty) {
-                pad(sb, depth, indent);
-            }
-            if (!pretty && !map.isEmpty()) {
-                sb.append(' ');
-            }
-            sb.append('}');
+            formatMap(entries, pretty, lenient, sort, indent, sb, depth);
+        } else if (o instanceof java.util.Date date) {
+            // Format Date as ISO 8601 string with milliseconds (matches JavaScript's Date.toISOString())
+            java.time.Instant instant = date.toInstant();
+            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
+                    .ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+                    .withZone(java.time.ZoneOffset.UTC);
+            String isoDate = formatter.format(instant);
+            sb.append('"').append(isoDate).append('"');
         } else if (o instanceof Number || o instanceof Boolean) {
             sb.append(o);
         } else if (o instanceof SimpleObject so) {
@@ -600,6 +590,47 @@ public class StringUtils {
                 sb.append('"').append(escapeJsonValue(value)).append('"');
             }
         }
+    }
+
+    private static void formatMap(List<Map.Entry<Object, Object>> entries, boolean pretty, boolean lenient,
+                                   boolean sort, String indent, StringBuilder sb, int depth) {
+        sb.append('{');
+        if (pretty) {
+            sb.append('\n');
+        }
+        Iterator<Map.Entry<Object, Object>> iterator = entries.iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<Object, Object> entry = iterator.next();
+            Object key = entry.getKey();
+            if (pretty) {
+                pad(sb, depth + 1, indent);
+            }
+            if (lenient) {
+                String escaped = escapeJsonValue(key == null ? null : key.toString());
+                if (escaped != null && isValidJsonKey(escaped)) {
+                    sb.append(key);
+                } else {
+                    sb.append('\'').append(escaped).append('\'');
+                }
+            } else {
+                sb.append('"').append(escapeJsonValue(key == null ? null : key.toString())).append('"');
+            }
+            sb.append(':');
+            if (pretty) {
+                sb.append(' ');
+            }
+            formatRecurse(entry.getValue(), pretty, lenient, sort, indent, sb, depth + 1);
+            if (iterator.hasNext()) {
+                sb.append(',');
+            }
+            if (pretty) {
+                sb.append('\n');
+            }
+        }
+        if (pretty) {
+            pad(sb, depth, indent);
+        }
+        sb.append('}');
     }
 
     private static void pad(StringBuilder sb, int depth, String indent) {

@@ -32,7 +32,7 @@ package io.karatelabs.js;
  *   <li>{@link #getInternalValue()} - Returns the raw internal value for internal operations (e.g., JsDate → Long millis)</li>
  * </ul>
  */
-interface JavaMirror {
+public interface JavaMirror {
 
     /**
      * Returns the idiomatic Java representation of this object.

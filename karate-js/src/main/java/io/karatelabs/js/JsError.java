@@ -46,7 +46,7 @@ class JsError extends JsObject {
     }
 
     @Override
-    public Object call(Context context, Object... args) {
+    public Object invoke(Object... args) {
         if (args.length > 0) {
             return new JsError(args[0] + "");
         }

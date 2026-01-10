@@ -281,19 +281,26 @@ class JavaMirrorTest {
     @Test
     @SuppressWarnings("unchecked")
     void testJsArrayContainsRawValues() {
-        // Elements inside JsArray are NOT converted - they remain raw JS values
+        // Elements inside JsArray are stored as raw JS values
+        // Use getElement() for raw access, List.get() auto-unwraps
         Engine engine = new Engine();
         Object result = engine.evalRaw("[new Date(0), undefined, null, 'hello']");
 
-        assertInstanceOf(List.class, result);
-        List<Object> list = (List<Object>) result;
-        assertEquals(4, list.size());
+        assertInstanceOf(JsArray.class, result);
+        JsArray arr = (JsArray) result;
+        assertEquals(4, arr.size());
 
-        // Elements are raw - JsDate, undefined (Terms.UNDEFINED), null, String
-        assertInstanceOf(JsDate.class, list.get(0), "element should be raw JsDate");
-        assertNotNull(list.get(1), "undefined should be Terms.UNDEFINED, not null");
-        assertNull(list.get(2), "null remains null");
-        assertEquals("hello", list.get(3));
+        // Raw access via getElement() returns raw JS values
+        assertInstanceOf(JsDate.class, arr.getElement(0), "getElement() returns raw JsDate");
+        assertEquals(Terms.UNDEFINED, arr.getElement(1), "getElement() returns raw undefined");
+        assertNull(arr.getElement(2), "null remains null");
+        assertEquals("hello", arr.getElement(3));
+
+        // List.get() auto-unwraps for Java consumers
+        assertInstanceOf(java.util.Date.class, arr.get(0), "List.get() unwraps JsDate");
+        assertNull(arr.get(1), "List.get() converts undefined to null");
+        assertNull(arr.get(2), "null remains null");
+        assertEquals("hello", arr.get(3));
     }
 
     @Test
@@ -394,17 +401,23 @@ class JavaMirrorTest {
     @Test
     @SuppressWarnings("unchecked")
     void testJsObjectContainsRawValues() {
-        // Values inside JsObject are NOT converted - they remain raw JS values
+        // Values inside JsObject are stored as raw JS values
+        // Use getMember() for raw access, Map.get() auto-unwraps
         Engine engine = new Engine();
         Object result = engine.evalRaw("({date: new Date(0), missing: undefined, empty: null})");
 
-        assertInstanceOf(Map.class, result);
-        Map<String, Object> map = (Map<String, Object>) result;
+        assertInstanceOf(ObjectLike.class, result);
+        ObjectLike obj = (ObjectLike) result;
 
-        // Values are raw - JsDate, undefined (Terms.UNDEFINED), null
-        assertInstanceOf(JsDate.class, map.get("date"), "value should be raw JsDate");
-        assertNotNull(map.get("missing"), "undefined should be Terms.UNDEFINED, not null");
-        assertNull(map.get("empty"), "null remains null");
+        // Raw access via getMember() returns JS types
+        assertInstanceOf(JsDate.class, obj.getMember("date"), "raw value should be JsDate");
+        assertEquals(Terms.UNDEFINED, obj.getMember("missing"), "undefined should be Terms.UNDEFINED");
+        assertNull(obj.getMember("empty"), "null remains null");
+
+        // Map.get() auto-unwraps for Java consumers
+        Map<String, Object> map = (Map<String, Object>) result;
+        assertInstanceOf(java.util.Date.class, map.get("date"), "Map.get() auto-unwraps to java.util.Date");
+        assertNull(map.get("missing"), "Map.get() converts undefined to null");
     }
 
     @Test
@@ -511,37 +524,136 @@ class JavaMirrorTest {
     // =================================================================================================================
     // Dual Access Pattern Tests - Java interface vs JS internal
     // Demonstrates: List.get() → unwrapped, JsArray.getElement() → raw
-    // NOTE: These tests are commented out until JsArray.getElement() and JsObject.getMember() are implemented
+    // Demonstrates: Map.get() → unwrapped, ObjectLike.getMember() → raw
     // =================================================================================================================
 
-    /*
-     * TODO: Uncomment after implementing:
-     * - JsArray.getElement(int) for raw JS access
-     * - JsObject.getMember(String) for raw JS access
-     * - JsArray implements List<Object> with auto-unwrap
-     * - JsObject implements Map<String, Object> with auto-unwrap
-     *
-     * See docs/JS_INTEROP.md for implementation plan.
-     */
+    @Test
+    void testListGetUnwrapsUndefined() {
+        // List.get() converts undefined to null for Java consumers
+        Engine engine = new Engine();
+        JsArray arr = (JsArray) engine.evalRaw("[1, undefined, 3]");
 
-    // @Test
-    // void testListGetUnwrapsUndefined() { ... }
-    // @Test
-    // void testMapGetUnwrapsUndefined() { ... }
-    // @Test
-    // void testListGetUnwrapsJsDate() { ... }
-    // @Test
-    // void testMapGetUnwrapsJsDate() { ... }
-    // @Test
-    // void testNestedListUnwrapsRecursively() { ... }
-    // @Test
-    // void testMapNullVsUndefinedBothBecomeNull() { ... }
-    // @Test
-    // void testListNullVsUndefinedBothBecomeNull() { ... }
-    // @Test
-    // void testMixedTypesUnwrappedViaListInterface() { ... }
-    // @Test
-    // void testMixedTypesUnwrappedViaMapInterface() { ... }
+        // Raw access via getElement() returns Terms.UNDEFINED
+        assertEquals(Terms.UNDEFINED, arr.getElement(1), "getElement() returns raw undefined");
+
+        // List.get() converts undefined to null
+        assertNull(arr.get(1), "List.get() unwraps undefined to null");
+    }
+
+    @Test
+    void testMapGetUnwrapsUndefined() {
+        // Map.get() converts undefined to null for Java consumers
+        Engine engine = new Engine();
+        Object result = engine.evalRaw("({a: 1, b: undefined, c: 3})");
+        ObjectLike obj = (ObjectLike) result;
+        Map<String, Object> map = (Map<String, Object>) result;
+
+        // Raw access via getMember() returns Terms.UNDEFINED
+        assertEquals(Terms.UNDEFINED, obj.getMember("b"), "getMember() returns raw undefined");
+
+        // Map.get() converts undefined to null
+        assertNull(map.get("b"), "Map.get() unwraps undefined to null");
+    }
+
+    @Test
+    void testListGetUnwrapsJsDate() {
+        // List.get() unwraps JsDate to java.util.Date
+        Engine engine = new Engine();
+        JsArray arr = (JsArray) engine.evalRaw("[new Date(0)]");
+
+        // Raw access via getElement() returns JsDate
+        assertInstanceOf(JsDate.class, arr.getElement(0), "getElement() returns raw JsDate");
+
+        // List.get() unwraps to java.util.Date
+        assertInstanceOf(java.util.Date.class, arr.get(0), "List.get() unwraps to java.util.Date");
+    }
+
+    @Test
+    void testMapGetUnwrapsJsDate() {
+        // Map.get() unwraps JsDate to java.util.Date
+        Engine engine = new Engine();
+        Object result = engine.evalRaw("({date: new Date(0)})");
+        ObjectLike obj = (ObjectLike) result;
+        Map<String, Object> map = (Map<String, Object>) result;
+
+        // Raw access via getMember() returns JsDate
+        assertInstanceOf(JsDate.class, obj.getMember("date"), "getMember() returns raw JsDate");
+
+        // Map.get() unwraps to java.util.Date
+        assertInstanceOf(java.util.Date.class, map.get("date"), "Map.get() unwraps to java.util.Date");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testMapNullVsUndefinedBothBecomeNull() {
+        // Both null and undefined become null when accessed via Map.get()
+        Engine engine = new Engine();
+        Object result = engine.evalRaw("({a: null, b: undefined})");
+        Map<String, Object> map = (Map<String, Object>) result;
+        ObjectLike obj = (ObjectLike) result;
+
+        // Via Map.get(), both are null
+        assertNull(map.get("a"), "null stays null via Map.get()");
+        assertNull(map.get("b"), "undefined becomes null via Map.get()");
+
+        // Via getMember(), we can distinguish them
+        assertNull(obj.getMember("a"), "null stays null via getMember()");
+        assertEquals(Terms.UNDEFINED, obj.getMember("b"), "undefined stays undefined via getMember()");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testListNullVsUndefinedBothBecomeNull() {
+        // Both null and undefined become null when accessed via List.get()
+        Engine engine = new Engine();
+        JsArray arr = (JsArray) engine.evalRaw("[null, undefined]");
+
+        // Via List.get(), both are null
+        assertNull(arr.get(0), "null stays null via List.get()");
+        assertNull(arr.get(1), "undefined becomes null via List.get()");
+
+        // Via getElement(), we can distinguish them
+        assertNull(arr.getElement(0), "null stays null via getElement()");
+        assertEquals(Terms.UNDEFINED, arr.getElement(1), "undefined stays undefined via getElement()");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testMixedTypesUnwrappedViaListInterface() {
+        // Test that JS wrapper types are unwrapped when accessed via List interface
+        Engine engine = new Engine();
+        JsArray arr = (JsArray) engine.evalRaw("[new Number(42), new String('hello'), new Boolean(true)]");
+
+        // Via List.get(), wrappers are unwrapped to Java types
+        assertEquals(42, arr.get(0), "JsNumber unwraps to Number");
+        assertEquals("hello", arr.get(1), "JsString unwraps to String");
+        assertEquals(true, arr.get(2), "JsBoolean unwraps to Boolean");
+
+        // Via getElement(), raw JS types are returned
+        assertInstanceOf(JsNumber.class, arr.getElement(0), "getElement() returns raw JsNumber");
+        assertInstanceOf(JsString.class, arr.getElement(1), "getElement() returns raw JsString");
+        assertInstanceOf(JsBoolean.class, arr.getElement(2), "getElement() returns raw JsBoolean");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testMixedTypesUnwrappedViaMapInterface() {
+        // Test that JS wrapper types are unwrapped when accessed via Map interface
+        Engine engine = new Engine();
+        Object result = engine.evalRaw("({num: new Number(42), str: new String('hello'), bool: new Boolean(true)})");
+        Map<String, Object> map = (Map<String, Object>) result;
+        ObjectLike obj = (ObjectLike) result;
+
+        // Via Map.get(), wrappers are unwrapped to Java types
+        assertEquals(42, map.get("num"), "JsNumber unwraps to Number");
+        assertEquals("hello", map.get("str"), "JsString unwraps to String");
+        assertEquals(true, map.get("bool"), "JsBoolean unwraps to Boolean");
+
+        // Via getMember(), raw JS types are returned
+        assertInstanceOf(JsNumber.class, obj.getMember("num"), "getMember() returns raw JsNumber");
+        assertInstanceOf(JsString.class, obj.getMember("str"), "getMember() returns raw JsString");
+        assertInstanceOf(JsBoolean.class, obj.getMember("bool"), "getMember() returns raw JsBoolean");
+    }
 
     // =================================================================================================================
     // Array methods producing undefined in results
@@ -686,15 +798,20 @@ class JavaMirrorTest {
     @Test
     @SuppressWarnings("unchecked")
     void testSpreadWithUndefined() {
-        // Spread operator preserves undefined
+        // Spread operator preserves undefined in array
+        // List.get() auto-unwraps undefined to null
         Engine engine = new Engine();
-        List<Object> list = (List<Object>) engine.eval(
-                "var a = [undefined]; [...a, 1, ...a]");
+        JsArray arr = (JsArray) engine.evalRaw("var a = [undefined]; [...a, 1, ...a]");
 
-        assertEquals(3, list.size());
-        assertSame(Terms.UNDEFINED, list.get(0));
-        assertEquals(1, list.get(1));
-        assertSame(Terms.UNDEFINED, list.get(2));
+        assertEquals(3, arr.size());
+        // Raw access via getElement() returns undefined
+        assertEquals(Terms.UNDEFINED, arr.getElement(0));
+        assertEquals(1, arr.getElement(1));
+        assertEquals(Terms.UNDEFINED, arr.getElement(2));
+        // List.get() auto-unwraps undefined to null
+        assertNull(arr.get(0), "List.get() unwraps undefined to null");
+        assertEquals(1, arr.get(1));
+        assertNull(arr.get(2), "List.get() unwraps undefined to null");
     }
 
     @Test
@@ -809,43 +926,49 @@ class JavaMirrorTest {
     @SuppressWarnings("unchecked")
     void testListWithJsWrapperTypes() {
         // List containing JS wrapper types: new Boolean(), new Number(), new String()
+        // List.get() auto-unwraps for Java consumers, getElement() returns raw values
         Engine engine = new Engine();
-        List<Object> list = (List<Object>) engine.eval(
+        JsArray arr = (JsArray) engine.evalRaw(
                 "[new Boolean(true), new Number(42), new String('hello'), new Date(0)]");
 
-        assertEquals(4, list.size());
+        assertEquals(4, arr.size());
 
-        // new Boolean(true) creates a JsBoolean wrapper
-        Object boolWrapper = list.get(0);
-        System.out.println("Boolean wrapper type: " + boolWrapper.getClass().getName());
+        // List.get() returns unwrapped Java types
+        assertEquals(true, arr.get(0), "JsBoolean unwraps to Boolean");
+        assertEquals(42, arr.get(1), "JsNumber unwraps to Number");
+        assertEquals("hello", arr.get(2), "JsString unwraps to String");
+        assertInstanceOf(java.util.Date.class, arr.get(3), "JsDate unwraps to Date");
 
-        // new Number(42) creates a JsNumber wrapper
-        Object numWrapper = list.get(1);
-        System.out.println("Number wrapper type: " + numWrapper.getClass().getName());
-
-        // new String('hello') creates a JsString wrapper
-        Object strWrapper = list.get(2);
-        System.out.println("String wrapper type: " + strWrapper.getClass().getName());
-
-        // new Date(0) creates a JsDate wrapper
-        Object dateWrapper = list.get(3);
-        assertInstanceOf(JsDate.class, dateWrapper);
+        // getElement() returns raw JS types
+        assertInstanceOf(JsBoolean.class, arr.getElement(0), "getElement() returns raw JsBoolean");
+        assertInstanceOf(JsNumber.class, arr.getElement(1), "getElement() returns raw JsNumber");
+        assertInstanceOf(JsString.class, arr.getElement(2), "getElement() returns raw JsString");
+        assertInstanceOf(JsDate.class, arr.getElement(3), "getElement() returns raw JsDate");
     }
 
     @Test
     @SuppressWarnings("unchecked")
     void testMapWithJsWrapperTypes() {
         // Map containing JS wrapper types
+        // Map.get() auto-unwraps for Java consumers, getMember() returns raw values
         Engine engine = new Engine();
-        Map<String, Object> map = (Map<String, Object>) engine.eval(
+        Object result = engine.eval(
                 "({bool: new Boolean(false), num: new Number(3.14), str: new String('world'), date: new Date(1000)})");
+
+        assertInstanceOf(ObjectLike.class, result);
+        ObjectLike obj = (ObjectLike) result;
+        Map<String, Object> map = (Map<String, Object>) result;
 
         assertEquals(4, map.size());
 
+        // Map.get() returns unwrapped Java types
         System.out.println("bool type: " + map.get("bool").getClass().getName());
         System.out.println("num type: " + map.get("num").getClass().getName());
         System.out.println("str type: " + map.get("str").getClass().getName());
-        assertInstanceOf(JsDate.class, map.get("date"));
+        assertInstanceOf(java.util.Date.class, map.get("date"), "Map.get() auto-unwraps to java.util.Date");
+
+        // getMember() returns raw JS types
+        assertInstanceOf(JsDate.class, obj.getMember("date"), "getMember() returns raw JsDate");
     }
 
     @Test
@@ -891,16 +1014,25 @@ class JavaMirrorTest {
     @SuppressWarnings("unchecked")
     void testMixedWrapperAndUndefined() {
         // Mix of wrapper types and undefined
+        // List.get() auto-unwraps for Java consumers
         Engine engine = new Engine();
-        List<Object> list = (List<Object>) engine.eval(
+        JsArray arr = (JsArray) engine.evalRaw(
                 "[new Date(0), undefined, new Boolean(true), null, new Number(99)]");
 
-        assertEquals(5, list.size());
-        assertInstanceOf(JsDate.class, list.get(0));
-        assertSame(Terms.UNDEFINED, list.get(1));
-        System.out.println("Boolean wrapper: " + list.get(2).getClass().getName());
-        assertNull(list.get(3));
-        System.out.println("Number wrapper: " + list.get(4).getClass().getName());
+        assertEquals(5, arr.size());
+        // List.get() returns unwrapped values
+        assertInstanceOf(java.util.Date.class, arr.get(0), "JsDate unwraps to Date");
+        assertNull(arr.get(1), "undefined unwraps to null");
+        assertEquals(true, arr.get(2), "JsBoolean unwraps to Boolean");
+        assertNull(arr.get(3), "null stays null");
+        assertEquals(99, arr.get(4), "JsNumber unwraps to Number");
+
+        // getElement() returns raw values
+        assertInstanceOf(JsDate.class, arr.getElement(0));
+        assertEquals(Terms.UNDEFINED, arr.getElement(1));
+        assertInstanceOf(JsBoolean.class, arr.getElement(2));
+        assertNull(arr.getElement(3));
+        assertInstanceOf(JsNumber.class, arr.getElement(4));
     }
 
     @Test
@@ -921,20 +1053,24 @@ class JavaMirrorTest {
     @SuppressWarnings("unchecked")
     void testNestedStructureWithWrappers() {
         // Nested arrays/objects containing wrapper types
+        // Both Map.get() and List.get() auto-unwrap for Java consumers
         Engine engine = new Engine();
         Map<String, Object> map = (Map<String, Object>) engine.eval(
                 "({dates: [new Date(0), new Date(1000)], numbers: [new Number(1), new Number(2)]})");
 
         assertEquals(2, map.size());
 
+        // Map.get() returns the nested JsArray (which is a List)
+        // Then List.get() on that array returns unwrapped values
         List<Object> dates = (List<Object>) map.get("dates");
         assertEquals(2, dates.size());
-        assertInstanceOf(JsDate.class, dates.get(0));
-        assertInstanceOf(JsDate.class, dates.get(1));
+        assertInstanceOf(java.util.Date.class, dates.get(0), "JsDate unwraps to Date");
+        assertInstanceOf(java.util.Date.class, dates.get(1), "JsDate unwraps to Date");
 
         List<Object> numbers = (List<Object>) map.get("numbers");
         assertEquals(2, numbers.size());
-        System.out.println("Nested Number wrapper: " + numbers.get(0).getClass().getName());
+        assertEquals(1, numbers.get(0), "JsNumber unwraps to Number");
+        assertEquals(2, numbers.get(1), "JsNumber unwraps to Number");
     }
 
     @Test
@@ -955,13 +1091,18 @@ class JavaMirrorTest {
     @SuppressWarnings("unchecked")
     void testSpreadWithWrappers() {
         // Spread operator with wrapper types
+        // List.get() auto-unwraps for Java consumers
         Engine engine = new Engine();
-        List<Object> list = (List<Object>) engine.eval(
+        JsArray arr = (JsArray) engine.evalRaw(
                 "var a = [new Date(0)]; var b = [new Number(1)]; [...a, ...b]");
 
-        assertEquals(2, list.size());
-        assertInstanceOf(JsDate.class, list.get(0));
-        System.out.println("spread Number: " + list.get(1).getClass().getName());
+        assertEquals(2, arr.size());
+        // List.get() returns unwrapped values
+        assertInstanceOf(java.util.Date.class, arr.get(0), "JsDate unwraps to Date");
+        assertEquals(1, arr.get(1), "JsNumber unwraps to Number");
+        // getElement() returns raw values
+        assertInstanceOf(JsDate.class, arr.getElement(0));
+        assertInstanceOf(JsNumber.class, arr.getElement(1));
     }
 
     @Test
@@ -981,8 +1122,9 @@ class JavaMirrorTest {
     @SuppressWarnings("unchecked")
     void testComplexMixedTypes() {
         // Complex scenario with all types mixed
+        // List.get() auto-unwraps for Java consumers
         Engine engine = new Engine();
-        List<Object> list = (List<Object>) engine.eval("""
+        JsArray arr = (JsArray) engine.evalRaw("""
                 [
                     1,                      // number primitive
                     'hello',                // string primitive
@@ -998,20 +1140,25 @@ class JavaMirrorTest {
                 ]
                 """);
 
-        assertEquals(11, list.size());
-        assertEquals(1, list.get(0));
-        assertEquals("hello", list.get(1));
-        assertEquals(true, list.get(2));
-        assertNull(list.get(3));
-        assertSame(Terms.UNDEFINED, list.get(4));
-        assertInstanceOf(JsDate.class, list.get(5));
-        // Wrapper types
-        System.out.println("Complex - Number wrapper: " + list.get(6).getClass().getName());
-        System.out.println("Complex - Boolean wrapper: " + list.get(7).getClass().getName());
-        System.out.println("Complex - String wrapper: " + list.get(8).getClass().getName());
-        // Nested structures
-        assertInstanceOf(List.class, list.get(9));
-        assertInstanceOf(Map.class, list.get(10));
+        assertEquals(11, arr.size());
+        // List.get() returns unwrapped values for Java consumers
+        assertEquals(1, arr.get(0));
+        assertEquals("hello", arr.get(1));
+        assertEquals(true, arr.get(2));
+        assertNull(arr.get(3));
+        assertNull(arr.get(4), "undefined unwraps to null via List.get()");
+        assertInstanceOf(java.util.Date.class, arr.get(5), "JsDate unwraps to Date");
+        // Wrapper types are unwrapped
+        assertEquals(3.14, arr.get(6), "JsNumber unwraps to Number");
+        assertEquals(false, arr.get(7), "JsBoolean unwraps to Boolean");
+        assertEquals("world", arr.get(8), "JsString unwraps to String");
+        // Nested structures remain as List/Map
+        assertInstanceOf(List.class, arr.get(9));
+        assertInstanceOf(Map.class, arr.get(10));
+
+        // getElement() returns raw values
+        assertEquals(Terms.UNDEFINED, arr.getElement(4), "getElement() returns raw undefined");
+        assertInstanceOf(JsDate.class, arr.getElement(5), "getElement() returns raw JsDate");
     }
 
     // =================================================================================================================

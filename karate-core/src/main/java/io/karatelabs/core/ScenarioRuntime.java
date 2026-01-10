@@ -620,8 +620,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         if (value == null) {
             return null;
         }
-        // JsFunction extends JsObject which implements Map, but we don't want to
-        // deep-copy functions - they should be shared across threads
+        // JsCallable functions shouldn't be deep-copied - they should be shared across threads
         if (value instanceof io.karatelabs.js.JsCallable) {
             return value;
         }

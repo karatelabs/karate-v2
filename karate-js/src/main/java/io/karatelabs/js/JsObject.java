@@ -25,7 +25,7 @@ package io.karatelabs.js;
 
 import java.util.*;
 
-class JsObject implements ObjectLike, Map<String, Object>, JsCallable {
+class JsObject implements ObjectLike, Map<String, Object>, Invokable {
 
     final JsObject _this = this;
 
@@ -317,7 +317,7 @@ class JsObject implements ObjectLike, Map<String, Object>, JsCallable {
     }
 
     @Override
-    public Object call(Context context, Object... args) {
+    public Object invoke(Object... args) {
         return new JsObject();
     }
 
