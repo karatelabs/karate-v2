@@ -94,8 +94,10 @@ class JsFunctionNode extends JsFunction {
                 Object argValue = args[i];
                 if (argValue == Terms.UNDEFINED) {
                     // check if default value expression exists
+                    // Only for FN_DECL_ARG nodes, not for single-param arrow functions
+                    // where argNode is the whole FN_ARROW_EXPR (getLast() would be the body!)
                     Node exprNode = argNode.getLast();
-                    if (exprNode.type == NodeType.EXPR) {
+                    if (argNode.type == NodeType.FN_DECL_ARG && exprNode.type == NodeType.EXPR) {
                         argValue = Interpreter.eval(exprNode, functionContext);
                     }
                 }
@@ -108,7 +110,8 @@ class JsFunctionNode extends JsFunction {
                 String argName = argNode.getFirst().getText();
                 Node exprNode = argNode.getLast();
                 Object argValue;
-                if (exprNode.type == NodeType.EXPR) { // default value
+                // Only evaluate as default if argNode is FN_DECL_ARG (not FN_ARROW_EXPR)
+                if (argNode.type == NodeType.FN_DECL_ARG && exprNode.type == NodeType.EXPR) {
                     argValue = Interpreter.eval(exprNode, functionContext);
                 } else {
                     argValue = Terms.UNDEFINED;

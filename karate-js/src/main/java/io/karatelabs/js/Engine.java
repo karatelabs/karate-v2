@@ -112,6 +112,14 @@ public class Engine {
         return value;
     }
 
+    // For testing: returns raw JS result without toJava() conversion
+    protected Object evalRaw(String text) {
+        JsParser parser = new JsParser(Resource.text(text));
+        Node program = parser.parse();
+        CoreContext context = new CoreContext(root, root, 0, program, ContextScope.GLOBAL, bindings);
+        return Interpreter.eval(program, context);
+    }
+
     private Object evalInternal(Resource resource, Map<String, Object> localVars) {
         JsParser parser = new JsParser(resource);
         return evalInternal(parser.parse(), localVars);

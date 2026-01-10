@@ -39,6 +39,30 @@ class JsFunctionTest extends EvalBase {
     }
 
     @Test
+    void testArrowFunctionUndefinedArg() {
+        // Single-param arrow function should preserve undefined
+        assertEquals(true, eval("var a = x => x === undefined; a(undefined)"));
+        assertEquals(true, eval("var a = (x) => x === undefined; a(undefined)"));
+        // Multi-param arrow function
+        assertEquals(true, eval("var a = (x, y) => x === undefined; a(undefined, 1)"));
+        // Regular function for comparison
+        assertEquals(true, eval("var a = function(x) { return x === undefined }; a(undefined)"));
+        // Arrow with implicit undefined (missing arg)
+        assertEquals(true, eval("var a = x => x === undefined; a()"));
+        assertEquals(true, eval("var a = (x) => x === undefined; a()"));
+    }
+
+    @Test
+    void testArrowFunctionPassThroughUndefined() {
+        // Arrow function identity should preserve undefined
+        assertEquals(true, eval("var identity = x => x; identity(undefined) === undefined"));
+        assertEquals(true, eval("var identity = (x) => x; identity(undefined) === undefined"));
+        // Map with arrow function preserving undefined
+        assertEquals(true, eval("[undefined].map(x => x)[0] === undefined"));
+        assertEquals(true, eval("[undefined].map(function(x) { return x })[0] === undefined"));
+    }
+
+    @Test
     void testFunctionBlocksAndReturn() {
         assertNull(eval("var a = function(){ }; a()"));
         assertEquals(true, eval("var a = function(){ return true; 'foo' }; a()"));

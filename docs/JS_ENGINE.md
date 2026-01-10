@@ -51,16 +51,16 @@ interface JsPrimitive extends JavaMirror {
 
 ### Type Mapping
 
-| JS Type | Java Wrapper | `getJavaValue()` | `getInternalValue()` |
-|---------|--------------|------------------|---------------------|
-| Number | JsNumber | Number | Number |
-| String | JsString | String | String |
-| Boolean | JsBoolean | Boolean | Boolean |
-| Date | JsDate | Date | Long (millis) |
-| RegExp | JsRegex | Pattern | Pattern |
-| Array | JsArray | List | List |
-| Object | JsObject | Map | Map |
-| Uint8Array | JsUint8Array | byte[] | byte[] |
+| JS Type | Java Wrapper | `getJavaValue()` | Implements |
+|---------|--------------|------------------|------------|
+| Number | JsNumber | Number | JsPrimitive |
+| String | JsString | String | JsPrimitive |
+| Boolean | JsBoolean | Boolean | JsPrimitive |
+| Date | JsDate | Date | JavaMirror |
+| RegExp | JsRegex | Pattern | JavaMirror |
+| Array | JsArray | List | **List\<Object\>** |
+| Object | JsObject | Map | **Map\<String, Object\>** |
+| Uint8Array | JsUint8Array | byte[] | JavaMirror |
 
 ### Boxed Primitives
 
@@ -124,6 +124,108 @@ static JavaMirror toJavaMirror(Object o) {
 - Thread-safety: Engine bindings may be updated by external threads
 - Simplicity: Single conversion point handles all entry paths
 - Performance: `instanceof` chain is fast; overhead is negligible
+
+---
+
+## JsArray and JsObject as List and Map
+
+### Design Goals
+
+1. **ES6 within JS** - JS code sees native values (`undefined`, prototype methods, etc.)
+2. **Seamless Java interop** - `JsArray` implements `List`, `JsObject` implements `Map`
+3. **Lazy auto-unwrap** - Java interface methods convert on access, not construction
+4. **No eager conversion** - Eliminates `toList()`/`toMap()` overhead
+
+### Dual Access Pattern
+
+Collections have two access modes:
+
+| Access Mode | Method | Returns | Use Case |
+|-------------|--------|---------|----------|
+| **Java interface** | `List.get(int)` / `Map.get(Object)` | Unwrapped (null, Date) | Java consumers |
+| **JS internal** | `getElement(int)` / `getMember(String)` | Raw (undefined, JsDate) | JS engine internals |
+
+```java
+// JsArray implements List<Object>
+class JsArray extends JsObject implements List<Object> {
+
+    // JS internal - raw values, ES6 semantics
+    public Object getElement(int index) {
+        return list.get(index);  // Returns Terms.UNDEFINED, JsDate, etc.
+    }
+
+    // Java interface - auto-unwrap for Java consumers
+    @Override
+    public Object get(int index) {
+        return Engine.toJava(list.get(index));  // undefined→null, JsDate→Date
+    }
+}
+
+// JsObject implements Map<String, Object>
+class JsObject implements Map<String, Object>, ObjectLike {
+
+    // JS internal - raw values, prototype chain
+    public Object getMember(String name) {
+        // Own property first, then prototype chain
+        if (_map != null && _map.containsKey(name)) {
+            return _map.get(name);
+        }
+        return getPrototype().getMember(name);
+    }
+
+    // Java interface - auto-unwrap, own properties only
+    @Override
+    public Object get(Object key) {
+        Object raw = _map != null ? _map.get(key.toString()) : null;
+        return Engine.toJava(raw);  // undefined→null, JsDate→Date
+    }
+}
+```
+
+### ObjectLike Method Naming
+
+To avoid collision with `Map.get(Object)`, ObjectLike uses distinct method names:
+
+| Old Name | New Name | Purpose |
+|----------|----------|---------|
+| `get(String)` | `getMember(String)` | JS property access with prototype chain |
+| `put(String, Object)` | `putMember(String, Object)` | JS property assignment |
+| `remove(String)` | `removeMember(String)` | JS property deletion |
+
+### Conversion at Boundaries
+
+Conversion happens at specific boundaries:
+
+1. **`Engine.eval()` return** - Top-level value converted via `toJava()`
+2. **`List.get()` / `Map.get()`** - Elements unwrapped lazily on access
+3. **SimpleObject/Invokable args** - Arguments converted before Java method call
+4. **Iteration** - Iterator unwraps values lazily
+
+### Example: Dual Access
+
+```java
+Engine engine = new Engine();
+Object result = engine.eval("[1, undefined, new Date(0)]");
+
+// As List - Java consumer gets unwrapped values
+List<Object> list = (List<Object>) result;
+list.get(0);  // 1
+list.get(1);  // null (undefined unwrapped)
+list.get(2);  // java.util.Date
+
+// As JsArray - JS internal gets raw values
+JsArray jsArray = (JsArray) result;
+jsArray.getElement(0);  // 1
+jsArray.getElement(1);  // Terms.UNDEFINED (raw)
+jsArray.getElement(2);  // JsDate (raw)
+```
+
+### Why Lazy Unwrap?
+
+1. **Performance** - No upfront traversal of nested structures
+2. **Memory** - No duplicate converted collections
+3. **Semantics** - JS code sees raw values, Java sees converted values
+4. **Simplicity** - Single conversion point in `Engine.toJava()`
 
 ---
 
