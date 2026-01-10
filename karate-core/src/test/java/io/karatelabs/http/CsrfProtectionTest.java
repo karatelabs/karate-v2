@@ -56,7 +56,7 @@ class CsrfProtectionTest {
     void testGetOrCreateTokenStoresInSession() {
         String token = CsrfProtection.getOrCreateToken(session);
 
-        assertEquals(token, session.get(CsrfProtection.SESSION_KEY));
+        assertEquals(token, session.getMember(CsrfProtection.SESSION_KEY));
     }
 
     @Test

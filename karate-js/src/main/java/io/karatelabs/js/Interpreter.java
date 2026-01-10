@@ -143,7 +143,7 @@ class Interpreter {
         if (prop.object instanceof Map) {
             ((Map<String, Object>) prop.object).remove(key);
         } else if (prop.object instanceof ObjectLike) {
-            ((ObjectLike) prop.object).remove(key);
+            ((ObjectLike) prop.object).removeMember(key);
         }
         return true;
     }
@@ -401,7 +401,8 @@ class Interpreter {
 
     private static Object evalLitArray(Node node, CoreContext context, BindingType bindingType, List<Object> bindSource) {
         int last = node.size() - 1;
-        List<Object> list = new ArrayList<>();
+        JsArray array = new JsArray();
+        List<Object> list = array.list;  // Direct access to internal list for building
         int index = 0;
         for (int i = 1; i < last; i++) {
             Node elem = node.get(i);
@@ -409,13 +410,13 @@ class Interpreter {
             if (exprNode.token.type == DOT_DOT_DOT) { // rest
                 if (bindingType != null) {
                     String varName = elem.getLast().getText();
-                    List<Object> value = new ArrayList<>();
+                    JsArray restArray = new JsArray();
                     if (bindSource != null) {
                         for (int j = index; j < bindSource.size(); j++) {
-                            value.add(bindSource.get(j));
+                            restArray.list.add(bindSource.get(j));
                         }
                     }
-                    context.declare(varName, value, toInfo(varName, bindingType, true));
+                    context.declare(varName, restArray, toInfo(varName, bindingType, true));
                 } else {
                     Object value = evalRefExpr(elem.get(1), context);
                     Iterable<KeyValue> iterable = Terms.toIterable(value);
@@ -447,7 +448,7 @@ class Interpreter {
                 index++;
             }
         }
-        return list;
+        return array;
     }
 
     @SuppressWarnings("unchecked")
@@ -730,7 +731,7 @@ class Interpreter {
                 Object errorThrown = context.getErrorThrown();
                 String errorMessage = null;
                 if (errorThrown instanceof JsObject jsError) {
-                    Object message = jsError.get("message");
+                    Object message = jsError.getMember("message");
                     if (message instanceof String) {
                         errorMessage = (String) message;
                     }

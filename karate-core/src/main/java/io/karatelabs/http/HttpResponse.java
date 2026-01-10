@@ -25,7 +25,7 @@ package io.karatelabs.http;
 
 import io.karatelabs.common.*;
 import io.karatelabs.js.Invokable;
-import io.karatelabs.js.SimpleObject;
+import io.karatelabs.js.ObjectLike;
 import net.minidev.json.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class HttpResponse implements SimpleObject {
+public class HttpResponse implements ObjectLike {
 
     private static final Logger logger = LoggerFactory.getLogger(HttpResponse.class);
 
@@ -288,7 +288,7 @@ public class HttpResponse implements SimpleObject {
     }
 
     @Override
-    public Object jsGet(String key) {
+    public Object getMember(String key) {
         return switch (key) {
             case "status" -> status;
             case "statusText" -> statusText;
@@ -309,7 +309,7 @@ public class HttpResponse implements SimpleObject {
 
     @SuppressWarnings("unchecked")
     @Override
-    public void put(String key, Object value) {
+    public void putMember(String key, Object value) {
         switch (key) {
             case "body":
                 if (value instanceof Map || value instanceof List) {
@@ -333,6 +333,11 @@ public class HttpResponse implements SimpleObject {
             default:
                 logger.warn("put - unexpected key: {}", key);
         }
+    }
+
+    @Override
+    public void removeMember(String name) {
+        logger.warn("remove() not implemented");
     }
 
 }

@@ -317,7 +317,7 @@ class ServerIntegrationTest {
         }
 
         @Override
-        public Collection<String> keys() {
+        public Collection<String> getMemberNames() {
             return List.of("uppercase", "formatPrice", "greet", "appName");
         }
     }

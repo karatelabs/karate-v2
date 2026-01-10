@@ -53,7 +53,7 @@ abstract class Prototype implements ObjectLike {
     }
 
     @Override
-    public void put(String name, Object value) {
+    public void putMember(String name, Object value) {
         if (props == null) {
             props = new HashMap<>();
         }
@@ -61,7 +61,7 @@ abstract class Prototype implements ObjectLike {
     }
 
     @Override
-    public void remove(String name) {
+    public void removeMember(String name) {
         if (props != null) {
             props.remove(name);
         }
@@ -73,7 +73,7 @@ abstract class Prototype implements ObjectLike {
     }
 
     @Override
-    final public Object get(String name) {
+    final public Object getMember(String name) {
         if (props != null && props.containsKey(name)) {
             return props.get(name);
         }
@@ -82,7 +82,7 @@ abstract class Prototype implements ObjectLike {
             return result;
         }
         if (wrapped != null) {
-            return wrapped.get(name);
+            return wrapped.getMember(name);
         }
         return null;
     }

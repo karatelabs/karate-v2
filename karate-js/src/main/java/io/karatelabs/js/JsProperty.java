@@ -145,10 +145,11 @@ class JsProperty {
         }
         if (object == null) {
             context.update(name, value);
+        } else if (object instanceof ObjectLike objectLike) {
+            // Check ObjectLike BEFORE Map (JsObject implements Map)
+            objectLike.putMember(name, value);
         } else if (object instanceof Map) {
             ((Map<String, Object>) object).put(name, value);
-        } else if (object instanceof ObjectLike objectLike) {
-            objectLike.put(name, value);
         } else if (context.root.bridge != null) {
             try {
                 if (object instanceof ExternalAccess ja) {
@@ -175,16 +176,17 @@ class JsProperty {
                 }
                 throw new RuntimeException("cannot read properties of " + object + " (reading '[" + i + "]')");
             }
+            // Check JsArray BEFORE List (JsArray implements List)
+            if (object instanceof JsArray array) {
+                // JsArray.getElement(int) returns raw values for JS internal use
+                return array.getElement(i);
+            }
             if (object instanceof List<?> list) {
-                // return undefined for out of bounds access (JS behavior)
+                // Plain Java List - return undefined for out of bounds access (JS behavior)
                 if (i < 0 || i >= list.size()) {
                     return Terms.UNDEFINED;
                 }
                 return list.get(i);
-            }
-            if (object instanceof JsArray array) {
-                // regex returns JsArray for exec() api
-                return array.get(i);
             }
             if (object instanceof String s) {
                 if (i < 0 || i >= s.length()) {
@@ -201,7 +203,7 @@ class JsProperty {
             // Handle Java native arrays via toObjectLike conversion to JsArray
             ObjectLike converted = Terms.toObjectLike(object);
             if (converted instanceof JsArray jsArray) {
-                return jsArray.get(i);
+                return jsArray.getElement(i);
             }
             // For objects (Map, ObjectLike), convert numeric index to string for property access
             if (object instanceof Map || object instanceof ObjectLike) {
@@ -224,32 +226,50 @@ class JsProperty {
             }
             throw new RuntimeException("cannot read properties of " + object + " (reading '" + name + "')");
         }
-        // Map: check direct key access first (optimization), then prototype
-        if (object instanceof Map) {
+        // Check JsObject/ObjectLike BEFORE Map (JsObject implements Map)
+        // This ensures prototype chain lookup and raw value access for JS internals
+        if (object instanceof ObjectLike ol) {
+            Object result = ol.getMember(name);
+            if (result != null && result != Terms.UNDEFINED) {
+                return result;
+            }
+            // For JsObject/JsArray, return undefined if not found (no external bridge)
+            if (object instanceof JsObject || object instanceof JsArray) {
+                return Terms.UNDEFINED;
+            }
+            // For other ObjectLike (JavaObject, SimpleObject), fall through to external bridge
+        } else if (object instanceof Map) {
+            // Plain Java Map - check direct key access first, then prototype
             Map<String, Object> map = (Map<String, Object>) object;
             if (map.containsKey(name)) {
                 return map.get(name);
             }
-            Object result = new JsObject(map).get(name);
+            Object result = new JsObject(map).getMember(name);
             if (result != null) {
                 return result;
             }
             // fallthrough to external bridge for Java interop (e.g., Properties.put())
-        } else {
-            // covers ObjectLike (JsObject, JsArray, etc.), List, and primitives (String, Number, etc.)
+        } else if (object instanceof List) {
+            // Plain Java List - convert to ObjectLike for property access
             ObjectLike ol = Terms.toObjectLike(object);
             if (ol != null) {
-                Object result = ol.get(name);
+                Object result = ol.getMember(name);
                 if (result != null && result != Terms.UNDEFINED) {
                     return result;
                 }
-                // For Java collections (List, Map), fall through to external bridge
-                // for Java method access (e.g., ArrayList.add())
-                // For other types (like XML nodes), return undefined
-                if (!(object instanceof List || object instanceof Map)) {
-                    return Terms.UNDEFINED;
+            }
+            // fallthrough to external bridge for Java method access
+        } else {
+            // Other objects (primitives, POJOs, ExternalAccess like JavaType)
+            ObjectLike ol = Terms.toObjectLike(object);
+            if (ol != null) {
+                Object result = ol.getMember(name);
+                if (result != null && result != Terms.UNDEFINED) {
+                    return result;
                 }
             }
+            // For primitives without a bridge, return undefined
+            // POJOs and ExternalAccess fall through to the bridge
         }
         if (object instanceof JsCallable callable) {
             // e.g. [].map.call([1, 2, 3], x => x * 2)
@@ -259,7 +279,7 @@ class JsProperty {
                 public Object call(Context context, Object... args) {
                     return callable.call(context, args);
                 }
-            }.get(name);
+            }.getMember(name);
         }
         if (context.root.bridge != null) {
             try {

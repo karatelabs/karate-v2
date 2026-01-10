@@ -25,21 +25,50 @@ package io.karatelabs.js;
 
 import java.util.*;
 
-class JsArray extends JsObject {
+/**
+ * JavaScript Array implementation using composition (has-a JsObject) instead of inheritance.
+ * This allows JsArray to implement List<Object> while JsObject implements Map<String, Object>,
+ * avoiding the method signature conflict between Map.remove(Object) and List.remove(Object).
+ *
+ * Implements List<Object> for Java interop with auto-unwrapping - Java code gets clean values.
+ * JS internal code uses getElement/setElement for raw access (returns UNDEFINED for out of bounds).
+ */
+class JsArray implements List<Object>, ObjectLike, JsCallable {
 
     final List<Object> list;
 
+    // Composition: JsObject for object properties (arrays can have named properties like arr.foo = "bar")
+    private final JsObject delegate;
+
+    // Reference to self for prototype methods (used by fromThis)
+    final JsArray _this;
+
+    private Prototype prototype;
+
     public JsArray(List<Object> list) {
         this.list = list;
+        this.delegate = new JsObject();
+        this._this = this;
     }
 
     public JsArray() {
         this(new ArrayList<>());
     }
 
+    // =================================================================================================
+    // Prototype chain
+    // =================================================================================================
+
+    Prototype getPrototype() {
+        if (prototype == null) {
+            prototype = initPrototype();
+        }
+        return prototype;
+    }
+
     Prototype initPrototype() {
-        Prototype wrapped = super.initPrototype();
-        return new Prototype(wrapped) {
+        Prototype objectPrototype = delegate.getPrototype();
+        return new Prototype(objectPrototype) {
             @SuppressWarnings("unchecked")
             @Override
             public Object getProperty(String propName) {
@@ -57,7 +86,7 @@ class JsArray extends JsObject {
                     case "filter" -> (JsCallable) (context, args) -> {
                         List<Object> results = new ArrayList<>();
                         JsCallable callable = toCallable(args);
-                        for (KeyValue kv : _this) {
+                        for (KeyValue kv : _this.jsEntries()) {
                             Object result = callable.call(context, kv.value, kv.index);
                             if (Terms.isTruthy(result)) {
                                 results.add(kv.value);
@@ -73,7 +102,7 @@ class JsArray extends JsObject {
                         } else {
                             delimiter = ",";
                         }
-                        for (KeyValue kv : _this) {
+                        for (KeyValue kv : _this.jsEntries()) {
                             if (!sb.isEmpty()) {
                                 sb.append(delimiter);
                             }
@@ -83,7 +112,7 @@ class JsArray extends JsObject {
                     };
                     case "find" -> (JsCallable) (context, args) -> {
                         JsCallable callable = toCallable(args);
-                        for (KeyValue kv : _this) {
+                        for (KeyValue kv : _this.jsEntries()) {
                             Object result = callable.call(context, kv.value, kv.index);
                             if (Terms.isTruthy(result)) {
                                 return kv.value;
@@ -93,7 +122,7 @@ class JsArray extends JsObject {
                     };
                     case "findIndex" -> (JsCallable) (context, args) -> {
                         JsCallable callable = toCallable(args);
-                        for (KeyValue kv : _this) {
+                        for (KeyValue kv : _this.jsEntries()) {
                             Object result = callable.call(context, kv.value, kv.index);
                             if (Terms.isTruthy(result)) {
                                 return kv.index;
@@ -102,12 +131,12 @@ class JsArray extends JsObject {
                         return -1;
                     };
                     case "push" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         thisArray.addAll(Arrays.asList(args));
                         return thisArray.size();
                     };
                     case "reverse" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         int size = thisArray.size();
                         List<Object> result = new ArrayList<>();
                         for (int i = size; i > 0; i--) {
@@ -116,7 +145,7 @@ class JsArray extends JsObject {
                         return result;
                     };
                     case "includes" -> (JsCallable) (context, args) -> {
-                        for (KeyValue kv : _this) {
+                        for (KeyValue kv : _this.jsEntries()) {
                             if (Terms.eq(kv.value, args[0], false)) {
                                 return true;
                             }
@@ -124,7 +153,7 @@ class JsArray extends JsObject {
                         return false;
                     };
                     case "indexOf" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         int size = thisArray.size();
                         if (size == 0) {
                             return -1;
@@ -151,7 +180,7 @@ class JsArray extends JsObject {
                         return -1;
                     };
                     case "slice" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         int size = thisArray.size();
                         int start = 0;
                         int end = size;
@@ -177,7 +206,7 @@ class JsArray extends JsObject {
                     };
                     case "forEach" -> (JsCallable) (context, args) -> {
                         JsCallable callable = toCallable(args);
-                        for (KeyValue kv : _this) {
+                        for (KeyValue kv : _this.jsEntries()) {
                             if (context instanceof CoreContext cc) {
                                 cc.iteration = kv.index;
                             }
@@ -186,7 +215,7 @@ class JsArray extends JsObject {
                         return Terms.UNDEFINED;
                     };
                     case "concat" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         List<Object> result = new ArrayList<>(thisArray);
                         for (Object arg : args) {
                             if (arg instanceof List) {
@@ -200,12 +229,12 @@ class JsArray extends JsObject {
                         return result;
                     };
                     case "every" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         if (thisArray.isEmpty()) {
                             return true;
                         }
                         JsCallable callable = toCallable(args);
-                        for (KeyValue kv : _this) {
+                        for (KeyValue kv : _this.jsEntries()) {
                             Object result = callable.call(context, kv.value, kv.index, thisArray);
                             if (!Terms.isTruthy(result)) {
                                 return false;
@@ -214,12 +243,12 @@ class JsArray extends JsObject {
                         return true;
                     };
                     case "some" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         if (thisArray.isEmpty()) {
                             return false;
                         }
                         JsCallable callable = toCallable(args);
-                        for (KeyValue kv : _this) {
+                        for (KeyValue kv : _this.jsEntries()) {
                             Object result = callable.call(context, kv.value, kv.index, thisArray);
                             if (Terms.isTruthy(result)) {
                                 return true;
@@ -228,7 +257,7 @@ class JsArray extends JsObject {
                         return false;
                     };
                     case "reduce" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         JsCallable callable = toCallable(args);
                         if (thisArray.isEmpty() && args.length < 2) {
                             throw new RuntimeException("reduce() called on empty array with no initial value");
@@ -248,7 +277,7 @@ class JsArray extends JsObject {
                         return accumulator;
                     };
                     case "reduceRight" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         JsCallable callable = toCallable(args);
                         if (thisArray.isEmpty() && args.length < 2) {
                             throw new RuntimeException("reduceRight() called on empty array with no initial value");
@@ -268,7 +297,7 @@ class JsArray extends JsObject {
                         return accumulator;
                     };
                     case "flat" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         int depth = 1;
                         if (args.length > 0 && args[0] != null) {
                             Number depthNum = Terms.objectToNumber(args[0]);
@@ -281,7 +310,7 @@ class JsArray extends JsObject {
                         return result;
                     };
                     case "flatMap" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         JsCallable callable = toCallable(args);
                         List<Object> mappedResult = new ArrayList<>();
                         int index = 0;
@@ -303,7 +332,7 @@ class JsArray extends JsObject {
                         return mappedResult;
                     };
                     case "sort" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         List<Object> list = new ArrayList<>(thisArray);
                         if (list.isEmpty()) {
                             return list;
@@ -339,7 +368,7 @@ class JsArray extends JsObject {
                         if (args.length == 0) {
                             return context.getThisObject();
                         }
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         int size = thisArray.size();
                         if (size == 0) {
                             return thisArray;
@@ -370,7 +399,7 @@ class JsArray extends JsObject {
                         if (args.length == 0) {
                             return new ArrayList<>();
                         }
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         int size = thisArray.size();
                         if (size == 0) {
                             return new ArrayList<>();
@@ -413,7 +442,7 @@ class JsArray extends JsObject {
                         return removedElements;
                     };
                     case "shift" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         int size = thisArray.size();
                         if (size == 0) {
                             return Terms.UNDEFINED;
@@ -429,7 +458,7 @@ class JsArray extends JsObject {
                         return firstElement;
                     };
                     case "unshift" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         if (args.length == 0) {
                             return thisArray.size();
                         }
@@ -442,7 +471,7 @@ class JsArray extends JsObject {
                         return thisArray.size();
                     };
                     case "lastIndexOf" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         int size = thisArray.size();
                         if (size == 0) {
                             return -1;
@@ -476,7 +505,7 @@ class JsArray extends JsObject {
                         return -1;
                     };
                     case "pop" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         int size = thisArray.size();
                         if (size == 0) {
                             return Terms.UNDEFINED;
@@ -492,7 +521,7 @@ class JsArray extends JsObject {
                         return lastElement;
                     };
                     case "at" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         int size = thisArray.size();
                         if (size == 0 || args.length == 0 || args[0] == null) {
                             return Terms.UNDEFINED;
@@ -507,7 +536,7 @@ class JsArray extends JsObject {
                         return thisArray.get(index);
                     };
                     case "copyWithin" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         int size = thisArray.size();
                         if (size == 0 || args.length == 0) {
                             return thisArray;
@@ -553,7 +582,7 @@ class JsArray extends JsObject {
                         return thisArray;
                     };
                     case "keys" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         List<Object> result = new ArrayList<>();
                         int size = thisArray.size();
                         for (int i = 0; i < size; i++) {
@@ -561,9 +590,9 @@ class JsArray extends JsObject {
                         }
                         return result;
                     };
-                    case "values" -> (JsCallable) (context, args) -> asList(context);
+                    case "values" -> (JsCallable) (context, args) -> rawList(context);
                     case "entries" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         List<Object> result = new ArrayList<>();
                         int size = thisArray.size();
                         for (int i = 0; i < size; i++) {
@@ -575,7 +604,7 @@ class JsArray extends JsObject {
                         return result;
                     };
                     case "findLast" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         int size = thisArray.size();
                         if (size == 0 || args.length == 0) {
                             return Terms.UNDEFINED;
@@ -591,7 +620,7 @@ class JsArray extends JsObject {
                         return Terms.UNDEFINED;
                     };
                     case "findLastIndex" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         int size = thisArray.size();
                         if (size == 0 || args.length == 0) {
                             return -1;
@@ -607,7 +636,7 @@ class JsArray extends JsObject {
                         return -1;
                     };
                     case "with" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         int size = thisArray.size();
                         if (size == 0 || args.length < 2) {
                             return thisArray;
@@ -627,13 +656,13 @@ class JsArray extends JsObject {
                         return result;
                     };
                     case "group" -> (JsCallable) (context, args) -> {
-                        List<Object> thisArray = asList(context);
+                        List<Object> thisArray = rawList(context);
                         if (args.length == 0) {
                             return new JsObject();
                         }
                         JsCallable callable = toCallable(args);
                         Map<String, List<Object>> groups = new HashMap<>();
-                        for (KeyValue kv : _this) {
+                        for (KeyValue kv : _this.jsEntries()) {
                             Object key = callable.call(context, kv.value, kv.index, thisArray);
                             String keyStr = key == null ? "null" : key.toString();
                             if (!groups.containsKey(keyStr)) {
@@ -643,7 +672,7 @@ class JsArray extends JsObject {
                         }
                         JsObject result = new JsObject();
                         for (Map.Entry<String, List<Object>> entry : groups.entrySet()) {
-                            result.put(entry.getKey(), entry.getValue());
+                            result.putMember(entry.getKey(), entry.getValue());
                         }
                         return result;
                     };
@@ -662,7 +691,7 @@ class JsArray extends JsObject {
                         } else {
                             array = JsArray.this;
                         }
-                        for (KeyValue kv : array) {
+                        for (KeyValue kv : array.jsEntries()) {
                             Object result = callable == null ? kv.value : callable.call(context, kv.value, kv.index);
                             results.add(result);
                         }
@@ -676,33 +705,202 @@ class JsArray extends JsObject {
         };
     }
 
-    public Object get(int index) {
-        return list.get(index);
+    // =================================================================================================
+    // ObjectLike implementation - delegates to internal JsObject for named properties
+    // =================================================================================================
+
+    @Override
+    public Object getMember(String name) {
+        // Check instance properties first (stored in delegate)
+        Map<String, Object> delegateMap = delegate.toMap();
+        if (delegateMap.containsKey(name)) {
+            return delegateMap.get(name);
+        }
+        // Special case: "prototype" returns the prototype object
+        if ("prototype".equals(name)) {
+            return getPrototype();
+        }
+        // Then check prototype chain
+        return getPrototype().getMember(name);
     }
 
-    public void set(int index, Object value) {
-        list.set(index, value);
+    @Override
+    public void putMember(String name, Object value) {
+        delegate.putMember(name, value);
     }
 
-    public void add(Object value) {
-        list.add(value);
+    @Override
+    public void removeMember(String name) {
+        delegate.removeMember(name);
     }
 
-    public void remove(int index) {
-        list.remove(index);
+    @Override
+    public Map<String, Object> toMap() {
+        // Arrays don't typically convert to maps, return delegate's map
+        return delegate.toMap();
     }
 
+    // =================================================================================================
+    // List<Object> implementation - returns raw values (no auto-unwrap)
+    // =================================================================================================
+
+    @Override
     public int size() {
         return list.size();
     }
 
+    @Override
+    public boolean isEmpty() {
+        return list.isEmpty();
+    }
+
+    @Override
+    public boolean contains(Object o) {
+        return list.contains(o);
+    }
+
+    @Override
+    public Iterator<Object> iterator() {
+        return list.iterator();
+    }
+
+    @Override
+    public Object[] toArray() {
+        return list.toArray();
+    }
+
+    @Override
+    public <T> T[] toArray(T[] a) {
+        return list.toArray(a);
+    }
+
+    @Override
+    public boolean add(Object o) {
+        return list.add(o);
+    }
+
+    @Override
+    public boolean remove(Object o) {
+        return list.remove(o);
+    }
+
+    @Override
+    public boolean containsAll(Collection<?> c) {
+        return list.containsAll(c);
+    }
+
+    @Override
+    public boolean addAll(Collection<? extends Object> c) {
+        return list.addAll(c);
+    }
+
+    @Override
+    public boolean addAll(int index, Collection<? extends Object> c) {
+        return list.addAll(index, c);
+    }
+
+    @Override
+    public boolean removeAll(Collection<?> c) {
+        return list.removeAll(c);
+    }
+
+    @Override
+    public boolean retainAll(Collection<?> c) {
+        return list.retainAll(c);
+    }
+
+    @Override
+    public void clear() {
+        list.clear();
+    }
+
+    @Override
+    public Object get(int index) {
+        return list.get(index);
+    }
+
+    @Override
+    public Object set(int index, Object element) {
+        return list.set(index, element);
+    }
+
+    @Override
+    public void add(int index, Object element) {
+        list.add(index, element);
+    }
+
+    @Override
+    public Object remove(int index) {
+        return list.remove(index);
+    }
+
+    @Override
+    public int indexOf(Object o) {
+        return list.indexOf(o);
+    }
+
+    @Override
+    public int lastIndexOf(Object o) {
+        return list.lastIndexOf(o);
+    }
+
+    @Override
+    public ListIterator<Object> listIterator() {
+        return list.listIterator();
+    }
+
+    @Override
+    public ListIterator<Object> listIterator(int index) {
+        return list.listIterator(index);
+    }
+
+    @Override
+    public List<Object> subList(int fromIndex, int toIndex) {
+        return new JsArray(new ArrayList<>(list.subList(fromIndex, toIndex)));
+    }
+
+    // =================================================================================================
+    // JS internal access - returns raw values
+    // =================================================================================================
+
+    /**
+     * JS internal access - returns raw value, UNDEFINED for out of bounds
+     */
+    public Object getElement(int index) {
+        if (index < 0 || index >= list.size()) {
+            return Terms.UNDEFINED;  // JS semantics
+        }
+        return list.get(index);  // Raw value
+    }
+
+    public void setElement(int index, Object value) {
+        list.set(index, value);
+    }
+
+    public void addElement(Object value) {
+        list.add(value);
+    }
+
+    public void removeElement(int index) {
+        list.remove(index);
+    }
+
+    /**
+     * Returns the raw internal list (for JS internal use).
+     */
     public List<Object> toList() {
         return list;
     }
 
-    @Override
-    public Iterator<KeyValue> iterator() {
-        return new Iterator<>() {
+    // =================================================================================================
+    // JS iteration support
+    // =================================================================================================
+
+    /**
+     * Returns an iterable for JS for-in/for-of iteration with KeyValue pairs.
+     */
+    public Iterable<KeyValue> jsEntries() {
+        return () -> new Iterator<>() {
             int index = 0;
 
             @Override
@@ -718,8 +916,11 @@ class JsArray extends JsObject {
         };
     }
 
+    // =================================================================================================
+    // Helper methods
+    // =================================================================================================
+
     @SuppressWarnings("unchecked")
-    @Override
     JsArray fromThis(Context context) {
         Object thisObject = context.getThisObject();
         if (thisObject instanceof JsArray arr) {
@@ -731,8 +932,15 @@ class JsArray extends JsObject {
         return this;
     }
 
-    List<Object> asList(Context context) {
+    List<Object> rawList(Context context) {
         return fromThis(context).list;
+    }
+
+    static JsCallable toCallable(Object[] args) {
+        if (args.length > 0 && args[0] instanceof JsCallable callable) {
+            return callable;
+        }
+        return (c, a) -> Terms.UNDEFINED;
     }
 
     static JsArray toArray(Map<String, Object> map) {

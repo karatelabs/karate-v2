@@ -24,6 +24,7 @@
 package io.karatelabs.driver;
 
 import io.karatelabs.js.ObjectLike;
+import io.karatelabs.js.SimpleObject;
 
 import java.time.Duration;
 import java.util.LinkedHashMap;
@@ -38,7 +39,7 @@ import java.util.function.Supplier;
  * Phase 8: Extracted from CdpDriver to enable multi-backend support.
  * Phase 9: Implements ObjectLike for Gherkin/DSL integration (JS property access).
  */
-public interface Driver extends ObjectLike {
+public interface Driver extends SimpleObject {
 
     // ========== ObjectLike Implementation (for JS property access) ==========
 
@@ -47,29 +48,13 @@ public interface Driver extends ObjectLike {
      * Supports: driver.url, driver.title, driver.cookies
      */
     @Override
-    default Object get(String name) {
+    default Object jsGet(String name) {
         return switch (name) {
             case "url" -> getUrl();
             case "title" -> getTitle();
             case "cookies" -> getCookies();
             default -> null;
         };
-    }
-
-    /**
-     * Property setting not supported - driver is read-only from JS.
-     */
-    @Override
-    default void put(String name, Object value) {
-        // Driver properties are read-only
-    }
-
-    /**
-     * Property removal not supported - driver is read-only from JS.
-     */
-    @Override
-    default void remove(String name) {
-        // Driver properties are read-only
     }
 
     /**

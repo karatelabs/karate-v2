@@ -332,10 +332,10 @@ public class ServerMarkupContext implements MarkupContext {
         if (session == null) {
             return;
         }
-        Object stored = session.get(FLASH_SESSION_KEY);
+        Object stored = session.getMember(FLASH_SESSION_KEY);
         if (stored instanceof Map) {
             flash.putAll((Map<String, Object>) stored);
-            session.remove(FLASH_SESSION_KEY);
+            session.removeMember(FLASH_SESSION_KEY);
         }
     }
 
@@ -347,7 +347,7 @@ public class ServerMarkupContext implements MarkupContext {
         if (session == null || flash.isEmpty()) {
             return;
         }
-        session.put(FLASH_SESSION_KEY, new HashMap<>(flash));
+        session.putMember(FLASH_SESSION_KEY, new HashMap<>(flash));
     }
 
     /**

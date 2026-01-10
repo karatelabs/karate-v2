@@ -550,7 +550,7 @@ class EvalTest extends EvalBase {
         } catch (Exception e) {
             assertTrue(e.getMessage().contains("foo"));
             JsFunction fn = (JsFunction) get("a");
-            assertEquals("baz", fn.get("bar"));
+            assertEquals("baz", fn.getMember("bar"));
         }
     }
 

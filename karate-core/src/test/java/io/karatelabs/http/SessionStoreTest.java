@@ -65,7 +65,7 @@ class SessionStoreTest {
     @Test
     void testSave() {
         Session session = store.create(600);
-        session.put("user", "john");
+        session.putMember("user", "john");
 
         long originalUpdated = session.getUpdated();
         // Small delay to ensure updated timestamp changes
@@ -77,7 +77,7 @@ class SessionStoreTest {
         store.save(session);
 
         Session retrieved = store.get(session.getId());
-        assertEquals("john", retrieved.get("user"));
+        assertEquals("john", retrieved.getMember("user"));
         assertTrue(retrieved.getUpdated() >= originalUpdated);
     }
 
@@ -139,15 +139,15 @@ class SessionStoreTest {
     @Test
     void testSessionDataPersists() {
         Session session = store.create(600);
-        session.put("key1", "value1");
-        session.put("key2", 123);
-        session.put("key3", true);
+        session.putMember("key1", "value1");
+        session.putMember("key2", 123);
+        session.putMember("key3", true);
 
         Session retrieved = store.get(session.getId());
 
-        assertEquals("value1", retrieved.get("key1"));
-        assertEquals(123, retrieved.get("key2"));
-        assertEquals(true, retrieved.get("key3"));
+        assertEquals("value1", retrieved.getMember("key1"));
+        assertEquals(123, retrieved.getMember("key2"));
+        assertEquals(true, retrieved.getMember("key3"));
     }
 
     @Test

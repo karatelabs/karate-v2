@@ -130,7 +130,7 @@ class ContextRoot extends CoreContext {
                         }
                         JsCallable callable = null;
                         if (arg instanceof ObjectLike objectLike) {
-                            callable = Terms.toCallable(objectLike.get(SimpleObject.TO_STRING));
+                            callable = Terms.toCallable(objectLike.getMember(SimpleObject.TO_STRING));
                         }
                         if (callable != null) {
                             sb.append(callable.call(context, arg));

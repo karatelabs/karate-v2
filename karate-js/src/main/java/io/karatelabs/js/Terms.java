@@ -23,6 +23,7 @@
  */
 package io.karatelabs.js;
 
+import io.karatelabs.common.StringUtils;
 import io.karatelabs.common.Xml;
 import net.minidev.json.JSONValue;
 import org.w3c.dom.Node;
@@ -163,7 +164,9 @@ public class Terms {
         if (lhs == rhs) { // instance equality !
             return true;
         }
-        if (lhs instanceof List || lhs instanceof Map) {
+        // Check for plain List/Map BEFORE JsObject (JsObject implements Map)
+        // JsPrimitive includes JsNumber, JsString, JsBoolean which extend JsObject
+        if (!(lhs instanceof JsPrimitive) && (lhs instanceof List || lhs instanceof Map)) {
             return false;
         }
         if (lhs.equals(rhs)) {
@@ -363,24 +366,28 @@ public class Terms {
     @SuppressWarnings("unchecked")
     static Iterable<KeyValue> toIterable(Object o) {
         // TODO strictly Objects are not iterable
+        // Check JsArray first - it implements List but has its own jsEntries
+        if (o instanceof JsArray jsArray) {
+            return jsArray.jsEntries();
+        }
         if (o instanceof JsObject jsObject) {
-            return jsObject;
+            return jsObject.jsEntries();
         }
         if (o instanceof List) {
-            return new JsArray((List<Object>) o);
+            return new JsArray((List<Object>) o).jsEntries();
         }
         // Java native arrays (String[], int[], Object[], etc.)
         JsArray jsArray = toJsArray(o);
         if (jsArray != null) {
-            return jsArray;
+            return jsArray.jsEntries();
         }
         if (o instanceof Map) {
-            return new JsObject((Map<String, Object>) o);
+            return new JsObject((Map<String, Object>) o).jsEntries();
         }
         if (o instanceof String) {
-            return new JsString((String) o);
+            return new JsString((String) o).jsEntries();
         }
-        return new JsObject();
+        return new JsObject().jsEntries();
     }
 
     static JsCallable toCallable(Object o) {
@@ -454,9 +461,9 @@ public class Terms {
             }
             Prototype prototypeLhs = objectLhs.getPrototype();
             if (prototypeLhs != null) {
-                Object constructorLhs = prototypeLhs.get("constructor");
+                Object constructorLhs = prototypeLhs.getMember("constructor");
                 if (constructorLhs != null) {
-                    Object constructorRhs = objectRhs.get("constructor");
+                    Object constructorRhs = objectRhs.getMember("constructor");
                     return constructorLhs == constructorRhs;
                 }
             }
@@ -473,8 +480,8 @@ public class Terms {
         }
         switch (o) {
             case JsArray keyValues -> {
-                List<Object> list = keyValues.toList();
-                return JSONValue.toJSONString(list);
+                // Use StringUtils.formatJson to avoid recursion issues with JSONValue
+                return StringUtils.formatJson(keyValues.toList(), false, false, false);
             }
             case JsFunction ignored -> {
                 return "[object Object]";

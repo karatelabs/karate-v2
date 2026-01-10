@@ -25,7 +25,7 @@ package io.karatelabs.js;
 
 import java.util.*;
 
-class JsObject implements ObjectLike, JsCallable, Iterable<KeyValue> {
+class JsObject implements ObjectLike, Map<String, Object>, JsCallable {
 
     final JsObject _this = this;
 
@@ -142,18 +142,18 @@ class JsObject implements ObjectLike, JsCallable, Iterable<KeyValue> {
     }
 
     @Override
-    public Object get(String name) {
+    public Object getMember(String name) {
         if (_map != null && _map.containsKey(name)) {
             return _map.get(name);
         }
         if ("prototype".equals(name)) {
             return getPrototype();
         }
-        return getPrototype().get(name);
+        return getPrototype().getMember(name);
     }
 
     @Override
-    public void put(String name, Object value) {
+    public void putMember(String name, Object value) {
         if (_map == null) {
             _map = new LinkedHashMap<>();
         }
@@ -161,7 +161,7 @@ class JsObject implements ObjectLike, JsCallable, Iterable<KeyValue> {
     }
 
     @Override
-    public void remove(String name) {
+    public void removeMember(String name) {
         if (_map != null) {
             _map.remove(name);
         }
@@ -172,9 +172,111 @@ class JsObject implements ObjectLike, JsCallable, Iterable<KeyValue> {
         return _map == null ? Collections.emptyMap() : _map;
     }
 
+    // =================================================================================================
+    // Map<String, Object> interface - auto-unwraps values for Java consumers
+    // =================================================================================================
+
     @Override
-    public Iterator<KeyValue> iterator() {
-        return new Iterator<>() {
+    public int size() {
+        return _map == null ? 0 : _map.size();
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return _map == null || _map.isEmpty();
+    }
+
+    @Override
+    public boolean containsKey(Object key) {
+        return _map != null && _map.containsKey(key);
+    }
+
+    @Override
+    public boolean containsValue(Object value) {
+        if (_map == null) return false;
+        // Check for unwrapped equivalence
+        for (Object v : _map.values()) {
+            Object unwrapped = Engine.toJava(v);
+            if (Objects.equals(unwrapped, value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public Object get(Object key) {
+        // Map.get() - auto-unwrap, own properties only (no prototype chain)
+        Object raw = _map != null ? _map.get(key) : null;
+        return Engine.toJava(raw);
+    }
+
+    @Override
+    public Object put(String key, Object value) {
+        if (_map == null) {
+            _map = new LinkedHashMap<>();
+        }
+        Object previous = _map.put(key, value);
+        return Engine.toJava(previous);
+    }
+
+    @Override
+    public Object remove(Object key) {
+        if (_map == null) return null;
+        Object previous = _map.remove(key);
+        return Engine.toJava(previous);
+    }
+
+    @Override
+    public void putAll(Map<? extends String, ?> m) {
+        if (_map == null) {
+            _map = new LinkedHashMap<>();
+        }
+        _map.putAll(m);
+    }
+
+    @Override
+    public void clear() {
+        if (_map != null) {
+            _map.clear();
+        }
+    }
+
+    @Override
+    public Set<String> keySet() {
+        return _map == null ? Collections.emptySet() : _map.keySet();
+    }
+
+    @Override
+    public Collection<Object> values() {
+        if (_map == null) return Collections.emptyList();
+        // Return unwrapped values
+        List<Object> unwrapped = new ArrayList<>(_map.size());
+        for (Object v : _map.values()) {
+            unwrapped.add(Engine.toJava(v));
+        }
+        return unwrapped;
+    }
+
+    @Override
+    public Set<Entry<String, Object>> entrySet() {
+        if (_map == null) return Collections.emptySet();
+        // Return entries with unwrapped values
+        Set<Entry<String, Object>> unwrapped = new LinkedHashSet<>();
+        for (Entry<String, Object> entry : _map.entrySet()) {
+            unwrapped.add(new AbstractMap.SimpleEntry<>(entry.getKey(), Engine.toJava(entry.getValue())));
+        }
+        return unwrapped;
+    }
+
+    // =================================================================================================
+
+    /**
+     * Returns an iterable for JS for-in/for-of iteration with KeyValue pairs.
+     * This is used internally by JS iteration constructs.
+     */
+    public Iterable<KeyValue> jsEntries() {
+        return () -> new Iterator<>() {
             final Iterator<Map.Entry<String, Object>> entries = toMap().entrySet().iterator();
             int index = 0;
 

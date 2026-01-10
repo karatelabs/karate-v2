@@ -39,27 +39,27 @@ public interface SimpleObject extends ObjectLike {
     String TO_STRING = "toString";
 
     @Override
-    default void put(String name, Object value) {
-        logger.warn("put() not implemented for: {} - {}", name, getClass().getName());
+    default void putMember(String name, Object value) {
+        logger.warn("putMember() not implemented for: {} - {}", name, getClass().getName());
     }
 
     @Override
-    default void remove(String name) {
-        logger.warn("remove() not implemented for: {} - {}", name, getClass().getName());
+    default void removeMember(String name) {
+        logger.warn("removeMember() not implemented for: {} - {}", name, getClass().getName());
     }
 
     @Override
     default Map<String, Object> toMap() {
-        return toMap(keys(), this);
+        return toMap(getMemberNames(), this);
     }
 
-    default Collection<String> keys() {
-        logger.warn("keys() not implemented for: {}", getClass().getName());
+    default Collection<String> getMemberNames() {
+        logger.warn("getMemberNames() not implemented for: {}", getClass().getName());
         return Collections.emptyList();
     }
 
     @Override
-    default Object get(String name) {
+    default Object getMember(String name) {
         if (TO_STRING.equals(name)) {
             return jsToString();
         }

@@ -445,7 +445,7 @@ public class ProcessHandle implements SimpleObject {
     // ========== SimpleObject for JS access ==========
 
     @Override
-    public Collection<String> keys() {
+    public Collection<String> getMemberNames() {
         return KEYS;
     }
 

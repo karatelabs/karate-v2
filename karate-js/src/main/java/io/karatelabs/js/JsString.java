@@ -290,8 +290,8 @@ class JsString extends JsObject implements JsPrimitive {
     }
 
     @Override
-    public Iterator<KeyValue> iterator() {
-        return new Iterator<>() {
+    public Iterable<KeyValue> jsEntries() {
+        return () -> new Iterator<>() {
             int index = 0;
 
             @Override

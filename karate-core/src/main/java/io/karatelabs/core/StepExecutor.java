@@ -2898,6 +2898,10 @@ public class StepExecutor {
         if (value instanceof Node) {
             processXmlEmbeddedExpressions((Node) value);
             return value;
+        } else if (value instanceof io.karatelabs.js.JsCallable) {
+            // JsFunction extends JsObject which implements Map, but we don't want to
+            // process functions as maps - return them unchanged
+            return value;
         } else if (value instanceof Map) {
             @SuppressWarnings("unchecked")
             Map<String, Object> map = (Map<String, Object>) value;

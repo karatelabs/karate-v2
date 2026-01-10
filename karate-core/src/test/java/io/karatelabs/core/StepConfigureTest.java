@@ -255,11 +255,11 @@ class StepConfigureTest {
     @Test
     void testSimpleObjectKeys() {
         KarateConfig config = new KarateConfig();
-        assertTrue(config.keys().contains("readTimeout"));
-        assertTrue(config.keys().contains("ssl"));  // Map-based grouped settings
-        assertTrue(config.keys().contains("proxy"));
-        assertTrue(config.keys().contains("auth"));
-        assertTrue(config.keys().contains("headers"));
+        assertTrue(config.getMemberNames().contains("readTimeout"));
+        assertTrue(config.getMemberNames().contains("ssl"));  // Map-based grouped settings
+        assertTrue(config.getMemberNames().contains("proxy"));
+        assertTrue(config.getMemberNames().contains("auth"));
+        assertTrue(config.getMemberNames().contains("headers"));
     }
 
     @Test

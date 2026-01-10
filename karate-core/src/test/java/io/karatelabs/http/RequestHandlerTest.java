@@ -466,7 +466,7 @@ class RequestHandlerTest {
         Session session = testSessionStore.create(600);
         Map<String, Object> flashData = new HashMap<>();
         flashData.put("message", "One-time notification!");
-        session.put(ServerMarkupContext.FLASH_SESSION_KEY, flashData);
+        session.putMember(ServerMarkupContext.FLASH_SESSION_KEY, flashData);
         String sessionCookie = "karate.sid=" + session.getId();
 
         // First request - should see flash message
@@ -523,7 +523,7 @@ class RequestHandlerTest {
         }
 
         @Override
-        public Collection<String> keys() {
+        public Collection<String> getMemberNames() {
             return List.of("uppercase", "formatPrice", "greet", "appName");
         }
     }

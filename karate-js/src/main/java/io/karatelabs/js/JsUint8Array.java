@@ -23,10 +23,12 @@
  */
 package io.karatelabs.js;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
+/**
+ * JavaScript Uint8Array implementation backed by a byte[].
+ * Implements List<Object> for Java interop with auto-unwrapping.
+ */
 class JsUint8Array extends JsArray implements JavaMirror {
 
     private final byte[] buffer;
@@ -39,8 +41,12 @@ class JsUint8Array extends JsArray implements JavaMirror {
         this.buffer = bytes.clone();
     }
 
+    // =================================================================================================
+    // JS internal access - overrides JsArray to work with byte[] buffer
+    // =================================================================================================
+
     @Override
-    public Object get(int index) {
+    public Object getElement(int index) {
         if (index >= 0 && index < buffer.length) {
             return buffer[index] & 0xFF; // return as unsigned
         }
@@ -48,15 +54,15 @@ class JsUint8Array extends JsArray implements JavaMirror {
     }
 
     @Override
-    public void set(int index, Object value) {
+    public void setElement(int index, Object value) {
         if (index >= 0 && index < buffer.length && value instanceof Number v) {
             buffer[index] = (byte) (v.intValue() & 0xFF);
         }
     }
 
     @Override
-    public Iterator<KeyValue> iterator() {
-        return new Iterator<>() {
+    public Iterable<KeyValue> jsEntries() {
+        return () -> new Iterator<>() {
             int index = 0;
 
             @Override
@@ -75,16 +81,216 @@ class JsUint8Array extends JsArray implements JavaMirror {
     @Override
     public List<Object> toList() {
         ArrayList<Object> list = new ArrayList<>(buffer.length);
-        for (KeyValue kv : _this) {
+        for (KeyValue kv : jsEntries()) {
             list.add(kv.value);
         }
         return list;
     }
 
+    // =================================================================================================
+    // List<Object> implementation - overrides to work with byte[] buffer
+    // =================================================================================================
+
     @Override
     public int size() {
         return buffer.length;
     }
+
+    @Override
+    public boolean isEmpty() {
+        return buffer.length == 0;
+    }
+
+    @Override
+    public boolean contains(Object o) {
+        if (o instanceof Number n) {
+            int val = n.intValue() & 0xFF;
+            for (byte b : buffer) {
+                if ((b & 0xFF) == val) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public Iterator<Object> iterator() {
+        return new Iterator<>() {
+            int index = 0;
+
+            @Override
+            public boolean hasNext() {
+                return index < buffer.length;
+            }
+
+            @Override
+            public Object next() {
+                return buffer[index++] & 0xFF;
+            }
+        };
+    }
+
+    @Override
+    public Object[] toArray() {
+        Object[] result = new Object[buffer.length];
+        for (int i = 0; i < buffer.length; i++) {
+            result[i] = buffer[i] & 0xFF;
+        }
+        return result;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> T[] toArray(T[] a) {
+        int size = buffer.length;
+        T[] result = a.length >= size ? a : (T[]) java.lang.reflect.Array.newInstance(a.getClass().getComponentType(), size);
+        for (int i = 0; i < size; i++) {
+            result[i] = (T) (Integer) (buffer[i] & 0xFF);
+        }
+        if (a.length > size) {
+            result[size] = null;
+        }
+        return result;
+    }
+
+    @Override
+    public Object get(int index) {
+        if (index < 0 || index >= buffer.length) {
+            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + buffer.length);
+        }
+        return buffer[index] & 0xFF;
+    }
+
+    @Override
+    public Object set(int index, Object element) {
+        if (index < 0 || index >= buffer.length) {
+            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + buffer.length);
+        }
+        int previous = buffer[index] & 0xFF;
+        if (element instanceof Number n) {
+            buffer[index] = (byte) (n.intValue() & 0xFF);
+        }
+        return previous;
+    }
+
+    @Override
+    public int indexOf(Object o) {
+        if (o instanceof Number n) {
+            int val = n.intValue() & 0xFF;
+            for (int i = 0; i < buffer.length; i++) {
+                if ((buffer[i] & 0xFF) == val) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    @Override
+    public int lastIndexOf(Object o) {
+        if (o instanceof Number n) {
+            int val = n.intValue() & 0xFF;
+            for (int i = buffer.length - 1; i >= 0; i--) {
+                if ((buffer[i] & 0xFF) == val) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    // Fixed-size array - these operations throw UnsupportedOperationException
+    @Override
+    public boolean add(Object o) {
+        throw new UnsupportedOperationException("Uint8Array is fixed-size");
+    }
+
+    @Override
+    public boolean remove(Object o) {
+        throw new UnsupportedOperationException("Uint8Array is fixed-size");
+    }
+
+    @Override
+    public void add(int index, Object element) {
+        throw new UnsupportedOperationException("Uint8Array is fixed-size");
+    }
+
+    @Override
+    public Object remove(int index) {
+        throw new UnsupportedOperationException("Uint8Array is fixed-size");
+    }
+
+    @Override
+    public void clear() {
+        throw new UnsupportedOperationException("Uint8Array is fixed-size");
+    }
+
+    @Override
+    public boolean addAll(Collection<? extends Object> c) {
+        throw new UnsupportedOperationException("Uint8Array is fixed-size");
+    }
+
+    @Override
+    public boolean addAll(int index, Collection<? extends Object> c) {
+        throw new UnsupportedOperationException("Uint8Array is fixed-size");
+    }
+
+    @Override
+    public boolean removeAll(Collection<?> c) {
+        throw new UnsupportedOperationException("Uint8Array is fixed-size");
+    }
+
+    @Override
+    public boolean retainAll(Collection<?> c) {
+        throw new UnsupportedOperationException("Uint8Array is fixed-size");
+    }
+
+    @Override
+    public ListIterator<Object> listIterator() {
+        return new Uint8ListIterator(0);
+    }
+
+    @Override
+    public ListIterator<Object> listIterator(int index) {
+        return new Uint8ListIterator(index);
+    }
+
+    @Override
+    public List<Object> subList(int fromIndex, int toIndex) {
+        // Return a copy as a new list since we can't create a view of fixed-size array
+        List<Object> result = new ArrayList<>(toIndex - fromIndex);
+        for (int i = fromIndex; i < toIndex; i++) {
+            result.add(buffer[i] & 0xFF);
+        }
+        return result;
+    }
+
+    private class Uint8ListIterator implements ListIterator<Object> {
+        private int index;
+
+        Uint8ListIterator(int index) {
+            this.index = index;
+        }
+
+        @Override public boolean hasNext() { return index < buffer.length; }
+        @Override public Object next() { return buffer[index++] & 0xFF; }
+        @Override public boolean hasPrevious() { return index > 0; }
+        @Override public Object previous() { return buffer[--index] & 0xFF; }
+        @Override public int nextIndex() { return index; }
+        @Override public int previousIndex() { return index - 1; }
+        @Override public void remove() { throw new UnsupportedOperationException("Uint8Array is fixed-size"); }
+        @Override public void set(Object o) {
+            if (o instanceof Number n) {
+                buffer[index - 1] = (byte) (n.intValue() & 0xFF);
+            }
+        }
+        @Override public void add(Object o) { throw new UnsupportedOperationException("Uint8Array is fixed-size"); }
+    }
+
+    // =================================================================================================
+    // Prototype and other overrides
+    // =================================================================================================
 
     @Override
     JsUint8Array fromThis(Context context) {

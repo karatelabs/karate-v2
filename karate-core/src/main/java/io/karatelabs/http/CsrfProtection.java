@@ -100,10 +100,10 @@ public class CsrfProtection {
         if (session == null || session.isTemporary()) {
             return null;
         }
-        String token = (String) session.get(SESSION_KEY);
+        String token = (String) session.getMember(SESSION_KEY);
         if (token == null) {
             token = generateToken();
-            session.put(SESSION_KEY, token);
+            session.putMember(SESSION_KEY, token);
         }
         return token;
     }
@@ -120,7 +120,7 @@ public class CsrfProtection {
             return false;
         }
 
-        String expectedToken = (String) session.get(SESSION_KEY);
+        String expectedToken = (String) session.getMember(SESSION_KEY);
         if (expectedToken == null) {
             return false;
         }

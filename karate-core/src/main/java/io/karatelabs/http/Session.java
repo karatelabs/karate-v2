@@ -87,17 +87,17 @@ public class Session implements ObjectLike {
     }
 
     @Override
-    public Object get(String name) {
+    public Object getMember(String name) {
         return data.get(name);
     }
 
     @Override
-    public void put(String name, Object value) {
+    public void putMember(String name, Object value) {
         data.put(name, value);
     }
 
     @Override
-    public void remove(String s) {
+    public void removeMember(String s) {
         data.remove(s);
     }
 

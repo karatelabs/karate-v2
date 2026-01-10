@@ -217,7 +217,7 @@ public class Faker implements SimpleObject {
     }
 
     @Override
-    public Collection<String> keys() {
+    public Collection<String> getMemberNames() {
         return List.of(
                 "timestamp", "timestampMs", "isoTimestamp",
                 "firstName", "lastName", "fullName",

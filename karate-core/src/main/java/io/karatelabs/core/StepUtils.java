@@ -139,6 +139,11 @@ public class StepUtils {
         if (value == null) {
             return null;
         }
+        // JsFunction extends JsObject which implements Map, but we don't want to
+        // deep-copy functions - return them unchanged
+        if (value instanceof io.karatelabs.js.JsCallable) {
+            return value;
+        }
         if (value instanceof Map) {
             Map<String, Object> copy = new LinkedHashMap<>();
             for (Map.Entry<String, Object> entry : ((Map<String, Object>) value).entrySet()) {

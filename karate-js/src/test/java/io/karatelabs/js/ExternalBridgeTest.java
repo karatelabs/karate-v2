@@ -35,6 +35,49 @@ class ExternalBridgeTest extends EvalBase {
     }
 
     @Test
+    void testObjectLiteralWithFunctionProperty() {
+        // This replicates the karate-core test failure where foo.bar() fails
+        // when the external bridge is enabled
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        Object result = engine.eval("var foo = { bar: function(){ return 'baz' } }; foo.bar()");
+        assertEquals("baz", result);
+    }
+
+    @Test
+    void testObjectLiteralWithNestedFunctionProperty() {
+        // Chained property access: foo.bar.baz()
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        Object result = engine.eval("var foo = { bar: { baz: function(){ return 'deep' } } }; foo.bar.baz()");
+        assertEquals("deep", result);
+    }
+
+    @Test
+    void testObjectLiteralFunctionPropertyTwoSteps() {
+        // Mimics karate-core scenario where def and call are separate steps
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        // Step 1: def foo = { bar: function(){ return 'baz' } }
+        engine.eval("var foo = { bar: function(){ return 'baz' } }");
+        // Step 2: def result = foo.bar()
+        Object result = engine.eval("foo.bar()");
+        assertEquals("baz", result);
+    }
+
+    @Test
+    void testObjectLiteralFunctionPropertyViaGet() {
+        // Check what foo.bar returns when accessed
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        engine.eval("var foo = { bar: function(){ return 'baz' } }");
+        Object bar = engine.eval("foo.bar");
+        System.out.println("foo.bar type: " + (bar == null ? "null" : bar.getClass().getName()));
+        assertNotNull(bar, "foo.bar should not be null");
+        assertTrue(bar instanceof JsCallable, "foo.bar should be JsCallable but was: " + bar.getClass());
+    }
+
+    @Test
     void testConstructAndCall() {
         ExternalAccess type = bridge.forType("java.util.Properties");
         Object o = type.invoke();
@@ -104,7 +147,7 @@ class ExternalBridgeTest extends EvalBase {
     void testArrayLengthAndMap() {
         List<Object> list = NodeUtils.fromJson("['foo', 'bar']");
         JsArray jl = new JsArray(list);
-        assertEquals(2, jl.get("length"));
+        assertEquals(2, jl.getMember("length"));
     }
 
     @Test

@@ -48,12 +48,9 @@ public class JsJson implements SimpleObject {
             Object replacer = args.length > 1 ? args[1] : null;
             Object space = args.length > 2 ? args[2] : null;
 
-            // Handle replacer function - transform the value tree first
-            if (replacer instanceof JsCallable replacerFunc) {
-                value = applyReplacerFunction(replacerFunc, "", value);
-            }
-            // Handle replacer array (array of keys to include)
-            else if (replacer instanceof List) {
+            // Handle replacer array (array of keys to include) - check BEFORE JsCallable
+            // because JsArray implements both List and JsCallable
+            if (replacer instanceof List) {
                 List<String> list = (List<String>) replacer;
                 if (value instanceof Map) {
                     Map<String, Object> map = (Map<String, Object>) value;
@@ -65,6 +62,10 @@ public class JsJson implements SimpleObject {
                     }
                     value = result;
                 }
+            }
+            // Handle replacer function - transform the value tree
+            else if (replacer instanceof JsCallable replacerFunc) {
+                value = applyReplacerFunction(replacerFunc, "", value);
             }
 
             // Handle space parameter for pretty printing

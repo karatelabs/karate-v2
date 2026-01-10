@@ -1082,6 +1082,69 @@ class StepCallTest {
         assertTrue(result.isPassed(), "Isolated scope call should NOT propagate config: " + getFailureMessage(result));
     }
 
+    @Test
+    void testCallOnceWithFunctionInResult() throws Exception {
+        // Tests that functions in callonce results are preserved and not converted to Maps.
+        // JsFunction extends JsObject which implements Map, so deepCopy must check
+        // for JsCallable before checking for Map to avoid mangling functions.
+        Path jsFile = tempDir.resolve("utils.js");
+        Files.writeString(jsFile, """
+            function fn() {
+              return {
+                value: 42,
+                getValue: function() { return 42; },
+                process: function(x) { return x * 2; }
+              };
+            }
+            """);
+
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Callonce with function in result
+            Background:
+            * callonce read('utils.js')
+            Scenario: First scenario - uses cached result
+            * def result = getValue()
+            * match result == 42
+            * match process(5) == 10
+            Scenario: Second scenario - also uses cached result
+            * def result = getValue()
+            * match result == 42
+            * match process(10) == 20
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "Functions in callonce results should be callable: " + getFailureMessage(result));
+    }
+
+    @Test
+    void testDefWithFunctionInObjectLiteral() throws Exception {
+        // Tests that functions inside object literals are preserved when using def.
+        // This catches regressions in processEmbeddedExpressions which must check
+        // for JsCallable before checking for Map.
+        Path callerFeature = tempDir.resolve("caller.feature");
+        Files.writeString(callerFeature, """
+            Feature: Function in object literal
+            Scenario: Access function from object
+            * def foo = { bar: function(){ return 'baz' } }
+            * def result = foo.bar()
+            * match result == 'baz'
+            Scenario: Chained access
+            * def foo = { bar: { baz: function(){ return 'deep' } } }
+            * def result = foo.bar.baz()
+            * match result == 'deep'
+            """);
+
+        Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .writeReport(false);
+        SuiteResult result = suite.run();
+
+        assertTrue(result.isPassed(), "Functions in object literals should be callable: " + getFailureMessage(result));
+    }
+
     private String getFailureMessage(SuiteResult result) {
         if (result.isPassed()) return "none";
         for (FeatureResult fr : result.getFeatureResults()) {

@@ -50,26 +50,26 @@ public class JavaObject implements ExternalAccess, ObjectLike {
 
     @Override
     public Object read(String name) {
-        return get(name);
+        return getMember(name);
     }
 
     @Override
     public void update(String name, Object value) {
-        put(name, value);
+        putMember(name, value);
     }
 
     @Override
-    public Object get(String name) {
+    public Object getMember(String name) {
         return JavaUtils.convertIfArray(JavaUtils.get(object, name));
     }
 
     @Override
-    public void put(String name, Object value) {
+    public void putMember(String name, Object value) {
         JavaUtils.set(object, name, value);
     }
 
     @Override
-    public void remove(String name) {
+    public void removeMember(String name) {
         throw new RuntimeException("remove not supported on java object: " + object.getClass());
     }
 

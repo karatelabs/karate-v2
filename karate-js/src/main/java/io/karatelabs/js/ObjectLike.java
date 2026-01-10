@@ -27,11 +27,11 @@ import java.util.Map;
 
 public interface ObjectLike {
 
-    Object get(String name);
+    Object getMember(String name);
 
-    void put(String name, Object value);
+    void putMember(String name, Object value);
 
-    void remove(String name);
+    void removeMember(String name);
 
     Map<String, Object> toMap();
 

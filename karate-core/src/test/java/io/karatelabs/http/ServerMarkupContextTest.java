@@ -348,7 +348,7 @@ class ServerMarkupContextTest {
 
         // Verify flash is stored in session
         @SuppressWarnings("unchecked")
-        Map<String, Object> storedFlash = (Map<String, Object>) context.getSession().get(ServerMarkupContext.FLASH_SESSION_KEY);
+        Map<String, Object> storedFlash = (Map<String, Object>) context.getSession().getMember(ServerMarkupContext.FLASH_SESSION_KEY);
         assertNotNull(storedFlash);
         assertEquals("Something went wrong", storedFlash.get("error"));
         assertEquals("Please try again", storedFlash.get("info"));
@@ -361,7 +361,7 @@ class ServerMarkupContextTest {
         // Simulate flash stored from previous request
         Map<String, Object> previousFlash = new java.util.HashMap<>();
         previousFlash.put("success", "Item created!");
-        context.getSession().put(ServerMarkupContext.FLASH_SESSION_KEY, previousFlash);
+        context.getSession().putMember(ServerMarkupContext.FLASH_SESSION_KEY, previousFlash);
 
         // Load flash from session
         context.loadFlashFromSession();
@@ -370,7 +370,7 @@ class ServerMarkupContextTest {
         assertEquals("Item created!", context.getFlash().get("success"));
 
         // Verify flash is cleared from session (one-time display)
-        assertNull(context.getSession().get(ServerMarkupContext.FLASH_SESSION_KEY));
+        assertNull(context.getSession().getMember(ServerMarkupContext.FLASH_SESSION_KEY));
     }
 
     @Test
