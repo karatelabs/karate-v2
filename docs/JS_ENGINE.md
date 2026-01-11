@@ -430,7 +430,9 @@ public class ProcessHandle implements SimpleObject {
    }
    ```
 
-3. **`jsGet()` handles property access** - The switch expression is efficient and type-safe. Return `JsCallable` for methods.
+3. **`jsGet()` handles property access** - The switch expression is efficient and type-safe. Return `JsCallable` or `Invokable` for methods.
+
+4. **`jsGet()` is inherently lazy** - Called on every property access, so values are computed fresh each time. No need for `Supplier` pattern.
 
 ### Why Both `jsKeys()` and `jsGet()`?
 
