@@ -379,7 +379,7 @@ assertEquals(2021, engine.eval("javaDate.getFullYear()"));
 | Method | Purpose |
 |--------|---------|
 | `jsGet(String name)` | Property accessor - implement via switch expression |
-| `keys()` | Return property names for serialization (override required) |
+| `jsKeys()` | Return property names for serialization (override required) |
 
 ### How It Works
 
@@ -393,7 +393,7 @@ public class ProcessHandle implements SimpleObject {
     );
 
     @Override
-    public Collection<String> keys() {
+    public Collection<String> jsKeys() {
         return KEYS;  // Enables enumeration and JSON serialization
     }
 
@@ -412,10 +412,10 @@ public class ProcessHandle implements SimpleObject {
 
 ### Key Behaviors
 
-1. **`keys()` enables serialization** - `toMap()` iterates over `keys()` and calls `jsGet()` for each:
+1. **`jsKeys()` enables serialization** - `toMap()` iterates over `jsKeys()` and calls `jsGet()` for each:
    ```java
    default Map<String, Object> toMap() {
-       return toMap(keys(), this);  // Uses keys() to enumerate
+       return toMap(jsKeys(), this);  // Uses jsKeys() to enumerate
    }
    ```
 
@@ -432,12 +432,20 @@ public class ProcessHandle implements SimpleObject {
 
 3. **`jsGet()` handles property access** - The switch expression is efficient and type-safe. Return `JsCallable` for methods.
 
-### Why Both `keys()` and `jsGet()`?
+### Why Both `jsKeys()` and `jsGet()`?
 
 - **`jsGet()`** - Handles individual property access (e.g., `proc.stdOut`)
-- **`keys()`** - Enables enumeration for `toMap()`, JSON serialization, and `Object.keys()` in JS
+- **`jsKeys()`** - Enables enumeration for `toMap()`, JSON serialization, and `Object.keys()` in JS
 
-Without `keys()`, the object works for property access but serializes to `{}`.
+Without `jsKeys()`, the object works for property access but serializes to `{}`.
+
+### Property Presence Detection
+
+For `JsObject`, property presence is detected using `Map.containsKey()` before calling `getMember()`. This allows distinguishing between:
+- Property exists with value `null` → returns `null`
+- Property doesn't exist → continues up the prototype chain
+
+For `SimpleObject`, there is no `hasMember()` API. When `jsGet()` returns `null`, it's treated as "property not found". This simplifies implementation for Java interop classes that don't need to declare all keys upfront - they only need `jsKeys()` for serialization and `jsGet()` for access. If a property genuinely needs to hold `null`, consider using a sentinel value or implementing the full `JsObject` interface instead.
 
 ---
 

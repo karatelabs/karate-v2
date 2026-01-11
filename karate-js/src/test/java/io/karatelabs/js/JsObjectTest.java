@@ -3,6 +3,7 @@ package io.karatelabs.js;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class JsObjectTest extends EvalBase {
 
@@ -95,6 +96,32 @@ class JsObjectTest extends EvalBase {
         assertEquals(true, eval(js + "dog.constructor === Dog"));
         assertEquals(true, eval(js + "dog instanceof Dog"));
         assertEquals(true, eval(js + "dog instanceof dog.constructor"));
+    }
+
+    @Test
+    void testPrototypePropertySetToNull() {
+        // Edge case: when a property is explicitly set to null on child,
+        // it should NOT continue looking up the prototype chain
+        String js = "function Animal() { this.sound = 'generic' };"
+                + "function Cat() { this.sound = null };" // explicitly set to null
+                + "Cat.prototype = new Animal();"
+                + "var cat = new Cat();";
+        assertNull(eval(js + "cat.sound")); // should be null, not 'generic'
+
+        // Test setting property to null AFTER object creation (via prototype chain)
+        String js2 = "function Parent() { this.value = 'parent' };"
+                + "function Child() {}"
+                + "Child.prototype = new Parent();"
+                + "var child = new Child();"
+                + "child.value = null;"; // set to null after creation
+        assertNull(eval(js2 + "child.value")); // should be null, not 'parent'
+
+        // Test using bracket notation access
+        String js3 = "function Base() { this.prop = 'base' };"
+                + "function Derived() { this.prop = null };"
+                + "Derived.prototype = new Base();"
+                + "var obj = new Derived();";
+        assertNull(eval(js3 + "obj['prop']")); // bracket access should also return null
     }
 
     @Test

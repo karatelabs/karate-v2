@@ -50,11 +50,11 @@ public interface SimpleObject extends ObjectLike {
 
     @Override
     default Map<String, Object> toMap() {
-        return toMap(getMemberNames(), this);
+        return toMap(jsKeys(), this);
     }
 
-    default Collection<String> getMemberNames() {
-        logger.warn("getMemberNames() not implemented for: {}", getClass().getName());
+    default Collection<String> jsKeys() {
+        logger.warn("jsKeys() not implemented for: {}", getClass().getName());
         return Collections.emptyList();
     }
 
@@ -81,7 +81,7 @@ public interface SimpleObject extends ObjectLike {
     }
 
     static String toString(Map<String, Object> map) {
-        return StringUtils.formatJson(map);
+        return StringUtils.formatJson(map, false, false, false);
     }
 
     static Map<String, Object> toMap(Collection<String> keys, SimpleObject so) {

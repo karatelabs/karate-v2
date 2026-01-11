@@ -517,7 +517,7 @@ public class KarateConfig implements SimpleObject {
     // ===== SimpleObject implementation =====
 
     @Override
-    public Collection<String> getMemberNames() {
+    public Collection<String> jsKeys() {
         return KEYS;
     }
 

@@ -523,7 +523,7 @@ class RequestHandlerTest {
         }
 
         @Override
-        public Collection<String> getMemberNames() {
+        public Collection<String> jsKeys() {
             return List.of("uppercase", "formatPrice", "greet", "appName");
         }
     }

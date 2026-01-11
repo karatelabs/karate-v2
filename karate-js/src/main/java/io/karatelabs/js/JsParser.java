@@ -91,6 +91,7 @@ public class JsParser extends Parser {
                 || (break_stmt() && eos())
                 || (continue_stmt() && eos())
                 || (delete_stmt() && eos())
+                || fn_expr() // function declarations don't need eos (ASI)
                 || (expr_list() && eos())
                 || block(false)
                 || consumeIf(SEMI); // empty statement

@@ -55,6 +55,12 @@ class JsParserTest {
     }
 
     @Test
+    void testFunctionDeclarationAsi() {
+        // ASI: consecutive function declarations without semicolons - valid ES6
+        program("function A() {} function B() {}", "{PROGRAM:[[function,$A,['(',')'],['{','}']],[function,$B,['(',')'],['{','}']],EOF]}");
+    }
+
+    @Test
     void testBlock() {
         expr("{ a }", "['{',$a,'}']");
         expr("{ 1; 2 }", "['{',[1,';'],2,'}']");
