@@ -82,7 +82,7 @@ public class JavaUtils {
                 for (Method m : clazz.getMethods()) {
                     if (m.getName().equals(name)) {
                         JavaType jc = new JavaType(clazz);
-                        return jc.readInvokable(name);
+                        return jc.getMethod(name);
                     }
                 }
             }
@@ -128,7 +128,7 @@ public class JavaUtils {
                 for (Method m : object.getClass().getMethods()) {
                     if (m.getName().equals(name)) {
                         JavaObject jo = new JavaObject(object);
-                        return jo.readInvokable(name);
+                        return jo.getMethod(name);
                     }
                 }
                 throw new RuntimeException("no instance property: " + name);

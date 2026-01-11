@@ -45,22 +45,22 @@ public class JavaType implements ExternalAccess {
     }
 
     @Override
-    public Object invoke(Object... args) {
+    public Object construct(Object... args) {
         return JavaUtils.construct(clazz, args);
     }
 
     @Override
-    public Object call(String name, Object[] args) {
+    public Object invokeMethod(String name, Object[] args) {
         return JavaUtils.convertIfArray(JavaUtils.invokeStatic(clazz, name, args));
     }
 
     @Override
-    public Object read(String name) {
+    public Object getProperty(String name) {
         return JavaUtils.convertIfArray(JavaUtils.getStatic(clazz, name));
     }
 
     @Override
-    public void update(String name, Object value) {
+    public void setProperty(String name, Object value) {
         JavaUtils.setStatic(clazz, name, value);
     }
 

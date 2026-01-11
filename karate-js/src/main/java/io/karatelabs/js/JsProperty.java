@@ -153,10 +153,10 @@ class JsProperty {
         } else if (context.root.bridge != null) {
             try {
                 if (object instanceof ExternalAccess ja) {
-                    ja.update(name, value);
+                    ja.setProperty(name, value);
                 } else {
                     ExternalAccess ja = context.root.bridge.forInstance(object);
-                    ja.update(name, value);
+                    ja.setProperty(name, value);
                 }
             } catch (Exception e) {
                 logger.error("external bridge error: {}", e.getMessage());
@@ -298,17 +298,17 @@ class JsProperty {
             try {
                 if (functionCall) {
                     if (object instanceof ExternalAccess ja) {
-                        return ja.readInvokable(name);
+                        return ja.getMethod(name);
                     } else {
                         ExternalAccess ja = context.root.bridge.forInstance(object);
-                        return ja.readInvokable(name);
+                        return ja.getMethod(name);
                     }
                 } else {
                     if (object instanceof ExternalAccess ja) {
-                        return ja.read(name);
+                        return ja.getProperty(name);
                     } else {
                         ExternalAccess ja = context.root.bridge.forInstance(object);
-                        return ja.read(name);
+                        return ja.getProperty(name);
                     }
                 }
             } catch (Exception e) {

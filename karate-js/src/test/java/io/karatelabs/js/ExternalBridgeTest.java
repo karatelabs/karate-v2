@@ -80,12 +80,12 @@ class ExternalBridgeTest extends EvalBase {
     @Test
     void testConstructAndCall() {
         ExternalAccess type = bridge.forType("java.util.Properties");
-        Object o = type.invoke();
+        Object o = type.construct();
         assertEquals("java.util.Properties", o.getClass().getName());
         ExternalAccess instance = bridge.forInstance(o);
-        assertEquals(0, instance.call("size", JavaUtils.EMPTY));
-        instance.call("put", "foo", 5);
-        assertEquals(5, instance.call("get", "foo"));
+        assertEquals(0, instance.invokeMethod("size", JavaUtils.EMPTY));
+        instance.invokeMethod("put", "foo", 5);
+        assertEquals(5, instance.invokeMethod("get", "foo"));
     }
 
     @Test
@@ -95,9 +95,9 @@ class ExternalBridgeTest extends EvalBase {
         dp.setIntValue(5);
         dp.setBooleanValue(true);
         ExternalAccess instance = bridge.forInstance(dp);
-        assertEquals("foo", instance.read("stringValue"));
-        assertEquals(5, instance.read("intValue"));
-        assertEquals(true, instance.read("booleanValue"));
+        assertEquals("foo", instance.getProperty("stringValue"));
+        assertEquals(5, instance.getProperty("intValue"));
+        assertEquals(true, instance.getProperty("booleanValue"));
         ObjectLike ol = (ObjectLike) instance;
         NodeUtils.match(ol.toMap(), "{ stringValue: 'foo', integerArray: null, intValue: 5, instanceField: 'instance-field', booleanValue: true, doubleValue: 0.0, intArray: null }");
     }
@@ -106,9 +106,9 @@ class ExternalBridgeTest extends EvalBase {
     void testSet() {
         DemoPojo dp = new DemoPojo();
         ExternalAccess instance = bridge.forInstance(dp);
-        instance.update("stringValue", "bar");
-        instance.update("intValue", 10);
-        instance.update("booleanValue", true);
+        instance.setProperty("stringValue", "bar");
+        instance.setProperty("intValue", 10);
+        instance.setProperty("booleanValue", true);
         assertEquals("bar", dp.getStringValue());
         assertEquals(10, dp.getIntValue());
         assertTrue(dp.isBooleanValue());
@@ -118,8 +118,8 @@ class ExternalBridgeTest extends EvalBase {
     void testSetSpecial() {
         DemoPojo dp = new DemoPojo();
         ExternalAccess instance = bridge.forInstance(dp);
-        instance.update("doubleValue", 10);
-        instance.update("booleanValue", Boolean.TRUE);
+        instance.setProperty("doubleValue", 10);
+        instance.setProperty("booleanValue", Boolean.TRUE);
         assertEquals(10, dp.getDoubleValue());
         assertTrue(dp.isBooleanValue());
     }
@@ -128,7 +128,7 @@ class ExternalBridgeTest extends EvalBase {
     void testVarArgs() {
         DemoPojo dp = new DemoPojo();
         ExternalAccess instance = bridge.forInstance(dp);
-        Invokable method = instance.readInvokable("varArgs");
+        Invokable method = instance.getMethod("varArgs");
         assertEquals("foo", method.invoke(null, "foo"));
         assertEquals("bar", method.invoke(null, "foo", "bar"));
     }
@@ -137,7 +137,7 @@ class ExternalBridgeTest extends EvalBase {
     void testMethodOverload() {
         DemoPojo dp = new DemoPojo();
         ExternalAccess instance = bridge.forInstance(dp);
-        Invokable method = instance.readInvokable("doWork");
+        Invokable method = instance.getMethod("doWork");
         assertEquals("hello", method.invoke());
         assertEquals("hellofoo", method.invoke("foo"));
         assertEquals("hellofootrue", method.invoke("foo", true));

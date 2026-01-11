@@ -24,19 +24,20 @@
 package io.karatelabs.js;
 
 /**
- * Invokable is mapped to the constructor
  * all operations work in static or instance mode depending on context
  */
-public interface ExternalAccess extends Invokable {
+public interface ExternalAccess {
 
-    Object read(String name);
+    Object construct(Object... args);
 
-    void update(String name, Object value);
+    Object getProperty(String name);
 
-    Object call(String name, Object... args);
+    void setProperty(String name, Object value);
 
-    default Invokable readInvokable(String name) {
-        return args -> call(name, args);
+    Object invokeMethod(String name, Object... args);
+
+    default Invokable getMethod(String name) {
+        return args -> invokeMethod(name, args);
     }
 
     Object getJavaValue();
