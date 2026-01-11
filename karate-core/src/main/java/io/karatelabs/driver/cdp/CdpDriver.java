@@ -338,6 +338,12 @@ public class CdpDriver implements Driver {
                 .param("url", url)
                 .send();
 
+        // Skip page load wait for data URLs - they load synchronously
+        // and are prone to race conditions with CDP events
+        if (url.startsWith("data:")) {
+            return;
+        }
+
         // Wait for page load based on strategy
         waitForPageLoad(options.getPageLoadStrategy());
     }
