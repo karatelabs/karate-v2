@@ -35,12 +35,35 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.List;
 import java.util.Map;
 
 /**
  * Testcontainers wrapper for Chrome browser using chromedp/headless-shell (~200MB).
  * Provides Docker-based Chrome for reproducible, isolated E2E testing.
+ *
+ * <h2>Networking: Local vs GitHub Actions</h2>
+ * <p>
+ * The container needs to access test servers running on the host machine.
+ * This works differently depending on the environment:
+ * </p>
+ * <ul>
+ *   <li><b>macOS/Windows Docker Desktop:</b> Uses a Linux VM, so "host.docker.internal"
+ *       is automatically available and resolves to the host machine.</li>
+ *   <li><b>Linux (including GitHub Actions):</b> Docker runs natively without a VM.
+ *       "host.docker.internal" requires explicit configuration via --add-host flag
+ *       (supported in Docker 20.10+). We also rely on testcontainers' exposeHostPorts()
+ *       which creates a SOCKS proxy container and makes "host.testcontainers.internal"
+ *       available.</li>
+ * </ul>
+ *
+ * <h2>Usage Requirements</h2>
+ * <p>
+ * Before starting this container, callers MUST call:
+ * {@code Testcontainers.exposeHostPorts(port)} for each host port the container needs
+ * to access. This sets up the network proxy that makes host ports accessible.
+ * </p>
+ *
+ * @see org.testcontainers.Testcontainers#exposeHostPorts(int...)
  */
 public class ChromeContainer extends GenericContainer<ChromeContainer> {
 
@@ -55,6 +78,11 @@ public class ChromeContainer extends GenericContainer<ChromeContainer> {
         withCommand("--remote-allow-origins=*");
         waitingFor(Wait.forHttp("/json/version").forPort(CDP_PORT));
         withStartupTimeout(Duration.ofMinutes(2));
+
+        // Linux/GitHub Actions: Add host.docker.internal mapping to host-gateway
+        // This makes host.docker.internal work on native Linux Docker (20.10+)
+        // On Docker Desktop (macOS/Windows), this is a no-op since it's already available
+        withExtraHost("host.docker.internal", "host-gateway");
     }
 
     /**
@@ -81,11 +109,23 @@ public class ChromeContainer extends GenericContainer<ChromeContainer> {
     }
 
     /**
-     * Get the base URL for accessing services from inside the container.
+     * Get the base URL for accessing services running on the host from inside the container.
      * Use this for navigating to test pages served by TestPageServer.
+     *
+     * <p>This uses "host.testcontainers.internal" which is set up by testcontainers when
+     * {@code Testcontainers.exposeHostPorts(port)} is called. This hostname resolves to
+     * a SOCKS proxy container that forwards traffic to the host machine.</p>
+     *
+     * <p><b>Important:</b> The port must have been exposed via {@code exposeHostPorts()}
+     * BEFORE the container was started, otherwise the connection will fail.</p>
+     *
+     * @param hostPort the port number on the host machine to connect to
+     * @return URL that can be used from within the container to access the host service
      */
     public String getHostAccessUrl(int hostPort) {
-        // host.testcontainers.internal is automatically mapped to the host
+        // host.testcontainers.internal is set up by Testcontainers.exposeHostPorts()
+        // It routes through a SOCKS proxy container to reach the host machine
+        // This works on all platforms: macOS, Windows, and Linux (including GitHub Actions)
         return "http://host.testcontainers.internal:" + hostPort;
     }
 

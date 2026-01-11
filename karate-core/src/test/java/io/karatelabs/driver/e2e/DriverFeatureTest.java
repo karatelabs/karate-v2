@@ -43,21 +43,44 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Runs Gherkin feature files for driver E2E testing.
  * Uses Testcontainers for Docker-based Chrome and reuses existing test infrastructure.
+ *
+ * <h2>Networking Setup (Critical for GitHub Actions)</h2>
+ * <p>
+ * This test uses a separate Chrome container (not SharedChromeContainer) because it
+ * needs a dedicated container for feature file execution with parallel scenarios.
+ * </p>
+ * <p>
+ * The networking setup is done in a static initializer block that runs BEFORE
+ * the {@code @Container} field is initialized. This order is critical:
+ * </p>
+ * <ol>
+ *   <li>Static block calls {@code Testcontainers.exposeHostPorts()} - sets up SOCKS proxy</li>
+ *   <li>{@code @Container} field triggers container creation with proxy already available</li>
+ *   <li>{@code @BeforeAll} starts the test server on the exposed port</li>
+ * </ol>
+ *
+ * @see ChromeContainer
+ * @see SharedChromeContainer
  */
 @org.testcontainers.junit.jupiter.Testcontainers
 class DriverFeatureTest {
 
     private static final Logger logger = LoggerFactory.getLogger(DriverFeatureTest.class);
 
-    // Test server port - use fixed port for exposeHostPorts which must be called before container starts
+    // Test server port - different from SharedChromeContainer (18080) to avoid conflicts
+    // This port is used exclusively by this test class
     private static final int TEST_SERVER_PORT = 18081;
 
-    // Static initialization block runs before @Container field initialization
+    // Static initialization block runs BEFORE @Container field initialization
+    // This order is critical for testcontainers networking to work correctly
     static {
-        // Workaround for Docker 29.x compatibility
+        // Workaround for Docker 29.x compatibility (affects API version negotiation)
+        // See: https://github.com/testcontainers/testcontainers-java/issues/11212
         System.setProperty("api.version", "1.44");
 
-        // Expose the test server port to containers BEFORE container starts
+        // CRITICAL: Expose the test server port BEFORE container starts
+        // This sets up a SOCKS proxy that makes host.testcontainers.internal work
+        // The @Container annotation triggers container creation after static init
         Testcontainers.exposeHostPorts(TEST_SERVER_PORT);
         logger.info("exposed host port {} to containers for Gherkin tests", TEST_SERVER_PORT);
     }

@@ -31,10 +31,31 @@ import org.testcontainers.Testcontainers;
  * Singleton container holder for sharing a single Chrome container across all E2E tests.
  * This significantly speeds up test execution by avoiding container start/stop per test class.
  *
- * Usage:
- * - Call SharedChromeContainer.getInstance() to get the shared container
- * - Container is started lazily on first access
- * - Container is stopped automatically via JVM shutdown hook
+ * <h2>Usage</h2>
+ * <ul>
+ *   <li>Call {@code SharedChromeContainer.getInstance()} to get the shared container</li>
+ *   <li>Container is started lazily on first access</li>
+ *   <li>Container is stopped automatically via JVM shutdown hook</li>
+ * </ul>
+ *
+ * <h2>Networking Setup (Critical for GitHub Actions)</h2>
+ * <p>
+ * The initialization order is critical for container-to-host networking:
+ * </p>
+ * <ol>
+ *   <li>{@code Testcontainers.exposeHostPorts(port)} - MUST be called first.
+ *       This creates a SOCKS proxy container that allows the Chrome container
+ *       to reach services on the host via "host.testcontainers.internal".</li>
+ *   <li>Start the test server on the exposed port.</li>
+ *   <li>Start the Chrome container - it can now reach the test server.</li>
+ * </ol>
+ * <p>
+ * If this order is not followed, the Chrome container won't be able to connect
+ * to the test server, causing page load timeouts.
+ * </p>
+ *
+ * @see ChromeContainer
+ * @see org.testcontainers.Testcontainers#exposeHostPorts(int...)
  */
 public class SharedChromeContainer {
 
@@ -50,18 +71,21 @@ public class SharedChromeContainer {
     private final TestPageServer testServer;
 
     private SharedChromeContainer() {
-        // Workaround for Docker 29.x compatibility
+        // Workaround for Docker 29.x compatibility (affects API version negotiation)
+        // See: https://github.com/testcontainers/testcontainers-java/issues/11212
         System.setProperty("api.version", "1.44");
 
-        // Expose the test server port to containers BEFORE container starts
+        // CRITICAL: Expose the test server port BEFORE starting the container
+        // This sets up a SOCKS proxy that makes host.testcontainers.internal work
+        // Without this, the container cannot reach services on the host machine
         Testcontainers.exposeHostPorts(TEST_SERVER_PORT);
-        logger.info("exposed host port {} to containers", TEST_SERVER_PORT);
+        logger.info("exposed host port {} to containers (for host.testcontainers.internal)", TEST_SERVER_PORT);
 
-        // Start test server
+        // Start test server on the exposed port
         testServer = TestPageServer.start(TEST_SERVER_PORT);
         logger.info("shared test page server started on port: {}", testServer.getPort());
 
-        // Start Chrome container
+        // Start Chrome container AFTER port exposure is set up
         chrome = new ChromeContainer();
         chrome.start();
         logger.info("shared Chrome container started: {}", chrome.getCdpUrl());

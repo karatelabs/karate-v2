@@ -37,6 +37,21 @@ import java.nio.file.Path;
 /**
  * Base class for driver E2E tests.
  * Uses SharedChromeContainer for efficient test execution - single container for all tests.
+ *
+ * <p>This class provides the common setup for E2E tests that need a Chrome browser.
+ * It uses a shared container to avoid the overhead of starting a new container for
+ * each test class.</p>
+ *
+ * <h2>Networking (GitHub Actions Compatibility)</h2>
+ * <p>
+ * Test pages are accessed via {@link #testUrl(String)} which returns URLs using
+ * "host.testcontainers.internal". This works on all platforms (macOS, Windows, Linux)
+ * because SharedChromeContainer properly sets up the testcontainers networking
+ * before starting the Chrome container.
+ * </p>
+ *
+ * @see SharedChromeContainer
+ * @see ChromeContainer
  */
 public abstract class DriverTestBase {
 
@@ -71,7 +86,14 @@ public abstract class DriverTestBase {
 
     /**
      * Get URL for a test page accessible from inside the Docker container.
-     * Use this for driver.setUrl() calls.
+     * Use this for driver.setUrl() or driver navigation calls.
+     *
+     * <p>Returns a URL using "host.testcontainers.internal" which is routed through
+     * testcontainers' SOCKS proxy to reach the test server on the host machine.
+     * This works on all platforms including GitHub Actions.</p>
+     *
+     * @param path the path portion of the URL (e.g., "/input", "/iframe")
+     * @return full URL accessible from inside the container
      */
     protected String testUrl(String path) {
         return shared.getHostAccessUrl() + path;
