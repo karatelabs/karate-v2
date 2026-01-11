@@ -215,11 +215,18 @@ class JsProperty {
             name = index + "";
         }
         if (name == null) {
+            if (functionCall && context.root.bridge != null && object instanceof ExternalAccess ea) {
+                return (JsCallable) (c, args) -> ea.construct(args);
+            }
             return object;
         }
         if (object == null || object == Terms.UNDEFINED) {
             if (context.hasKey(name)) {
-                return context.get(name);
+                Object result = context.get(name);
+                if (functionCall && context.root.bridge != null && result instanceof ExternalAccess ea) {
+                    return (JsCallable) (c, args) -> ea.construct(args);
+                }
+                return result;
             }
             if (optional) {
                 return Terms.UNDEFINED;

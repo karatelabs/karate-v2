@@ -393,8 +393,6 @@ public class Terms {
     static JsCallable toCallable(Object o) {
         if (o instanceof JsCallable callable) {
             return callable;
-        } else if (o instanceof ExternalAccess external) {
-            return (c, args) -> external.construct(args);
         } else if (o instanceof Invokable invokable) {
             return (c, args) -> invokable.invoke(args);
         } else {
