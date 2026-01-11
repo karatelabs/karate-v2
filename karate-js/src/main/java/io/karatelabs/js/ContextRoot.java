@@ -133,7 +133,10 @@ class ContextRoot extends CoreContext {
                             callable = Terms.toCallable(objectLike.getMember(SimpleObject.TO_STRING));
                         }
                         if (callable != null) {
-                            sb.append(callable.call(context, arg));
+                            // ES6: call toString with 'this' set to the object being stringified
+                            CoreContext callContext = new CoreContext((CoreContext) context, null, ContextScope.FUNCTION);
+                            callContext.thisObject = arg;
+                            sb.append(callable.call(callContext));
                         } else {
                             sb.append(Terms.TO_STRING(arg));
                         }

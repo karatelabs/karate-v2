@@ -30,6 +30,36 @@ import java.util.List;
 public abstract class JsFunction extends JsObject implements JsCallable {
 
     String name;
+    private JsObject functionPrototype;
+
+    /**
+     * Returns the function's prototype object (used for instance creation).
+     * This is the object that will be set as [[Prototype]] of instances created with 'new'.
+     * Lazily created on first access.
+     */
+    JsObject getFunctionPrototype() {
+        if (functionPrototype == null) {
+            functionPrototype = new JsObject();
+            // ES6: prototype.constructor points back to the function
+            functionPrototype.putMember("constructor", this);
+        }
+        return functionPrototype;
+    }
+
+    @Override
+    public Object getMember(String name) {
+        // For functions, "prototype" returns the function's prototype object
+        // Check _map first to allow "Foo.prototype = ..." assignments
+        if ("prototype".equals(name)) {
+            Object fromMap = super.getMember(name);
+            if (fromMap != null && fromMap != getPrototype()) {
+                // Prototype was explicitly set via assignment
+                return fromMap;
+            }
+            return getFunctionPrototype();
+        }
+        return super.getMember(name);
+    }
 
     @Override
     Prototype initPrototype() {
@@ -43,6 +73,19 @@ public abstract class JsFunction extends JsObject implements JsCallable {
                     // TODO bind
                     case "constructor" -> _this;
                     case "name" -> name;
+                    case "toString" -> (JsCallable) (context, args) -> {
+                        // ES6: Function.prototype.toString returns function source
+                        Object thisObj = context.getThisObject();
+                        if (thisObj instanceof JsFunctionNode fn) {
+                            // User-defined function: return actual source
+                            return fn.node.getTextIncludingWhitespace();
+                        } else if (thisObj instanceof JsFunction fn) {
+                            // Built-in function: return [native code]
+                            String fnName = fn.name != null ? fn.name : "";
+                            return "function " + fnName + "() { [native code] }";
+                        }
+                        return "[object Function]";
+                    };
                     default -> null;
                 };
             }

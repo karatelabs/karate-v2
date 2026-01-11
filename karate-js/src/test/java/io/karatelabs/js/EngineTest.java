@@ -287,8 +287,10 @@ class EngineTest {
         engine.eval("console.log('foo');");
         assertEquals("foo", sb.toString());
         sb.setLength(0);
+        // ES6: a.prototype.toString does NOT affect a.toString() - prototype is only for instances
+        // console.log uses Function.prototype.toString which returns actual source
         engine.eval("var a = function(){ }; a.prototype.toString = function(){ return 'bar' }; console.log(a)");
-        assertEquals("bar", sb.toString());
+        assertEquals("function(){ }", sb.toString());
     }
 
     @Test

@@ -30,6 +30,15 @@ class JsObject implements ObjectLike, Map<String, Object>, Invokable {
     final JsObject _this = this;
 
     private Map<String, Object> _map;
+    private JsObject prototypeDelegate;
+
+    public JsObject getPrototypeDelegate() {
+        return prototypeDelegate;
+    }
+
+    public void setPrototypeDelegate(JsObject proto) {
+        this.prototypeDelegate = proto;
+    }
 
     JsObject(Map<String, Object> map) {
         this._map = map;
@@ -135,6 +144,32 @@ class JsObject implements ObjectLike, Map<String, Object>, Invokable {
                         }
                         return Terms.eq(args[0], args[1], true);
                     };
+                    case "create" -> (Invokable) args -> {
+                        JsObject newObj = new JsObject();
+                        if (args.length > 0 && args[0] instanceof JsObject proto) {
+                            newObj.setPrototypeDelegate(proto);
+                        }
+                        return newObj;
+                    };
+                    case "getPrototypeOf" -> (Invokable) args -> {
+                        if (args.length > 0 && args[0] instanceof JsObject obj) {
+                            return obj.getPrototypeDelegate();
+                        }
+                        return null;
+                    };
+                    case "setPrototypeOf" -> (Invokable) args -> {
+                        if (args.length >= 2 && args[0] instanceof JsObject obj) {
+                            if (args[1] instanceof JsObject proto) {
+                                obj.setPrototypeDelegate(proto);
+                            } else if (args[1] == null) {
+                                obj.setPrototypeDelegate(null);
+                            }
+                            return args[0];
+                        }
+                        return args.length > 0 ? args[0] : null;
+                    };
+                    // instance property
+                    case "__proto__" -> _this.prototypeDelegate;
                     default -> null;
                 };
             }
@@ -143,12 +178,21 @@ class JsObject implements ObjectLike, Map<String, Object>, Invokable {
 
     @Override
     public Object getMember(String name) {
+        // 1. Check own properties
         if (_map != null && _map.containsKey(name)) {
             return _map.get(name);
         }
         if ("prototype".equals(name)) {
             return getPrototype();
         }
+        // 2. Check prototype delegate chain (standard JS prototype inheritance)
+        if (prototypeDelegate != null) {
+            Object result = prototypeDelegate.getMember(name);
+            if (result != null) {
+                return result;
+            }
+        }
+        // 3. Fall back to built-in Prototype methods
         return getPrototype().getMember(name);
     }
 

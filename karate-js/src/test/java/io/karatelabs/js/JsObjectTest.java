@@ -160,4 +160,43 @@ class JsObjectTest extends EvalBase {
         matchEval("var obj1 = {a: 1, b: 2}; var obj2 = {b: 3, c: 4}; var obj3 = {...obj2, ...obj1}; obj3", "{ b: 2, c: 4, a: 1 }");
     }
 
+    @Test
+    void testPrototypeChainBasic() {
+        // Basic prototype chain: instance inherits from constructor's prototype
+        assertEquals(42, eval("function Foo() {}; Foo.prototype.bar = 42; var f = new Foo(); f.bar"));
+    }
+
+    @Test
+    void testPrototypeChainInstanceOf() {
+        // instanceof should work with prototype chain
+        assertEquals(true, eval("function Foo() {}; var f = new Foo(); f instanceof Foo"));
+    }
+
+    @Test
+    void testPrototypeChainProtoGetter() {
+        // __proto__ getter should return the prototype delegate
+        assertEquals(true, eval("function Foo() {}; var f = new Foo(); f.__proto__ === Foo.prototype"));
+    }
+
+    @Test
+    void testPrototypeChainGetPrototypeOf() {
+        // Object.getPrototypeOf should return the prototype delegate
+        assertEquals(true, eval("function Foo() {}; var f = new Foo(); Object.getPrototypeOf(f) === Foo.prototype"));
+    }
+
+    @Test
+    void testPrototypeChainInheritance() {
+        // Prototype chain inheritance via Object.create
+        assertEquals("sound", eval(
+                "function Animal() {}; Animal.prototype.speak = function() { return 'sound'; };"
+                        + "function Dog() {}; Dog.prototype = Object.create(Animal.prototype);"
+                        + "var d = new Dog(); d.speak()"));
+    }
+
+    @Test
+    void testPrototypeChainOwnPropertyShadows() {
+        // Own property should shadow prototype property
+        assertEquals(1, eval("function Foo() { this.bar = 1; }; Foo.prototype.bar = 2; var f = new Foo(); f.bar"));
+    }
+
 }

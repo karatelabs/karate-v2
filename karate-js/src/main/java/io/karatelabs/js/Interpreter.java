@@ -237,17 +237,34 @@ class Interpreter {
         }
         Object[] args = argsList.toArray();
         CoreContext callContext = new CoreContext(context, node, ContextScope.FUNCTION);
-        callContext.thisObject = prop.object == null ? callable : prop.object;
+        JsObject newInstance = null;
         if (newKeyword) {
             callContext.callInfo = new CallInfo(true, callable);
+            // Only create new instance for user-defined functions (JsFunctionNode)
+            // Built-in constructors (JsArray, JsDate, etc.) handle their own construction
+            if (callable instanceof JsFunctionNode jsFunc) {
+                newInstance = new JsObject();
+                Object proto = jsFunc.getMember("prototype");
+                if (proto instanceof JsObject protoObj) {
+                    newInstance.setPrototypeDelegate(protoObj);
+                }
+                callContext.thisObject = newInstance;
+            } else {
+                callContext.thisObject = callable;
+            }
+        } else {
+            callContext.thisObject = prop.object == null ? callable : prop.object;
         }
         if (callContext.root.listener != null) {
             callContext.root.listener.onFunctionCall(callContext, args);
         }
         Object result = callable.call(callContext, args);
         context.updateFrom(callContext);
-        if (newKeyword && result == null) {
-            result = callable;
+        if (newKeyword && newInstance != null) {
+            // Return the new instance unless constructor explicitly returns an object
+            if (result == null || !(result instanceof JsObject)) {
+                result = newInstance;
+            }
         }
         if (result instanceof JavaMirror jm) {
             return newKeyword ? result : jm.getJavaValue();

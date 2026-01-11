@@ -459,12 +459,21 @@ public class Terms {
             if (lhs instanceof JavaMirror && rhs instanceof JavaMirror) {
                 return lhs.getClass().equals(rhs.getClass());
             }
-            Prototype prototypeLhs = objectLhs.getPrototype();
-            if (prototypeLhs != null) {
-                Object constructorLhs = prototypeLhs.getMember("constructor");
-                if (constructorLhs != null) {
-                    Object constructorRhs = objectRhs.getMember("constructor");
-                    return constructorLhs == constructorRhs;
+            // Get the prototype property from the constructor (rhs)
+            Object target = objectRhs.getMember("prototype");
+            // Walk the prototype delegate chain of lhs
+            JsObject current = objectLhs.getPrototypeDelegate();
+            while (current != null) {
+                if (current == target) {
+                    return true;
+                }
+                current = current.getPrototypeDelegate();
+            }
+            // Also check if target is a Prototype and compare with lhs's built-in prototype
+            if (target instanceof Prototype targetProto) {
+                Prototype lhsProto = objectLhs.getPrototype();
+                if (lhsProto == targetProto) {
+                    return true;
                 }
             }
         }

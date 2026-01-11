@@ -101,10 +101,26 @@ class JsFunctionTest extends EvalBase {
 
     @Test
     void testFunctionPrototypeToString() {
-        assertEquals("[object Object]", eval("var a = function(){ }; a.toString()"));
+        // ES6: Function.prototype.toString returns actual source for user-defined functions
+        assertEquals("function(){ }", eval("var a = function(){ }; a.toString()"));
+        assertEquals("function a(){ }", eval("function a(){ }; a.toString()"));
         assertEquals("a", eval("var a = function(){ }; a.constructor.name"));
         assertEquals("a", eval("function a(){ }; a.constructor.name"));
-        assertEquals("foo", eval("var a = function(){ }; a.prototype.toString = function(){ return 'foo' }; a.toString()"));
+        // ES6: a.prototype.toString does NOT affect a.toString() - prototype is only for instances
+        assertEquals("function(){ }", eval("var a = function(){ }; a.prototype.toString = function(){ return 'foo' }; a.toString()"));
+    }
+
+    @Test
+    void testFunctionToStringReflection() {
+        // Function source should be available for reflection
+        // Regular function expression
+        assertEquals("function(a, b){ return a + b }", eval("var add = function(a, b){ return a + b }; add.toString()"));
+        // Named function declaration
+        assertEquals("function multiply(x, y){ return x * y }", eval("function multiply(x, y){ return x * y }; multiply.toString()"));
+        // Arrow function
+        assertEquals("x => x * 2", eval("var double = x => x * 2; double.toString()"));
+        // Arrow function with block body
+        assertEquals("(a, b) => { return a + b }", eval("var add = (a, b) => { return a + b }; add.toString()"));
     }
 
     @Test
