@@ -23,7 +23,7 @@
  */
 package io.karatelabs.markup;
 
-import io.karatelabs.js.Invokable;
+import io.karatelabs.js.JavaInvokable;
 import io.karatelabs.js.SimpleObject;
 
 /**
@@ -104,19 +104,19 @@ public interface MarkupContext extends SimpleObject {
         return switch (key) {
             case "template" -> getTemplateName();
             case "caller" -> getCallerTemplateName();
-            case "read" -> (Invokable) args -> {
+            case "read" -> (JavaInvokable) args -> {
                 if (args.length == 0) throw new RuntimeException("read() requires a path argument");
                 return read(args[0].toString());
             };
-            case "readBytes" -> (Invokable) args -> {
+            case "readBytes" -> (JavaInvokable) args -> {
                 if (args.length == 0) throw new RuntimeException("readBytes() requires a path argument");
                 return readBytes(args[0].toString());
             };
-            case "toJson" -> (Invokable) args -> {
+            case "toJson" -> (JavaInvokable) args -> {
                 if (args.length == 0) throw new RuntimeException("toJson() requires an object argument");
                 return toJson(args[0]);
             };
-            case "fromJson" -> (Invokable) args -> {
+            case "fromJson" -> (JavaInvokable) args -> {
                 if (args.length == 0) throw new RuntimeException("fromJson() requires a JSON string argument");
                 return fromJson(args[0].toString());
             };

@@ -24,7 +24,7 @@
 package io.karatelabs.http;
 
 import io.karatelabs.common.*;
-import io.karatelabs.js.Invokable;
+import io.karatelabs.js.JavaInvokable;
 import io.karatelabs.js.ObjectLike;
 import net.minidev.json.JSONValue;
 import org.slf4j.Logger;
@@ -267,7 +267,7 @@ public class HttpResponse implements ObjectLike {
         return status == 0;
     }
 
-    private Invokable header() {
+    private JavaInvokable header() {
         return args -> {
             if (args.length > 0) {
                 return getHeader(args[0] + "");
@@ -277,7 +277,7 @@ public class HttpResponse implements ObjectLike {
         };
     }
 
-    private Invokable headerValues() {
+    private JavaInvokable headerValues() {
         return args -> {
             if (args.length > 0) {
                 return getHeaderValues(args[0] + "");

@@ -197,6 +197,7 @@ public class KarateConfig implements SimpleObject {
      * @return true if HTTP client needs to be rebuilt, false otherwise
      * @throws RuntimeException if key is not recognized
      */
+    @SuppressWarnings("unchecked")
     public boolean configure(String key, Object value) {
         key = key != null ? key.trim() : "";
         return switch (key) {

@@ -28,7 +28,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-class JsString extends JsObject implements JsPrimitive, JsCallable {
+class JsString extends JsObject implements JsPrimitive {
 
     final String text;
 
@@ -261,7 +261,7 @@ class JsString extends JsObject implements JsPrimitive, JsCallable {
                     };
                     case "valueOf" -> (JsCallable) (context, args) -> asString(context);
                     // static ==========================================================================================
-                    case "fromCharCode" -> (Invokable) args -> {
+                    case "fromCharCode" -> (JsInvokable) args -> {
                         StringBuilder sb = new StringBuilder();
                         for (Object arg : args) {
                             if (arg instanceof Number num) {
@@ -270,7 +270,7 @@ class JsString extends JsObject implements JsPrimitive, JsCallable {
                         }
                         return sb.toString();
                     };
-                    case "fromCodePoint" -> (Invokable) args -> {
+                    case "fromCodePoint" -> (JsInvokable) args -> {
                         StringBuilder sb = new StringBuilder();
                         for (Object arg : args) {
                             if (arg instanceof Number num) {

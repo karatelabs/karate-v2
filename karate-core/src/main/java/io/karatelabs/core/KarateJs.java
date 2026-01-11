@@ -32,16 +32,15 @@ import io.karatelabs.common.Xml;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.MatchExpression;
 import io.karatelabs.http.DefaultHttpClientFactory;
-import io.karatelabs.http.Http;
 import io.karatelabs.http.HttpClient;
 import io.karatelabs.http.HttpClientFactory;
 import io.karatelabs.http.HttpRequest;
 import io.karatelabs.http.HttpRequestBuilder;
 import io.karatelabs.http.HttpResponse;
 import io.karatelabs.js.GherkinParser;
+import io.karatelabs.js.JavaInvokable;
 import io.karatelabs.markup.Markup;
-import io.karatelabs.js.Invokable;
-import io.karatelabs.js.JsCallable;
+import io.karatelabs.js.JavaCallable;
 import io.karatelabs.match.Expect;
 import io.karatelabs.match.Match;
 import io.karatelabs.match.Result;
@@ -76,7 +75,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
 
     private static final Faker FAKER = new Faker();
 
-    private final JsCallable read;
+    private final JavaCallable read;
 
     public KarateJs(Resource root) {
         this(root, new DefaultHttpClientFactory());
@@ -158,7 +157,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
     }
 
     @SuppressWarnings("unchecked")
-    private Invokable doc() {
+    private JavaInvokable doc() {
         return args -> {
             if (onDoc == null) {
                 logger.warn("doc() called, but no destination set");
@@ -194,7 +193,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
     // ========== Engine-Dependent Methods ==========
     // These methods require access to the JavaScript engine for evaluation.
 
-    private JsCallable initRead() {
+    private JavaCallable initRead() {
         return (context, args) -> {
             if (args.length == 0) {
                 throw new RuntimeException("read() needs at least one argument");
@@ -250,7 +249,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
     /**
      * Fluent match API for global match() function.
      */
-    private Invokable matchFluent() {
+    private JavaInvokable matchFluent() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("match() needs at least one argument");
@@ -409,7 +408,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
         return result.toString();
     }
 
-    private Invokable http() {
+    private JavaInvokable http() {
         return args -> {
             if (args.length > 0) {
                 http.url(args[0] + "");
@@ -418,7 +417,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
         };
     }
 
-    private Invokable readAsString() {
+    private JavaInvokable readAsString() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("read() needs at least one argument");
@@ -432,7 +431,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
      * Read a file as raw bytes. Useful for binary content handling.
      * Usage: karate.readAsBytes('path/to/file')
      */
-    private Invokable readAsBytes() {
+    private JavaInvokable readAsBytes() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("readAsBytes() needs at least one argument");
@@ -447,7 +446,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
         };
     }
 
-    private Invokable get() {
+    private JavaInvokable get() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("get() needs at least one argument");
@@ -496,7 +495,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
     }
 
     @SuppressWarnings("unchecked")
-    private Invokable set() {
+    private JavaInvokable set() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("set() needs at least two arguments: name and value");
@@ -575,7 +574,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
      * Usage: karate.match(actual, expected) or karate.match("foo == expected")
      * Returns { pass: boolean, message: String|null }
      */
-    private Invokable karateMatch() {
+    private JavaInvokable karateMatch() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("karate.match() needs at least one argument");
@@ -604,7 +603,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
         };
     }
 
-    private Invokable call() {
+    private JavaInvokable call() {
         return args -> {
             ScenarioRuntime rt = getRuntime();
             if (rt == null) {
@@ -643,7 +642,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
         };
     }
 
-    private Invokable eval() {
+    private JavaInvokable eval() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("eval() needs one argument");
@@ -663,7 +662,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
      * karate.expect(actual).to.not.equal(unexpected)
      * </pre>
      */
-    private JsCallable expect() {
+    private JavaCallable expect() {
         return (context, args) -> {
             if (args.length == 0) {
                 throw new RuntimeException("expect() needs at least one argument");
@@ -672,7 +671,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
         };
     }
 
-    private Invokable remove() {
+    private JavaInvokable remove() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("remove() needs two arguments: variable name and path");
@@ -693,7 +692,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
         };
     }
 
-    private Invokable setXml() {
+    private JavaInvokable setXml() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("setXml() needs at least two arguments: name and xml");
@@ -731,7 +730,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
      * karate.exec({ line: 'ls -la', workingDir: '/tmp' })
      */
     @SuppressWarnings("unchecked")
-    private Invokable exec() {
+    private JavaInvokable exec() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("exec() needs at least one argument");
@@ -767,7 +766,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
      * proc.close()
      */
     @SuppressWarnings("unchecked")
-    private Invokable fork() {
+    private JavaInvokable fork() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("fork() needs at least one argument");
@@ -788,7 +787,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
 
                 // Extract listener function (receives line string directly)
                 Object listenerObj = options.get("listener");
-                if (listenerObj instanceof JsCallable jsListener) {
+                if (listenerObj instanceof JavaCallable jsListener) {
                     listener = line -> {
                         try {
                             jsListener.call(null, line);
@@ -800,7 +799,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
 
                 // Extract errorListener function (receives line string directly)
                 Object errorListenerObj = options.get("errorListener");
-                if (errorListenerObj instanceof JsCallable jsErrorListener) {
+                if (errorListenerObj instanceof JavaCallable jsErrorListener) {
                     errorListener = line -> {
                         try {
                             jsErrorListener.call(null, line);
@@ -851,7 +850,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
      * </pre>
      */
     @SuppressWarnings("unchecked")
-    private Invokable start() {
+    private JavaInvokable start() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("start() needs at least one argument: feature path or config map");
@@ -909,7 +908,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
      * var response = karate.proceed();
      * </pre>
      */
-    private Invokable proceed() {
+    private JavaInvokable proceed() {
         return args -> {
             if (mockHandler == null) {
                 throw new RuntimeException("proceed() can only be called within a mock scenario");
@@ -990,7 +989,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
      * karate.readAsStream(path) - Read file as InputStream.
      * Useful for streaming large files without loading into memory.
      */
-    private Invokable readAsStream() {
+    private JavaInvokable readAsStream() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("readAsStream() needs at least one argument");
@@ -1010,7 +1009,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
      * Returns the rendered HTML string without sending to doc consumer.
      */
     @SuppressWarnings("unchecked")
-    private Invokable render() {
+    private JavaInvokable render() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("render() needs at least one argument");
@@ -1036,7 +1035,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
      * karate.toAbsolutePath(path) - Convert a relative path to absolute.
      * Resolves relative to the current feature file's directory.
      */
-    private Invokable toAbsolutePath() {
+    private JavaInvokable toAbsolutePath() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("toAbsolutePath() needs a path argument");
@@ -1055,7 +1054,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
      * karate.write(value, path) - Write content to a file.
      * Path is relative to the output directory (e.g., target/karate-reports).
      */
-    private Invokable write() {
+    private JavaInvokable write() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("write() needs value and path arguments");

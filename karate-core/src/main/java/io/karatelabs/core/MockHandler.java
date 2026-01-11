@@ -37,8 +37,8 @@ import io.karatelabs.gherkin.Step;
 import io.karatelabs.http.HttpRequest;
 import io.karatelabs.http.HttpResponse;
 import io.karatelabs.js.Engine;
-import io.karatelabs.js.Invokable;
-import io.karatelabs.js.JsCallable;
+import io.karatelabs.js.JavaInvokable;
+import io.karatelabs.js.JavaCallable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Node;
@@ -129,7 +129,7 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
 
         // Register matcher functions (lambdas read from currentRequest field)
         Engine engine = runtime.getEngine();
-        engine.put("pathMatches", (Invokable) a -> {
+        engine.put("pathMatches", (JavaInvokable) a -> {
             if (currentRequest == null) return false;
             boolean matched = currentRequest.pathMatches(a[0] + "");
             if (matched) {
@@ -137,19 +137,19 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
             }
             return matched;
         });
-        engine.put("methodIs", (Invokable) a ->
+        engine.put("methodIs", (JavaInvokable) a ->
             currentRequest != null && (a[0] + "").equalsIgnoreCase(currentRequest.getMethod()));
-        engine.put("typeContains", (Invokable) a -> {
+        engine.put("typeContains", (JavaInvokable) a -> {
             if (currentRequest == null) return false;
             String contentType = currentRequest.getContentType();
             return contentType != null && contentType.contains(a[0] + "");
         });
-        engine.put("acceptContains", (Invokable) a -> {
+        engine.put("acceptContains", (JavaInvokable) a -> {
             if (currentRequest == null) return false;
             String accept = currentRequest.getHeader("Accept");
             return accept != null && accept.contains(a[0] + "");
         });
-        engine.put("headerContains", (Invokable) a -> {
+        engine.put("headerContains", (JavaInvokable) a -> {
             if (currentRequest == null) return false;
             List<String> values = currentRequest.getHeaderValues(a[0] + "");
             if (values != null) {
@@ -160,14 +160,14 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
             }
             return false;
         });
-        engine.put("paramValue", (Invokable) a ->
+        engine.put("paramValue", (JavaInvokable) a ->
             currentRequest != null ? currentRequest.getParam(a[0] + "") : null);
-        engine.put("paramExists", (Invokable) a -> {
+        engine.put("paramExists", (JavaInvokable) a -> {
             if (currentRequest == null) return false;
             List<String> values = currentRequest.getParamValues(a[0] + "");
             return values != null && !values.isEmpty();
         });
-        engine.put("bodyPath", (Invokable) a -> {
+        engine.put("bodyPath", (JavaInvokable) a -> {
             if (currentRequest == null) return null;
             Object body = currentRequest.getBodyConverted();
             if (body == null) return null;
@@ -243,7 +243,7 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
                 config.setResponseHeaders((Map<String, Object>) responseHeaders);
             }
             Object afterScenario = karateConfig.getAfterScenario();
-            if (afterScenario instanceof JsCallable callable) {
+            if (afterScenario instanceof JavaCallable callable) {
                 config.setAfterScenario(callable);
             }
         }
@@ -416,7 +416,7 @@ public class MockHandler implements Function<HttpRequest, HttpResponse> {
 
         // Execute afterScenario hook if configured
         // Pass null context - the JS function uses its declaredContext which has access to karate object
-        JsCallable afterScenario = config.getAfterScenario();
+        JavaCallable afterScenario = config.getAfterScenario();
         if (afterScenario != null) {
             try {
                 afterScenario.call(null);

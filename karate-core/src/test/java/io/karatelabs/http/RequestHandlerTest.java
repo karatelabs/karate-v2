@@ -1,7 +1,7 @@
 package io.karatelabs.http;
 
 import io.karatelabs.common.Resource;
-import io.karatelabs.js.JsCallable;
+import io.karatelabs.js.JavaCallable;
 import io.karatelabs.js.SimpleObject;
 import io.karatelabs.markup.ResourceResolver;
 import org.junit.jupiter.api.BeforeAll;
@@ -501,19 +501,19 @@ class RequestHandlerTest {
         @Override
         public Object jsGet(String name) {
             return switch (name) {
-                case "uppercase" -> (JsCallable) (ctx, args) -> {
+                case "uppercase" -> (JavaCallable) (ctx, args) -> {
                     if (args.length > 0 && args[0] != null) {
                         return args[0].toString().toUpperCase();
                     }
                     return "";
                 };
-                case "formatPrice" -> (JsCallable) (ctx, args) -> {
+                case "formatPrice" -> (JavaCallable) (ctx, args) -> {
                     if (args.length > 0 && args[0] instanceof Number n) {
                         return String.format("$%.2f", n.doubleValue());
                     }
                     return "$0.00";
                 };
-                case "greet" -> (JsCallable) (ctx, args) -> {
+                case "greet" -> (JavaCallable) (ctx, args) -> {
                     String name1 = args.length > 0 && args[0] != null ? args[0].toString() : "World";
                     return "Hello, " + name1 + "!";
                 };

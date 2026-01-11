@@ -37,8 +37,8 @@ public class JsJava implements SimpleObject {
     @Override
     public Object jsGet(String name) {
         return switch (name) {
-            case "type" -> (Invokable) args -> bridge.forType((String) args[0]);
-            case "to" -> (Invokable) args -> {
+            case "type" -> (JsInvokable) args -> bridge.forType((String) args[0]);
+            case "to" -> (JsInvokable) args -> {
                 if (args[0] instanceof ExternalAccess ja) {
                     return ja.getJavaValue();
                 }

@@ -24,8 +24,13 @@
 package io.karatelabs.js;
 
 @FunctionalInterface
-interface JsCallable {
+public interface JavaInvokable extends JavaCallable {
 
-    Object call(Context context, Object... args);
+    Object invoke(Object... args);
+
+    @Override
+    default Object call(Context context, Object... args) {
+        return invoke(args);
+    }
 
 }

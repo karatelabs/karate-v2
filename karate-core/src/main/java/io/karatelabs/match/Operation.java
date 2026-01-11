@@ -86,24 +86,16 @@ public class Operation {
     }
 
     private Match.Type fromMatchEach() {
-        switch (type) {
-            case EACH_CONTAINS:
-                return Match.Type.CONTAINS;
-            case EACH_NOT_CONTAINS:
-                return Match.Type.NOT_CONTAINS;
-            case EACH_CONTAINS_ONLY:
-                return Match.Type.CONTAINS_ONLY;
-            case EACH_CONTAINS_ANY:
-                return Match.Type.CONTAINS_ANY;
-            case EACH_EQUALS:
-                return Match.Type.EQUALS;
-            case EACH_NOT_EQUALS:
-                return Match.Type.NOT_EQUALS;
-            case EACH_CONTAINS_DEEP:
-                return Match.Type.CONTAINS_DEEP;
-            default:
-                throw new RuntimeException("unexpected outer match type: " + type);
-        }
+        return switch (type) {
+            case EACH_CONTAINS -> Match.Type.CONTAINS;
+            case EACH_NOT_CONTAINS -> Match.Type.NOT_CONTAINS;
+            case EACH_CONTAINS_ONLY -> Match.Type.CONTAINS_ONLY;
+            case EACH_CONTAINS_ANY -> Match.Type.CONTAINS_ANY;
+            case EACH_EQUALS -> Match.Type.EQUALS;
+            case EACH_NOT_EQUALS -> Match.Type.NOT_EQUALS;
+            case EACH_CONTAINS_DEEP -> Match.Type.CONTAINS_DEEP;
+            default -> throw new RuntimeException("unexpected outer match type: " + type);
+        };
     }
 
     private static Match.Type macroToMatchType(boolean each, String macro) {
@@ -129,26 +121,12 @@ public class Operation {
     }
 
     private static int matchTypeToStartPos(Match.Type mt) {
-        switch (mt) {
-            case CONTAINS_ONLY:
-            case EACH_CONTAINS_ONLY:
-            case CONTAINS_DEEP:
-            case EACH_CONTAINS_DEEP:
-            case CONTAINS_ANY:
-            case EACH_CONTAINS_ANY:
-            case NOT_CONTAINS:
-            case EACH_NOT_CONTAINS:
-            case NOT_EQUALS:
-            case EACH_NOT_EQUALS:
-            case NOT_WITHIN:
-                return 2;
-            case CONTAINS:
-            case EACH_CONTAINS:
-            case WITHIN:
-                return 1;
-            default:
-                return 0;
-        }
+        return switch (mt) {
+            case CONTAINS_ONLY, EACH_CONTAINS_ONLY, CONTAINS_DEEP, EACH_CONTAINS_DEEP, CONTAINS_ANY, EACH_CONTAINS_ANY,
+                 NOT_CONTAINS, EACH_NOT_CONTAINS, NOT_EQUALS, EACH_NOT_EQUALS, NOT_WITHIN -> 2;
+            case CONTAINS, EACH_CONTAINS, WITHIN -> 1;
+            default -> 0;
+        };
     }
 
     boolean execute() {
@@ -179,7 +157,7 @@ public class Operation {
                     }
                     if (!failedIndices.isEmpty()) {
                         if (failedIndices.size() == 1) {
-                            return fail("match each failed at index " + failedIndices.get(0));
+                            return fail("match each failed at index " + failedIndices.getFirst());
                         }
                         return fail("match each failed at indices " + failedIndices);
                     }
@@ -249,14 +227,11 @@ public class Operation {
         if (expected.isString()) {
             String expStr = expected.getValue();
             if (expStr.startsWith("#")) {
-                switch (type) {
-                    case NOT_EQUALS:
-                        return macroEqualsExpected(expStr) ? fail("is equal") : pass();
-                    case NOT_CONTAINS:
-                        return macroEqualsExpected(expStr) ? fail("actual contains expected") : pass();
-                    default:
-                        return macroEqualsExpected(expStr) ? pass() : fail(null);
-                }
+                return switch (type) {
+                    case NOT_EQUALS -> macroEqualsExpected(expStr) ? fail("is equal") : pass();
+                    case NOT_CONTAINS -> macroEqualsExpected(expStr) ? fail("actual contains expected") : pass();
+                    default -> macroEqualsExpected(expStr) ? pass() : fail(null);
+                };
             }
         }
         switch (type) {
@@ -485,7 +460,7 @@ public class Operation {
                 }
                 if (!failedListIndices.isEmpty()) {
                     if (failedListIndices.size() == 1) {
-                        return fail("array match failed at index " + failedListIndices.get(0));
+                        return fail("array match failed at index " + failedListIndices.getFirst());
                     }
                     return fail("array match failed at indices " + failedListIndices);
                 }
@@ -664,7 +639,7 @@ public class Operation {
                     if (found) {
                         // Remove search failures - they were just "not this one, keep looking"
                         while (failures.size() > failuresBeforeSearch) {
-                            failures.remove(failures.size() - 1);
+                            failures.removeLast();
                         }
                     }
                     if (!found && type != Match.Type.CONTAINS_ANY && type != Match.Type.CONTAINS_ANY_DEEP) {
@@ -694,6 +669,7 @@ public class Operation {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private boolean actualWithinExpected() {
         switch (actual.type) {
             case STRING:
@@ -723,7 +699,7 @@ public class Operation {
                     }
                     // Remove search failures - they are just "not this one, keep looking"
                     while (failures.size() > failuresBeforeSearch) {
-                        failures.remove(failures.size() - 1);
+                        failures.removeLast();
                     }
                     if (!found) {
                         notFoundItems.add(actListValue.getAsString());
@@ -758,13 +734,13 @@ public class Operation {
                 }
                 if (!missingKeys.isEmpty()) {
                     if (missingKeys.size() == 1) {
-                        return fail("expected does not contain key - '" + missingKeys.get(0) + "'");
+                        return fail("expected does not contain key - '" + missingKeys.getFirst() + "'");
                     }
                     return fail("expected does not contain keys - " + missingKeys);
                 }
                 if (!failedKeys.isEmpty()) {
                     if (failedKeys.size() == 1) {
-                        return fail("match failed for name: '" + failedKeys.get(0) + "'");
+                        return fail("match failed for name: '" + failedKeys.getFirst() + "'");
                     }
                     return fail("match failed for names: " + failedKeys);
                 }

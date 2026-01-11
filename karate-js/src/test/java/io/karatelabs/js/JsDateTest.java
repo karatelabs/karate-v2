@@ -237,8 +237,15 @@ class JsDateTest extends EvalBase {
                 + "var afterSetYear = originalDate.getFullYear();");
         assertEquals(2022, get("afterSetYear"));
 
-        Object date = eval("Date()");
-        assertInstanceOf(Date.class, date);
+        // ES6: Date() without 'new' returns a string representation of current time
+        // Since it's always current time, we can only verify it's a string with expected format
+        Object dateStr = eval("Date()");
+        assertInstanceOf(String.class, dateStr);
+        assertTrue(((String) dateStr).contains("202"), "Date string should contain year");
+
+        // Test toString() format with a fixed timestamp (2021-01-01T00:00:00Z in UTC)
+        // Browser-style format: "Fri Jan 01 2021 00:00:00 GMT+0000"
+        assertEquals("Fri Jan 01 2021 00:00:00 GMT+0000", eval("new Date(1609459200000).toString()"));
 
         // Test ability to pass date object to a function that expects a timestamp
         String js = "function getTimestamp(time) {"

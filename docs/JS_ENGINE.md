@@ -47,7 +47,26 @@ interface JavaMirror {
 interface JsPrimitive extends JavaMirror {
     // Enables single instanceof check instead of 3 separate checks
 }
+
+// Public interface for callable objects exposed to JavaScript
+public interface JavaCallable {
+    Object call(Context context, Object... args);
+}
+
+// Convenience interface that ignores context
+public interface JavaInvokable extends JavaCallable {
+    Object invoke(Object... args);
+
+    default Object call(Context context, Object... args) {
+        return invoke(args);
+    }
+}
 ```
+
+**Boundary conversion:** When JavaScript calls a `JavaCallable`, arguments are converted:
+- `undefined` → `null`
+- `JsDate` → `java.util.Date`
+- Other `JavaMirror` types → unwrapped via `getJavaValue()`
 
 ### Type Mapping
 
@@ -69,6 +88,12 @@ JS constructors behave differently with vs without `new`:
 ```javascript
 Number(5)      // → primitive 5
 new Number(5)  // → boxed Number object
+
+String("x")    // → primitive "x"
+new String("x") // → boxed String object
+
+Date()         // → string of current time (ES6: ignores arguments)
+new Date()     // → Date object
 ```
 
 The engine uses `CallInfo` to track invocation context:
@@ -203,7 +228,7 @@ Conversion happens at specific boundaries:
 
 1. **`Engine.eval()` return** - Top-level value converted via `toJava()`
 2. **`List.get()` / `Map.get()`** - Elements unwrapped lazily on access
-3. **SimpleObject/Invokable args** - Arguments converted before Java method call
+3. **JavaCallable args** - Arguments converted before external Java method call
 4. **Iteration** - Iterator unwraps values lazily
 
 ### Example: Dual Access
@@ -287,7 +312,7 @@ static ObjectLike toObjectLike(Object o) {
 Internal representation uses `long millis` with `java.time` for operations:
 
 ```java
-public class JsDate implements JavaMirror, Callable, ObjectLike {
+class JsDate extends JsObject implements JavaMirror {
     private long millis;
 
     // Getters use ZonedDateTime
@@ -402,7 +427,7 @@ public class ProcessHandle implements SimpleObject {
         return switch (key) {
             case "stdOut" -> getStdOut();
             case "exitCode" -> getExitCode();
-            case "waitSync" -> (JsCallable) (ctx, args) -> waitSync();
+            case "waitSync" -> (JavaCallable) (ctx, args) -> waitSync();
             // ... other properties
             default -> null;
         };
@@ -430,7 +455,7 @@ public class ProcessHandle implements SimpleObject {
    }
    ```
 
-3. **`jsGet()` handles property access** - The switch expression is efficient and type-safe. Return `JsCallable` or `Invokable` for methods.
+3. **`jsGet()` handles property access** - The switch expression is efficient and type-safe. Return `JavaCallable` or `JavaInvokable` for methods.
 
 4. **`jsGet()` is inherently lazy** - Called on every property access, so values are computed fresh each time. No need for `Supplier` pattern.
 

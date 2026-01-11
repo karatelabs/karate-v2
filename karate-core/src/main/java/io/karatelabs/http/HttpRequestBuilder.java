@@ -26,7 +26,7 @@ package io.karatelabs.http;
 import io.karatelabs.common.Json;
 import io.karatelabs.common.ResourceType;
 import io.karatelabs.common.StringUtils;
-import io.karatelabs.js.Invokable;
+import io.karatelabs.js.JavaInvokable;
 import io.karatelabs.js.SimpleObject;
 import io.netty.handler.codec.http.cookie.ClientCookieEncoder;
 import io.netty.handler.codec.http.cookie.Cookie;
@@ -675,7 +675,7 @@ public class HttpRequestBuilder implements SimpleObject {
         return sb.toString();
     }
 
-    private Invokable method() {
+    private JavaInvokable method() {
         return args -> {
             if (args.length > 1) {
                 body = args[1];
@@ -687,7 +687,7 @@ public class HttpRequestBuilder implements SimpleObject {
         };
     }
 
-    private Invokable header() {
+    private JavaInvokable header() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("header() needs two arguments");
@@ -697,7 +697,7 @@ public class HttpRequestBuilder implements SimpleObject {
         };
     }
 
-    private Invokable param() {
+    private JavaInvokable param() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("param() needs two arguments");
@@ -707,7 +707,7 @@ public class HttpRequestBuilder implements SimpleObject {
         };
     }
 
-    private Invokable path() {
+    private JavaInvokable path() {
         return args -> {
             for (Object arg : args) {
                 if (arg != null) {
@@ -718,7 +718,7 @@ public class HttpRequestBuilder implements SimpleObject {
         };
     }
 
-    private Invokable body() {
+    private JavaInvokable body() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("body() needs at least one argument");
@@ -740,7 +740,7 @@ public class HttpRequestBuilder implements SimpleObject {
             case "trace":
             case "connect":
             case "patch":
-                return (Invokable) args -> args.length > 0 ? invoke(key, args[0]) : invoke(key);
+                return (JavaInvokable) args -> args.length > 0 ? invoke(key, args[0]) : invoke(key);
             case "method":
                 return method();
             case "header":

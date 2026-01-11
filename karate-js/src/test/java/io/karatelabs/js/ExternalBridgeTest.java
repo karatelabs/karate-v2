@@ -128,7 +128,7 @@ class ExternalBridgeTest extends EvalBase {
     void testVarArgs() {
         DemoPojo dp = new DemoPojo();
         ExternalAccess instance = bridge.forInstance(dp);
-        Invokable method = instance.getMethod("varArgs");
+        JavaInvokable method = instance.getMethod("varArgs");
         assertEquals("foo", method.invoke(null, "foo"));
         assertEquals("bar", method.invoke(null, "foo", "bar"));
     }
@@ -137,7 +137,7 @@ class ExternalBridgeTest extends EvalBase {
     void testMethodOverload() {
         DemoPojo dp = new DemoPojo();
         ExternalAccess instance = bridge.forInstance(dp);
-        Invokable method = instance.getMethod("doWork");
+        JavaInvokable method = instance.getMethod("doWork");
         assertEquals("hello", method.invoke());
         assertEquals("hellofoo", method.invoke("foo"));
         assertEquals("hellofootrue", method.invoke("foo", true));
@@ -552,7 +552,7 @@ class ExternalBridgeTest extends EvalBase {
         assertEquals("object", engine.eval("typeof doc"));
 
         // Verify it can be passed to a function and received as a Node
-        Invokable testFn = args -> args[0] instanceof org.w3c.dom.Node ? "success" : "not a node";
+        JsInvokable testFn = args -> args[0] instanceof org.w3c.dom.Node ? "success" : "not a node";
         engine.put("testFn", testFn);
         assertEquals("success", engine.eval("testFn(doc)"));
     }
@@ -595,7 +595,7 @@ class ExternalBridgeTest extends EvalBase {
         // Create a SimpleObject with xmlPath method (similar to karate object)
         SimpleObject myKarate = name -> {
             if ("xmlPath".equals(name)) {
-                return (Invokable) args -> {
+                return (JsInvokable) args -> {
                     org.w3c.dom.Node node = (org.w3c.dom.Node) args[0];
                     String path = args[1].toString();
                     org.w3c.dom.NodeList nodeList = io.karatelabs.common.Xml.getNodeListByPath(node, path);
@@ -835,7 +835,7 @@ class ExternalBridgeTest extends EvalBase {
         java.util.List<Object> capturedArgs = new java.util.ArrayList<>();
         SimpleObject utils = name -> {
             if ("capture".equals(name)) {
-                return (JsCallable) (context, args) -> {
+                return (JavaCallable) (context, args) -> {
                     for (Object arg : args) {
                         capturedArgs.add(arg);
                     }

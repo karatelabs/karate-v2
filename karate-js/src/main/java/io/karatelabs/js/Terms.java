@@ -118,7 +118,7 @@ public class Terms {
     static Number objectToNumber(Object o) {
         // Unwrap JavaMirror first using getInternalValue()
         if (o instanceof JavaMirror jm) {
-            o = jm.getInternalValue();
+            o = jm.getJsValue();
         }
         return switch (o) {
             case Number n -> n;
@@ -393,11 +393,8 @@ public class Terms {
     static JsCallable toCallable(Object o) {
         if (o instanceof JsCallable callable) {
             return callable;
-        } else if (o instanceof Invokable invokable) {
-            return (c, args) -> invokable.invoke(args);
-        } else {
-            return null;
         }
+        return null;
     }
 
     public static boolean isTruthy(Object value) {
@@ -455,6 +452,18 @@ public class Terms {
     }
 
     static boolean instanceOf(Object lhs, Object rhs) {
+        // Handle built-in constructors by class comparison
+        // JsArray doesn't extend JsObject, so handle it first
+        if (rhs instanceof JsArray && lhs instanceof JsArray) {
+            return true;
+        }
+        // For other built-in types that implement JsCallable (JsError, JsRegex, JsDate, etc.)
+        // Check if lhs is the same type as rhs constructor
+        if (rhs instanceof JsCallable && !(rhs instanceof JsFunction)) {
+            if (lhs != null && lhs.getClass().equals(rhs.getClass())) {
+                return true;
+            }
+        }
         if (lhs instanceof JsObject objectLhs && rhs instanceof JsObject objectRhs) {
             if (lhs instanceof JavaMirror && rhs instanceof JavaMirror) {
                 return lhs.getClass().equals(rhs.getClass());

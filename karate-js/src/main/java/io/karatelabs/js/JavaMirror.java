@@ -29,7 +29,7 @@ package io.karatelabs.js;
  * Two methods provide access to the underlying value:
  * <ul>
  *   <li>{@link #getJavaValue()} - Returns the idiomatic Java type for external use (e.g., JsDate → Date)</li>
- *   <li>{@link #getInternalValue()} - Returns the raw internal value for internal operations (e.g., JsDate → Long millis)</li>
+ *   <li>{@link #getJsValue()} - Returns the raw internal value for internal operations (e.g., JsDate → Long millis)</li>
  * </ul>
  */
 public interface JavaMirror {
@@ -51,7 +51,7 @@ public interface JavaMirror {
      * Default implementation delegates to {@link #getJavaValue()} which is correct for most types.
      * Override when internal representation differs from external (e.g., JsDate stores long millis).
      */
-    default Object getInternalValue() {
+    default Object getJsValue() {
         return getJavaValue();
     }
 

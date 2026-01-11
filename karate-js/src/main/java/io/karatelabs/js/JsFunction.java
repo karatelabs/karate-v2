@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public abstract class JsFunction extends JsObject implements JsCallable {
+public abstract class JsFunction extends JsObject implements JavaCallable {
 
     String name;
     private JsObject functionPrototype;

@@ -94,8 +94,8 @@ class ContextRoot extends CoreContext {
     private Object initGlobal(String key) {
         return switch (key) {
             case "console" -> createConsole();
-            case "parseInt" -> (Invokable) args -> Terms.parseFloat(args[0] + "", true);
-            case "parseFloat" -> (Invokable) args -> Terms.parseFloat(args[0] + "", false);
+            case "parseInt" -> (JsInvokable) args -> Terms.parseFloat(args[0] + "", true);
+            case "parseFloat" -> (JsInvokable) args -> Terms.parseFloat(args[0] + "", false);
             case "undefined" -> Terms.UNDEFINED;
             case "Array" -> new JsArray();
             case "Date" -> new JsDate();

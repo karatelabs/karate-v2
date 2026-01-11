@@ -27,7 +27,7 @@ import io.karatelabs.common.Json;
 import io.karatelabs.common.StringUtils;
 import io.karatelabs.common.Xml;
 import io.karatelabs.js.Context;
-import io.karatelabs.js.JsCallable;
+import io.karatelabs.js.JavaCallable;
 import io.karatelabs.js.SimpleObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -177,14 +177,10 @@ public class Value implements SimpleObject {
     }
 
     boolean isMapOrListOrXml() {
-        switch (type) {
-            case MAP:
-            case LIST:
-            case XML:
-                return true;
-            default:
-                return false;
-        }
+        return switch (type) {
+            case MAP, LIST, XML -> true;
+            default -> false;
+        };
     }
 
     /**
@@ -221,6 +217,7 @@ public class Value implements SimpleObject {
      *
      * @return an iterator, or null if not a list
      */
+    @SuppressWarnings("unchecked")
     public Iterator<Object> listIterator() {
         if (type != Type.LIST) {
             return null;
@@ -414,7 +411,7 @@ public class Value implements SimpleObject {
         return is(Match.Type.NOT_WITHIN, expected);
     }
 
-    JsCallable call(Match.Type matchType) {
+    JavaCallable call(Match.Type matchType) {
         return (context, args) -> {
             Value.this.context = context;
             Result result = is(matchType, args[0]);

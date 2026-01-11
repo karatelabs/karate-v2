@@ -103,7 +103,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testJsArrayContainsRawValues() {
         // Elements inside JsArray are stored as raw JS values
         // Use getElement() for raw access, List.get() auto-unwraps

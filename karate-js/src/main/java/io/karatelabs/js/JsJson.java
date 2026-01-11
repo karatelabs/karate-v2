@@ -42,7 +42,7 @@ public class JsJson implements SimpleObject {
     }
 
     @SuppressWarnings("unchecked")
-    Invokable stringify() {
+    JsInvokable stringify() {
         return args -> {
             Object value = args[0];
             Object replacer = args.length > 1 ? args[1] : null;
@@ -135,7 +135,7 @@ public class JsJson implements SimpleObject {
         return transformed;
     }
 
-    Invokable parse() {
+    JsInvokable parse() {
         return args -> JSONValue.parse((String) args[0]);
     }
 

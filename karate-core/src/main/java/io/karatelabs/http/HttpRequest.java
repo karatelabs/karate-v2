@@ -28,7 +28,7 @@ import io.karatelabs.common.Json;
 import io.karatelabs.common.Pair;
 import io.karatelabs.common.ResourceType;
 import io.karatelabs.common.StringUtils;
-import io.karatelabs.js.Invokable;
+import io.karatelabs.js.JavaInvokable;
 import io.karatelabs.js.SimpleObject;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
@@ -470,7 +470,7 @@ public class HttpRequest implements SimpleObject {
         return builder;
     }
 
-    private Invokable param() {
+    private JavaInvokable param() {
         return args -> {
             if (args.length > 0) {
                 return getParam(args[0] + "");
@@ -480,7 +480,7 @@ public class HttpRequest implements SimpleObject {
         };
     }
 
-    private Invokable paramValues() {
+    private JavaInvokable paramValues() {
         return args -> {
             if (args.length > 0) {
                 return getParamValues(args[0] + "");
@@ -490,7 +490,7 @@ public class HttpRequest implements SimpleObject {
         };
     }
 
-    private Invokable paramInt() {
+    private JavaInvokable paramInt() {
         return args -> {
             if (args.length > 0) {
                 String val = getParam(args[0] + "");
@@ -501,7 +501,7 @@ public class HttpRequest implements SimpleObject {
         };
     }
 
-    private Invokable paramJson() {
+    private JavaInvokable paramJson() {
         return args -> {
             if (args.length > 0) {
                 String val = getParam(args[0] + "");
@@ -519,7 +519,7 @@ public class HttpRequest implements SimpleObject {
         };
     }
 
-    private Invokable header() {
+    private JavaInvokable header() {
         return args -> {
             if (args.length > 0) {
                 return getHeader(args[0] + "");
@@ -529,7 +529,7 @@ public class HttpRequest implements SimpleObject {
         };
     }
 
-    private Invokable headerValues() {
+    private JavaInvokable headerValues() {
         return args -> {
             if (args.length > 0) {
                 return getHeaderValues(args[0] + "");
@@ -539,7 +539,7 @@ public class HttpRequest implements SimpleObject {
         };
     }
 
-    private Invokable pathMatches() {
+    private JavaInvokable pathMatches() {
         return args -> {
             if (args.length > 0) {
                 return pathMatches(args[0] + "");
@@ -549,7 +549,7 @@ public class HttpRequest implements SimpleObject {
         };
     }
 
-    private Invokable multiPart() {
+    private JavaInvokable multiPart() {
         return args -> {
             if (args.length > 0) {
                 return getMultiPart(args[0] + "");

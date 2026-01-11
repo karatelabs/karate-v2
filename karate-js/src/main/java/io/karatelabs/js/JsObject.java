@@ -25,7 +25,7 @@ package io.karatelabs.js;
 
 import java.util.*;
 
-class JsObject implements ObjectLike, Map<String, Object>, Invokable {
+class JsObject implements ObjectLike, JsCallable, Map<String, Object> {
 
     final JsObject _this = this;
 
@@ -74,21 +74,21 @@ class JsObject implements ObjectLike, Map<String, Object>, Invokable {
                         return props.containsKey(prop);
                     };
                     // static ==========================================================================================
-                    case "keys" -> (Invokable) args -> {
+                    case "keys" -> (JsInvokable) args -> {
                         List<Object> result = new ArrayList<>();
                         for (KeyValue kv : Terms.toIterable(args[0])) {
                             result.add(kv.key);
                         }
                         return result;
                     };
-                    case "values" -> (Invokable) args -> {
+                    case "values" -> (JsInvokable) args -> {
                         List<Object> result = new ArrayList<>();
                         for (KeyValue kv : Terms.toIterable(args[0])) {
                             result.add(kv.value);
                         }
                         return result;
                     };
-                    case "entries" -> (Invokable) args -> {
+                    case "entries" -> (JsInvokable) args -> {
                         List<Object> result = new ArrayList<>();
                         for (KeyValue kv : Terms.toIterable(args[0])) {
                             List<Object> entry = new ArrayList<>();
@@ -98,7 +98,7 @@ class JsObject implements ObjectLike, Map<String, Object>, Invokable {
                         }
                         return result;
                     };
-                    case "assign" -> (Invokable) args -> {
+                    case "assign" -> (JsInvokable) args -> {
                         if (args.length == 0) {
                             return new LinkedHashMap<>();
                         }
@@ -116,7 +116,7 @@ class JsObject implements ObjectLike, Map<String, Object>, Invokable {
                         }
                         return result;
                     };
-                    case "fromEntries" -> (Invokable) args -> {
+                    case "fromEntries" -> (JsInvokable) args -> {
                         if (args.length == 0 || args[0] == null || args[0] == Terms.UNDEFINED) {
                             throw new RuntimeException("fromEntries() requires valid argument(s)");
                         }
@@ -138,26 +138,26 @@ class JsObject implements ObjectLike, Map<String, Object>, Invokable {
                         }
                         return result;
                     };
-                    case "is" -> (Invokable) args -> {
+                    case "is" -> (JsInvokable) args -> {
                         if (args.length < 2) {
                             return false;
                         }
                         return Terms.eq(args[0], args[1], true);
                     };
-                    case "create" -> (Invokable) args -> {
+                    case "create" -> (JsInvokable) args -> {
                         JsObject newObj = new JsObject();
                         if (args.length > 0 && args[0] instanceof JsObject proto) {
                             newObj.setPrototypeDelegate(proto);
                         }
                         return newObj;
                     };
-                    case "getPrototypeOf" -> (Invokable) args -> {
+                    case "getPrototypeOf" -> (JsInvokable) args -> {
                         if (args.length > 0 && args[0] instanceof JsObject obj) {
                             return obj.getPrototypeDelegate();
                         }
                         return null;
                     };
-                    case "setPrototypeOf" -> (Invokable) args -> {
+                    case "setPrototypeOf" -> (JsInvokable) args -> {
                         if (args.length >= 2 && args[0] instanceof JsObject obj) {
                             if (args[1] instanceof JsObject proto) {
                                 obj.setPrototypeDelegate(proto);
@@ -353,15 +353,8 @@ class JsObject implements ObjectLike, Map<String, Object>, Invokable {
         return fromThis(context).toMap();
     }
 
-    JsCallable toCallable(Object[] args) {
-        if (args.length == 0) {
-            throw new RuntimeException("function expected");
-        }
-        return Terms.toCallable(args[0]);
-    }
-
     @Override
-    public Object invoke(Object... args) {
+    public Object call(Context context, Object... args) {
         return new JsObject();
     }
 

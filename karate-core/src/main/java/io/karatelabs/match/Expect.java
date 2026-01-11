@@ -26,7 +26,7 @@ package io.karatelabs.match;
 import io.karatelabs.common.Json;
 import io.karatelabs.js.Context;
 import io.karatelabs.js.ContextScope;
-import io.karatelabs.js.JsCallable;
+import io.karatelabs.js.JavaCallable;
 import io.karatelabs.js.JsRegex;
 import io.karatelabs.js.Node;
 import io.karatelabs.js.NodeType;
@@ -159,7 +159,7 @@ public class Expect implements SimpleObject {
         }
     }
 
-    private JsCallable match(Match.Type type) {
+    private JavaCallable match(Match.Type type) {
         return (context, args) -> {
             Result result = Match.evaluate(subject, null, null).is(type, args[0]);
             handleResult(context, result);
@@ -167,7 +167,7 @@ public class Expect implements SimpleObject {
         };
     }
 
-    private JsCallable matchChainable(Match.Type type) {
+    private JavaCallable matchChainable(Match.Type type) {
         return (context, args) -> {
             Result result = Match.evaluate(subject, null, null).is(type, args[0]);
             handleResult(context, result);
@@ -175,7 +175,7 @@ public class Expect implements SimpleObject {
         };
     }
 
-    private JsCallable handle(java.util.function.Function<Object, String> handler) {
+    private JavaCallable handle(java.util.function.Function<Object, String> handler) {
         return (context, args) -> {
             String message = handler.apply(args[0]);
             Result result = message == null ? Result.PASS : Result.fail(message);
@@ -184,7 +184,7 @@ public class Expect implements SimpleObject {
         };
     }
 
-    private JsCallable handleChainable(java.util.function.Function<Object, String> handler) {
+    private JavaCallable handleChainable(java.util.function.Function<Object, String> handler) {
         return (context, args) -> {
             String message = handler.apply(args[0]);
             Result result = message == null ? Result.PASS : Result.fail(message);
@@ -269,7 +269,7 @@ public class Expect implements SimpleObject {
                 handleResult(null, result);
                 yield new Expect(subject, false, onResult, throwOnFailure, contextSupplier);
             }
-            case "oneOf" -> (JsCallable) (context, args) -> {
+            case "oneOf" -> (JavaCallable) (context, args) -> {
                 Result result = Match.evaluate(args[0], null, null).contains(subject);
                 handleResult(context, result);
                 return new Expect(subject, false, onResult, throwOnFailure, contextSupplier);
@@ -288,7 +288,7 @@ public class Expect implements SimpleObject {
                     return subject + " is not below: " + rhs;
                 }
             });
-            case "within" -> (JsCallable) (context, args) -> {
+            case "within" -> (JavaCallable) (context, args) -> {
                 Number actual = (Number) subject;
                 Number first = (Number) args[0];
                 Number second = (Number) args[1];
@@ -301,7 +301,7 @@ public class Expect implements SimpleObject {
                 handleResult(context, result);
                 return new Expect(subject, false, onResult, throwOnFailure, contextSupplier);
             };
-            case "closeTo", "approximately" -> (JsCallable) (context, args) -> {
+            case "closeTo", "approximately" -> (JavaCallable) (context, args) -> {
                 Number actual = (Number) subject;
                 Number expected = (Number) args[0];
                 Number delta = (Number) args[1];
@@ -329,7 +329,7 @@ public class Expect implements SimpleObject {
     @SuppressWarnings("unchecked")
     private SimpleObject initExpectToHaveAll() {
         return key -> switch (key) {
-            case "keys" -> (JsCallable) (context, args) -> {
+            case "keys" -> (JavaCallable) (context, args) -> {
                 Result result;
                 if (subject instanceof Map<?, ?> map) {
                     result = Match.evaluate(map.keySet(), null, null).contains(args[0]);
@@ -346,7 +346,7 @@ public class Expect implements SimpleObject {
     @SuppressWarnings("unchecked")
     private SimpleObject initExpectToHaveAny() {
         return key -> switch (key) {
-            case "keys" -> (JsCallable) (context, args) -> {
+            case "keys" -> (JavaCallable) (context, args) -> {
                 Result result;
                 if (subject instanceof Map<?, ?> map) {
                     result = Match.evaluate(map.keySet(), null, null).containsAny(args[0]);
@@ -363,7 +363,7 @@ public class Expect implements SimpleObject {
     private SimpleObject initExpectToHaveNested() {
         return key -> {
             if ("property".equals(key)) {
-                return (JsCallable) (context, args) -> {
+                return (JavaCallable) (context, args) -> {
                     String path = args[0] + "";
                     Json json;
                     try {
@@ -411,7 +411,7 @@ public class Expect implements SimpleObject {
                     return "not a number: " + rhs;
                 }
             });
-            case "property" -> (JsCallable) (context, args) -> {
+            case "property" -> (JavaCallable) (context, args) -> {
                 String k = args[0] + "";
                 Result result;
                 Object propertyValue = null;
@@ -439,7 +439,7 @@ public class Expect implements SimpleObject {
                 // Return chainable with property value as new subject for .and.equal() chaining
                 return new Expect(propertyValue != null ? propertyValue : subject, false, onResult, throwOnFailure, contextSupplier);
             };
-            case "keys" -> (JsCallable) (context, args) -> {
+            case "keys" -> (JavaCallable) (context, args) -> {
                 Result result;
                 if (subject instanceof Map<?, ?> map) {
                     result = Match.evaluate(map.keySet(), null, null).containsOnly(args[0]);
@@ -469,7 +469,7 @@ public class Expect implements SimpleObject {
                 yield new Expect(subject, false, onResult, throwOnFailure, contextSupplier);
             }
             case "have" -> expectToHave;
-            case "match" -> (JsCallable) (context, args) -> {
+            case "match" -> (JavaCallable) (context, args) -> {
                 Result result;
                 if (subject instanceof String s) {
                     if (args[0] instanceof JsRegex regex) {

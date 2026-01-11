@@ -25,6 +25,7 @@ package io.karatelabs.core;
 
 import io.karatelabs.common.Json;
 import io.karatelabs.common.Xml;
+import io.karatelabs.js.JavaCallable;
 import org.w3c.dom.Node;
 
 import java.util.ArrayList;
@@ -140,7 +141,7 @@ public class StepUtils {
             return null;
         }
         // JsCallable functions shouldn't be deep-copied - return them unchanged
-        if (value instanceof io.karatelabs.js.JsCallable) {
+        if (value instanceof JavaCallable) {
             return value;
         }
         if (value instanceof Map) {

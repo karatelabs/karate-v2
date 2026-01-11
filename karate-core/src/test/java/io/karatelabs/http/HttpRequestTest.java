@@ -1,6 +1,6 @@
 package io.karatelabs.http;
 
-import io.karatelabs.js.Invokable;
+import io.karatelabs.js.JavaInvokable;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -20,7 +20,7 @@ class HttpRequestTest {
         assertNull(request.getParam("missing"));
 
         // Test via jsGet
-        Invokable param = (Invokable) request.jsGet("param");
+        JavaInvokable param = (JavaInvokable) request.jsGet("param");
         assertEquals("john", param.invoke("name"));
         assertEquals("25", param.invoke("age"));
         assertNull(param.invoke("missing"));
@@ -31,7 +31,7 @@ class HttpRequestTest {
         HttpRequest request = new HttpRequest();
         request.setUrl("http://localhost/test?count=42&page=1&invalid=abc");
 
-        Invokable paramInt = (Invokable) request.jsGet("paramInt");
+        JavaInvokable paramInt = (JavaInvokable) request.jsGet("paramInt");
 
         // Valid integer params
         assertEquals(42, paramInt.invoke("count"));
@@ -49,8 +49,8 @@ class HttpRequestTest {
         HttpRequest request = new HttpRequest();
         request.setUrl("http://localhost/test");
 
-        Invokable paramInt = (Invokable) request.jsGet("paramInt");
-        assertThrows(RuntimeException.class, () -> paramInt.invoke());
+        JavaInvokable paramInt = (JavaInvokable) request.jsGet("paramInt");
+        assertThrows(RuntimeException.class, paramInt::invoke);
     }
 
     @Test
@@ -60,7 +60,7 @@ class HttpRequestTest {
         // URL encoded JSON: {"name":"john","age":25}
         request.setUrl("http://localhost/test?data=%7B%22name%22%3A%22john%22%2C%22age%22%3A25%7D&arr=%5B1%2C2%2C3%5D");
 
-        Invokable paramJson = (Invokable) request.jsGet("paramJson");
+        JavaInvokable paramJson = (JavaInvokable) request.jsGet("paramJson");
 
         // JSON object param
         Map<String, Object> data = (Map<String, Object>) paramJson.invoke("data");
@@ -84,7 +84,7 @@ class HttpRequestTest {
         // Non-JSON values are returned as raw strings
         request.setUrl("http://localhost/test?str=hello&num=42&bool=true");
 
-        Invokable paramJson = (Invokable) request.jsGet("paramJson");
+        JavaInvokable paramJson = (JavaInvokable) request.jsGet("paramJson");
 
         // All non-JSON values return as raw strings
         assertEquals("hello", paramJson.invoke("str"));
@@ -97,8 +97,8 @@ class HttpRequestTest {
         HttpRequest request = new HttpRequest();
         request.setUrl("http://localhost/test");
 
-        Invokable paramJson = (Invokable) request.jsGet("paramJson");
-        assertThrows(RuntimeException.class, () -> paramJson.invoke());
+        JavaInvokable paramJson = (JavaInvokable) request.jsGet("paramJson");
+        assertThrows(RuntimeException.class, paramJson::invoke);
     }
 
     @Test
@@ -106,7 +106,7 @@ class HttpRequestTest {
         HttpRequest request = new HttpRequest();
         request.setUrl("http://localhost/test?tag=a&tag=b&tag=c");
 
-        Invokable paramValues = (Invokable) request.jsGet("paramValues");
+        JavaInvokable paramValues = (JavaInvokable) request.jsGet("paramValues");
         List<?> values = (List<?>) paramValues.invoke("tag");
         assertEquals(3, values.size());
         assertEquals("a", values.get(0));
@@ -147,11 +147,11 @@ class HttpRequestTest {
         request.putHeader("Content-Type", "application/json");
         request.putHeader("X-Custom", "value1", "value2");
 
-        Invokable header = (Invokable) request.jsGet("header");
+        JavaInvokable header = (JavaInvokable) request.jsGet("header");
         assertEquals("application/json", header.invoke("Content-Type"));
         assertEquals("value2", header.invoke("X-Custom")); // returns last value
 
-        Invokable headerValues = (Invokable) request.jsGet("headerValues");
+        JavaInvokable headerValues = (JavaInvokable) request.jsGet("headerValues");
         List<?> values = (List<?>) headerValues.invoke("X-Custom");
         assertEquals(2, values.size());
         assertEquals("value1", values.get(0));
@@ -163,7 +163,7 @@ class HttpRequestTest {
         HttpRequest request = new HttpRequest();
         request.setUrl("http://localhost/users/123/posts/456");
 
-        Invokable pathMatches = (Invokable) request.jsGet("pathMatches");
+        JavaInvokable pathMatches = (JavaInvokable) request.jsGet("pathMatches");
         assertTrue((Boolean) pathMatches.invoke("/users/{userId}/posts/{postId}"));
 
         Map<?, ?> pathParams = (Map<?, ?>) request.jsGet("pathParams");

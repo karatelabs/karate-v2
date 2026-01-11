@@ -30,11 +30,10 @@ import io.karatelabs.gherkin.Scenario;
 import io.karatelabs.gherkin.ScenarioOutline;
 import io.karatelabs.gherkin.ExamplesTable;
 import io.karatelabs.gherkin.Tag;
-import io.karatelabs.js.JsCallable;
+import io.karatelabs.js.JavaCallable;
 import io.karatelabs.output.LogContext;
 import io.karatelabs.output.ResultListener;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -232,7 +231,7 @@ public class FeatureRuntime implements Callable<FeatureResult> {
     private void invokeAfterFeatureHook(ScenarioRuntime sr) {
         KarateConfig config = sr.getConfig();
         Object afterFeature = config.getAfterFeature();
-        if (afterFeature instanceof JsCallable callable) {
+        if (afterFeature instanceof JavaCallable callable) {
             try {
                 callable.call(null);
             } catch (Exception e) {
@@ -266,7 +265,7 @@ public class FeatureRuntime implements Callable<FeatureResult> {
     private void invokeAfterScenarioOutlineHook(ScenarioRuntime sr) {
         KarateConfig config = sr.getConfig();
         Object afterScenarioOutline = config.getAfterScenarioOutline();
-        if (afterScenarioOutline instanceof JsCallable callable) {
+        if (afterScenarioOutline instanceof JavaCallable callable) {
             try {
                 callable.call(null);
             } catch (Exception e) {
@@ -473,7 +472,7 @@ public class FeatureRuntime implements Callable<FeatureResult> {
 
                 if (result instanceof List) {
                     return (List<?>) result;
-                } else if (result instanceof JsCallable) {
+                } else if (result instanceof JavaCallable) {
                     // Generator function - call repeatedly until null/non-map
                     return evaluateGeneratorFunction(result);
                 } else {
@@ -492,7 +491,7 @@ public class FeatureRuntime implements Callable<FeatureResult> {
         @SuppressWarnings("unchecked")
         private List<Map<String, Object>> evaluateGeneratorFunction(Object function) {
             List<Map<String, Object>> results = new ArrayList<>();
-            JsCallable callable = (JsCallable) function;
+            JavaCallable callable = (JavaCallable) function;
             int index = 0;
 
             while (true) {

@@ -36,6 +36,7 @@ import io.karatelabs.driver.Keys;
 import io.karatelabs.driver.Locators;
 import io.karatelabs.driver.Mouse;
 import io.karatelabs.driver.PageLoadStrategy;
+import io.karatelabs.js.Terms;
 import io.karatelabs.output.LogContext;
 import org.slf4j.Logger;
 
@@ -190,6 +191,7 @@ public class CdpDriver implements Driver {
         logger.debug("main frame ID: {}", mainFrameId);
     }
 
+    @SuppressWarnings("unchecked")
     private void setupEventHandlers() {
         cdp.on("Page.domContentEventFired", event -> {
             domContentEventFired = true;
@@ -497,9 +499,7 @@ public class CdpDriver implements Driver {
 
         if (embed) {
             LogContext ctx = LogContext.get();
-            if (ctx != null) {
-                ctx.embed(bytes, "image/png", "screenshot.png");
-            }
+            ctx.embed(bytes, "image/png", "screenshot.png");
         }
 
         return bytes;
@@ -561,6 +561,7 @@ public class CdpDriver implements Driver {
      *
      * @param index the zero-based index of the frame
      */
+    @SuppressWarnings("unchecked")
     public void switchFrame(int index) {
         CdpResponse response = cdp.method("Page.getFrameTree").send();
         List<Map<String, Object>> childFrames = response.getResult("frameTree.childFrames");
@@ -588,6 +589,7 @@ public class CdpDriver implements Driver {
      *
      * @param locator the locator for the iframe element, or null to return to main frame
      */
+    @SuppressWarnings("unchecked")
     public void switchFrame(String locator) {
         if (locator == null) {
             // Switch back to main frame
@@ -1162,7 +1164,7 @@ public class CdpDriver implements Driver {
         while (System.currentTimeMillis() < deadline) {
             if (exists(locator)) {
                 Object result = script(locator, expression);
-                if (isTruthy(result)) {
+                if (Terms.isTruthy(result)) {
                     return Element.of(this, locator);
                 }
             }
@@ -1188,7 +1190,7 @@ public class CdpDriver implements Driver {
 
         while (System.currentTimeMillis() < deadline) {
             Object result = script(expression);
-            if (isTruthy(result)) {
+            if (Terms.isTruthy(result)) {
                 return true;
             }
             sleep(pollInterval);
@@ -1213,7 +1215,7 @@ public class CdpDriver implements Driver {
 
         while (System.currentTimeMillis() < deadline) {
             Object result = condition.get();
-            if (isTruthy(result)) {
+            if (Terms.isTruthy(result)) {
                 return result;
             }
             sleep(pollInterval);
@@ -1595,7 +1597,6 @@ public class CdpDriver implements Driver {
      *
      * @param titleOrUrl the title or URL substring to match
      */
-    @SuppressWarnings("unchecked")
     public void switchPage(String titleOrUrl) {
         logger.debug("switch page by title/url: {}", titleOrUrl);
         CdpResponse response = cdp.method("Target.getTargets").send();
@@ -1765,22 +1766,6 @@ public class CdpDriver implements Driver {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-    }
-
-    private static boolean isTruthy(Object value) {
-        if (value == null) {
-            return false;
-        }
-        if (value instanceof Boolean) {
-            return (Boolean) value;
-        }
-        if (value instanceof Number) {
-            return ((Number) value).doubleValue() != 0;
-        }
-        if (value instanceof String) {
-            return !((String) value).isEmpty();
-        }
-        return true;
     }
 
 }

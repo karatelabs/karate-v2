@@ -33,7 +33,7 @@ class JsTextEncoder extends JsObject {
             @Override
             public Object getProperty(String propName) {
                 if ("encode".equals(propName)) {
-                    return (Invokable) args -> {
+                    return (JsInvokable) args -> {
                         String text = args[0].toString();
                         return text.getBytes(StandardCharsets.UTF_8);
                     };
@@ -44,7 +44,7 @@ class JsTextEncoder extends JsObject {
     }
 
     @Override
-    public Object invoke(Object... args) {
+    public Object call(Context context, Object... args) {
         return this;
     }
 

@@ -28,7 +28,7 @@ import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.Map;
 
-class JsNumber extends JsObject implements JsPrimitive, JsCallable {
+class JsNumber extends JsObject implements JsPrimitive {
 
     final Number value;
 
@@ -133,26 +133,26 @@ class JsNumber extends JsObject implements JsPrimitive, JsCallable {
                     };
                     // static ==========================================================================================
                     case "valueOf" -> (JsCallable) (context, args) -> fromThis(context).value;
-                    case "isFinite" -> (Invokable) args -> {
+                    case "isFinite" -> (JsInvokable) args -> {
                         if (args.length > 0 && args[0] instanceof Number n) {
                             return Double.isFinite(n.doubleValue());
                         }
                         return false;
                     };
-                    case "isInteger" -> (Invokable) args -> {
+                    case "isInteger" -> (JsInvokable) args -> {
                         if (args.length > 0 && args[0] instanceof Number n) {
                             double d = n.doubleValue();
                             return Double.isFinite(d) && Math.floor(d) == d;
                         }
                         return false;
                     };
-                    case "isNaN" -> (Invokable) args -> {
+                    case "isNaN" -> (JsInvokable) args -> {
                         if (args.length > 0 && args[0] instanceof Number n) {
                             return Double.isNaN(n.doubleValue());
                         }
                         return false;
                     };
-                    case "isSafeInteger" -> (Invokable) args -> {
+                    case "isSafeInteger" -> (JsInvokable) args -> {
                         if (args.length > 0 && args[0] instanceof Number n) {
                             double d = n.doubleValue();
                             if (!Double.isFinite(d)) {

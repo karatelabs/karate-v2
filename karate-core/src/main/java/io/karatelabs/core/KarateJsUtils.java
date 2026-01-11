@@ -30,8 +30,8 @@ import io.karatelabs.common.StringUtils;
 import io.karatelabs.common.Xml;
 import io.karatelabs.output.LogContext;
 import org.slf4j.Logger;
-import io.karatelabs.js.Invokable;
-import io.karatelabs.js.JsCallable;
+import io.karatelabs.js.JavaInvokable;
+import io.karatelabs.js.JavaCallable;
 import org.w3c.dom.Node;
 
 import com.jayway.jsonpath.JsonPath;
@@ -77,7 +77,7 @@ public class KarateJsUtils {
 
     // ========== Collection Utilities ==========
 
-    static Invokable append() {
+    static JavaInvokable append() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("append() needs at least two arguments");
@@ -102,7 +102,7 @@ public class KarateJsUtils {
     }
 
     @SuppressWarnings("unchecked")
-    static Invokable appendTo() {
+    static JavaInvokable appendTo() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("appendTo() needs at least two arguments: list and item(s)");
@@ -124,7 +124,7 @@ public class KarateJsUtils {
      * Remove duplicates from a list while preserving order.
      * Usage: karate.distinct([1, 2, 2, 3, 1]) => [1, 2, 3]
      */
-    static Invokable distinct() {
+    static JavaInvokable distinct() {
         return args -> {
             if (args.length == 0 || args[0] == null) {
                 return new ArrayList<>();
@@ -137,7 +137,7 @@ public class KarateJsUtils {
         };
     }
 
-    static Invokable extract() {
+    static JavaInvokable extract() {
         return args -> {
             if (args.length < 3) {
                 throw new RuntimeException("extract() needs three arguments: text, regex, group");
@@ -154,7 +154,7 @@ public class KarateJsUtils {
         };
     }
 
-    static Invokable extractAll() {
+    static JavaInvokable extractAll() {
         return args -> {
             if (args.length < 3) {
                 throw new RuntimeException("extractAll() needs three arguments: text, regex, group");
@@ -172,13 +172,13 @@ public class KarateJsUtils {
         };
     }
 
-    static Invokable filter() {
+    static JavaInvokable filter() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("filter() needs two arguments: list and function");
             }
             List<?> list = (List<?>) args[0];
-            JsCallable fn = (JsCallable) args[1];
+            JavaCallable fn = (JavaCallable) args[1];
             List<Object> result = new ArrayList<>();
             for (int i = 0; i < list.size(); i++) {
                 Object item = list.get(i);
@@ -192,7 +192,7 @@ public class KarateJsUtils {
     }
 
     @SuppressWarnings("unchecked")
-    static Invokable filterKeys() {
+    static JavaInvokable filterKeys() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("filterKeys() needs at least two arguments");
@@ -230,13 +230,13 @@ public class KarateJsUtils {
     }
 
     @SuppressWarnings("unchecked")
-    static Invokable forEach() {
+    static JavaInvokable forEach() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("forEach() needs two arguments: collection and function");
             }
             Object collection = args[0];
-            JsCallable fn = (JsCallable) args[1];
+            JavaCallable fn = (JavaCallable) args[1];
             if (collection instanceof List<?> list) {
                 for (int i = 0; i < list.size(); i++) {
                     fn.call(null, new Object[]{list.get(i), i});
@@ -252,7 +252,7 @@ public class KarateJsUtils {
         };
     }
 
-    static Invokable fromJson() {
+    static JavaInvokable fromJson() {
         return args -> {
             if (args.length < 1) {
                 throw new RuntimeException("fromJson() needs one argument: a JSON string");
@@ -267,7 +267,7 @@ public class KarateJsUtils {
         };
     }
 
-    static Invokable jsonPath() {
+    static JavaInvokable jsonPath() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("jsonPath() needs two arguments: object and path");
@@ -279,7 +279,7 @@ public class KarateJsUtils {
     }
 
     @SuppressWarnings("unchecked")
-    static Invokable keysOf() {
+    static JavaInvokable keysOf() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("keysOf() needs one argument");
@@ -289,7 +289,7 @@ public class KarateJsUtils {
         };
     }
 
-    static Invokable lowerCase() {
+    static JavaInvokable lowerCase() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("lowerCase() needs one argument");
@@ -312,13 +312,13 @@ public class KarateJsUtils {
         };
     }
 
-    static Invokable map() {
+    static JavaInvokable map() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("map() needs two arguments: list and function");
             }
             List<?> list = (List<?>) args[0];
-            JsCallable fn = (JsCallable) args[1];
+            JavaCallable fn = (JavaCallable) args[1];
             List<Object> result = new ArrayList<>();
             for (int i = 0; i < list.size(); i++) {
                 result.add(fn.call(null, new Object[]{list.get(i), i}));
@@ -327,7 +327,7 @@ public class KarateJsUtils {
         };
     }
 
-    static Invokable mapWithKey() {
+    static JavaInvokable mapWithKey() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("mapWithKey() needs two arguments: list and key name");
@@ -349,7 +349,7 @@ public class KarateJsUtils {
     }
 
     @SuppressWarnings("unchecked")
-    static Invokable merge() {
+    static JavaInvokable merge() {
         return args -> {
             Map<String, Object> result = new LinkedHashMap<>();
             for (Object arg : args) {
@@ -361,7 +361,7 @@ public class KarateJsUtils {
         };
     }
 
-    static Invokable pause() {
+    static JavaInvokable pause() {
         return args -> {
             if (args.length == 0 || args[0] == null) {
                 return null;
@@ -376,7 +376,7 @@ public class KarateJsUtils {
         };
     }
 
-    static Invokable pretty() {
+    static JavaInvokable pretty() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("pretty() needs one argument");
@@ -398,7 +398,7 @@ public class KarateJsUtils {
      *        karate.range(0, 10, 2) => [0, 2, 4, 6, 8]
      *        karate.range(5, 0, -1) => [5, 4, 3, 2, 1]
      */
-    static Invokable range() {
+    static JavaInvokable range() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("range() needs at least two arguments: start and end");
@@ -420,7 +420,7 @@ public class KarateJsUtils {
         };
     }
 
-    static Invokable prettyXml() {
+    static JavaInvokable prettyXml() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("prettyXml() needs one argument");
@@ -436,13 +436,13 @@ public class KarateJsUtils {
         };
     }
 
-    static Invokable repeat() {
+    static JavaInvokable repeat() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("repeat() needs two arguments: count and function");
             }
             int count = ((Number) args[0]).intValue();
-            JsCallable fn = (JsCallable) args[1];
+            JavaCallable fn = (JavaCallable) args[1];
             List<Object> result = new ArrayList<>();
             for (int i = 0; i < count; i++) {
                 result.add(fn.call(null, new Object[]{i}));
@@ -451,7 +451,7 @@ public class KarateJsUtils {
         };
     }
 
-    static Invokable sizeOf() {
+    static JavaInvokable sizeOf() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("sizeOf() needs one argument");
@@ -469,13 +469,13 @@ public class KarateJsUtils {
     }
 
     @SuppressWarnings("unchecked")
-    static Invokable sort() {
+    static JavaInvokable sort() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("sort() needs two arguments: list and key function");
             }
             List<?> list = (List<?>) args[0];
-            JsCallable fn = (JsCallable) args[1];
+            JavaCallable fn = (JavaCallable) args[1];
             List<Object> result = new ArrayList<>(list);
             result.sort((a, b) -> {
                 Object keyA = fn.call(null, new Object[]{a});
@@ -489,7 +489,7 @@ public class KarateJsUtils {
         };
     }
 
-    static Invokable toBean() {
+    static JavaInvokable toBean() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("toBean() needs two arguments: object and class name");
@@ -507,7 +507,7 @@ public class KarateJsUtils {
      * Usage: karate.toCsv([{a:1,b:2},{a:3,b:4}]) => "a,b\n1,2\n3,4\n"
      */
     @SuppressWarnings("unchecked")
-    static Invokable toCsv() {
+    static JavaInvokable toCsv() {
         return args -> {
             if (args.length == 0 || args[0] == null) {
                 return "";
@@ -524,7 +524,7 @@ public class KarateJsUtils {
     }
 
     @SuppressWarnings("unchecked")
-    static Invokable toBytes() {
+    static JavaInvokable toBytes() {
         return args -> {
             if (args.length < 1) {
                 throw new RuntimeException("toBytes() needs one argument: a list of numbers");
@@ -550,7 +550,7 @@ public class KarateJsUtils {
         };
     }
 
-    static Invokable toJson() {
+    static JavaInvokable toJson() {
         return args -> {
             if (args.length < 1) {
                 throw new RuntimeException("toJson() needs at least one argument");
@@ -583,7 +583,7 @@ public class KarateJsUtils {
      * - byte[] -> string from bytes
      * - Others -> toString()
      */
-    static JsCallable toStringValue() {
+    static JavaCallable toStringValue() {
         return (thisRef, args) -> {
             if (args.length == 0 || args[0] == null) {
                 return null;
@@ -603,7 +603,7 @@ public class KarateJsUtils {
     /**
      * Returns the Karate type of a value.
      */
-    static Invokable typeOf() {
+    static JavaInvokable typeOf() {
         return args -> {
             if (args.length == 0 || args[0] == null) {
                 return "null";
@@ -619,8 +619,7 @@ public class KarateJsUtils {
                 return "bytes";
             } else if (value instanceof List) {
                 return "list";
-            } else if (value instanceof JsCallable || value instanceof Invokable) {
-                // Check JsCallable BEFORE Map (JsFunction extends JsObject which implements Map)
+            } else if (value instanceof JavaCallable) {
                 return "function";
             } else if (value instanceof Map) {
                 return "map";
@@ -631,7 +630,7 @@ public class KarateJsUtils {
         };
     }
 
-    static Invokable urlEncode() {
+    static JavaInvokable urlEncode() {
         return args -> {
             if (args.length == 0 || args[0] == null) {
                 return "";
@@ -640,7 +639,7 @@ public class KarateJsUtils {
         };
     }
 
-    static Invokable urlDecode() {
+    static JavaInvokable urlDecode() {
         return args -> {
             if (args.length == 0 || args[0] == null) {
                 return "";
@@ -653,12 +652,12 @@ public class KarateJsUtils {
      * Generate a random UUID string.
      * Usage: karate.uuid() => "550e8400-e29b-41d4-a716-446655440000"
      */
-    static Invokable uuid() {
+    static JavaInvokable uuid() {
         return args -> UUID.randomUUID().toString();
     }
 
     @SuppressWarnings("unchecked")
-    static Invokable valuesOf() {
+    static JavaInvokable valuesOf() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("valuesOf() needs one argument");
@@ -748,7 +747,7 @@ public class KarateJsUtils {
      * - If the string looks like XML (starts with &lt;), parse as XML
      * - Otherwise, return the string unchanged
      */
-    static Invokable fromString() {
+    static JavaInvokable fromString() {
         return args -> {
             if (args.length == 0 || args[0] == null) {
                 return null;
@@ -908,7 +907,7 @@ public class KarateJsUtils {
      * karate.xmlPath(xml, path) - Evaluate XPath on XML.
      * First argument can be XML Node or String.
      */
-    static Invokable xmlPath() {
+    static JavaInvokable xmlPath() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("xmlPath() needs two arguments: xml and path");
@@ -936,7 +935,7 @@ public class KarateJsUtils {
     /**
      * karate.fail(message) - Explicitly fail the scenario with a message.
      */
-    static Invokable fail() {
+    static JavaInvokable fail() {
         return args -> {
             String message = args.length > 0 && args[0] != null ? args[0].toString() : "karate.fail() called";
             throw new RuntimeException(message);
@@ -949,7 +948,7 @@ public class KarateJsUtils {
      * karate.toJava() - Deprecated no-op for V1 compatibility.
      * In V2, JavaScript arrays work directly with Java, so this is unnecessary.
      */
-    static Invokable toJava() {
+    static JavaInvokable toJava() {
         return args -> {
             logger.warn("karate.toJava() is deprecated and a no-op in V2 - JavaScript arrays work directly with Java");
             if (args.length < 1) {
@@ -966,7 +965,7 @@ public class KarateJsUtils {
      * Opens a server socket and waits for a connection (e.g., curl or browser).
      * Prints instructions to console. NEVER forget to remove after debugging!
      */
-    static Invokable stop() {
+    static JavaInvokable stop() {
         return args -> {
             int port = 0; // 0 means pick any available port
             if (args.length > 0 && args[0] != null) {
@@ -1002,7 +1001,7 @@ public class KarateJsUtils {
      * karate.waitForHttp(url) - Wait for an HTTP endpoint to become available.
      * Polls until a successful response (2xx or 3xx) is received.
      */
-    static Invokable waitForHttp() {
+    static JavaInvokable waitForHttp() {
         return args -> {
             if (args.length == 0) {
                 throw new RuntimeException("waitForHttp() needs a URL argument");
@@ -1054,7 +1053,7 @@ public class KarateJsUtils {
      * karate.waitForPort(host, port) - Wait for a TCP port to become available.
      * Polls until a TCP connection can be established.
      */
-    static Invokable waitForPort() {
+    static JavaInvokable waitForPort() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("waitForPort() needs host and port arguments");

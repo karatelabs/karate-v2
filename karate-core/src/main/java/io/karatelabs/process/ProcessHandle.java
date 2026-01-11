@@ -23,7 +23,7 @@
  */
 package io.karatelabs.process;
 
-import io.karatelabs.js.JsCallable;
+import io.karatelabs.js.JavaCallable;
 import io.karatelabs.js.SimpleObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -457,15 +457,15 @@ public class ProcessHandle implements SimpleObject {
             case "exitCode" -> getExitCode();
             case "alive" -> isAlive();
             case "pid" -> getPid();
-            case "start" -> (JsCallable) (ctx, args) -> {
+            case "start" -> (JavaCallable) (ctx, args) -> {
                 start();
                 return this;
             };
-            case "onStdOut" -> (JsCallable) (ctx, args) -> {
-                if (args.length == 0 || !(args[0] instanceof JsCallable)) {
+            case "onStdOut" -> (JavaCallable) (ctx, args) -> {
+                if (args.length == 0 || !(args[0] instanceof JavaCallable)) {
                     throw new RuntimeException("onStdOut requires a function argument");
                 }
-                JsCallable listener = (JsCallable) args[0];
+                JavaCallable listener = (JavaCallable) args[0];
                 onStdOut(line -> {
                     try {
                         listener.call(ctx, line);
@@ -475,11 +475,11 @@ public class ProcessHandle implements SimpleObject {
                 });
                 return this;
             };
-            case "onStdErr" -> (JsCallable) (ctx, args) -> {
-                if (args.length == 0 || !(args[0] instanceof JsCallable)) {
+            case "onStdErr" -> (JavaCallable) (ctx, args) -> {
+                if (args.length == 0 || !(args[0] instanceof JavaCallable)) {
                     throw new RuntimeException("onStdErr requires a function argument");
                 }
-                JsCallable listener = (JsCallable) args[0];
+                JavaCallable listener = (JavaCallable) args[0];
                 onStdErr(line -> {
                     try {
                         listener.call(ctx, line);
@@ -489,17 +489,17 @@ public class ProcessHandle implements SimpleObject {
                 });
                 return this;
             };
-            case "waitSync" -> (JsCallable) (ctx, args) -> {
+            case "waitSync" -> (JavaCallable) (ctx, args) -> {
                 if (args.length > 0 && args[0] instanceof Number) {
                     return waitSync(((Number) args[0]).longValue());
                 }
                 return waitSync();
             };
-            case "waitForOutput" -> (JsCallable) (ctx, args) -> {
-                if (args.length == 0 || !(args[0] instanceof JsCallable)) {
+            case "waitForOutput" -> (JavaCallable) (ctx, args) -> {
+                if (args.length == 0 || !(args[0] instanceof JavaCallable)) {
                     throw new RuntimeException("waitForOutput requires a function argument");
                 }
-                JsCallable predicate = (JsCallable) args[0];
+                JavaCallable predicate = (JavaCallable) args[0];
                 long timeout = args.length > 1 && args[1] instanceof Number
                         ? ((Number) args[1]).longValue() : 0;
                 return waitForOutput(line -> {
@@ -507,25 +507,25 @@ public class ProcessHandle implements SimpleObject {
                     return Boolean.TRUE.equals(res);
                 }, timeout);
             };
-            case "close" -> (JsCallable) (ctx, args) -> {
+            case "close" -> (JavaCallable) (ctx, args) -> {
                 boolean force = args.length > 0 && Boolean.TRUE.equals(args[0]);
                 close(force);
                 return null;
             };
-            case "signal" -> (JsCallable) (ctx, args) -> {
+            case "signal" -> (JavaCallable) (ctx, args) -> {
                 if (args.length > 0) {
                     signal(args[0]);
                 }
                 return null;
             };
-            case "waitForPort" -> (JsCallable) (ctx, args) -> {
+            case "waitForPort" -> (JavaCallable) (ctx, args) -> {
                 String host = args.length > 0 ? args[0].toString() : "localhost";
                 int port = args.length > 1 ? ((Number) args[1]).intValue() : 8080;
                 int attempts = args.length > 2 ? ((Number) args[2]).intValue() : 30;
                 int interval = args.length > 3 ? ((Number) args[3]).intValue() : 250;
                 return waitForPort(host, port, attempts, interval);
             };
-            case "waitForHttp" -> (JsCallable) (ctx, args) -> {
+            case "waitForHttp" -> (JavaCallable) (ctx, args) -> {
                 String url = args.length > 0 ? args[0].toString() : "http://localhost:8080";
                 int attempts = args.length > 1 ? ((Number) args[1]).intValue() : 30;
                 int interval = args.length > 2 ? ((Number) args[2]).intValue() : 1000;

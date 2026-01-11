@@ -49,7 +49,7 @@ class SimpleObjectTest {
 
         SimpleObject utils = name -> switch (name) {
             case "greet" -> (JsCallable) (ctx, args) -> "Hello, " + args[0];
-            case "add" -> (Invokable) args -> ((Number) args[0]).intValue() + ((Number) args[1]).intValue();
+            case "add" -> (JsInvokable) args -> ((Number) args[0]).intValue() + ((Number) args[1]).intValue();
             default -> null;
         };
 
@@ -145,7 +145,7 @@ class SimpleObjectTest {
 
         SimpleObject utils = name -> {
             if ("captureArg".equals(name)) {
-                return (JsCallable) (context, args) -> {
+                return (JavaCallable) (context, args) -> {
                     capturedArgs.add(args.length > 0 ? args[0] : "NO_ARG");
                     return null;
                 };
@@ -170,7 +170,7 @@ class SimpleObjectTest {
 
         SimpleObject utils = name -> {
             if ("captureArg".equals(name)) {
-                return (JsCallable) (context, args) -> {
+                return (JavaCallable) (context, args) -> {
                     capturedArgs.add(args.length > 0 ? args[0] : "NO_ARG");
                     return null;
                 };
@@ -192,7 +192,7 @@ class SimpleObjectTest {
 
         SimpleObject utils = name -> {
             if ("captureArg".equals(name)) {
-                return (JsCallable) (context, args) -> {
+                return (JavaCallable) (context, args) -> {
                     capturedArgs.add(args.length > 0 ? args[0] : "NO_ARG");
                     return null;
                 };
@@ -214,7 +214,7 @@ class SimpleObjectTest {
 
         SimpleObject utils = name -> {
             if ("captureArg".equals(name)) {
-                return (JsCallable) (context, args) -> {
+                return (JavaCallable) (context, args) -> {
                     capturedArgs.add(args.length > 0 ? args[0] : "NO_ARG");
                     return null;
                 };
@@ -239,7 +239,7 @@ class SimpleObjectTest {
 
         SimpleObject utils = name -> {
             if ("captureArg".equals(name)) {
-                return (Invokable) args -> {
+                return (JavaInvokable) args -> {
                     capturedArgs.add(args.length > 0 ? args[0] : "NO_ARG");
                     return null;
                 };
@@ -264,7 +264,7 @@ class SimpleObjectTest {
 
         SimpleObject utils = name -> {
             if ("updateUser".equals(name)) {
-                return (JsCallable) (context, args) -> {
+                return (JavaCallable) (context, args) -> {
                     capturedCalls.add(args);
                     return null;
                 };
@@ -293,7 +293,7 @@ class SimpleObjectTest {
 
         SimpleObject utils = name -> {
             if ("captureArg".equals(name)) {
-                return (JsCallable) (context, args) -> {
+                return (JavaCallable) (context, args) -> {
                     capturedArgs.add(args.length > 0 ? args[0] : "NO_ARG");
                     return null;
                 };

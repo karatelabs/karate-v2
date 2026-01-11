@@ -2,14 +2,338 @@ package io.karatelabs.js;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 class JsObjectTest extends EvalBase {
 
     @Test
     void testDev() {
 
+    }
+
+    // =================================================================================================
+    // ES6 Constructor Compliance Tests: new Foo() vs Foo()
+    // =================================================================================================
+
+    // -------------------------------------------------------------------------
+    // Date: new Date() returns Date object, Date() returns STRING (ES6 spec)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testDateConstructorWithNew() {
+        // new Date() should return a Date object
+        assertEquals("object", eval("typeof new Date()"));
+        assertEquals(true, eval("new Date() instanceof Date"));
+        assertEquals(true, eval("new Date(0) instanceof Date"));
+    }
+
+    @Test
+    void testDateFunctionWithoutNew() {
+        // Date() without new should ALWAYS return a string (ES6 spec)
+        // Arguments are ignored when called without new
+        assertEquals("string", eval("typeof Date()"));
+        assertEquals("string", eval("typeof Date(0)"));
+        assertEquals("string", eval("typeof Date(2025, 0, 1)"));
+        assertEquals("string", eval("typeof Date('invalid')"));
+    }
+
+    @Test
+    void testDateFunctionIgnoresArguments() {
+        // ES6: Date() ignores all arguments and returns current time as string
+        // The string should represent the current time, not the argument
+        Object result1 = eval("Date()");
+        Object result2 = eval("Date(0)");  // epoch timestamp ignored
+        assertTrue(result1 instanceof String);
+        assertTrue(result2 instanceof String);
+        // Both should be current time strings (can't check exact value but type is correct)
+    }
+
+    @Test
+    void testNewDateVsDateEquality() {
+        // new Date() creates object, Date() creates string - never equal
+        assertEquals(false, eval("new Date(0) === Date(0)"));
+        assertEquals(false, eval("new Date(0) == Date(0)"));
+    }
+
+    // -------------------------------------------------------------------------
+    // Array: Both new Array() and Array() should return Array
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testArrayConstructorWithNew() {
+        assertEquals("object", eval("typeof new Array()"));
+        assertEquals(true, eval("new Array() instanceof Array"));
+        assertEquals(true, eval("Array.isArray(new Array())"));
+        matchEval("new Array()", "[]");
+        matchEval("new Array(1, 2, 3)", "[1, 2, 3]");
+    }
+
+    @Test
+    void testArrayFunctionWithoutNew() {
+        // Array() without new should behave the same as new Array()
+        assertEquals("object", eval("typeof Array()"));
+        assertEquals(true, eval("Array() instanceof Array"));
+        assertEquals(true, eval("Array.isArray(Array())"));
+        matchEval("Array()", "[]");
+        matchEval("Array(1, 2, 3)", "[1, 2, 3]");
+    }
+
+    @Test
+    void testArraySingleNumericArgument() {
+        // Array(n) and new Array(n) create array with n empty slots
+        assertEquals(3, eval("new Array(3).length"));
+        assertEquals(3, eval("Array(3).length"));
+        matchEval("new Array(3)", "[null, null, null]");
+        matchEval("Array(3)", "[null, null, null]");
+    }
+
+    @Test
+    void testNewArrayVsArrayEquality() {
+        // Both should create equivalent arrays
+        assertEquals(true, eval("Array.isArray(new Array())"));
+        assertEquals(true, eval("Array.isArray(Array())"));
+        assertEquals(true, eval("new Array(1,2,3).length === Array(1,2,3).length"));
+    }
+
+    // -------------------------------------------------------------------------
+    // Object: Both new Object() and Object() should return Object
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testObjectConstructorWithNew() {
+        assertEquals("object", eval("typeof new Object()"));
+        matchEval("new Object()", "{}");
+    }
+
+    @Test
+    void testObjectFunctionWithoutNew() {
+        // Object() without new should behave the same as new Object()
+        assertEquals("object", eval("typeof Object()"));
+        matchEval("Object()", "{}");
+    }
+
+    @Test
+    void testObjectWithPrimitiveArgument() {
+        // Object(primitive) wraps the primitive
+        assertEquals("object", eval("typeof Object(42)"));
+        assertEquals("object", eval("typeof Object('hello')"));
+        assertEquals("object", eval("typeof Object(true)"));
+    }
+
+    // -------------------------------------------------------------------------
+    // String: new String() returns object, String() returns primitive
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testStringConstructorWithNew() {
+        assertEquals("object", eval("typeof new String()"));
+        assertEquals("object", eval("typeof new String('hello')"));
+        assertEquals(true, eval("new String('x') instanceof String"));
+        assertEquals("hello", eval("new String('hello').valueOf()"));
+    }
+
+    @Test
+    void testStringFunctionWithoutNew() {
+        // String() without new returns primitive string
+        assertEquals("string", eval("typeof String()"));
+        assertEquals("string", eval("typeof String('hello')"));
+        assertEquals("string", eval("typeof String(123)"));
+        assertEquals("123", eval("String(123)"));
+        assertEquals("true", eval("String(true)"));
+    }
+
+    @Test
+    void testNewStringVsStringEquality() {
+        // Loose equality works, strict does not
+        assertEquals(true, eval("new String('hello') == 'hello'"));
+        assertEquals(false, eval("new String('hello') === 'hello'"));
+        assertEquals(true, eval("String('hello') === 'hello'"));
+    }
+
+    // -------------------------------------------------------------------------
+    // Number: new Number() returns object, Number() returns primitive
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testNumberConstructorWithNew() {
+        assertEquals("object", eval("typeof new Number()"));
+        assertEquals("object", eval("typeof new Number(42)"));
+        assertEquals(true, eval("new Number(5) instanceof Number"));
+        assertEquals(42, eval("new Number(42).valueOf()"));
+    }
+
+    @Test
+    void testNumberFunctionWithoutNew() {
+        // Number() without new returns primitive number
+        assertEquals("number", eval("typeof Number()"));
+        assertEquals("number", eval("typeof Number(42)"));
+        assertEquals("number", eval("typeof Number('123')"));
+        assertEquals(123, eval("Number('123')"));
+        assertEquals(0, eval("Number()"));
+    }
+
+    @Test
+    void testNewNumberVsNumberEquality() {
+        // Loose equality works, strict does not
+        assertEquals(true, eval("new Number(5) == 5"));
+        assertEquals(false, eval("new Number(5) === 5"));
+        assertEquals(true, eval("Number(5) === 5"));
+    }
+
+    @Test
+    void testNumberArithmetic() {
+        // Both should work in arithmetic
+        assertEquals(6, eval("new Number(5) + 1"));
+        assertEquals(6, eval("Number(5) + 1"));
+    }
+
+    // -------------------------------------------------------------------------
+    // Boolean: new Boolean() returns object, Boolean() returns primitive
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testBooleanConstructorWithNew() {
+        assertEquals("object", eval("typeof new Boolean()"));
+        assertEquals("object", eval("typeof new Boolean(true)"));
+        assertEquals(true, eval("new Boolean(false) instanceof Boolean"));
+    }
+
+    @Test
+    void testBooleanFunctionWithoutNew() {
+        // Boolean() without new returns primitive boolean
+        assertEquals("boolean", eval("typeof Boolean()"));
+        assertEquals("boolean", eval("typeof Boolean(true)"));
+        assertEquals("boolean", eval("typeof Boolean(1)"));
+        assertEquals(true, eval("Boolean(1)"));
+        assertEquals(false, eval("Boolean(0)"));
+        assertEquals(false, eval("Boolean()"));
+    }
+
+    @Test
+    void testBooleanObjectTruthiness() {
+        // new Boolean(false) is truthy because it's an object!
+        assertEquals(true, eval("!!new Boolean(false)"));
+        // But Boolean(false) returns primitive false
+        assertEquals(false, eval("!!Boolean(false)"));
+    }
+
+    @Test
+    void testNewBooleanVsBooleanEquality() {
+        assertEquals(true, eval("new Boolean(true) == true"));
+        assertEquals(false, eval("new Boolean(true) === true"));
+        assertEquals(true, eval("Boolean(true) === true"));
+    }
+
+    // -------------------------------------------------------------------------
+    // RegExp: Both new RegExp() and RegExp() should return RegExp
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testRegExpConstructorWithNew() {
+        assertEquals("object", eval("typeof new RegExp('test')"));
+        assertEquals(true, eval("new RegExp('test') instanceof RegExp"));
+        assertEquals("/test/", eval("new RegExp('test').toString()"));
+        assertEquals("/test/i", eval("new RegExp('test', 'i').toString()"));
+    }
+
+    @Test
+    void testRegExpFunctionWithoutNew() {
+        // RegExp() without new should behave same as new RegExp()
+        assertEquals("object", eval("typeof RegExp('test')"));
+        assertEquals(true, eval("RegExp('test') instanceof RegExp"));
+        assertEquals("/test/", eval("RegExp('test').toString()"));
+        assertEquals("/test/gi", eval("RegExp('test', 'gi').toString()"));
+    }
+
+    @Test
+    void testRegExpTest() {
+        assertEquals(true, eval("new RegExp('hello').test('hello world')"));
+        assertEquals(true, eval("RegExp('hello').test('hello world')"));
+        assertEquals(false, eval("new RegExp('xyz').test('hello world')"));
+        assertEquals(false, eval("RegExp('xyz').test('hello world')"));
+    }
+
+    // -------------------------------------------------------------------------
+    // Error: Both new Error() and Error() should return Error
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testErrorConstructorWithNew() {
+        assertEquals("object", eval("typeof new Error()"));
+        assertEquals("object", eval("typeof new Error('message')"));
+        assertEquals(true, eval("new Error() instanceof Error"));
+        assertEquals("test", eval("new Error('test').message"));
+    }
+
+    @Test
+    void testErrorFunctionWithoutNew() {
+        // Error() without new should behave same as new Error() in ES6
+        assertEquals("object", eval("typeof Error()"));
+        assertEquals("object", eval("typeof Error('message')"));
+        assertEquals(true, eval("Error() instanceof Error"));
+        assertEquals("test", eval("Error('test').message"));
+    }
+
+    // -------------------------------------------------------------------------
+    // Constructor return value behavior
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testConstructorReturningObject() {
+        // When constructor explicitly returns an object, that object is used
+        assertEquals(42, eval("function Foo() { return { x: 42 }; }; new Foo().x"));
+    }
+
+    @Test
+    void testConstructorReturningPrimitive() {
+        // When constructor returns a primitive, 'this' is returned instead
+        assertEquals(true, eval("function Foo() { this.x = 1; return 42; }; new Foo().x === 1"));
+        assertEquals(true, eval("function Foo() { this.x = 1; return 'hello'; }; new Foo().x === 1"));
+        assertEquals(true, eval("function Foo() { this.x = 1; return true; }; new Foo().x === 1"));
+    }
+
+    @Test
+    void testConstructorReturningNull() {
+        // Returning null should still use 'this'
+        assertEquals(true, eval("function Foo() { this.x = 1; return null; }; new Foo().x === 1"));
+    }
+
+    @Test
+    void testConstructorReturningUndefined() {
+        // Returning undefined (explicit or implicit) uses 'this'
+        assertEquals(true, eval("function Foo() { this.x = 1; return undefined; }; new Foo().x === 1"));
+        assertEquals(true, eval("function Foo() { this.x = 1; }; new Foo().x === 1"));
+    }
+
+    // -------------------------------------------------------------------------
+    // typeof checks for wrapper objects
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testTypeofWrapperObjects() {
+        // All wrapper objects have typeof "object"
+        assertEquals("object", eval("typeof new String('x')"));
+        assertEquals("object", eval("typeof new Number(1)"));
+        assertEquals("object", eval("typeof new Boolean(true)"));
+        assertEquals("object", eval("typeof new Date()"));
+        assertEquals("object", eval("typeof new Array()"));
+        assertEquals("object", eval("typeof new Object()"));
+        assertEquals("object", eval("typeof new RegExp('x')"));
+        assertEquals("object", eval("typeof new Error()"));
+    }
+
+    @Test
+    void testTypeofPrimitiveConversions() {
+        // Function calls (without new) return primitives for String/Number/Boolean
+        assertEquals("string", eval("typeof String('x')"));
+        assertEquals("number", eval("typeof Number(1)"));
+        assertEquals("boolean", eval("typeof Boolean(true)"));
+        // These still return objects
+        assertEquals("string", eval("typeof Date()"));  // ES6: Date() returns string!
+        assertEquals("object", eval("typeof Array()"));
+        assertEquals("object", eval("typeof Object()"));
+        assertEquals("object", eval("typeof RegExp('x')"));
+        assertEquals("object", eval("typeof Error()"));
     }
 
     @Test

@@ -36,7 +36,7 @@ public interface ExternalAccess {
 
     Object invokeMethod(String name, Object... args);
 
-    default Invokable getMethod(String name) {
+    default JavaInvokable getMethod(String name) {
         return args -> invokeMethod(name, args);
     }
 

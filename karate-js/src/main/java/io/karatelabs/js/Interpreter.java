@@ -179,7 +179,6 @@ class Interpreter {
         return result;
     }
 
-    @SuppressWarnings("unchecked")
     private static Object evalFnCall(Node node, CoreContext context, boolean newKeyword) {
         Node fnArgsNode;
         if (newKeyword) {
@@ -222,12 +221,9 @@ class Interpreter {
         // Convert JS types to Java types at JS/Java boundary:
         // - undefined → null
         // - JavaMirror (JsDate, etc.) → unwrapped via getJavaValue()
-        // External calls: SimpleObject methods, Java POJOs via bridge, or lambdas put via engine.put()
-        // Exclude: built-in JS types (JsObject and subclasses like JsString, JsFunction)
-        boolean isExternalCall = (prop.object instanceof SimpleObject)
-                || (prop.object != null && !(prop.object instanceof JsObject))
-                || (prop.object == null && !(callable instanceof JsObject));
-        if (isExternalCall) {
+        // JavaCallable is the public marker interface for external Java code
+        // JsFunction implements JavaCallable for sharing but preserves undefined internally
+        if (callable instanceof JavaCallable && !(callable instanceof JsFunction)) {
             argsList.replaceAll(arg -> {
                 if (arg == Terms.UNDEFINED) return null;
                 // Unwrap JavaMirror (JsDate, JsUint8Array) but not JsPrimitive (Boolean/String/Number constructors)
@@ -242,7 +238,7 @@ class Interpreter {
             callContext.callInfo = new CallInfo(true, callable);
             // Only create new instance for user-defined functions (JsFunctionNode)
             // Built-in constructors (JsArray, JsDate, etc.) handle their own construction
-            if (callable instanceof JsFunctionNode jsFunc) {
+            if (callable instanceof JsFunction jsFunc) {
                 newInstance = new JsObject();
                 Object proto = jsFunc.getMember("prototype");
                 if (proto instanceof JsObject protoObj) {
@@ -262,7 +258,7 @@ class Interpreter {
         context.updateFrom(callContext);
         if (newKeyword && newInstance != null) {
             // Return the new instance unless constructor explicitly returns an object
-            if (result == null || !(result instanceof JsObject)) {
+            if (!(result instanceof JsObject)) {
                 result = newInstance;
             }
         }

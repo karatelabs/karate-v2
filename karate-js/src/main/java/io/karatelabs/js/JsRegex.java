@@ -236,7 +236,7 @@ public class JsRegex extends JsObject {
                     case "ignoreCase" -> flags.contains("i");
                     case "multiline" -> flags.contains("m");
                     case "dotAll" -> flags.contains("s");
-                    case "toString" -> (Invokable) args -> JsRegex.this.toString();
+                    case "toString" -> (JsInvokable) args -> JsRegex.this.toString();
                     default -> null;
                 };
             }
@@ -244,7 +244,7 @@ public class JsRegex extends JsObject {
     }
 
     @Override
-    public Object invoke(Object... args) {
+    public Object call(Context context, Object... args) {
         if (args.length == 0) {
             return new JsRegex(); // empty regex in JS
         }

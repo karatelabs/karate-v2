@@ -36,6 +36,7 @@ import io.karatelabs.gherkin.ScenarioOutline;
 import io.karatelabs.gherkin.Step;
 import io.karatelabs.gherkin.Tag;
 import io.karatelabs.http.HttpRequestBuilder;
+import io.karatelabs.js.JavaCallable;
 import io.karatelabs.output.LogContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -222,9 +223,9 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
             // Try wrapping in parentheses first (handles function definitions)
             try {
                 Object fn = karate.engine.eval("(" + js + ")");
-                if (fn instanceof io.karatelabs.js.JsCallable) {
+                if (fn instanceof JavaCallable) {
                     // It's a function - invoke it
-                    result = ((io.karatelabs.js.JsCallable) fn).call(null);
+                    result = ((JavaCallable) fn).call(null);
                 } else {
                     // Already evaluated to a value (e.g., object literal)
                     result = fn;
@@ -591,9 +592,9 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
                 return nestedFr.getLastExecuted().getAllVariables();
             }
             return new HashMap<>();
-        } else if (content instanceof io.karatelabs.js.JsCallable) {
+        } else if (content instanceof JavaCallable) {
             // JavaScript function - invoke it with the arg
-            io.karatelabs.js.JsCallable fn = (io.karatelabs.js.JsCallable) content;
+            JavaCallable fn = (JavaCallable) content;
             return fn.call(null, arg == null ? new Object[0] : new Object[]{arg});
         } else {
             // Return as-is (JSON, text, etc.)
@@ -621,7 +622,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
             return null;
         }
         // JsCallable functions shouldn't be deep-copied - they should be shared across threads
-        if (value instanceof io.karatelabs.js.JsCallable) {
+        if (value instanceof JavaCallable) {
             return value;
         }
         if (value instanceof Map) {
@@ -1065,25 +1066,25 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         io.karatelabs.js.Engine engine = karate.engine;
 
         // Element actions (return Element for chaining)
-        engine.putRootBinding("click", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("click", (JavaCallable) (ctx, args) -> {
             return d.click(args[0].toString());
         });
-        engine.putRootBinding("input", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("input", (JavaCallable) (ctx, args) -> {
             return d.input(args[0].toString(), args.length > 1 ? args[1].toString() : "");
         });
-        engine.putRootBinding("clear", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("clear", (JavaCallable) (ctx, args) -> {
             return d.clear(args[0].toString());
         });
-        engine.putRootBinding("focus", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("focus", (JavaCallable) (ctx, args) -> {
             return d.focus(args[0].toString());
         });
-        engine.putRootBinding("scroll", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("scroll", (JavaCallable) (ctx, args) -> {
             return d.scroll(args[0].toString());
         });
-        engine.putRootBinding("highlight", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("highlight", (JavaCallable) (ctx, args) -> {
             return d.highlight(args[0].toString());
         });
-        engine.putRootBinding("select", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("select", (JavaCallable) (ctx, args) -> {
             String locator = args[0].toString();
             Object value = args.length > 1 ? args[1] : null;
             if (value instanceof Number n) {
@@ -1093,13 +1094,13 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         });
 
         // Element state (return primitives)
-        engine.putRootBinding("text", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("text", (JavaCallable) (ctx, args) -> {
             return d.text(args[0].toString());
         });
-        engine.putRootBinding("html", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("html", (JavaCallable) (ctx, args) -> {
             return d.html(args[0].toString());
         });
-        engine.putRootBinding("value", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("value", (JavaCallable) (ctx, args) -> {
             if (args.length == 1) {
                 // Getter: value('#input')
                 return d.value(args[0].toString());
@@ -1108,33 +1109,33 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
                 return d.value(args[0].toString(), args[1].toString());
             }
         });
-        engine.putRootBinding("attribute", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("attribute", (JavaCallable) (ctx, args) -> {
             return d.attribute(args[0].toString(), args[1].toString());
         });
-        engine.putRootBinding("exists", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("exists", (JavaCallable) (ctx, args) -> {
             return d.exists(args[0].toString());
         });
-        engine.putRootBinding("enabled", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("enabled", (JavaCallable) (ctx, args) -> {
             return d.enabled(args[0].toString());
         });
-        engine.putRootBinding("position", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("position", (JavaCallable) (ctx, args) -> {
             return d.position(args[0].toString());
         });
 
         // Wait methods
-        engine.putRootBinding("waitFor", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("waitFor", (JavaCallable) (ctx, args) -> {
             return d.waitFor(args[0].toString());
         });
-        engine.putRootBinding("waitForText", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("waitForText", (JavaCallable) (ctx, args) -> {
             return d.waitForText(args[0].toString(), args[1].toString());
         });
-        engine.putRootBinding("waitForEnabled", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("waitForEnabled", (JavaCallable) (ctx, args) -> {
             return d.waitForEnabled(args[0].toString());
         });
-        engine.putRootBinding("waitForUrl", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("waitForUrl", (JavaCallable) (ctx, args) -> {
             return d.waitForUrl(args[0].toString());
         });
-        engine.putRootBinding("waitUntil", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("waitUntil", (JavaCallable) (ctx, args) -> {
             if (args.length == 1) {
                 // waitUntil(expression) - wait for JS expression to be truthy
                 return d.waitUntil(args[0].toString());
@@ -1145,18 +1146,18 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         });
 
         // Locators
-        engine.putRootBinding("locate", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("locate", (JavaCallable) (ctx, args) -> {
             return d.locate(args[0].toString());
         });
-        engine.putRootBinding("locateAll", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("locateAll", (JavaCallable) (ctx, args) -> {
             return d.locateAll(args[0].toString());
         });
-        engine.putRootBinding("optional", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("optional", (JavaCallable) (ctx, args) -> {
             return d.optional(args[0].toString());
         });
 
         // Frame switching
-        engine.putRootBinding("switchFrame", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("switchFrame", (JavaCallable) (ctx, args) -> {
             Object arg = args.length > 0 ? args[0] : null;
             if (arg == null) {
                 d.switchFrame((String) null);
@@ -1169,33 +1170,33 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         });
 
         // Script execution
-        engine.putRootBinding("script", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("script", (JavaCallable) (ctx, args) -> {
             if (args.length == 1) {
                 return d.script(args[0].toString());
             } else {
                 return d.script(args[0].toString(), args[1].toString());
             }
         });
-        engine.putRootBinding("scriptAll", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("scriptAll", (JavaCallable) (ctx, args) -> {
             return d.scriptAll(args[0].toString(), args[1].toString());
         });
 
         // Navigation
-        engine.putRootBinding("refresh", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("refresh", (JavaCallable) (ctx, args) -> {
             d.refresh();
             return null;
         });
-        engine.putRootBinding("back", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("back", (JavaCallable) (ctx, args) -> {
             d.back();
             return null;
         });
-        engine.putRootBinding("forward", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("forward", (JavaCallable) (ctx, args) -> {
             d.forward();
             return null;
         });
 
         // Screenshots
-        engine.putRootBinding("screenshot", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("screenshot", (JavaCallable) (ctx, args) -> {
             if (args.length == 0) {
                 return d.screenshot();
             } else if (args[0] instanceof Boolean b) {
@@ -1205,16 +1206,16 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         });
 
         // Cookies
-        engine.putRootBinding("clearCookies", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("clearCookies", (JavaCallable) (ctx, args) -> {
             d.clearCookies();
             return null;
         });
-        engine.putRootBinding("deleteCookie", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("deleteCookie", (JavaCallable) (ctx, args) -> {
             d.deleteCookie(args[0].toString());
             return null;
         });
         @SuppressWarnings("unchecked")
-        io.karatelabs.js.JsCallable cookieFn = (ctx, args) -> {
+        JavaCallable cookieFn = (ctx, args) -> {
             Object arg = args[0];
             if (arg instanceof String s) {
                 return d.cookie(s);
@@ -1227,7 +1228,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         engine.putRootBinding("cookie", cookieFn);
 
         // Dialog handling
-        engine.putRootBinding("dialog", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("dialog", (JavaCallable) (ctx, args) -> {
             boolean accept = args.length > 0 && Boolean.TRUE.equals(args[0]);
             if (args.length > 1 && args[1] != null) {
                 d.dialog(accept, args[1].toString());
@@ -1238,11 +1239,11 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         });
 
         // Dialog handler registration (wraps JsCallable to DialogHandler)
-        engine.putRootBinding("onDialog", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("onDialog", (JavaCallable) (ctx, args) -> {
             if (args.length == 0 || args[0] == null) {
                 d.onDialog(null);
-            } else if (args[0] instanceof io.karatelabs.js.JsCallable) {
-                io.karatelabs.js.JsCallable jsHandler = (io.karatelabs.js.JsCallable) args[0];
+            } else if (args[0] instanceof JavaCallable) {
+                JavaCallable jsHandler = (JavaCallable) args[0];
                 d.onDialog(dialog -> {
                     jsHandler.call(ctx, dialog);
                 });
@@ -1251,7 +1252,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         });
 
         // Mouse and keys
-        engine.putRootBinding("mouse", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("mouse", (JavaCallable) (ctx, args) -> {
             if (args.length == 0) {
                 return d.mouse();
             } else if (args.length == 1) {
@@ -1260,7 +1261,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
                 return d.mouse((Number) args[0], (Number) args[1]);
             }
         });
-        engine.putRootBinding("keys", (io.karatelabs.js.JsCallable) (ctx, args) -> {
+        engine.putRootBinding("keys", (JavaCallable) (ctx, args) -> {
             return d.keys();
         });
 

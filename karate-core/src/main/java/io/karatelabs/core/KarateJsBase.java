@@ -308,7 +308,7 @@ abstract class KarateJsBase implements SimpleObject {
         return new KarateConfig();
     }
 
-    Invokable abort() {
+    JavaInvokable abort() {
         return args -> {
             ScenarioRuntime rt = getRuntime();
             if (rt != null) {
@@ -318,7 +318,7 @@ abstract class KarateJsBase implements SimpleObject {
         };
     }
 
-    Invokable setup() {
+    JavaInvokable setup() {
         return args -> {
             ScenarioRuntime rt = getRuntime();
             if (rt == null) {
@@ -329,7 +329,7 @@ abstract class KarateJsBase implements SimpleObject {
         };
     }
 
-    Invokable setupOnce() {
+    JavaInvokable setupOnce() {
         return args -> {
             ScenarioRuntime rt = getRuntime();
             if (rt == null) {
@@ -343,7 +343,7 @@ abstract class KarateJsBase implements SimpleObject {
     /**
      * karate.callonce() - Execute a feature file once per feature and cache the result.
      */
-    Invokable callonce() {
+    JavaInvokable callonce() {
         return args -> {
             ScenarioRuntime rt = getRuntime();
             if (rt == null) {
@@ -361,7 +361,7 @@ abstract class KarateJsBase implements SimpleObject {
     /**
      * karate.callSingle() - Execute a feature/JS file once per Suite and cache the result.
      */
-    Invokable callSingle() {
+    JavaInvokable callSingle() {
         return args -> {
             ScenarioRuntime rt = getRuntime();
             if (rt == null) {
@@ -379,7 +379,7 @@ abstract class KarateJsBase implements SimpleObject {
     /**
      * karate.configure() - Apply configuration from JavaScript.
      */
-    Invokable configure() {
+    JavaInvokable configure() {
         return args -> {
             if (args.length < 2) {
                 throw new RuntimeException("configure() needs two arguments: key and value");
@@ -408,7 +408,7 @@ abstract class KarateJsBase implements SimpleObject {
     }
 
     @SuppressWarnings("unchecked")
-    Invokable log() {
+    JavaInvokable log() {
         return args -> {
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < args.length; i++) {
@@ -430,7 +430,7 @@ abstract class KarateJsBase implements SimpleObject {
     /**
      * Embed content in the report. Auto-detects MIME type if not provided.
      */
-    Invokable embed() {
+    JavaInvokable embed() {
         return args -> {
             if (args.length < 1) {
                 throw new RuntimeException("embed() needs at least one argument: data");
@@ -449,7 +449,7 @@ abstract class KarateJsBase implements SimpleObject {
     /**
      * karate.signal() - Signal a result for listen/listenResult.
      */
-    Invokable signal() {
+    JavaInvokable signal() {
         return args -> {
             ScenarioRuntime rt = getRuntime();
             if (rt != null && args.length > 0) {

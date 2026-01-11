@@ -62,7 +62,7 @@ class JsMath extends JsObject {
                     });
                     case "cbrt" -> math(Math::cbrt);
                     case "ceil" -> math(Math::ceil);
-                    case "clz32" -> (Invokable) args -> {
+                    case "clz32" -> (JsInvokable) args -> {
                         Number x = Terms.objectToNumber(args[0]);
                         return Integer.numberOfLeadingZeros(x.intValue());
                     };
@@ -71,13 +71,13 @@ class JsMath extends JsObject {
                     case "exp" -> math(Math::exp);
                     case "expm1" -> math(Math::expm1);
                     case "floor" -> math(Math::floor);
-                    case "fround" -> (Invokable) args -> {
+                    case "fround" -> (JsInvokable) args -> {
                         Number x = Terms.objectToNumber(args[0]);
                         float y = (float) x.doubleValue();
                         return (double) y;
                     };
                     case "hypot" -> math(Math::hypot);
-                    case "imul" -> (Invokable) args -> {
+                    case "imul" -> (JsInvokable) args -> {
                         Number x = Terms.objectToNumber(args[0]);
                         Number y = Terms.objectToNumber(args[1]);
                         return x.intValue() * y.intValue();
@@ -89,8 +89,8 @@ class JsMath extends JsObject {
                     case "max" -> math(Math::max);
                     case "min" -> math(Math::min);
                     case "pow" -> math(Math::pow);
-                    case "random" -> (Invokable) args -> Math.random();
-                    case "round" -> (Invokable) args -> {
+                    case "random" -> (JsInvokable) args -> Math.random();
+                    case "round" -> (JsInvokable) args -> {
                         Number x = Terms.objectToNumber(args[0]);
                         double value = x.doubleValue();
                         // js Math.round is "half-away from zero"
@@ -100,7 +100,7 @@ class JsMath extends JsObject {
                             return Terms.narrow(Math.floor(value + 0.5));
                         }
                     };
-                    case "sign" -> (Invokable) args -> {
+                    case "sign" -> (JsInvokable) args -> {
                         Number x = Terms.objectToNumber(args[0]);
                         if (Terms.NEGATIVE_ZERO.equals(x)) {
                             return Terms.NEGATIVE_ZERO;
@@ -122,7 +122,7 @@ class JsMath extends JsObject {
         };
     }
 
-    private static Invokable math(Function<Double, Double> fn) {
+    private static JsInvokable math(Function<Double, Double> fn) {
         return args -> {
             try {
                 Number x = Terms.objectToNumber(args[0]);
@@ -134,7 +134,7 @@ class JsMath extends JsObject {
         };
     }
 
-    private static Invokable math(BiFunction<Double, Double, Double> fn) {
+    private static JsInvokable math(BiFunction<Double, Double, Double> fn) {
         return args -> {
             try {
                 Number x = Terms.objectToNumber(args[0]);

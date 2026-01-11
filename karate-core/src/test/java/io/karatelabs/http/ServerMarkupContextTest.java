@@ -1,7 +1,7 @@
 package io.karatelabs.http;
 
 import io.karatelabs.common.Resource;
-import io.karatelabs.js.Invokable;
+import io.karatelabs.js.JavaInvokable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -57,7 +57,7 @@ class ServerMarkupContextTest {
 
     @Test
     void testToJsonViaJsGet() {
-        Invokable toJson = (Invokable) context.jsGet("toJson");
+        JavaInvokable toJson = (JavaInvokable) context.jsGet("toJson");
         String json = (String) toJson.invoke(Map.of("key", "value"));
 
         assertTrue(json.contains("\"key\""));
@@ -66,7 +66,7 @@ class ServerMarkupContextTest {
 
     @Test
     void testFromJsonViaJsGet() {
-        Invokable fromJson = (Invokable) context.jsGet("fromJson");
+        JavaInvokable fromJson = (JavaInvokable) context.jsGet("fromJson");
         @SuppressWarnings("unchecked")
         Map<String, Object> result = (Map<String, Object>) fromJson.invoke("{\"key\":\"value\"}");
 
@@ -125,7 +125,7 @@ class ServerMarkupContextTest {
 
     @Test
     void testRedirectViaJsGet() {
-        Invokable redirect = (Invokable) context.jsGet("redirect");
+        JavaInvokable redirect = (JavaInvokable) context.jsGet("redirect");
         redirect.invoke("/dashboard");
 
         assertEquals("/dashboard", context.getRedirectPath());
@@ -133,7 +133,7 @@ class ServerMarkupContextTest {
 
     @Test
     void testRedirectViaJsGetNoArgs() {
-        Invokable redirect = (Invokable) context.jsGet("redirect");
+        JavaInvokable redirect = (JavaInvokable) context.jsGet("redirect");
         assertThrows(RuntimeException.class, () -> redirect.invoke());
     }
 
@@ -150,7 +150,7 @@ class ServerMarkupContextTest {
 
     @Test
     void testLogViaJsGet() {
-        Invokable log = (Invokable) context.jsGet("log");
+        JavaInvokable log = (JavaInvokable) context.jsGet("log");
         log.invoke("test", "message");
 
         assertEquals(1, context.getLogMessages().size());
@@ -187,7 +187,7 @@ class ServerMarkupContextTest {
 
     @Test
     void testUuidViaJsGet() {
-        Invokable uuid = (Invokable) context.jsGet("uuid");
+        JavaInvokable uuid = (JavaInvokable) context.jsGet("uuid");
         String result = (String) uuid.invoke();
 
         assertNotNull(result);
@@ -208,7 +208,7 @@ class ServerMarkupContextTest {
 
     @Test
     void testInitViaJsGet() {
-        Invokable init = (Invokable) context.jsGet("init");
+        JavaInvokable init = (JavaInvokable) context.jsGet("init");
         init.invoke();
 
         assertNotNull(context.getSession());
@@ -239,7 +239,7 @@ class ServerMarkupContextTest {
     @Test
     void testCloseViaJsGet() {
         context.init();
-        Invokable close = (Invokable) context.jsGet("close");
+        JavaInvokable close = (JavaInvokable) context.jsGet("close");
         close.invoke();
 
         assertTrue(context.isClosed());
@@ -258,7 +258,7 @@ class ServerMarkupContextTest {
 
     @Test
     void testSwitchViaJsGet() {
-        Invokable switchFn = (Invokable) context.jsGet("switch");
+        JavaInvokable switchFn = (JavaInvokable) context.jsGet("switch");
         switchFn.invoke("new-template.html");
 
         assertTrue(context.isSwitched());
@@ -267,7 +267,7 @@ class ServerMarkupContextTest {
 
     @Test
     void testSwitchViaJsGetNoArgs() {
-        Invokable switchFn = (Invokable) context.jsGet("switch");
+        JavaInvokable switchFn = (JavaInvokable) context.jsGet("switch");
         assertThrows(RuntimeException.class, () -> switchFn.invoke());
     }
 

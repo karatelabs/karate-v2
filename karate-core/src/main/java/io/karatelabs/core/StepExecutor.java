@@ -41,10 +41,9 @@ import io.karatelabs.http.HttpRequest;
 import io.karatelabs.http.HttpRequestBuilder;
 import io.karatelabs.http.HttpResponse;
 import io.karatelabs.js.GherkinParser;
-import io.karatelabs.js.JsCallable;
+import io.karatelabs.js.JavaCallable;
 import io.karatelabs.output.LogContext;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import io.karatelabs.match.Match;
 import io.karatelabs.match.Result;
 
@@ -285,9 +284,8 @@ public class StepExecutor {
             // Try to evaluate as a JS expression (handles variables, read('file.js'), etc.)
             try {
                 Object evaluated = runtime.eval(firstToken);
-                if (evaluated instanceof JsCallable) {
+                if (evaluated instanceof JavaCallable fn) {
                     // It's a JS function - invoke it and store result
-                    JsCallable fn = (JsCallable) evaluated;
                     Object arg = null;
                     if (spaceIdx > 0) {
                         String argExpr = callExpr.substring(spaceIdx + 1).trim();
@@ -788,8 +786,7 @@ public class StepExecutor {
             if (target == null) return;
 
             // Handle XPath removal - path starts with /
-            if (path.startsWith("/") && target instanceof Node) {
-                Node node = (Node) target;
+            if (path.startsWith("/") && target instanceof Node node) {
                 org.w3c.dom.Document doc = node instanceof org.w3c.dom.Document
                         ? (org.w3c.dom.Document) node
                         : node.getOwnerDocument();
@@ -859,6 +856,7 @@ public class StepExecutor {
         runtime.setVariable(name, value);
     }
 
+    @SuppressWarnings("unchecked")
     private void executeXml(Step step) {
         String text = step.getText();
         int eqIndex = StepUtils.findAssignmentOperator(text);
@@ -1114,7 +1112,7 @@ public class StepExecutor {
             List<String> comments = step.getComments();
             if (comments != null && !comments.isEmpty()) {
                 // Use the last comment as the label (closest to the step)
-                String label = comments.get(comments.size() - 1);
+                String label = comments.getLast();
                 message = label + "\n" + message;
             }
             throw new AssertionError(message);
@@ -1812,7 +1810,7 @@ public class StepExecutor {
 
         // Apply configured cookies before invoking request - may be a Map or a JsCallable
         Object configCookies = config.getCookies();
-        if (configCookies instanceof JsCallable cookiesFn) {
+        if (configCookies instanceof JavaCallable cookiesFn) {
             // Call function to get cookies dynamically
             Object result = cookiesFn.call(null);
             if (result instanceof Map<?, ?> cookieMap) {
@@ -1824,7 +1822,7 @@ public class StepExecutor {
 
         // Apply configured headers - may be a Map or a JsCallable
         Object configHeaders = config.getHeaders();
-        if (configHeaders instanceof JsCallable headersFn) {
+        if (configHeaders instanceof JavaCallable headersFn) {
             // Build request first so function can access current state (for signing etc.)
             HttpRequest request = http().build();
             Object result = headersFn.call(null, request);
@@ -2266,9 +2264,8 @@ public class StepExecutor {
             // Try to evaluate as a JS expression (handles variables, read('file.js'), etc.)
             try {
                 Object evaluated = runtime.eval(firstToken);
-                if (evaluated instanceof JsCallable) {
+                if (evaluated instanceof JavaCallable fn) {
                     // It's a JS function - invoke it
-                    JsCallable fn = (JsCallable) evaluated;
                     Object arg = null;
                     if (spaceIdx > 0) {
                         String argExpr = text.substring(spaceIdx + 1).trim();
@@ -2758,8 +2755,7 @@ public class StepExecutor {
         if (responseHeaders instanceof Map) {
             Map<String, Object> headers = (Map<String, Object>) responseHeaders;
             Object headerValue = StringUtils.getIgnoreKeyCase(headers, headerName);
-            if (headerValue instanceof List) {
-                List<?> list = (List<?>) headerValue;
+            if (headerValue instanceof List<?> list) {
                 return list.isEmpty() ? null : list.get(0);
             }
             return headerValue;
@@ -2898,7 +2894,7 @@ public class StepExecutor {
         if (value instanceof Node) {
             processXmlEmbeddedExpressions((Node) value);
             return value;
-        } else if (value instanceof io.karatelabs.js.JsCallable) {
+        } else if (value instanceof JavaCallable) {
             // JsCallable functions shouldn't be processed as maps - return them unchanged
             return value;
         } else if (value instanceof Map) {
@@ -3086,9 +3082,8 @@ public class StepExecutor {
                         Object result = runtime.eval(expr);
                         if (optional && result == null) {
                             elementsToRemove.add(child);
-                        } else if (result instanceof Node && child.getNodeType() != Node.CDATA_SECTION_NODE) {
+                        } else if (result instanceof Node evalNode && child.getNodeType() != Node.CDATA_SECTION_NODE) {
                             // Replace text node with XML node (but not for CDATA)
-                            Node evalNode = (Node) result;
                             if (evalNode.getNodeType() == Node.DOCUMENT_NODE) {
                                 evalNode = evalNode.getFirstChild();
                             }

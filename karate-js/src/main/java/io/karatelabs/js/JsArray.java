@@ -33,7 +33,7 @@ import java.util.*;
  * Implements List<Object> for Java interop with auto-unwrapping - Java code gets clean values.
  * JS internal code uses getElement/setElement for raw access (returns UNDEFINED for out of bounds).
  */
-class JsArray implements List<Object>, ObjectLike, Invokable {
+class JsArray implements ObjectLike, JsCallable, List<Object> {
 
     final List<Object> list;
 
@@ -974,16 +974,17 @@ class JsArray implements List<Object>, ObjectLike, Invokable {
     }
 
     @Override
-    public Object invoke(Object... args) {
+    public Object call(Context context, Object... args) {
+        // ES6: Both Array() and new Array() return an Array object
         if (args.length == 1 && args[0] instanceof Number n) {
             int count = n.intValue();
             List<Object> list = new ArrayList<>();
             for (int i = 0; i < count; i++) {
                 list.add(null);
             }
-            return list;
+            return new JsArray(list);
         }
-        return Arrays.asList(args);
+        return new JsArray(new ArrayList<>(Arrays.asList(args)));
     }
 
 }

@@ -26,7 +26,7 @@ package io.karatelabs.core;
 import io.karatelabs.common.StringUtils;
 import io.karatelabs.gherkin.Tag;
 import io.karatelabs.js.Engine;
-import io.karatelabs.js.JsCallable;
+import io.karatelabs.js.JavaCallable;
 import io.karatelabs.js.SimpleObject;
 
 import java.util.ArrayList;
@@ -75,11 +75,11 @@ public class TagSelector {
         public Object jsGet(String name) {
             return switch (name) {
                 case "isPresent" -> isPresent;
-                case "isAnyOf" -> (JsCallable) (ctx, args) -> isAnyOf(args);
-                case "isAllOf" -> (JsCallable) (ctx, args) -> isAllOf(args);
-                case "isOnly" -> (JsCallable) (ctx, args) -> isOnly(args);
-                case "isEach" -> (JsCallable) (ctx, args) -> {
-                    if (args.length > 0 && args[0] instanceof JsCallable fn) {
+                case "isAnyOf" -> (JavaCallable) (ctx, args) -> isAnyOf(args);
+                case "isAllOf" -> (JavaCallable) (ctx, args) -> isAllOf(args);
+                case "isOnly" -> (JavaCallable) (ctx, args) -> isOnly(args);
+                case "isEach" -> (JavaCallable) (ctx, args) -> {
+                    if (args.length > 0 && args[0] instanceof JavaCallable fn) {
                         return isEach(fn);
                     }
                     return false;
@@ -113,7 +113,7 @@ public class TagSelector {
             return isAllOf(args) && args.length == values.size();
         }
 
-        public boolean isEach(JsCallable fn) {
+        public boolean isEach(JavaCallable fn) {
             for (String s : values) {
                 Object result = fn.call(null, s);
                 if (!isTrue(result)) {
@@ -123,13 +123,6 @@ public class TagSelector {
             return true;
         }
 
-        private static boolean isTrue(Object value) {
-            if (value == null) return false;
-            if (value instanceof Boolean) return (Boolean) value;
-            if (value instanceof Number) return ((Number) value).doubleValue() != 0;
-            if (value instanceof String) return !((String) value).isEmpty();
-            return true;
-        }
     }
 
     public TagSelector(Collection<Tag> tags) {
@@ -187,10 +180,10 @@ public class TagSelector {
 
         // Evaluate the tag selector expression using JS engine
         Engine engine = new Engine();
-        engine.put("anyOf", (JsCallable) (ctx, args) -> anyOf(args));
-        engine.put("allOf", (JsCallable) (ctx, args) -> allOf(args));
-        engine.put("not", (JsCallable) (ctx, args) -> not(args));
-        engine.put("valuesFor", (JsCallable) (ctx, args) -> {
+        engine.put("anyOf", (JavaCallable) (ctx, args) -> anyOf(args));
+        engine.put("allOf", (JavaCallable) (ctx, args) -> allOf(args));
+        engine.put("not", (JavaCallable) (ctx, args) -> not(args));
+        engine.put("valuesFor", (JavaCallable) (ctx, args) -> {
             String name = args.length > 0 ? args[0].toString() : "";
             return valuesFor(name);
         });

@@ -25,7 +25,7 @@ package io.karatelabs.core;
 
 import io.karatelabs.common.StringUtils;
 import io.karatelabs.common.Xml;
-import io.karatelabs.js.Invokable;
+import io.karatelabs.js.JavaInvokable;
 import io.karatelabs.js.SimpleObject;
 import io.karatelabs.output.LogContext;
 import io.karatelabs.output.LogLevel;
@@ -56,7 +56,7 @@ class KarateJsLog implements SimpleObject {
         };
     }
 
-    private Invokable logMethod(LogLevel level) {
+    private JavaInvokable logMethod(LogLevel level) {
         return args -> {
             // Check if level is enabled before formatting
             if (!level.isEnabled(LogContext.getLogLevel())) {

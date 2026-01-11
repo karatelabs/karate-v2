@@ -34,7 +34,7 @@ class JsTextDecoder extends JsObject {
             public Object getProperty(String propName) {
                 return switch (propName) {
                     case "encoding" -> "utf-8";
-                    case "decode" -> (Invokable) args -> {
+                    case "decode" -> (JsInvokable) args -> {
                         if (args.length == 0) {
                             return "";
                         }
@@ -50,7 +50,7 @@ class JsTextDecoder extends JsObject {
     }
 
     @Override
-    public Object invoke(Object... args) {
+    public Object call(Context context, Object... args) {
         return this;
     }
 

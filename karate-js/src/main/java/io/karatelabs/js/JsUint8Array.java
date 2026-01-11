@@ -325,7 +325,7 @@ class JsUint8Array extends JsArray implements JavaMirror {
 
     @SuppressWarnings("unchecked")
     @Override
-    public Object invoke(Object... args) {
+    public Object call(Context context, Object... args) {
         if (args.length == 0) {
             return new byte[0];
         }

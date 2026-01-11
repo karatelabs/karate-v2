@@ -33,13 +33,17 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Date;
 
-class JsDate extends JsObject implements JavaMirror, JsCallable {
+class JsDate extends JsObject implements JavaMirror {
 
     private static final DateTimeFormatter ISO_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
 
     private static final DateTimeFormatter UTC_STRING_FORMATTER =
             DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss 'GMT'").withZone(ZoneOffset.UTC);
+
+    // Browser-style toString format: "Fri Jan 01 2021 00:00:00 GMT+0000"
+    private static final DateTimeFormatter TO_STRING_FORMATTER =
+            DateTimeFormatter.ofPattern("EEE MMM dd yyyy HH:mm:ss 'GMT'Z", java.util.Locale.ENGLISH);
 
     private long millis;
 
@@ -133,7 +137,7 @@ class JsDate extends JsObject implements JavaMirror, JsCallable {
 
     @Override
     public String toString() {
-        return toZonedDateTime().toString();
+        return TO_STRING_FORMATTER.format(toZonedDateTime());
     }
 
     @Override
@@ -142,7 +146,7 @@ class JsDate extends JsObject implements JavaMirror, JsCallable {
     }
 
     @Override
-    public Object getInternalValue() {
+    public Object getJsValue() {
         return millis;
     }
 
@@ -153,8 +157,8 @@ class JsDate extends JsObject implements JavaMirror, JsCallable {
             @Override
             public Object getProperty(String propName) {
                 return switch (propName) {
-                    case "now" -> (Invokable) args -> System.currentTimeMillis();
-                    case "parse" -> (Invokable) args -> {
+                    case "now" -> (JsInvokable) args -> System.currentTimeMillis();
+                    case "parse" -> (JsInvokable) args -> {
                         if (args.length == 0 || args[0] == null) {
                             return Double.NaN;
                         }
@@ -342,21 +346,26 @@ class JsDate extends JsObject implements JavaMirror, JsCallable {
         CallInfo callInfo = context.getCallInfo();
         boolean isNew = callInfo != null && callInfo.constructor;
 
-        JsDate result;
+        // ES6: Date() without 'new' returns string of current time, ignoring all arguments
+        if (!isNew) {
+            return new JsDate().toString();
+        }
+
+        // new Date(...) - process arguments and return JsDate object
         if (args.length == 0) {
-            result = new JsDate();
+            return new JsDate();
         } else if (args.length == 1) {
             Object arg = args[0];
             if (arg instanceof Number n) {
-                result = new JsDate(n.longValue());
+                return new JsDate(n.longValue());
             } else if (arg instanceof String s) {
-                result = new JsDate(s);
+                return new JsDate(s);
             } else if (arg instanceof JsDate date) {
-                result = new JsDate(date.millis);
+                return new JsDate(date.millis);
             } else if (arg instanceof Date date) {
-                result = new JsDate(date);
+                return new JsDate(date);
             } else {
-                result = new JsDate();
+                return new JsDate();
             }
         } else if (args.length >= 3) {
             int year = args[0] instanceof Number ? ((Number) args[0]).intValue() : 0;
@@ -368,18 +377,15 @@ class JsDate extends JsObject implements JavaMirror, JsCallable {
                 int seconds = args[5] instanceof Number ? ((Number) args[5]).intValue() : 0;
                 if (args.length >= 7) {
                     int ms = args[6] instanceof Number ? ((Number) args[6]).intValue() : 0;
-                    result = new JsDate(year, month, day, hours, minutes, seconds, ms);
+                    return new JsDate(year, month, day, hours, minutes, seconds, ms);
                 } else {
-                    result = new JsDate(year, month, day, hours, minutes, seconds);
+                    return new JsDate(year, month, day, hours, minutes, seconds);
                 }
             } else {
-                result = new JsDate(year, month, day);
+                return new JsDate(year, month, day);
             }
         } else {
-            result = new JsDate();
+            return new JsDate();
         }
-
-        // Return JsDate for 'new' calls (JavaMirror), Date for function calls
-        return isNew ? result : new Date(result.millis);
     }
 }

@@ -26,7 +26,7 @@ package io.karatelabs.http;
 import io.karatelabs.common.FileUtils;
 import io.karatelabs.common.Json;
 import io.karatelabs.common.Resource;
-import io.karatelabs.js.Invokable;
+import io.karatelabs.js.JavaInvokable;
 import io.karatelabs.markup.MarkupContext;
 
 import java.util.ArrayList;
@@ -221,25 +221,25 @@ public class ServerMarkupContext implements MarkupContext {
         // Server-specific methods and properties
         return switch (key) {
             // Methods
-            case "redirect" -> (Invokable) args -> {
+            case "redirect" -> (JavaInvokable) args -> {
                 if (args.length == 0) throw new RuntimeException("redirect() requires a URL argument");
                 redirect(args[0].toString());
                 return null;
             };
-            case "log" -> (Invokable) args -> {
+            case "log" -> (JavaInvokable) args -> {
                 log(args);
                 return null;
             };
-            case "uuid" -> (Invokable) args -> uuid();
-            case "init" -> (Invokable) args -> {
+            case "uuid" -> (JavaInvokable) args -> uuid();
+            case "init" -> (JavaInvokable) args -> {
                 init();
                 return session;  // Return session so scripts can do: session = context.init()
             };
-            case "close" -> (Invokable) args -> {
+            case "close" -> (JavaInvokable) args -> {
                 close();
                 return null;
             };
-            case "switch" -> (Invokable) args -> {
+            case "switch" -> (JavaInvokable) args -> {
                 if (args.length == 0) throw new RuntimeException("switch() requires a template argument");
                 switchTemplate(args[0].toString());
                 return null;

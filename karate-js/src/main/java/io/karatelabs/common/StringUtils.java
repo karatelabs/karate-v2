@@ -24,9 +24,7 @@
 package io.karatelabs.common;
 
 import io.karatelabs.js.JavaMirror;
-import io.karatelabs.js.JsCallable;
 import io.karatelabs.js.ObjectLike;
-import io.karatelabs.js.SimpleObject;
 import io.karatelabs.js.Terms;
 import net.minidev.json.JSONStyle;
 import net.minidev.json.JSONValue;
@@ -578,10 +576,6 @@ public class StringUtils {
             sb.append('"').append(isoDate).append('"');
         } else if (o instanceof Number || o instanceof Boolean) {
             sb.append(o);
-        } else if (o instanceof SimpleObject so) {
-            JsCallable jsc = so.jsToString();
-            String s = (String) jsc.call(null);
-            sb.append(s);
         } else {
             String value = o.toString();
             if (lenient) {
