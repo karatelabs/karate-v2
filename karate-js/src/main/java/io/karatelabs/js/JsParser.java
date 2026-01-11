@@ -475,6 +475,11 @@ public class JsParser extends Parser {
                 fn_call_args();
                 consumeSoft(R_PAREN);
                 exit(Shift.LEFT);
+                // new binds to the first call expression only
+                // new Foo().bar() should parse as (new Foo()).bar(), not new (Foo().bar())
+                if (isCallerType(NodeType.NEW_EXPR)) {
+                    break;
+                }
             } else if (enter(NodeType.REF_DOT_EXPR, DOT, QUES_DOT)) {
                 TokenType dotType = lastConsumed();
                 // allow reserved words as property accessors

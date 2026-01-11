@@ -38,6 +38,17 @@ class EvalTest extends EvalBase {
     }
 
     @Test
+    void testNewExpressionChaining() {
+        // new binds to the first call expression only
+        // new Foo().bar() should parse as (new Foo()).bar()
+        assertEquals("hello", eval("new String('hello').valueOf()"));
+        assertEquals(5, eval("new Number(5).valueOf()"));
+        // Chained method calls on constructed object
+        assertEquals("HELLO", eval("new String('hello').toUpperCase()"));
+        assertEquals(5, eval("new String('hello').length"));
+    }
+
+    @Test
     void testArrayOutOfBounds() {
         // Empty array index access should return undefined/null (JS behavior)
         assertNull(eval("var arr = []; arr[0]"));

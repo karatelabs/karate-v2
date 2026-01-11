@@ -323,6 +323,20 @@ class JsParserTest {
     }
 
     @Test
+    void testNewExprPrecedence() {
+        // new binds to constructor call only
+        expr("new Foo()", "[new,[$Foo,'(',[],')']]]");
+        // .bar is OUTSIDE the new expression
+        expr("new Foo().bar", "[[new,[$Foo,'(',[],')']],'.',$bar]");
+        // .bar() call is OUTSIDE the new expression
+        expr("new Foo().bar()", "[[[new,[$Foo,'(',[],')']],'.',$bar],'(',[],')']");
+        // chained member access
+        expr("new Foo().bar.baz", "[[[new,[$Foo,'(',[],')']],'.',$bar],'.',$baz]");
+        // new without parens followed by member
+        expr("new Foo.bar()", "[new,[[$Foo,'.',$bar],'(',[],')']]]");
+    }
+
+    @Test
     void testSyntaxError() {
         error("function", ParserException.class);
     }

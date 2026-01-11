@@ -86,6 +86,10 @@ abstract class Parser {
         return marker.node;
     }
 
+    boolean isCallerType(NodeType type) {
+        return marker.caller != null && marker.caller.node.type == type;
+    }
+
     enum Shift {
         NONE, LEFT, RIGHT
     }
