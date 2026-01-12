@@ -199,9 +199,9 @@ public class CdpDriver implements Driver {
 
     @SuppressWarnings("unchecked")
     private void setupEventHandlers() {
-        // Use Page.lifecycleEvent instead of Page.domContentEventFired
-        // This is more reliable, especially for about:blank and after frame operations
-        // (same approach as Puppeteer)
+        // Listen to BOTH lifecycle events AND domContentEventFired for maximum compatibility
+        // Page.lifecycleEvent is more reliable per-frame (Puppeteer approach)
+        // Page.domContentEventFired is a fallback for environments where lifecycle events don't fire
         cdp.on("Page.lifecycleEvent", event -> {
             String name = event.get("name");
             String frameId = event.get("frameId");
@@ -209,8 +209,14 @@ public class CdpDriver implements Driver {
             // DOMContentLoaded on main frame signals DOM is ready
             if ("DOMContentLoaded".equals(name) && mainFrameId.equals(frameId)) {
                 domContentEventFired = true;
-                logger.trace("DOMContentLoaded on main frame");
+                logger.trace("DOMContentLoaded on main frame (via lifecycleEvent)");
             }
+        });
+
+        // Fallback: also listen to Page.domContentEventFired for compatibility
+        cdp.on("Page.domContentEventFired", event -> {
+            domContentEventFired = true;
+            logger.trace("domContentEventFired (fallback)");
         });
 
         cdp.on("Page.frameStartedLoading", event -> {
