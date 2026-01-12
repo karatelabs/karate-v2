@@ -430,12 +430,16 @@ class CallSingleTest {
 
     @Test
     void testCallSingleFromConfigParallelScenarios() throws Exception {
-        // Create a setup feature with slow init
-        Path setupFeature = tempDir.resolve("slow-setup.feature");
+        // Reset the counter before test (reuse existing counter class)
+        io.karatelabs.core.parallel.CallOnceCounter.reset();
+
+        // Create a setup feature that increments the counter
+        Path setupFeature = tempDir.resolve("counting-setup.feature");
         Files.writeString(setupFeature, """
-            Feature: Slow Setup
+            Feature: Counting Setup
             Scenario:
-            * def sleepResult = java.lang.Thread.sleep(50)
+            * def Counter = Java.type('io.karatelabs.core.parallel.CallOnceCounter')
+            * def count = Counter.incrementAndGet()
             * def sharedValue = 'initialized-once'
             """);
 
@@ -443,7 +447,7 @@ class CallSingleTest {
         Path configJs = tempDir.resolve("karate-config.js");
         Files.writeString(configJs, """
             function fn() {
-                var setup = karate.callSingle('slow-setup.feature');
+                var setup = karate.callSingle('counting-setup.feature');
                 return {
                     sharedValue: setup.sharedValue
                 };
@@ -475,16 +479,14 @@ class CallSingleTest {
                 .outputConsoleSummary(false)
                 .writeReport(false);
 
-        long startTime = System.currentTimeMillis();
         SuiteResult result = suite.run();
-        long elapsed = System.currentTimeMillis() - startTime;
 
         assertTrue(result.isPassed(), "Parallel scenarios with config callSingle should work: " + getFailureMessage(result));
         assertEquals(4, result.getScenarioCount());
 
-        // If callSingle works correctly, init should only happen once (~50ms)
-        // not 4 times (200ms+)
-        assertTrue(elapsed < 150, "Expected single init in parallel execution, but took " + elapsed + "ms");
+        // Verify callSingle only executed once (counter incremented exactly once)
+        int count = io.karatelabs.core.parallel.CallOnceCounter.get();
+        assertEquals(1, count, "callSingle should execute exactly once across all parallel scenarios, but executed " + count + " times");
     }
 
     // ========== Tests for callSingle with tag selector ==========
