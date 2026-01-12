@@ -102,17 +102,13 @@ public class CdpLauncher {
 
         CdpLauncher launcher = new CdpLauncher(process, host, port);
 
-        // Wait for Chrome to be ready
-        if (!launcher.waitForReady(options.getTimeout())) {
-            launcher.close();
-            throw new RuntimeException("chrome failed to start within timeout");
-        }
-
-        // Fetch WebSocket URL
-        launcher.webSocketUrl = fetchWebSocketUrl(host, port);
+        // Wait for Chrome to be ready AND get WebSocket URL atomically
+        // This avoids a race condition where /json/version returns 200
+        // before any page targets are available
+        launcher.webSocketUrl = launcher.waitForWebSocketUrl(options.getTimeout());
         if (launcher.webSocketUrl == null) {
             launcher.close();
-            throw new RuntimeException("failed to get WebSocket URL from chrome");
+            throw new RuntimeException("chrome failed to start or no page targets available within timeout");
         }
 
         logger.info("chrome started on port {} with WebSocket: {}", port, launcher.webSocketUrl);
@@ -188,12 +184,79 @@ public class CdpLauncher {
         return args;
     }
 
-    private boolean waitForReady(int timeoutMs) {
-        String url = "http://" + host + ":" + port + "/json/version";
-        int attempts = timeoutMs / 250;
-        return PortUtils.waitForHttp(url, attempts, 250, process::isAlive);
+    /**
+     * Wait for Chrome to be ready and return the WebSocket URL for a page target.
+     * This combines readiness checking and URL fetching into a single atomic operation
+     * to avoid the race condition where /json/version returns 200 before page targets exist.
+     */
+    @SuppressWarnings("unchecked")
+    private String waitForWebSocketUrl(int timeoutMs) {
+        HttpClient client = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .build();
+
+        String url = "http://" + host + ":" + port + "/json";
+        int intervalMs = 250;
+        int attempts = timeoutMs / intervalMs;
+
+        for (int i = 0; i < attempts; i++) {
+            // Check if process died
+            if (process != null && !process.isAlive()) {
+                logger.warn("chrome process died while waiting for page targets");
+                return null;
+            }
+
+            try {
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(url))
+                        .timeout(Duration.ofSeconds(5))
+                        .GET()
+                        .build();
+
+                HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() == 200) {
+                    List<Map<String, Object>> targets = (List<Map<String, Object>>) JSONValue.parse(response.body());
+                    if (targets != null && !targets.isEmpty()) {
+                        // Look for a valid page target (same logic as v1)
+                        for (Map<String, Object> target : targets) {
+                            String targetUrl = (String) target.get("url");
+                            String targetType = (String) target.get("type");
+
+                            // Skip chrome:// pages
+                            if (targetUrl != null && targetUrl.startsWith("chrome-")) {
+                                continue;
+                            }
+
+                            // Only connect to page targets
+                            if (!"page".equals(targetType)) {
+                                continue;
+                            }
+
+                            String wsUrl = (String) target.get("webSocketDebuggerUrl");
+                            if (wsUrl != null) {
+                                logger.debug("found page target after {} attempts", i + 1);
+                                return wsUrl;
+                            }
+                        }
+                    }
+                    // 200 but no valid page targets yet - keep waiting
+                    logger.trace("/json returned 200 but no page targets yet (attempt {})", i + 1);
+                }
+            } catch (Exception e) {
+                logger.trace("/json not available (attempt {}): {}", i + 1, e.getMessage());
+            }
+
+            sleep(intervalMs);
+        }
+
+        logger.warn("no page targets available after {} attempts", attempts);
+        return null;
     }
 
+    /**
+     * Fetch WebSocket URL from an already-running browser.
+     * Used for connecting to existing browser instances.
+     */
     @SuppressWarnings("unchecked")
     private static String fetchWebSocketUrl(String host, int port) {
         HttpClient client = HttpClient.newBuilder()
@@ -201,7 +264,7 @@ public class CdpLauncher {
                 .build();
 
         try {
-            // First try /json to get page targets
+            // Try /json to get page targets
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("http://" + host + ":" + port + "/json"))
                     .timeout(Duration.ofSeconds(5))
@@ -253,6 +316,14 @@ public class CdpLauncher {
         } catch (Exception e) {
             logger.warn("failed to fetch WebSocket URL: {}", e.getMessage());
             return null;
+        }
+    }
+
+    private static void sleep(int millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 
