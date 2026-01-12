@@ -83,6 +83,9 @@
                 <groupId>io.gatling</groupId>
                 <artifactId>gatling-maven-plugin</artifactId>
                 <version>4.20.16</version>
+                <configuration>
+                    <skip>${skipTests}</skip>
+                </configuration>
                 <executions>
                     <!-- Smoke test runs during test phase -->
                     <execution>
