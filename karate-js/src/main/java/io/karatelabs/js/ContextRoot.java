@@ -30,7 +30,7 @@ class ContextRoot extends CoreContext {
 
     private final Engine engine;
 
-    private Consumer<String> onConsoleLog;
+    Consumer<String> onConsoleLog;
 
     Node currentNode;
     ContextListener listener;
@@ -58,7 +58,6 @@ class ContextRoot extends CoreContext {
 
     void setOnConsoleLog(Consumer<String> onConsoleLog) {
         this.onConsoleLog = onConsoleLog;
-        put("console", createConsole());
     }
 
     @Override
@@ -93,7 +92,7 @@ class ContextRoot extends CoreContext {
 
     private Object initGlobal(String key) {
         return switch (key) {
-            case "console" -> createConsole();
+            case "console" -> new JsConsole(this);
             case "parseInt" -> (JsInvokable) args -> Terms.parseFloat(args[0] + "", true);
             case "parseFloat" -> (JsInvokable) args -> Terms.parseFloat(args[0] + "", false);
             case "undefined" -> Terms.UNDEFINED;
@@ -115,41 +114,6 @@ class ContextRoot extends CoreContext {
             case "TextEncoder" -> new JsTextEncoder();
             case "Uint8Array" -> new JsUint8Array(0);
             default -> null;
-        };
-    }
-
-    private ObjectLike createConsole() {
-        return (SimpleObject) name -> {
-            if ("log".equals(name)) {
-                return (JsCallable) (context, args) -> {
-                    StringBuilder sb = new StringBuilder();
-                    for (int i = 0; i < args.length; i++) {
-                        Object arg = args[i];
-                        if (i > 0) {
-                            sb.append(' ');
-                        }
-                        JsCallable callable = null;
-                        if (arg instanceof ObjectLike objectLike) {
-                            callable = Terms.toCallable(objectLike.getMember(SimpleObject.TO_STRING));
-                        }
-                        if (callable != null) {
-                            // ES6: call toString with 'this' set to the object being stringified
-                            CoreContext callContext = new CoreContext((CoreContext) context, null, ContextScope.FUNCTION);
-                            callContext.thisObject = arg;
-                            sb.append(callable.call(callContext));
-                        } else {
-                            sb.append(Terms.TO_STRING(arg));
-                        }
-                    }
-                    if (onConsoleLog != null) {
-                        onConsoleLog.accept(sb.toString());
-                    } else {
-                        System.out.println(sb);
-                    }
-                    return null;
-                };
-            }
-            return null;
         };
     }
 
