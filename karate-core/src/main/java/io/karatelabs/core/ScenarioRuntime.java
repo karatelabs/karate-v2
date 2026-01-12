@@ -697,17 +697,25 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
     public ScenarioResult call() {
         LogContext.set(new LogContext());
         result.setStartTime(System.currentTimeMillis());
-        // For virtual threads, use the thread ID to distinguish lanes in timeline
-        Thread currentThread = Thread.currentThread();
-        String threadName = currentThread.getName();
-        if (threadName == null || threadName.isEmpty() || "main".equals(threadName) || threadName.isBlank()) {
-            threadName = "thread-" + currentThread.threadId();
+        // Use lane name for timeline if available (parallel mode), otherwise use thread info
+        Suite suite = featureRuntime != null ? featureRuntime.getSuite() : null;
+        String laneName = suite != null ? suite.getCurrentLaneName() : null;
+        String threadName;
+        if (laneName != null) {
+            // Parallel mode: use lane number for consistent timeline
+            threadName = laneName;
+        } else {
+            // Sequential mode or no lane: use thread name/ID
+            Thread currentThread = Thread.currentThread();
+            threadName = currentThread.getName();
+            if (threadName == null || threadName.isEmpty() || "main".equals(threadName) || threadName.isBlank()) {
+                threadName = "thread-" + currentThread.threadId();
+            }
         }
         result.setThreadName(threadName);
 
         try {
             // Fire SCENARIO_ENTER event
-            Suite suite = featureRuntime != null ? featureRuntime.getSuite() : null;
             if (suite != null) {
                 boolean proceed = suite.fireEvent(ScenarioRunEvent.enter(this));
                 if (!proceed) {

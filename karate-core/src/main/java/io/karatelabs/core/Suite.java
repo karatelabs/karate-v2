@@ -106,6 +106,10 @@ public class Suite {
     private ExecutorService scenarioExecutor;
     private Semaphore scenarioSemaphore;
 
+    // Lane pool for timeline reporting (assigns consistent lane numbers 1-N instead of random thread IDs)
+    private java.util.Queue<Integer> availableLanes;
+    private final ThreadLocal<Integer> currentLane = new ThreadLocal<>();
+
     // Results
     private SuiteResult result;
 
@@ -561,6 +565,11 @@ public class Suite {
     private void runParallel() {
         // Scenario-level parallelism: semaphore limits concurrent scenarios across all features
         scenarioSemaphore = new Semaphore(threadCount);
+        // Initialize lane pool for timeline reporting (1 to threadCount)
+        availableLanes = new java.util.concurrent.ConcurrentLinkedQueue<>();
+        for (int i = 1; i <= threadCount; i++) {
+            availableLanes.add(i);
+        }
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
             scenarioExecutor = executor;
             List<Future<FeatureResult>> futures = new ArrayList<>();
@@ -755,6 +764,44 @@ public class Suite {
      */
     public Semaphore getScenarioSemaphore() {
         return scenarioSemaphore;
+    }
+
+    /**
+     * Acquire a lane for timeline reporting.
+     * Call this after acquiring the semaphore and before executing a scenario.
+     * The lane is stored in a ThreadLocal for the current thread.
+     */
+    public void acquireLane() {
+        if (availableLanes != null) {
+            Integer lane = availableLanes.poll();
+            if (lane != null) {
+                currentLane.set(lane);
+            }
+        }
+    }
+
+    /**
+     * Release the current lane back to the pool.
+     * Call this after scenario execution completes.
+     */
+    public void releaseLane() {
+        if (availableLanes != null) {
+            Integer lane = currentLane.get();
+            if (lane != null) {
+                currentLane.remove();
+                availableLanes.add(lane);
+            }
+        }
+    }
+
+    /**
+     * Get the current lane name for timeline reporting.
+     * Returns a consistent name like "1", "2", etc. based on the lane pool.
+     * Returns null if not in parallel mode or no lane assigned.
+     */
+    public String getCurrentLaneName() {
+        Integer lane = currentLane.get();
+        return lane != null ? String.valueOf(lane) : null;
     }
 
     public SuiteResult getResult() {

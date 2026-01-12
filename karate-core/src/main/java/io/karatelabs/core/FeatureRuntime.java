@@ -179,9 +179,12 @@ public class FeatureRuntime implements Callable<FeatureResult> {
             Future<ScenarioResult> future = executor.submit(() -> {
                 // Acquire semaphore to limit concurrent scenarios
                 semaphore.acquire();
+                // Acquire a lane for timeline reporting (consistent lane names instead of random thread IDs)
+                suite.acquireLane();
                 try {
                     return executeScenarioParallel(scenario);
                 } finally {
+                    suite.releaseLane();
                     semaphore.release();
                 }
             });
