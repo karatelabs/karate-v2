@@ -97,6 +97,9 @@ public class CdpDriver implements Driver {
     private Frame currentFrame;
     private final Map<String, Integer> frameContexts = new ConcurrentHashMap<>();
 
+    // Keyboard state (reused to maintain modifier state across calls)
+    private CdpKeys keysInstance;
+
     /**
      * Internal representation of a frame.
      */
@@ -1653,11 +1656,15 @@ public class CdpDriver implements Driver {
 
     /**
      * Get a Keys object for keyboard input.
+     * Returns the same instance to maintain modifier state (e.g., holding Shift across multiple calls).
      *
-     * @return a new Keys object
+     * @return the Keys object for this driver
      */
     public Keys keys() {
-        return new CdpKeys(cdp);
+        if (keysInstance == null) {
+            keysInstance = new CdpKeys(cdp);
+        }
+        return keysInstance;
     }
 
     // ========== Pages/Tabs Management ==========

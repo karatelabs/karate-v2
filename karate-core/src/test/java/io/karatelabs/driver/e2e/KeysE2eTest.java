@@ -138,4 +138,211 @@ class KeysE2eTest extends DriverTestBase {
         assertEquals("replaced", value);
     }
 
+    @Test
+    void testShiftArrow_SelectText() {
+        driver.input("#username", "hello");
+        driver.focus("#username");
+
+        // Move cursor to end (input focuses at end by default)
+        // Select last 2 characters with Shift+Arrow
+        driver.keys().shift(Keys.LEFT);
+        driver.keys().shift(Keys.LEFT);
+
+        // Type to replace selection
+        driver.keys().type("XY");
+
+        String value = driver.value("#username");
+        assertEquals("helXY", value);
+    }
+
+    @Test
+    void testMultipleModifiers_CtrlShift() {
+        driver.input("#username", "test");
+        driver.focus("#username");
+
+        // Ctrl+Shift+Left selects word(s) in most browsers
+        // We'll use combo() with multiple modifiers
+        driver.keys().combo(new String[]{Keys.CONTROL, Keys.SHIFT}, Keys.LEFT);
+
+        // Replace with new text
+        driver.keys().type("X");
+
+        // The result depends on browser word selection, but should have changed
+        String value = driver.value("#username");
+        // Word selection varies by browser, just verify it's different
+        assertNotEquals("test", value);
+    }
+
+    @Test
+    void testDownUp_NonModifierKey() {
+        driver.focus("#username");
+
+        // Test down()/up() for regular keys
+        driver.keys().down("a");
+        driver.keys().up("a");
+
+        // 'a' should have been typed via the key events
+        // Note: down() sends rawKeyDown, up() sends keyUp
+        // Without the char event, the character may or may not appear
+        // depending on the browser's handling of rawKeyDown
+        // This test verifies the API doesn't throw
+    }
+
+    @Test
+    void testAltKey() {
+        driver.focus("#username");
+        driver.keys().type("hello");
+
+        // Alt+key should not type the character
+        driver.keys().alt("x");
+
+        // Value should still be "hello" - 'x' should not be added
+        String value = driver.value("#username");
+        assertEquals("hello", value);
+    }
+
+    @Test
+    void testNumpadKeys() {
+        driver.focus("#username");
+
+        // Type using numpad keys
+        driver.keys().press(Keys.NUMPAD1);
+        driver.keys().press(Keys.NUMPAD2);
+        driver.keys().press(Keys.NUMPAD3);
+
+        String value = driver.value("#username");
+        assertEquals("123", value);
+    }
+
+    @Test
+    void testComboMethodChaining() {
+        driver.input("#username", "test value");
+        driver.focus("#username");
+
+        // Method chaining with multiple operations
+        driver.keys()
+                .ctrl("a")     // Select all
+                .type("new");  // Replace
+
+        String value = driver.value("#username");
+        assertEquals("new", value);
+    }
+
+    @Test
+    void testEscapeKey() {
+        driver.focus("#username");
+        driver.keys().type("hello");
+
+        // Escape should not add text
+        driver.keys().press(Keys.ESCAPE);
+
+        String value = driver.value("#username");
+        assertEquals("hello", value);
+    }
+
+    @Test
+    void testHomeEndKeys() {
+        driver.focus("#username");
+        driver.keys().type("hello");
+
+        // Move to beginning with Home, then type
+        driver.keys().press(Keys.HOME);
+        driver.keys().type("X");
+
+        String value = driver.value("#username");
+        assertEquals("Xhello", value);
+
+        // Move to end with End, then type
+        driver.keys().press(Keys.END);
+        driver.keys().type("Y");
+
+        value = driver.value("#username");
+        assertEquals("XhelloY", value);
+    }
+
+    @Test
+    void testDeleteKey() {
+        driver.focus("#username");
+        driver.keys().type("hello");
+
+        // Move to beginning
+        driver.keys().press(Keys.HOME);
+
+        // Delete first character (forward delete)
+        driver.keys().press(Keys.DELETE);
+
+        String value = driver.value("#username");
+        assertEquals("ello", value);
+    }
+
+    @Test
+    void testHoldShiftWhileTyping() {
+        driver.focus("#username");
+
+        // Hold Shift, type, release Shift
+        driver.keys().down(Keys.SHIFT);
+        driver.keys().type("hello");
+        driver.keys().up(Keys.SHIFT);
+
+        // Should be uppercase
+        String value = driver.value("#username");
+        assertEquals("HELLO", value);
+    }
+
+    @Test
+    void testHoldShiftWhileTyping_Chained() {
+        driver.focus("#username");
+
+        // Chained: Shift held for first part, released for second
+        driver.keys()
+                .down(Keys.SHIFT)
+                .type("abc")
+                .up(Keys.SHIFT)
+                .type("def");
+
+        String value = driver.value("#username");
+        assertEquals("ABCdef", value);
+    }
+
+    @Test
+    void testPlusNotation_CtrlA() {
+        driver.input("#username", "select me");
+        driver.focus("#username");
+
+        // Use "+" notation: Control+a
+        driver.keys().press("Control+a");
+        driver.keys().type("replaced");
+
+        String value = driver.value("#username");
+        assertEquals("replaced", value);
+    }
+
+    @Test
+    void testPlusNotation_ShiftArrow() {
+        driver.input("#username", "hello");
+        driver.focus("#username");
+
+        // Use "+" notation for Shift+Arrow
+        driver.keys().press("Shift+ArrowLeft");
+        driver.keys().press("Shift+ArrowLeft");
+        driver.keys().type("XY");
+
+        String value = driver.value("#username");
+        assertEquals("helXY", value);
+    }
+
+    @Test
+    void testPlusNotation_MultipleModifiers() {
+        driver.input("#username", "test");
+        driver.focus("#username");
+
+        // Multiple modifiers: Control+Shift+ArrowLeft (select word)
+        driver.keys().press("Control+Shift+ArrowLeft");
+        driver.keys().type("X");
+
+        String value = driver.value("#username");
+        // Should have selected and replaced
+        assertNotEquals("test", value);
+    }
+
 }

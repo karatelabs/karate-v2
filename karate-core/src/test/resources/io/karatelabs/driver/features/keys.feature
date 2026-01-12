@@ -62,3 +62,92 @@ Feature: Keyboard Tests
     * keys().type('replaced')
     * def val = value('#username')
     * match val == 'replaced'
+
+  Scenario: Shift+Arrow select text
+    * input('#username', 'hello')
+    * focus('#username')
+    * keys().shift(Key.LEFT)
+    * keys().shift(Key.LEFT)
+    * keys().type('XY')
+    * def val = value('#username')
+    * match val == 'helXY'
+
+  Scenario: Alt+key does not type character
+    * focus('#username')
+    * keys().type('hello')
+    * keys().alt('x')
+    * def val = value('#username')
+    * match val == 'hello'
+
+  Scenario: Home and End keys
+    * focus('#username')
+    * keys().type('hello')
+    * keys().press(Key.HOME)
+    * keys().type('X')
+    * def val = value('#username')
+    * match val == 'Xhello'
+    * keys().press(Key.END)
+    * keys().type('Y')
+    * def val2 = value('#username')
+    * match val2 == 'XhelloY'
+
+  Scenario: Delete key (forward delete)
+    * focus('#username')
+    * keys().type('hello')
+    * keys().press(Key.HOME)
+    * keys().press(Key.DELETE)
+    * def val = value('#username')
+    * match val == 'ello'
+
+  Scenario: Escape key does not add text
+    * focus('#username')
+    * keys().type('hello')
+    * keys().press(Key.ESCAPE)
+    * def val = value('#username')
+    * match val == 'hello'
+
+  Scenario: Chained key operations
+    * input('#username', 'test value')
+    * focus('#username')
+    * keys().ctrl('a').type('new')
+    * def val = value('#username')
+    * match val == 'new'
+
+  Scenario: Hold Shift while typing for uppercase
+    * focus('#username')
+    * keys().down(Key.SHIFT)
+    * keys().type('hello')
+    * keys().up(Key.SHIFT)
+    * def val = value('#username')
+    * match val == 'HELLO'
+
+  Scenario: Hold Shift then release - mixed case
+    * focus('#username')
+    * keys().down(Key.SHIFT).type('abc').up(Key.SHIFT).type('def')
+    * def val = value('#username')
+    * match val == 'ABCdef'
+
+  Scenario: Plus notation - Control+a
+    * input('#username', 'select me')
+    * focus('#username')
+    * keys().press('Control+a')
+    * keys().type('replaced')
+    * def val = value('#username')
+    * match val == 'replaced'
+
+  Scenario: Plus notation - Shift+ArrowLeft
+    * input('#username', 'hello')
+    * focus('#username')
+    * keys().press('Shift+ArrowLeft')
+    * keys().press('Shift+ArrowLeft')
+    * keys().type('XY')
+    * def val = value('#username')
+    * match val == 'helXY'
+
+  Scenario: Plus notation - Control+Shift+ArrowLeft
+    * input('#username', 'test')
+    * focus('#username')
+    * keys().press('Control+Shift+ArrowLeft')
+    * keys().type('X')
+    * def val = value('#username')
+    * match val != 'test'
