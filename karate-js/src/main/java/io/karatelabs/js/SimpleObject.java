@@ -68,10 +68,10 @@ public interface SimpleObject extends ObjectLike {
 
     Object jsGet(String name);
 
-    default JsCallable jsToString() {
+    default JavaCallable jsToString() {
         try {
             Object temp = jsGet(TO_STRING);
-            if (temp instanceof JsCallable jsc) {
+            if (temp instanceof JavaCallable jsc) {
                 return jsc;
             }
         } catch (Exception e) {
