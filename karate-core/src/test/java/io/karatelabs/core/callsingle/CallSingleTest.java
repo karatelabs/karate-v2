@@ -69,6 +69,7 @@ class CallSingleTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -95,6 +96,7 @@ class CallSingleTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -125,6 +127,7 @@ class CallSingleTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -170,6 +173,7 @@ class CallSingleTest {
         // Run with 4 parallel threads
         Suite suite = Suite.of(tempDir, parallelFeature.toString())
                 .parallel(4)
+                .outputConsoleSummary(false)
                 .writeReport(false);
 
         long startTime = System.currentTimeMillis();
@@ -204,6 +208,7 @@ class CallSingleTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -230,6 +235,7 @@ class CallSingleTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -265,6 +271,7 @@ class CallSingleTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -294,6 +301,7 @@ class CallSingleTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -324,6 +332,7 @@ class CallSingleTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -366,6 +375,7 @@ class CallSingleTest {
 
         Suite suite = Suite.of(tempDir, testFeature.toString())
                 .configPath(configJs.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -411,6 +421,7 @@ class CallSingleTest {
 
         Suite suite = Suite.of(tempDir, testFeature.toString())
                 .configPath(configJs.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -461,6 +472,7 @@ class CallSingleTest {
         Suite suite = Suite.of(tempDir, testFeature.toString())
                 .configPath(configJs.toString())
                 .parallel(4)
+                .outputConsoleSummary(false)
                 .writeReport(false);
 
         long startTime = System.currentTimeMillis();
@@ -511,6 +523,7 @@ class CallSingleTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -547,6 +560,7 @@ class CallSingleTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 

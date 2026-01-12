@@ -68,6 +68,7 @@ class CucumberJsonWriterTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputCucumberJson(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         assertTrue(result.isPassed());
@@ -137,6 +138,7 @@ class CucumberJsonWriterTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputCucumberJson(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         assertTrue(result.isFailed());
@@ -190,6 +192,7 @@ class CucumberJsonWriterTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputCucumberJson(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         Path jsonPath = reportDir.resolve("cucumber-json/tagged.json");
@@ -229,6 +232,7 @@ class CucumberJsonWriterTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputCucumberJson(false)  // explicitly disabled
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         // Cucumber JSON should NOT exist (check for the packageQualifiedName-based file)
@@ -261,6 +265,7 @@ class CucumberJsonWriterTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputCucumberJson(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         Path jsonPath = reportDir.resolve("cucumber-json/docstring.json");
@@ -307,6 +312,7 @@ class CucumberJsonWriterTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputCucumberJson(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         Path jsonPath = reportDir.resolve("cucumber-json/table.json");

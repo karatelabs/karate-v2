@@ -29,7 +29,7 @@ class LocalCallbackServerTest {
             assertTrue(redirectUri.startsWith("http://127.0.0.1:"));
             assertTrue(redirectUri.endsWith("/callback"));
             assertTrue(server.getPort() > 0);
-            logger.info("Server started on: {}", redirectUri);
+            logger.debug("Server started on: {}", redirectUri);
         } finally {
             server.stop();
         }
@@ -43,7 +43,7 @@ class LocalCallbackServerTest {
 
             assertEquals("http://127.0.0.1:8888/callback", redirectUri);
             assertEquals(8888, server.getPort());
-            logger.info("Server started on specific port: {}", redirectUri);
+            logger.debug("Server started on specific port: {}", redirectUri);
         } finally {
             server.stop();
         }
@@ -75,7 +75,7 @@ class LocalCallbackServerTest {
             String code = codeFuture.get(1, TimeUnit.SECONDS);
             assertEquals(testCode, code);
 
-            logger.info("Successfully received code: {}", code);
+            logger.debug("Successfully received code: {}", code);
         } finally {
             server.stop();
         }
@@ -112,7 +112,7 @@ class LocalCallbackServerTest {
             assertTrue(exception.getCause().getMessage().contains("access_denied"));
             assertTrue(exception.getCause().getMessage().contains("User denied access"));
 
-            logger.info("Successfully caught error: {}", exception.getCause().getMessage());
+            logger.debug("Successfully caught error: {}", exception.getCause().getMessage());
         } finally {
             server.stop();
         }
@@ -139,7 +139,7 @@ class LocalCallbackServerTest {
             String code = codeFuture.get(1, TimeUnit.SECONDS);
             assertEquals("test/code=123", code);
 
-            logger.info("Successfully decoded code: {}", code);
+            logger.debug("Successfully decoded code: {}", code);
         } finally {
             server.stop();
         }
@@ -181,8 +181,8 @@ class LocalCallbackServerTest {
             assertNotEquals(server1.getPort(), server2.getPort());
             assertNotEquals(redirectUri1, redirectUri2);
 
-            logger.info("Server 1: {}", redirectUri1);
-            logger.info("Server 2: {}", redirectUri2);
+            logger.debug("Server 1: {}", redirectUri1);
+            logger.debug("Server 2: {}", redirectUri2);
         } finally {
             server1.stop();
             server2.stop();
@@ -195,7 +195,7 @@ class LocalCallbackServerTest {
         String redirectUri = server.start();
         int port = server.getPort();
 
-        logger.info("Started server on port {}", port);
+        logger.debug("Started server on port {}", port);
 
         // Stop the server
         server.stop();
@@ -212,7 +212,7 @@ class LocalCallbackServerTest {
             client.send(request, HttpResponse.BodyHandlers.ofString());
         });
 
-        logger.info("Server successfully stopped");
+        logger.debug("Server successfully stopped");
     }
 
     @Test

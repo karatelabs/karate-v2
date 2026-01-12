@@ -37,7 +37,7 @@ public class OAuth2TokenManager {
      */
     public void storeToken(OAuth2Token token) {
         this.currentToken = token;
-        logger.info("Token stored, expires in {} seconds", token.getExpiresInSeconds());
+        logger.debug("Token stored, expires in {} seconds", token.getExpiresInSeconds());
     }
 
     /**
@@ -50,7 +50,7 @@ public class OAuth2TokenManager {
             return null;
         }
 
-        logger.info("Refreshing OAuth token...");
+        logger.debug("Refreshing OAuth token...");
 
         String tokenUrl = (String) config.get("url");
         builder.url(tokenUrl);
@@ -98,7 +98,7 @@ public class OAuth2TokenManager {
             Map<String, Object> data = json.asMap();
             OAuth2Token newToken = OAuth2Token.fromMap(data);
             storeToken(newToken);
-            logger.info("Token refreshed successfully");
+            logger.debug("Token refreshed successfully");
             return newToken;
         } catch (OAuth2Exception e) {
             throw e;
@@ -115,7 +115,7 @@ public class OAuth2TokenManager {
      */
     public void clearToken() {
         currentToken = null;
-        logger.info("Token cleared");
+        logger.debug("Token cleared");
     }
 
     /**

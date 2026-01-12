@@ -160,7 +160,7 @@ class OAuth2TokenManagerTest {
             assertNotNull(storedToken);
             assertEquals("new-access-token", storedToken.getAccessToken());
 
-            logger.info("Token refreshed successfully: {}", newToken.getAccessToken());
+            logger.debug("Token refreshed successfully: {}", newToken.getAccessToken());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

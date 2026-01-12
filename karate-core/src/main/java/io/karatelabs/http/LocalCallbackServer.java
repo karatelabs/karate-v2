@@ -37,7 +37,7 @@ public class LocalCallbackServer {
         server = HttpServer.start(preferredPort, this::handleRequest);
         port = server.getPort();
 
-        logger.info("OAuth callback server started on port {}", port);
+        logger.debug("OAuth callback server started on port {}", port);
 
         return "http://127.0.0.1:" + port + "/callback";
     }
@@ -144,14 +144,14 @@ public class LocalCallbackServer {
 
     public void stopAsync() {
         if (server != null) {
-            logger.info("Stopping OAuth callback server on port {}", port);
+            logger.debug("Stopping OAuth callback server on port {}", port);
             server.stopAsync();
         }
     }
 
     public void stopAndWait() {
         if (server != null) {
-            logger.info("Stopping OAuth callback server on port {}", port);
+            logger.debug("Stopping OAuth callback server on port {}", port);
             server.stopAndWait();
         }
     }

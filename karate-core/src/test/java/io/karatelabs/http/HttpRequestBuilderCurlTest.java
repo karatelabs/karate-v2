@@ -21,7 +21,7 @@ class HttpRequestBuilderCurlTest {
         http.method("GET");
 
         String curl = http.toCurlCommand();
-        logger.info("Simple GET:\n{}", curl);
+        logger.debug("Simple GET:\n{}", curl);
 
         assertTrue(curl.contains("curl -X GET"));
         assertTrue(curl.contains("'https://api.example.com/users'"));
@@ -36,7 +36,7 @@ class HttpRequestBuilderCurlTest {
         http.method("GET");
 
         String curl = http.toCurlCommand();
-        logger.info("GET with query params:\n{}", curl);
+        logger.debug("GET with query params:\n{}", curl);
 
         assertTrue(curl.contains("curl -X GET"));
         assertTrue(curl.contains("api.example.com/search"));
@@ -57,7 +57,7 @@ class HttpRequestBuilderCurlTest {
         http.body(body);
 
         String curl = http.toCurlCommand();
-        logger.info("POST with JSON:\n{}", curl);
+        logger.debug("POST with JSON:\n{}", curl);
 
         assertTrue(curl.contains("curl -X POST"));
         assertTrue(curl.contains("-H 'Content-Type: application/json'"));
@@ -78,7 +78,7 @@ class HttpRequestBuilderCurlTest {
         http.body(body);
 
         String curl = http.toCurlCommand();
-        logger.info("POST with single quotes in JSON:\n{}", curl);
+        logger.debug("POST with single quotes in JSON:\n{}", curl);
 
         assertTrue(curl.contains("curl -X POST"));
         // Should properly escape single quotes
@@ -94,7 +94,7 @@ class HttpRequestBuilderCurlTest {
         http.formField("password", "secret123");
 
         String curl = http.toCurlCommand();
-        logger.info("POST with form data:\n{}", curl);
+        logger.debug("POST with form data:\n{}", curl);
 
         assertTrue(curl.contains("curl -X POST"));
         assertTrue(curl.contains("--data-urlencode"));
@@ -119,7 +119,7 @@ class HttpRequestBuilderCurlTest {
         http.multiPart(part2);
 
         String curl = http.toCurlCommand();
-        logger.info("POST with multipart:\n{}", curl);
+        logger.debug("POST with multipart:\n{}", curl);
 
         assertTrue(curl.contains("curl -X POST"));
         assertTrue(curl.contains("-F"));
@@ -137,7 +137,7 @@ class HttpRequestBuilderCurlTest {
         http.header("Content-Type", "application/x-www-form-urlencoded");
 
         String curl = http.toCurlCommand();
-        logger.info("POST with URL-encoded params:\n{}", curl);
+        logger.debug("POST with URL-encoded params:\n{}", curl);
 
         assertTrue(curl.contains("curl -X POST"));
         assertTrue(curl.contains("--data-urlencode"));
@@ -155,7 +155,7 @@ class HttpRequestBuilderCurlTest {
         http.header("Accept", "application/json");
 
         String curl = http.toCurlCommand();
-        logger.info("GET with headers:\n{}", curl);
+        logger.debug("GET with headers:\n{}", curl);
 
         assertTrue(curl.contains("-H 'Authorization: Bearer token123'"));
         assertTrue(curl.contains("-H 'X-Custom-Header: custom-value'"));
@@ -173,7 +173,7 @@ class HttpRequestBuilderCurlTest {
         http.header("Accept", "application/json"); // Should be included
 
         String curl = http.toCurlCommand();
-        logger.info("GET with filtered headers:\n{}", curl);
+        logger.debug("GET with filtered headers:\n{}", curl);
 
         assertFalse(curl.contains("Host:"));
         assertFalse(curl.contains("User-Agent:"));
@@ -190,7 +190,7 @@ class HttpRequestBuilderCurlTest {
         http.body("This is plain text");
 
         String curl = http.toCurlCommand();
-        logger.info("POST with string body:\n{}", curl);
+        logger.debug("POST with string body:\n{}", curl);
 
         assertTrue(curl.contains("curl -X POST"));
         assertTrue(curl.contains("-d 'This is plain text'"));
@@ -205,7 +205,7 @@ class HttpRequestBuilderCurlTest {
         http.body(new byte[]{0x01, 0x02, 0x03});
 
         String curl = http.toCurlCommand();
-        logger.info("POST with binary body:\n{}", curl);
+        logger.debug("POST with binary body:\n{}", curl);
 
         assertTrue(curl.contains("curl -X POST"));
         assertTrue(curl.contains("[binary data]"));
@@ -219,7 +219,7 @@ class HttpRequestBuilderCurlTest {
         http.method("GET");
 
         String curl = http.toCurlCommand();
-        logger.info("GET with special chars in URL:\n{}", curl);
+        logger.debug("GET with special chars in URL:\n{}", curl);
 
         assertTrue(curl.contains("curl -X GET"));
         // URL should be properly encoded
@@ -246,7 +246,7 @@ class HttpRequestBuilderCurlTest {
         http.body(body);
 
         String curl = http.toCurlCommand();
-        logger.info("POST with complex JSON:\n{}", curl);
+        logger.debug("POST with complex JSON:\n{}", curl);
 
         assertTrue(curl.contains("curl -X POST"));
         assertTrue(curl.contains("\"string\":\"value\""));
@@ -263,7 +263,7 @@ class HttpRequestBuilderCurlTest {
         http.header("Accept", "application/json", "text/html");
 
         String curl = http.toCurlCommand();
-        logger.info("GET with multiple header values:\n{}", curl);
+        logger.debug("GET with multiple header values:\n{}", curl);
 
         assertTrue(curl.contains("-H 'Accept: application/json'"));
         assertTrue(curl.contains("-H 'Accept: text/html'"));
@@ -282,7 +282,7 @@ class HttpRequestBuilderCurlTest {
         http.body(body);
 
         String curl = http.toCurlCommand();
-        logger.info("POST with formatting:\n{}", curl);
+        logger.debug("POST with formatting:\n{}", curl);
 
         // Should have proper line continuations
         assertTrue(curl.contains(" \\"));
@@ -299,7 +299,7 @@ class HttpRequestBuilderCurlTest {
         http.param("field2", "value2");
 
         String curl = http.toCurlCommand();
-        logger.info("POST with params (no body):\n{}", curl);
+        logger.debug("POST with params (no body):\n{}", curl);
 
         assertTrue(curl.contains("curl -X POST"));
         // Should treat params as form data for POST without body
@@ -315,7 +315,7 @@ class HttpRequestBuilderCurlTest {
         http.auth(new BasicAuthHandler("john", "secret123"));
 
         String curl = http.toCurlCommand();
-        logger.info("GET with basic auth:\n{}", curl);
+        logger.debug("GET with basic auth:\n{}", curl);
 
         assertTrue(curl.contains("curl -X GET"));
         // Should use curl's native -u flag
@@ -332,7 +332,7 @@ class HttpRequestBuilderCurlTest {
         http.auth(new BasicAuthHandler("user@domain", "p@ss'word"));
 
         String curl = http.toCurlCommand();
-        logger.info("GET with basic auth (special chars):\n{}", curl);
+        logger.debug("GET with basic auth (special chars):\n{}", curl);
 
         assertTrue(curl.contains("curl -X GET"));
         // Should properly escape single quotes in password
@@ -349,7 +349,7 @@ class HttpRequestBuilderCurlTest {
         http.auth(new BearerAuthHandler("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"));
 
         String curl = http.toCurlCommand();
-        logger.info("GET with bearer auth:\n{}", curl);
+        logger.debug("GET with bearer auth:\n{}", curl);
 
         assertTrue(curl.contains("curl -X GET"));
         // Bearer auth should use Authorization header (default behavior)
@@ -366,7 +366,7 @@ class HttpRequestBuilderCurlTest {
         http.header("X-Custom-Header", "value");
 
         String curl = http.toCurlCommand();
-        logger.info("GET with basic auth and headers:\n{}", curl);
+        logger.debug("GET with basic auth and headers:\n{}", curl);
 
         assertTrue(curl.contains("-u 'admin:admin123'"));
         assertTrue(curl.contains("-H 'Accept: application/json'"));
@@ -382,7 +382,7 @@ class HttpRequestBuilderCurlTest {
         http.auth(new BasicAuthHandler("user", "pass"));
 
         String curl = http.toCurlCommandPreview();
-        logger.info("Preview mode with basic auth:\n{}", curl);
+        logger.debug("Preview mode with basic auth:\n{}", curl);
 
         // Basic auth doesn't need network, so preview should be same as normal
         assertTrue(curl.contains("-u 'user:pass'"));
@@ -402,7 +402,7 @@ class HttpRequestBuilderCurlTest {
         http.auth(new ClientCredentialsAuthHandler(config));
 
         String curl = http.toCurlCommandPreview();
-        logger.info("Preview mode with OAuth2 client credentials:\n{}", curl);
+        logger.debug("Preview mode with OAuth2 client credentials:\n{}", curl);
 
         // Should show placeholder without making network call
         assertTrue(curl.contains("curl -X GET"));
@@ -418,7 +418,7 @@ class HttpRequestBuilderCurlTest {
         http.auth(new BearerAuthHandler("existing-token-123"));
 
         String curl = http.toCurlCommandPreview();
-        logger.info("Preview mode with bearer auth:\n{}", curl);
+        logger.debug("Preview mode with bearer auth:\n{}", curl);
 
         // Bearer auth with existing token should show normally
         assertTrue(curl.contains("-H 'Authorization: Bearer existing-token-123'"));
@@ -432,7 +432,7 @@ class HttpRequestBuilderCurlTest {
         http.header("Accept", "application/json");
 
         String curl = http.toCurlCommandPreview();
-        logger.info("Preview mode without auth:\n{}", curl);
+        logger.debug("Preview mode without auth:\n{}", curl);
 
         assertTrue(curl.contains("curl -X GET"));
         assertTrue(curl.contains("'https://api.example.com/public'"));
@@ -451,7 +451,7 @@ class HttpRequestBuilderCurlTest {
         http.body(body);
 
         String curl = http.toCurlCommandPreview();
-        logger.info("Preview mode with JSON body:\n{}", curl);
+        logger.debug("Preview mode with JSON body:\n{}", curl);
 
         assertTrue(curl.contains("curl -X POST"));
         assertTrue(curl.contains("-d '{\"key\":\"value\"}'"));
@@ -471,7 +471,7 @@ class HttpRequestBuilderCurlTest {
         http.body(body);
 
         String curl = http.toCurlCommand("cmd");
-        logger.info("Windows CMD format:\n{}", curl);
+        logger.debug("Windows CMD format:\n{}", curl);
 
         // Should use double quotes instead of single quotes
         assertTrue(curl.contains("\"https://api.example.com/users\""));
@@ -494,7 +494,7 @@ class HttpRequestBuilderCurlTest {
         http.body(body);
 
         String curl = http.toCurlCommand("ps");
-        logger.info("PowerShell format:\n{}", curl);
+        logger.debug("PowerShell format:\n{}", curl);
 
         // Should use single quotes (PowerShell style)
         assertTrue(curl.contains("'https://api.example.com/users'"));
@@ -514,7 +514,7 @@ class HttpRequestBuilderCurlTest {
         http.auth(new BasicAuthHandler("admin", "pass@123"));
 
         String curl = http.toCurlCommand("cmd");
-        logger.info("Windows CMD with basic auth:\n{}", curl);
+        logger.debug("Windows CMD with basic auth:\n{}", curl);
 
         // Should use double quotes
         assertTrue(curl.contains("-u \"admin:pass@123\""));
@@ -531,7 +531,7 @@ class HttpRequestBuilderCurlTest {
         http.body("Test's data with 'quotes'");
 
         String curl = http.toCurlCommand("ps");
-        logger.info("PowerShell with special chars:\n{}", curl);
+        logger.debug("PowerShell with special chars:\n{}", curl);
 
         // PowerShell escapes single quotes by doubling them
         assertTrue(curl.contains("Test''s data with ''quotes''"));

@@ -60,6 +60,7 @@ class RunnerTest {
         SuiteResult result = Runner.path(feature.toString())
                 .workingDir(tempDir)
                 .outputDir(tempDir.resolve("reports"))
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         assertTrue(result.isPassed());
@@ -86,6 +87,7 @@ class RunnerTest {
         SuiteResult result = Runner.path(tempDir.toString())
                 .workingDir(tempDir)
                 .outputDir(tempDir.resolve("reports"))
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         assertTrue(result.isPassed());
@@ -107,6 +109,7 @@ class RunnerTest {
         SuiteResult result = Runner.path(feature.toString())
                 .workingDir(tempDir)
                 .outputDir(tempDir.resolve("reports"))
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         assertTrue(result.isFailed());
@@ -130,6 +133,7 @@ class RunnerTest {
         SuiteResult result = Runner.features(feature)
                 .workingDir(tempDir)
                 .outputDir(tempDir.resolve("reports"))
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         assertTrue(result.isPassed());
@@ -168,6 +172,7 @@ class RunnerTest {
                 .outputDir(tempDir.resolve("reports"))
                 .outputHtmlReport(false)
                 .outputConsoleSummary(false)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         // Should find only non-@ignore features: test-report, second-feature, third-feature, http-demo
@@ -184,6 +189,7 @@ class RunnerTest {
                 .outputDir(tempDir.resolve("reports"))
                 .outputHtmlReport(false)
                 .outputConsoleSummary(false)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         // @ignore features are skipped, http-demo included
@@ -196,6 +202,7 @@ class RunnerTest {
         SuiteResult result = Runner.path("classpath:io/karatelabs/report/second-feature.feature")
                 .outputDir(tempDir.resolve("reports"))
                 .outputHtmlReport(false)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         assertEquals(1, result.getFeatureCount());
@@ -208,6 +215,7 @@ class RunnerTest {
         SuiteResult result = Runner.path("classpath:feature")
                 .outputDir(tempDir.resolve("reports"))
                 .outputHtmlReport(false)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         // Should find http-simple.feature (or may be 0 if it requires HTTP)
@@ -228,6 +236,7 @@ class RunnerTest {
                 .workingDir(tempDir)
                 .outputDir(tempDir.resolve("reports"))
                 .outputHtmlReport(false)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         // 1 local + 1 classpath
@@ -265,6 +274,7 @@ class RunnerTest {
                 .configDir(tempDir.toString())
                 .outputDir(tempDir.resolve("reports"))
                 .outputHtmlReport(false)
+                .outputConsoleSummary(false)
                 .outputConsoleSummary(false)
                 .parallel(1);
 

@@ -164,11 +164,13 @@ public final class Runner {
         private boolean outputJunitXml;
         private boolean outputCucumberJson;
         private boolean outputKarateJson;
-        private boolean backupReportDir = true;
+        private boolean backupOutputDir = true;
         private boolean outputConsoleSummary = true;
         private Map<String, String> systemProperties;
         private LogLevel logLevel = LogLevel.INFO;
         private io.karatelabs.driver.DriverProvider driverProvider;
+        private io.karatelabs.http.HttpClientFactory httpClientFactory;
+        private boolean skipTagFiltering;
 
         Builder() {
         }
@@ -302,6 +304,14 @@ public final class Runner {
         }
 
         /**
+         * Alias for {@link #outputDir(String)}.
+         * Provided for backward compatibility with v1 API.
+         */
+        public Builder reportDir(String dir) {
+            return outputDir(dir);
+        }
+
+        /**
          * Set the working directory for relative path resolution.
          * This affects how feature file paths are displayed in reports.
          */
@@ -366,13 +376,21 @@ public final class Runner {
         }
 
         /**
-         * Enable/disable backup of existing report directory.
-         * When enabled, the existing report directory is renamed with a timestamp
+         * Enable/disable backup of existing output directory.
+         * When enabled, the existing output directory is renamed with a timestamp
          * suffix (e.g., karate-reports_2025-01-15_143022) before new reports are written.
          */
-        public Builder backupReportDir(boolean enabled) {
-            this.backupReportDir = enabled;
+        public Builder backupOutputDir(boolean enabled) {
+            this.backupOutputDir = enabled;
             return this;
+        }
+
+        /**
+         * Alias for {@link #backupOutputDir(boolean)}.
+         * Provided for backward compatibility with v1 API.
+         */
+        public Builder backupReportDir(boolean enabled) {
+            return backupOutputDir(enabled);
         }
 
         /**
@@ -491,6 +509,32 @@ public final class Runner {
         }
 
         /**
+         * Set the HTTP client factory for custom/mock HTTP clients.
+         * When set, this factory is used instead of the default HTTP client.
+         */
+        public Builder httpClientFactory(io.karatelabs.http.HttpClientFactory factory) {
+            this.httpClientFactory = factory;
+            return this;
+        }
+
+        /**
+         * Alias for {@link #httpClientFactory(io.karatelabs.http.HttpClientFactory)}.
+         * Provided for backward compatibility with v1 API.
+         */
+        public Builder clientFactory(io.karatelabs.http.HttpClientFactory factory) {
+            return httpClientFactory(factory);
+        }
+
+        /**
+         * Skip tag filtering (@env, @ignore) so all scenarios run regardless of tags.
+         * Use this for unit tests that need to run scenarios with any tags.
+         */
+        public Builder skipTagFiltering(boolean skip) {
+            this.skipTagFiltering = skip;
+            return this;
+        }
+
+        /**
          * Execute the tests with the specified thread count.
          * This is the terminal operation that runs the tests.
          *
@@ -547,7 +591,7 @@ public final class Runner {
             suite.outputJunitXml(outputJunitXml);
             suite.outputCucumberJson(outputCucumberJson);
             suite.outputKarateJson(outputKarateJson);
-            suite.backupReportDir(backupReportDir);
+            suite.backupReportDir(backupOutputDir);
             suite.outputConsoleSummary(outputConsoleSummary);
             if (systemProperties != null) {
                 suite.systemProperties(systemProperties);
@@ -571,6 +615,16 @@ public final class Runner {
             // Set driver provider
             if (driverProvider != null) {
                 suite.driverProvider(driverProvider);
+            }
+
+            // Set HTTP client factory
+            if (httpClientFactory != null) {
+                suite.httpClientFactory(httpClientFactory);
+            }
+
+            // Set skip tag filtering
+            if (skipTagFiltering) {
+                suite.skipTagFiltering(true);
             }
 
             // Apply log level (this is a global setting)

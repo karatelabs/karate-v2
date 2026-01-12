@@ -199,6 +199,9 @@ public interface Resource {
 
     default String getPackageQualifiedName() {
         String path = getRelativePath();
+        if (path == null || path.isEmpty()) {
+            return "";
+        }
         if (path.endsWith(".feature")) {
             path = path.substring(0, path.length() - 8);
         }

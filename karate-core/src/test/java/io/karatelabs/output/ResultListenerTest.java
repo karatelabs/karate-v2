@@ -95,6 +95,7 @@ class ResultListenerTest {
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
                 .resultListener(listener)
+                .outputConsoleSummary(false)
                 .writeReport(false);
         suite.run();
 
@@ -141,6 +142,7 @@ class ResultListenerTest {
                 .workingDir(tempDir)
                 .resultListener(listener)
                 .outputDir(tempDir.resolve("reports"))
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         assertEquals(1, events.size());
@@ -176,6 +178,7 @@ class ResultListenerTest {
         Suite suite = Suite.of(tempDir, featureFile.toString())
                 .resultListener(listener1)
                 .resultListener(listener2)
+                .outputConsoleSummary(false)
                 .writeReport(false);
         suite.run();
 
@@ -210,6 +213,7 @@ class ResultListenerTest {
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
                 .resultListener(listener)
+                .outputConsoleSummary(false)
                 .writeReport(false);
         suite.run();
 

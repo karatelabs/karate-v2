@@ -64,6 +64,7 @@ class HtmlReportListenerTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputHtmlReport(true)  // default is true anyway
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         assertTrue(result.isPassed());
@@ -102,6 +103,7 @@ class HtmlReportListenerTest {
         Runner.path(tempDir.toString())
                 .workingDir(tempDir)
                 .outputDir(reportDir)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         // Verify feature HTML files were created
@@ -126,6 +128,7 @@ class HtmlReportListenerTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputHtmlReport(false)  // disable HTML reports
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         // HTML reports should NOT exist when disabled
@@ -151,6 +154,7 @@ class HtmlReportListenerTest {
         Runner.path(feature.toString())
                 .workingDir(tempDir)
                 .outputDir(reportDir)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         String summaryHtml = Files.readString(reportDir.resolve("karate-summary.html"));
@@ -179,6 +183,7 @@ class HtmlReportListenerTest {
         Runner.path(feature.toString())
                 .workingDir(tempDir)
                 .outputDir(reportDir)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         // Find the feature HTML file
@@ -215,6 +220,7 @@ class HtmlReportListenerTest {
         SuiteResult result = Runner.path(feature.toString())
                 .workingDir(tempDir)
                 .outputDir(reportDir)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         // Verify suite result

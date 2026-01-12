@@ -62,6 +62,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -88,6 +89,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -112,6 +114,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -136,6 +139,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -164,6 +168,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -192,6 +197,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -216,6 +222,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -243,6 +250,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -269,6 +277,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -292,6 +301,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -317,6 +327,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -345,6 +356,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -374,6 +386,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -406,6 +419,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -435,6 +449,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -460,6 +475,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -484,6 +500,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -512,6 +529,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -1023,7 +1041,8 @@ public class OutlineTest {
             | read('data.csv') |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString()).writeReport(false);
+        Suite suite = Suite.of(tempDir, feature.toString()).outputConsoleSummary(false)
+                .writeReport(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "CSV-based outline should pass: " + getFailureMessage(result));
@@ -1056,6 +1075,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -1094,6 +1114,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -1121,6 +1142,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -1158,6 +1180,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -1190,6 +1213,7 @@ public class OutlineTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 

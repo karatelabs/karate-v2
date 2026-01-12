@@ -66,6 +66,7 @@ class JunitXmlWriterTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputJunitXml(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         assertTrue(result.isPassed());
@@ -108,6 +109,7 @@ class JunitXmlWriterTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputJunitXml(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         assertTrue(result.isFailed());
@@ -144,6 +146,7 @@ class JunitXmlWriterTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputJunitXml(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         Path xmlPath = reportDir.resolve("junit-xml/special.xml");
@@ -170,6 +173,7 @@ class JunitXmlWriterTest {
         Runner.path(feature.toString())
                 .workingDir(tempDir)
                 .outputDir(reportDir)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         // JUnit XML should NOT exist by default (per-feature file)
@@ -196,6 +200,7 @@ class JunitXmlWriterTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputJunitXml(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         Path xmlPath = reportDir.resolve("junit-xml/tagged.xml");
@@ -226,6 +231,7 @@ class JunitXmlWriterTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputJunitXml(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         Path xmlPath = reportDir.resolve("junit-xml/logs.xml");

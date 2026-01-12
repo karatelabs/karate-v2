@@ -637,6 +637,11 @@ public class FeatureRuntime implements Callable<FeatureResult> {
                 return true;
             }
 
+            // Skip tag filtering if configured (run all scenarios regardless of @env, @ignore)
+            if (suite != null && suite.isSkipTagFiltering()) {
+                return true;
+            }
+
             // Use TagSelector for suite-level filtering
             // This handles @ignore, @setup, @env, and complex expressions like anyOf(), allOf()
             List<Tag> tags = scenario.getTagsEffective();

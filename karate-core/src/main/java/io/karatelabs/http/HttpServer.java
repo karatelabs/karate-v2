@@ -101,12 +101,12 @@ public class HttpServer {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Interrupted while shutting down HTTP server", e);
         }
-        logger.info("stop: shutdown complete");
+        logger.debug("stop: shutdown complete");
     }
 
     public void stopAsync() {
         ACTIVE_SERVERS.remove(this);
-        logger.info("stop: shutting down");
+        logger.debug("stop: shutting down");
         bossGroup.shutdownGracefully();
         workerGroup.shutdownGracefully();
     }
@@ -153,7 +153,7 @@ public class HttpServer {
             port = isa.getPort();
             ACTIVE_SERVERS.add(this);
             String protocol = sslContext != null ? "https" : "http";
-            logger.info("{} server started on port: {}", protocol, port);
+            logger.debug("{} server started on port: {}", protocol, port);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

@@ -41,7 +41,7 @@ public class AuthorizationCodeAuthHandler implements AuthHandler {
         // Check if we need a new token
         if (token == null || token.isExpired()) {
             if (token != null && token.hasRefreshToken()) {
-                logger.info("Token expired, attempting refresh...");
+                logger.debug("Token expired, attempting refresh...");
                 try {
                     token = tokenManager.refreshToken(builder.forkNewBuilder());
                 } catch (OAuth2Exception e) {
@@ -51,7 +51,7 @@ public class AuthorizationCodeAuthHandler implements AuthHandler {
             }
 
             if (token == null) {
-                logger.info("No valid token, starting authorization flow...");
+                logger.debug("No valid token, starting authorization flow...");
                 token = performAuthorizationFlow(builder);
             }
         }
@@ -78,10 +78,10 @@ public class AuthorizationCodeAuthHandler implements AuthHandler {
 
             // 3. Build authorization URL
             String authUrl = buildAuthorizationUrl(pkce, redirectUri);
-            logger.info("Authorization URL: {}", authUrl);
+            logger.debug("Authorization URL: {}", authUrl);
 
             // 4. Open browser and wait for authorization code
-            logger.info("Opening browser for user authorization...");
+            logger.debug("Opening browser for user authorization...");
             CompletableFuture<String> browserFuture =
                 browserCallback.openBrowserForAuthorization(authUrl, redirectUri);
 
@@ -93,14 +93,14 @@ public class AuthorizationCodeAuthHandler implements AuthHandler {
 
             if ("USE_CALLBACK_SERVER".equals(browserResult)) {
                 // System browser mode: wait for callback server to receive the code
-                logger.info("Browser opened, waiting for OAuth callback...");
+                logger.debug("Browser opened, waiting for OAuth callback...");
                 code = callbackServer.getCodeFuture().get(5, TimeUnit.MINUTES);
             } else {
                 // WebView mode: browser callback captured the code directly
                 code = browserResult;
             }
 
-            logger.info("Authorization code received");
+            logger.debug("Authorization code received");
 
             // 5. Exchange code for token
             OAuth2Token token = exchangeCodeForToken(
@@ -174,7 +174,7 @@ public class AuthorizationCodeAuthHandler implements AuthHandler {
             throw new OAuth2Exception("Missing 'url' (token endpoint) in OAuth config");
         }
 
-        logger.info("Exchanging authorization code for token...");
+        logger.debug("Exchanging authorization code for token...");
 
         builder.url(tokenUrl);
         builder.formField("grant_type", "authorization_code");
@@ -209,7 +209,7 @@ public class AuthorizationCodeAuthHandler implements AuthHandler {
                 throw new OAuth2Exception("Token request failed: " + error + (desc != null ? " - " + desc : ""));
             }
 
-            logger.info("Token exchange successful");
+            logger.debug("Token exchange successful");
             return OAuth2Token.fromMap(data);
 
         } catch (OAuth2Exception e) {
@@ -231,10 +231,10 @@ public class AuthorizationCodeAuthHandler implements AuthHandler {
         for (int port : ports) {
             try {
                 String redirectUri = server.start(port);
-                logger.info("Callback server started on port {}", port);
+                logger.debug("Callback server started on port {}", port);
                 return redirectUri;
             } catch (Exception e) {
-                logger.debug("Port {} in use, trying next port", port);
+                logger.warn("Port {} in use, trying next port", port);
                 lastException = e;
             }
         }

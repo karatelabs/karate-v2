@@ -59,6 +59,7 @@ class ProcessTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -77,6 +78,7 @@ class ProcessTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -95,6 +97,7 @@ class ProcessTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -113,6 +116,7 @@ class ProcessTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -135,6 +139,7 @@ class ProcessTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -155,6 +160,7 @@ class ProcessTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -175,6 +181,7 @@ class ProcessTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -195,6 +202,7 @@ class ProcessTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -217,6 +225,7 @@ class ProcessTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 

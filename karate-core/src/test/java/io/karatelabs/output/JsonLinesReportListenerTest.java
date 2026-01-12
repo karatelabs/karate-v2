@@ -65,6 +65,7 @@ class JsonLinesReportListenerTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputJsonLines(true)  // opt-in to JSON Lines
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         assertTrue(result.isPassed());
@@ -96,6 +97,7 @@ class JsonLinesReportListenerTest {
                 .outputDir(reportDir)
                 .outputJsonLines(true)
                 .karateEnv("dev")
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         Path jsonlPath = reportDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl");
@@ -131,6 +133,7 @@ class JsonLinesReportListenerTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputJsonLines(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         Path jsonlPath = reportDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl");
@@ -193,6 +196,7 @@ class JsonLinesReportListenerTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputJsonLines(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         Path jsonlPath = reportDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl");
@@ -241,6 +245,7 @@ class JsonLinesReportListenerTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputJsonLines(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         assertTrue(result.isFailed());
@@ -308,6 +313,7 @@ class JsonLinesReportListenerTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputJsonLines(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         Path jsonlPath = reportDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl");
@@ -359,6 +365,7 @@ class JsonLinesReportListenerTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputJsonLines(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         Path jsonlPath = reportDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl");
@@ -413,6 +420,7 @@ class JsonLinesReportListenerTest {
                 .outputDir(reportDir)
                 .outputHtmlReport(true)
                 .outputJsonLines(true)  // opt-in to JSON Lines alongside HTML
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         // Verify both JSON Lines and HTML reports exist when both are enabled

@@ -322,6 +322,7 @@ class StepInfoTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -347,6 +348,7 @@ class StepInfoTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 

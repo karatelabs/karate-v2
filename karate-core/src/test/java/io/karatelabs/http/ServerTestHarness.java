@@ -73,7 +73,7 @@ public class ServerTestHarness implements AutoCloseable {
         server = HttpServer.start(0, this::handleRequest);
         port = server.getPort();
         client = new ApacheHttpClient();
-        logger.info("ServerTestHarness started on port {}", port);
+        logger.debug("ServerTestHarness started on port {}", port);
     }
 
     public void stop() {
@@ -87,7 +87,7 @@ public class ServerTestHarness implements AutoCloseable {
         if (server != null) {
             server.stopAsync();
         }
-        logger.info("ServerTestHarness stopped");
+        logger.debug("ServerTestHarness stopped");
     }
 
     @Override

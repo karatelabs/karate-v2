@@ -98,10 +98,6 @@ class HtmlReportWriterTest {
         }
     }
 
-    @BeforeEach
-    void setup() {
-        Console.setColorsEnabled(false);
-    }
 
     /**
      * Main dev test - run this to regenerate HTML reports after template changes.
@@ -112,6 +108,7 @@ class HtmlReportWriterTest {
      */
     @Test
     void testHtmlReportGeneration() {
+        Console.setColorsEnabled(true);
         // Run features from test-classes directory with parallel for timeline
         String testResourcesDir = "target/test-classes/io/karatelabs/report";
         SuiteResult result = Runner.path(testResourcesDir)
@@ -151,6 +148,7 @@ class HtmlReportWriterTest {
                 .karateEnv("staging")
                 .outputDir(outputDir)
                 .outputJsonLines(true)  // opt-in for JSON Lines
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         assertTrue(Files.exists(outputDir.resolve("karate-summary.html")));
@@ -177,6 +175,7 @@ class HtmlReportWriterTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputHtmlReport(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         // Verify HTML contains the JSON data placeholder replacement
@@ -216,6 +215,7 @@ class HtmlReportWriterTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputJsonLines(true)  // opt-in to JSON Lines
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         // Verify JSON Lines format (new event envelope format)
@@ -270,12 +270,14 @@ class HtmlReportWriterTest {
                 .workingDir(tempDir)
                 .outputDir(run1Dir)
                 .outputJsonLines(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         Runner.path(feature2.toString())
                 .workingDir(tempDir)
                 .outputDir(run2Dir)
                 .outputJsonLines(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         // Verify both JSON Lines files exist
@@ -333,6 +335,7 @@ class HtmlReportWriterTest {
                 .outputDir(reportDir)
                 .outputHtmlReport(true)
                 .outputJsonLines(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         assertTrue(result.isPassed(), "All scenarios should pass");
@@ -364,6 +367,7 @@ class HtmlReportWriterTest {
                 .outputDir(reportDir)
                 .outputHtmlReport(true)
                 .outputJsonLines(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         assertTrue(result.isPassed());
@@ -402,6 +406,7 @@ class HtmlReportWriterTest {
                 .outputDir(reportDir)
                 .outputHtmlReport(true)
                 .outputJsonLines(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         assertTrue(result.isPassed());
@@ -435,6 +440,7 @@ class HtmlReportWriterTest {
                 .outputDir(reportDir)
                 .outputHtmlReport(true)
                 .outputJsonLines(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         assertTrue(result.isPassed());
@@ -466,6 +472,7 @@ class HtmlReportWriterTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 .outputKarateJson(true)  // Enable Karate JSON output
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         // Verify karate-json subfolder exists
@@ -503,6 +510,7 @@ class HtmlReportWriterTest {
                 .workingDir(tempDir)
                 .outputDir(reportDir)
                 // Note: NOT enabling outputKarateJson
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         // Verify karate-summary.json is still written (in karate-json folder)
@@ -534,6 +542,7 @@ class HtmlReportWriterTest {
                 .outputDir(reportDir)
                 .outputHtmlReport(true)
                 .outputJsonLines(true)
+                .outputConsoleSummary(false)
                 .parallel(1);
 
         // Scenario should still pass (eval failure doesn't fail the test)

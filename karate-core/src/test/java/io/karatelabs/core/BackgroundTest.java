@@ -57,6 +57,7 @@ class BackgroundTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -82,6 +83,7 @@ class BackgroundTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -104,6 +106,7 @@ class BackgroundTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -128,6 +131,7 @@ class BackgroundTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -149,6 +153,7 @@ class BackgroundTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -168,6 +173,7 @@ class BackgroundTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -188,6 +194,7 @@ class BackgroundTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 

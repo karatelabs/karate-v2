@@ -122,6 +122,9 @@ public class Suite {
     // HTTP client factory (for custom/mock HTTP clients)
     private io.karatelabs.http.HttpClientFactory httpClientFactory;
 
+    // Skip tag filtering (@env, @ignore) - useful for unit tests
+    private boolean skipTagFiltering = false;
+
     private Suite() {
     }
 
@@ -303,6 +306,22 @@ public class Suite {
         return this;
     }
 
+    /**
+     * Skip tag filtering (@env, @ignore) so all scenarios run regardless of tags.
+     * Use this for unit tests that need to run scenarios with any tags.
+     */
+    public Suite skipTagFiltering(boolean skip) {
+        this.skipTagFiltering = skip;
+        return this;
+    }
+
+    /**
+     * Check if tag filtering is skipped.
+     */
+    public boolean isSkipTagFiltering() {
+        return skipTagFiltering;
+    }
+
     public Suite resultListener(ResultListener listener) {
         this.resultListeners.add(listener);
         return this;
@@ -395,7 +414,7 @@ public class Suite {
         }
 
         if (warnIfMissing) {
-            logger.warn("Config not found: {}", path);
+            logger.trace("Config not found: {}", path);
         }
         return null;
     }

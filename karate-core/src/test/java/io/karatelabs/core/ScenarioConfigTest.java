@@ -68,6 +68,7 @@ class ScenarioConfigTest {
         // Run with config
         Suite suite = Suite.of(tempDir, featureFile.toString())
                 .configPath(configFile.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -114,6 +115,7 @@ class ScenarioConfigTest {
         Suite suite = Suite.of(tempDir, featureFile.toString())
                 .configPath(configFile.toString())
                 .env("dev")
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -135,6 +137,7 @@ class ScenarioConfigTest {
         // Run without config file (missing config should be ignored)
         Suite suite = Suite.of(tempDir, featureFile.toString())
                 .configPath(tempDir.resolve("nonexistent-config.js").toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -163,6 +166,7 @@ class ScenarioConfigTest {
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
                 .configPath(configFile.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -197,6 +201,7 @@ class ScenarioConfigTest {
         // Run WITHOUT specifying configPath - should use default 'classpath:karate-config.js'
         // which won't be found on classpath, but will be found in working directory
         Suite suite = Suite.of(tempDir, featureFile.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -234,6 +239,7 @@ class ScenarioConfigTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -270,6 +276,7 @@ class ScenarioConfigTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -298,6 +305,7 @@ class ScenarioConfigTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -333,6 +341,7 @@ class ScenarioConfigTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -374,6 +383,7 @@ class ScenarioConfigTest {
         // Run with env=staging, no explicit configPath
         Suite suite = Suite.of(tempDir, featureFile.toString())
                 .env("staging")
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -414,6 +424,7 @@ class ScenarioConfigTest {
 
         // Run with configs from working directory
         Suite suite = Suite.of(tempDir, featureFile.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -457,6 +468,7 @@ class ScenarioConfigTest {
         // Run with env=dev
         Suite suite = Suite.of(tempDir, featureFile.toString())
                 .env("dev")
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -483,6 +495,7 @@ class ScenarioConfigTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 

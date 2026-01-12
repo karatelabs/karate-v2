@@ -25,15 +25,18 @@ package io.karatelabs.core;
 
 import io.karatelabs.common.Resource;
 import io.karatelabs.gherkin.Feature;
-import io.karatelabs.gherkin.Scenario;
 import io.karatelabs.http.HttpClient;
 import io.karatelabs.match.Match;
 import io.karatelabs.match.Result;
+
+import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Test utilities for runtime tests.
+ * Uses Runner internally to ensure production-consistent behavior.
  * Pattern: Create scenarios from Gherkin text blocks and run them with optional mock HTTP.
  */
 public class TestUtils {
@@ -81,28 +84,54 @@ public class TestUtils {
 
     /**
      * Run a full Gherkin feature with a custom HTTP client.
+     * Uses Runner internally with test-friendly settings.
      */
     public static ScenarioRuntime runFeature(HttpClient client, String gherkin) {
-        Feature feature = Feature.read(Resource.text(gherkin));
-        Scenario scenario = feature.getSections().getFirst().getScenario();
-        Resource root = Resource.path("src/test/resources");
-        KarateJs karate = new KarateJs(root, client);
-        ScenarioRuntime sr = new ScenarioRuntime(karate, scenario);
-        sr.call();
-        return sr;
+        Path workingDir = Path.of("src/test/resources");
+        Feature feature = Feature.read(Resource.text(gherkin, workingDir));
+        return runWithRunner(feature, client, workingDir);
     }
 
     /**
      * Run scenario steps from a specific directory (for file read tests).
+     * Uses Runner internally with test-friendly settings.
      */
-    public static ScenarioRuntime runFromDir(java.nio.file.Path dir, String steps) {
-        Feature feature = Feature.read(Resource.text("Feature:\nScenario:\n" + steps));
-        Scenario scenario = feature.getSections().getFirst().getScenario();
-        Resource root = Resource.path(dir.toString());
-        KarateJs karate = new KarateJs(root, new InMemoryHttpClient());
-        ScenarioRuntime sr = new ScenarioRuntime(karate, scenario);
-        sr.call();
-        return sr;
+    public static ScenarioRuntime runFromDir(Path dir, String steps) {
+        Feature feature = Feature.read(Resource.text("Feature:\nScenario:\n" + steps, dir));
+        return runWithRunner(feature, new InMemoryHttpClient(), dir);
+    }
+
+    /**
+     * Internal: Run a feature using Runner with test-friendly settings.
+     * Captures the ScenarioRuntime via a RunListener.
+     */
+    private static ScenarioRuntime runWithRunner(Feature feature, HttpClient client, Path workingDir) {
+        AtomicReference<ScenarioRuntime> captured = new AtomicReference<>();
+
+        // Listener to capture the ScenarioRuntime
+        RunListener listener = event -> {
+            if (event.getType() == RunEventType.SCENARIO_EXIT && event instanceof ScenarioRunEvent sre) {
+                captured.set(sre.source());
+            }
+            return true;
+        };
+
+        Runner.builder()
+                .features(feature)
+                .workingDir(workingDir)
+                .httpClientFactory(() -> client)
+                .skipTagFiltering(true)
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .listener(listener)
+                .parallel(1);
+
+        ScenarioRuntime result = captured.get();
+        if (result == null) {
+            throw new IllegalStateException("No scenarios were executed");
+        }
+        return result;
     }
 
     /**

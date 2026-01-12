@@ -59,6 +59,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -85,6 +86,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -113,6 +115,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -141,6 +144,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -176,6 +180,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, outer.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -202,6 +207,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -228,6 +234,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -257,6 +264,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -292,6 +300,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -315,6 +324,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -340,6 +350,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -368,6 +379,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -393,6 +405,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -419,6 +432,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -445,6 +459,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -470,6 +485,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -495,6 +511,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -521,6 +538,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -549,6 +567,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -582,6 +601,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -608,6 +628,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -633,6 +654,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -659,6 +681,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -685,6 +708,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -704,6 +728,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -729,6 +754,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -749,6 +775,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -788,6 +815,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -822,6 +850,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -850,6 +879,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -882,6 +912,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -915,6 +946,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -966,6 +998,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -1005,6 +1038,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -1044,6 +1078,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -1076,6 +1111,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -1114,6 +1150,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 
@@ -1139,6 +1176,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
+                .outputConsoleSummary(false)
                 .writeReport(false);
         SuiteResult result = suite.run();
 

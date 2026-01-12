@@ -40,7 +40,7 @@ class AuthorizationCodeAuthHandlerTest {
         });
         harness.start();
         port = harness.getPort();
-        logger.info("Shared test server started on port {}", port);
+        logger.debug("Shared test server started on port {}", port);
     }
 
     @AfterAll
@@ -48,7 +48,7 @@ class AuthorizationCodeAuthHandlerTest {
         if (harness != null) {
             harness.stop();
         }
-        logger.info("Shared test server stopped");
+        logger.debug("Shared test server stopped");
     }
 
     @BeforeEach
@@ -108,8 +108,8 @@ class AuthorizationCodeAuthHandlerTest {
                     capturedAuthUrl.set(authorizationUrl);
                     capturedRedirectUri.set(redirectUri);
 
-                    logger.info("Mock browser received auth URL: {}", authorizationUrl);
-                    logger.info("Mock browser redirect URI: {}", redirectUri);
+                    logger.debug("Mock browser received auth URL: {}", authorizationUrl);
+                    logger.debug("Mock browser redirect URI: {}", redirectUri);
 
                     // Verify authorization URL contains required parameters
                     assertTrue(authorizationUrl.contains("response_type=code"));
@@ -142,7 +142,7 @@ class AuthorizationCodeAuthHandlerTest {
             assertNotNull(capturedAuthUrl.get());
             assertNotNull(capturedRedirectUri.get());
 
-            logger.info("Full authorization flow completed successfully");
+            logger.debug("Full authorization flow completed successfully");
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -357,8 +357,8 @@ class AuthorizationCodeAuthHandlerTest {
             // Challenge and verifier should be different (S256 method)
             assertNotEquals(codeChallenge.get(), codeVerifier.get());
 
-            logger.info("PKCE challenge: {}", codeChallenge.get());
-            logger.info("PKCE verifier: {}", codeVerifier.get());
+            logger.debug("PKCE challenge: {}", codeChallenge.get());
+            logger.debug("PKCE verifier: {}", codeVerifier.get());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -423,7 +423,7 @@ class AuthorizationCodeAuthHandlerTest {
             assertNotNull(redirectUri);
             assertTrue(redirectUri.contains(":9999/callback"), "Expected port 9999, got: " + redirectUri);
 
-            logger.info("Callback server used configured port: {}", redirectUri);
+            logger.debug("Callback server used configured port: {}", redirectUri);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -468,7 +468,7 @@ class AuthorizationCodeAuthHandlerTest {
                                         redirectUri.contains(":9999/");
             assertTrue(usedConfiguredPort, "Expected one of configured ports, got: " + redirectUri);
 
-            logger.info("Callback server used one of configured ports: {}", redirectUri);
+            logger.debug("Callback server used one of configured ports: {}", redirectUri);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -517,7 +517,7 @@ class AuthorizationCodeAuthHandlerTest {
                                      redirectUri.contains(":3000/");
             assertTrue(usedDefaultPort, "Expected one of default ports, got: " + redirectUri);
 
-            logger.info("Callback server used default port: {}", redirectUri);
+            logger.debug("Callback server used default port: {}", redirectUri);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
