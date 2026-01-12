@@ -359,9 +359,9 @@ public class CdpDriver implements Driver {
                 .param("url", url)
                 .send();
 
-        // Skip page load wait for data URLs - they load synchronously
-        // and are prone to race conditions with CDP events
-        if (url.startsWith("data:")) {
+        // Skip page load wait for data: and about: URLs - they load synchronously
+        // and don't fire normal lifecycle events
+        if (url.startsWith("data:") || url.startsWith("about:")) {
             pendingNavigationUrl = null;
             return;
         }
