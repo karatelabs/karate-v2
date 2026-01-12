@@ -42,6 +42,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class FeatureRuntime implements Callable<FeatureResult> {
@@ -120,8 +123,14 @@ public class FeatureRuntime implements Callable<FeatureResult> {
             }
 
             try {
-                for (Scenario scenario : selectedScenarios()) {
-                    executeScenario(scenario);
+                // Use scenario-level parallelism for top-level features in parallel mode
+                if (suite != null && suite.isParallel() && caller == null && suite.getScenarioExecutor() != null) {
+                    runScenariosParallel();
+                } else {
+                    // Sequential execution for called features or non-parallel mode
+                    for (Scenario scenario : selectedScenarios()) {
+                        executeScenario(scenario);
+                    }
                 }
             } catch (Exception e) {
                 // Handle errors during scenario iteration (e.g., dynamic expression evaluation failure)
@@ -155,7 +164,85 @@ public class FeatureRuntime implements Callable<FeatureResult> {
     }
 
     /**
-     * Execute a single scenario with exception handling.
+     * Run scenarios in parallel using the Suite's shared executor.
+     * Each scenario is dispatched to the executor, limited by the scenario semaphore.
+     * The iterator produces scenarios lazily (supporting dynamic @setup scenarios).
+     */
+    private void runScenariosParallel() {
+        ExecutorService executor = suite.getScenarioExecutor();
+        Semaphore semaphore = suite.getScenarioSemaphore();
+        List<Future<ScenarioResult>> futures = new ArrayList<>();
+
+        // Dispatch scenarios to executor as they are produced by the iterator
+        // Dynamic scenarios (from @setup) are evaluated lazily during iteration
+        for (Scenario scenario : selectedScenarios()) {
+            Future<ScenarioResult> future = executor.submit(() -> {
+                // Acquire semaphore to limit concurrent scenarios
+                semaphore.acquire();
+                try {
+                    return executeScenarioParallel(scenario);
+                } finally {
+                    semaphore.release();
+                }
+            });
+            futures.add(future);
+        }
+
+        // Wait for all scenarios and collect results
+        for (Future<ScenarioResult> future : futures) {
+            try {
+                ScenarioResult scenarioResult = future.get();
+                result.addScenarioResult(scenarioResult);
+            } catch (Exception e) {
+                logger.error("Error collecting scenario result: {}", e.getMessage());
+                // Create a synthetic error result
+                ScenarioResult errorResult = createErrorScenarioResult(e);
+                result.addScenarioResult(errorResult);
+            }
+        }
+    }
+
+    /**
+     * Execute a scenario in parallel mode.
+     * Handles locking, execution, and result collection.
+     * Returns the ScenarioResult for aggregation by the caller.
+     */
+    private ScenarioResult executeScenarioParallel(Scenario scenario) {
+        // Notify listeners of scenario start
+        for (ResultListener listener : suite.getResultListeners()) {
+            listener.onScenarioStart(scenario);
+        }
+
+        // Acquire locks for @lock tags
+        ScenarioLockManager.LockHandle lockHandle = suite.getLockManager().acquire(scenario);
+
+        ScenarioResult scenarioResult;
+        try {
+            ScenarioRuntime sr = new ScenarioRuntime(this, scenario);
+            scenarioResult = sr.call();
+            // Note: lastExecuted tracking not meaningful in parallel mode
+            // afterScenarioOutline hook is also not applicable in parallel mode
+
+        } catch (Exception e) {
+            logger.error("Error executing scenario '{}': {}", scenario.getName(), e.getMessage());
+            scenarioResult = createErrorScenarioResult(scenario, e);
+        } finally {
+            // Release locks
+            if (lockHandle != null) {
+                suite.getLockManager().release(lockHandle);
+            }
+        }
+
+        // Notify listeners of scenario completion
+        for (ResultListener listener : suite.getResultListeners()) {
+            listener.onScenarioEnd(scenarioResult);
+        }
+
+        return scenarioResult;
+    }
+
+    /**
+     * Execute a single scenario with exception handling (sequential mode).
      * If the scenario throws an exception, it's captured as a failed scenario result
      * rather than propagating up and crashing the feature.
      */
@@ -165,6 +252,12 @@ public class FeatureRuntime implements Callable<FeatureResult> {
             for (ResultListener listener : suite.getResultListeners()) {
                 listener.onScenarioStart(scenario);
             }
+        }
+
+        // Acquire locks for @lock tags (only for top-level features)
+        ScenarioLockManager.LockHandle lockHandle = null;
+        if (suite != null && caller == null) {
+            lockHandle = suite.getLockManager().acquire(scenario);
         }
 
         ScenarioResult scenarioResult;
@@ -181,6 +274,11 @@ public class FeatureRuntime implements Callable<FeatureResult> {
             // Handle unexpected errors during scenario execution
             logger.error("Error executing scenario '{}': {}", scenario.getName(), e.getMessage());
             scenarioResult = createErrorScenarioResult(scenario, e);
+        } finally {
+            // Release locks (only for top-level features)
+            if (suite != null && caller == null && lockHandle != null) {
+                suite.getLockManager().release(lockHandle);
+            }
         }
 
         result.addScenarioResult(scenarioResult);

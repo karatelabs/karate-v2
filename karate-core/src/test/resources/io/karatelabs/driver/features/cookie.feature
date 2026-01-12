@@ -1,5 +1,8 @@
+@lock=cookies
 Feature: Cookie Tests
   Cookie management operations
+  All scenarios use @lock=cookies to ensure mutual exclusion since cookies
+  are shared at the browser level and parallel execution causes interference.
 
   Background:
     * configure driver = driverConfig
@@ -43,13 +46,10 @@ Feature: Cookie Tests
     * def c = cookie('nonexistent')
     * match c == null
 
-  Scenario: Cookie stress test - clears cookies repeatedly to cause parallel interference
-    # This scenario intentionally causes interference with other cookie tests
-    # when running in parallel, demonstrating the need for @lock feature
-    * clearCookies()
-    * delay(50)
-    * clearCookies()
-    * delay(50)
+  Scenario: Cookie stress test - would cause parallel interference without @lock
+    # This scenario clears cookies repeatedly. Without @lock=cookies at feature level,
+    # this would interfere with other cookie tests running in parallel.
+    # The @lock=cookies ensures mutual exclusion.
     * clearCookies()
     * delay(50)
     * clearCookies()

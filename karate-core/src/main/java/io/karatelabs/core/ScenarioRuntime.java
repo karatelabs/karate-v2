@@ -1267,6 +1267,19 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
 
         // Key constants (e.g., Key.ENTER, Key.TAB)
         engine.putRootBinding("Key", new io.karatelabs.js.JavaType(io.karatelabs.driver.Keys.class));
+
+        // Utility: delay/sleep (milliseconds)
+        engine.putRootBinding("delay", (JavaCallable) (ctx, args) -> {
+            int millis = args.length > 0 ? ((Number) args[0]).intValue() : 0;
+            if (millis > 0) {
+                try {
+                    Thread.sleep(millis);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            return null;
+        });
     }
 
     /**

@@ -35,6 +35,7 @@ public class Tag {
     public static final String ENVNOT = "envnot";
     public static final String SETUP = "setup";
     public static final String FAIL = "fail";
+    public static final String LOCK = "lock";
 
     private final int line;
     private final String text;

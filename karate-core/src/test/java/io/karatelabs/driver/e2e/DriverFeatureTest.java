@@ -117,6 +117,8 @@ class DriverFeatureTest {
         // Pool size is auto-detected from parallel(N) - no need to specify it
         ContainerDriverProvider provider = new ContainerDriverProvider(chrome);
 
+        // Run all driver feature tests with scenario-level parallelism
+        // Cookie tests use @lock=cookies for mutual exclusion (cookies are browser-level shared state)
         SuiteResult result = Runner.path("classpath:io/karatelabs/driver/features")
                 .configDir("classpath:io/karatelabs/driver/features/karate-config.js")
                 .outputDir(Path.of("target", "driver-feature-reports"))

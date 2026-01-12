@@ -99,6 +99,13 @@ public class Suite {
     private final Map<String, Object> CALLSINGLE_CACHE = new ConcurrentHashMap<>();
     private final ReentrantLock callSingleLock = new ReentrantLock();
 
+    // Lock manager for @lock tag support (mutual exclusion across parallel scenarios)
+    private final ScenarioLockManager lockManager = new ScenarioLockManager();
+
+    // Shared executor and semaphore for scenario-level parallelism
+    private ExecutorService scenarioExecutor;
+    private Semaphore scenarioSemaphore;
+
     // Results
     private SuiteResult result;
 
@@ -552,9 +559,10 @@ public class Suite {
     }
 
     private void runParallel() {
-        // Use semaphore to limit concurrent executions to threadCount
-        Semaphore semaphore = new Semaphore(threadCount);
+        // Scenario-level parallelism: semaphore limits concurrent scenarios across all features
+        scenarioSemaphore = new Semaphore(threadCount);
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            scenarioExecutor = executor;
             List<Future<FeatureResult>> futures = new ArrayList<>();
 
             for (Feature feature : features) {
@@ -562,8 +570,9 @@ public class Suite {
                 if (isFeatureIgnored(feature)) {
                     continue;
                 }
+                // Features are dispatched immediately (no semaphore at feature level)
+                // Scenario-level semaphore controls actual concurrency
                 Future<FeatureResult> future = executor.submit(() -> {
-                    semaphore.acquire();
                     initThreadListeners();
                     try {
                         FeatureResult featureResult = runFeatureSafely(feature);
@@ -573,7 +582,6 @@ public class Suite {
                         return featureResult;
                     } finally {
                         cleanupThreadListeners();
-                        semaphore.release();
                     }
                 });
                 futures.add(future);
@@ -590,6 +598,9 @@ public class Suite {
                     // The feature result was already added in the task, so we can continue
                 }
             }
+        } finally {
+            scenarioExecutor = null;
+            scenarioSemaphore = null;
         }
     }
 
@@ -724,6 +735,26 @@ public class Suite {
 
     public ReentrantLock getCallSingleLock() {
         return callSingleLock;
+    }
+
+    public ScenarioLockManager getLockManager() {
+        return lockManager;
+    }
+
+    /**
+     * Get the shared executor for scenario-level parallelism.
+     * Only available during parallel execution.
+     */
+    public ExecutorService getScenarioExecutor() {
+        return scenarioExecutor;
+    }
+
+    /**
+     * Get the semaphore that limits concurrent scenario execution.
+     * Only available during parallel execution.
+     */
+    public Semaphore getScenarioSemaphore() {
+        return scenarioSemaphore;
     }
 
     public SuiteResult getResult() {

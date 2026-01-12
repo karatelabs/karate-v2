@@ -196,6 +196,82 @@ class ParallelTest {
     }
 
     /**
+     * Test that scenarios within a single feature run in parallel.
+     * This verifies scenario-level parallelism is working.
+     */
+    @Test
+    void testScenarioLevelParallelism() {
+        // Reset the tracker before test
+        LockTestTracker.reset();
+
+        // Run a single feature with 4 scenarios, parallel(4)
+        // If scenarios run in parallel, max concurrent should be > 1
+        SuiteResult result = Runner.path("classpath:io/karatelabs/core/parallel/scenario-parallel.feature")
+                .configDir("classpath:io/karatelabs/core/parallel")
+                .outputConsoleSummary(false)
+                .parallel(4);
+
+        assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
+        assertEquals(4, result.getScenarioCount());
+
+        // Verify scenarios ran concurrently (max concurrent > 1)
+        int maxConcurrent = LockTestTracker.getMaxConcurrent("scenario-parallel");
+        assertTrue(maxConcurrent > 1,
+                "Expected scenarios to run in parallel (max concurrent > 1), but was " + maxConcurrent +
+                        ". Execution order: " + LockTestTracker.getExecutionOrder());
+    }
+
+    /**
+     * Test that @lock=<name> enforces mutual exclusion.
+     * Scenarios with the same lock name should run sequentially, never concurrently.
+     */
+    @Test
+    void testLockMutualExclusion() {
+        // Reset the tracker before test
+        LockTestTracker.reset();
+
+        // Run two features in parallel, both with @lock=shared scenarios
+        SuiteResult result = Runner.path(
+                        "classpath:io/karatelabs/core/parallel/lock-feature-a.feature",
+                        "classpath:io/karatelabs/core/parallel/lock-feature-b.feature"
+                )
+                .configDir("classpath:io/karatelabs/core/parallel")
+                .outputConsoleSummary(false)
+                .parallel(4);
+
+        assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
+        assertEquals(4, result.getScenarioCount());
+
+        // Verify that max concurrent for 'shared' lock was 1 (mutual exclusion worked)
+        int maxConcurrent = LockTestTracker.getMaxConcurrent("shared");
+        assertEquals(1, maxConcurrent,
+                "Expected max concurrent for 'shared' lock to be 1, but was " + maxConcurrent +
+                        ". Execution order: " + LockTestTracker.getExecutionOrder());
+    }
+
+    /**
+     * Test that @lock=* runs exclusively (no other scenarios run concurrently).
+     */
+    @Test
+    void testLockExclusive() {
+        // Reset the tracker before test
+        LockTestTracker.reset();
+
+        SuiteResult result = Runner.path("classpath:io/karatelabs/core/parallel/lock-exclusive.feature")
+                .configDir("classpath:io/karatelabs/core/parallel")
+                .outputConsoleSummary(false)
+                .parallel(4);
+
+        assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
+        assertEquals(3, result.getScenarioCount());
+
+        // Verify exclusive scenarios ran alone
+        int maxExclusiveConcurrent = LockTestTracker.getMaxConcurrent("exclusive");
+        assertEquals(1, maxExclusiveConcurrent,
+                "Expected max concurrent for exclusive scenarios to be 1, but was " + maxExclusiveConcurrent);
+    }
+
+    /**
      * Comprehensive parallel HTTP test combining:
      * - Multiple scenarios with HTTP calls
      * - Dynamic scenario outline with HTTP
