@@ -81,6 +81,7 @@ public class CdpDriver implements Driver {
     private volatile boolean domContentEventFired;
     private final Set<String> framesStillLoading = ConcurrentHashMap.newKeySet();
     private String mainFrameId;
+    private volatile String pendingNavigationUrl; // for better timeout diagnostics
 
     // Lifecycle
     private volatile boolean terminated = false;
@@ -182,6 +183,11 @@ public class CdpDriver implements Driver {
         cdp.method("Page.enable").send();
         cdp.method("Runtime.enable").send();
 
+        // Enable lifecycle events (required for Page.lifecycleEvent)
+        cdp.method("Page.setLifecycleEventsEnabled")
+                .param("enabled", true)
+                .send();
+
         // Setup event handlers
         setupEventHandlers();
 
@@ -193,9 +199,18 @@ public class CdpDriver implements Driver {
 
     @SuppressWarnings("unchecked")
     private void setupEventHandlers() {
-        cdp.on("Page.domContentEventFired", event -> {
-            domContentEventFired = true;
-            logger.trace("domContentEventFired");
+        // Use Page.lifecycleEvent instead of Page.domContentEventFired
+        // This is more reliable, especially for about:blank and after frame operations
+        // (same approach as Puppeteer)
+        cdp.on("Page.lifecycleEvent", event -> {
+            String name = event.get("name");
+            String frameId = event.get("frameId");
+            logger.trace("lifecycleEvent: name={}, frameId={}", name, frameId);
+            // DOMContentLoaded on main frame signals DOM is ready
+            if ("DOMContentLoaded".equals(name) && mainFrameId.equals(frameId)) {
+                domContentEventFired = true;
+                logger.trace("DOMContentLoaded on main frame");
+            }
         });
 
         cdp.on("Page.frameStartedLoading", event -> {
@@ -203,10 +218,11 @@ public class CdpDriver implements Driver {
             if (frameId != null && frameId.equals(mainFrameId)) {
                 domContentEventFired = false;
                 framesStillLoading.clear();
+                logger.trace("frameStartedLoading: {} (main frame, reset state)", frameId);
             } else if (frameId != null) {
                 framesStillLoading.add(frameId);
+                logger.trace("frameStartedLoading: {} (child frame)", frameId);
             }
-            logger.trace("frameStartedLoading: {}", frameId);
         });
 
         cdp.on("Page.frameStoppedLoading", event -> {
@@ -214,7 +230,7 @@ public class CdpDriver implements Driver {
             if (frameId != null) {
                 framesStillLoading.remove(frameId);
             }
-            logger.trace("frameStoppedLoading: {}", frameId);
+            logger.trace("frameStoppedLoading: {}, remaining: {}", frameId, framesStillLoading);
         });
 
         cdp.on("Page.javascriptDialogOpening", event -> {
@@ -331,6 +347,9 @@ public class CdpDriver implements Driver {
     public void setUrl(String url) {
         logger.debug("navigating to: {}", url);
 
+        // Track for diagnostics
+        pendingNavigationUrl = url;
+
         // Reset page state
         domContentEventFired = false;
         framesStillLoading.clear();
@@ -343,11 +362,16 @@ public class CdpDriver implements Driver {
         // Skip page load wait for data URLs - they load synchronously
         // and are prone to race conditions with CDP events
         if (url.startsWith("data:")) {
+            pendingNavigationUrl = null;
             return;
         }
 
         // Wait for page load based on strategy
-        waitForPageLoad(options.getPageLoadStrategy());
+        try {
+            waitForPageLoad(options.getPageLoadStrategy());
+        } finally {
+            pendingNavigationUrl = null;
+        }
     }
 
     /**
@@ -371,7 +395,15 @@ public class CdpDriver implements Driver {
             sleep(pollInterval);
         }
 
-        throw new RuntimeException("page load timeout after " + timeout.toMillis() + "ms");
+        // Build diagnostic message
+        String url = pendingNavigationUrl != null ? pendingNavigationUrl : "(unknown)";
+        String diagnostic = String.format(
+                "page load timeout after %dms - url: %s, strategy: %s, " +
+                "domContentEventFired: %s, framesStillLoading: %s, mainFrameId: %s",
+                timeout.toMillis(), url, strategy,
+                domContentEventFired, framesStillLoading, mainFrameId);
+        logger.warn(diagnostic);
+        throw new RuntimeException(diagnostic);
     }
 
     private boolean isPageLoadComplete(PageLoadStrategy strategy) {
@@ -1748,6 +1780,9 @@ public class CdpDriver implements Driver {
         // Re-enable required domains on new target
         cdp.method("Page.enable").send();
         cdp.method("Runtime.enable").send();
+        cdp.method("Page.setLifecycleEventsEnabled")
+                .param("enabled", true)
+                .send();
 
         // Get new main frame ID
         CdpResponse frameResponse = cdp.method("Page.getFrameTree").send();
