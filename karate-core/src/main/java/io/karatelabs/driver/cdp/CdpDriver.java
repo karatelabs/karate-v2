@@ -464,8 +464,13 @@ public class CdpDriver implements Driver {
         if (expression.contains("__kjs")) {
             ensureKjsRuntime();
         }
+        logger.trace("script: {}", truncate(expression, 200));
         CdpResponse response = eval(expression);
-        return extractJsValue(response);
+        return extractJsValue(response, expression);
+    }
+
+    private static String truncate(String s, int max) {
+        return s.length() <= max ? s : s.substring(0, max) + "...";
     }
 
     /**
@@ -473,7 +478,7 @@ public class CdpDriver implements Driver {
      */
     private Object evalDirect(String expression) {
         CdpResponse response = eval(expression);
-        return extractJsValue(response);
+        return extractJsValue(response, expression);
     }
 
     private CdpResponse eval(String expression) {
@@ -497,8 +502,9 @@ public class CdpDriver implements Driver {
         return frameContexts.get(currentFrame.id);
     }
 
-    private Object extractJsValue(CdpResponse response) {
+    private Object extractJsValue(CdpResponse response, String expression) {
         if (response.isError()) {
+            logger.warn("JS error for expression: {}", truncate(expression, 100));
             throw new RuntimeException("JS error: " + response.getError());
         }
         Object exceptionDetails = response.getResult("exceptionDetails");
@@ -506,13 +512,17 @@ public class CdpDriver implements Driver {
             // Try to get detailed error message from exception object
             String description = response.getResultAsString("exceptionDetails.exception.description");
             if (description != null && !description.isEmpty()) {
+                logger.warn("JS exception for: {} -> {}", truncate(expression, 100), truncate(description, 200));
                 throw new RuntimeException("JS exception: " + description);
             }
             // Fall back to text (usually just "Uncaught")
             String text = response.getResultAsString("exceptionDetails.text");
+            logger.warn("JS exception for: {} -> {}", truncate(expression, 100), text);
             throw new RuntimeException("JS exception: " + text);
         }
-        return response.getResult("result.value");
+        Object value = response.getResult("result.value");
+        logger.trace("script result: {}", value);
+        return value;
     }
 
     // ========== Screenshot ==========
@@ -810,6 +820,7 @@ public class CdpDriver implements Driver {
      */
     public Element click(String locator) {
         logger.debug("click: {}", locator);
+        retryIfNeeded(locator);
         script(Locators.clickJs(locator));
         return Element.of(this, locator);
     }
@@ -819,6 +830,7 @@ public class CdpDriver implements Driver {
      */
     public Element focus(String locator) {
         logger.debug("focus: {}", locator);
+        retryIfNeeded(locator);
         script(Locators.focusJs(locator));
         return Element.of(this, locator);
     }
@@ -828,6 +840,7 @@ public class CdpDriver implements Driver {
      */
     public Element clear(String locator) {
         logger.debug("clear: {}", locator);
+        retryIfNeeded(locator);
         script(Locators.clearJs(locator));
         return Element.of(this, locator);
     }
@@ -838,6 +851,7 @@ public class CdpDriver implements Driver {
      */
     public Element input(String locator, String value) {
         logger.debug("input: {} <- {}", locator, value);
+        retryIfNeeded(locator);
         focus(locator);
         clear(locator);
         keys().type(value);
@@ -849,6 +863,7 @@ public class CdpDriver implements Driver {
      */
     public Element value(String locator, String value) {
         logger.debug("value: {} <- {}", locator, value);
+        retryIfNeeded(locator);
         script(Locators.inputJs(locator, value));
         return Element.of(this, locator);
     }
@@ -858,6 +873,7 @@ public class CdpDriver implements Driver {
      */
     public Element select(String locator, String text) {
         logger.debug("select: {} <- {}", locator, text);
+        retryIfNeeded(locator);
         script(Locators.optionSelector(locator, text));
         return Element.of(this, locator);
     }
@@ -867,6 +883,7 @@ public class CdpDriver implements Driver {
      */
     public Element select(String locator, int index) {
         logger.debug("select: {} <- index {}", locator, index);
+        retryIfNeeded(locator);
         String js = Locators.wrapInFunctionInvoke(
                 "var e = " + Locators.selector(locator) + ";" +
                         " e.options[" + index + "].selected = true;" +
@@ -881,6 +898,7 @@ public class CdpDriver implements Driver {
      */
     public Element scroll(String locator) {
         logger.debug("scroll: {}", locator);
+        retryIfNeeded(locator);
         script(Locators.scrollJs(locator));
         return Element.of(this, locator);
     }
@@ -890,6 +908,7 @@ public class CdpDriver implements Driver {
      */
     public Element highlight(String locator) {
         logger.debug("highlight: {}", locator);
+        retryIfNeeded(locator);
         script(Locators.highlight(locator, options.getHighlightDuration()));
         return Element.of(this, locator);
     }
@@ -900,6 +919,7 @@ public class CdpDriver implements Driver {
      * Get the text content of an element.
      */
     public String text(String locator) {
+        retryIfNeeded(locator);
         return (String) script(Locators.textJs(locator));
     }
 
@@ -907,6 +927,7 @@ public class CdpDriver implements Driver {
      * Get the outer HTML of an element.
      */
     public String html(String locator) {
+        retryIfNeeded(locator);
         return (String) script(Locators.outerHtmlJs(locator));
     }
 
@@ -914,6 +935,7 @@ public class CdpDriver implements Driver {
      * Get the value of an input element.
      */
     public String value(String locator) {
+        retryIfNeeded(locator);
         return (String) script(Locators.valueJs(locator));
     }
 
@@ -921,6 +943,7 @@ public class CdpDriver implements Driver {
      * Get an attribute of an element.
      */
     public String attribute(String locator, String name) {
+        retryIfNeeded(locator);
         return (String) script(Locators.attributeJs(locator, name));
     }
 
@@ -928,6 +951,7 @@ public class CdpDriver implements Driver {
      * Get a property of an element.
      */
     public Object property(String locator, String name) {
+        retryIfNeeded(locator);
         return script(Locators.propertyJs(locator, name));
     }
 
@@ -935,6 +959,7 @@ public class CdpDriver implements Driver {
      * Check if an element is enabled.
      */
     public boolean enabled(String locator) {
+        retryIfNeeded(locator);
         Object result = script(Locators.enabledJs(locator));
         return Boolean.TRUE.equals(result);
     }
@@ -952,6 +977,7 @@ public class CdpDriver implements Driver {
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> position(String locator) {
+        retryIfNeeded(locator);
         return (Map<String, Object>) script(Locators.getPositionJs(locator));
     }
 
@@ -961,6 +987,7 @@ public class CdpDriver implements Driver {
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> position(String locator, boolean relative) {
+        retryIfNeeded(locator);
         if (relative) {
             String js = Locators.wrapInFunctionInvoke(
                     "var r = " + Locators.selector(locator) + ".getBoundingClientRect();" +
@@ -1035,6 +1062,7 @@ public class CdpDriver implements Driver {
      * The element is available as '_' in the expression.
      */
     public Object script(String locator, String expression) {
+        retryIfNeeded(locator);
         String js = Locators.scriptSelector(locator, expression);
         return script(js);
     }
@@ -1045,8 +1073,34 @@ public class CdpDriver implements Driver {
      */
     @SuppressWarnings("unchecked")
     public List<Object> scriptAll(String locator, String expression) {
+        retryIfNeeded(locator);
         String js = Locators.scriptAllSelector(locator, expression);
         return (List<Object>) script(js);
+    }
+
+    // ========== Auto-Wait Helper ==========
+
+    /**
+     * Auto-wait for element to exist before operations.
+     * Uses retryCount and retryInterval from options.
+     * This is called automatically before element operations to reduce flaky tests.
+     */
+    private void retryIfNeeded(String locator) {
+        if (exists(locator)) {
+            return;
+        }
+        // Element doesn't exist, wait for it using retry settings
+        int maxAttempts = options.getRetryCount();
+        int interval = options.getRetryInterval();
+        for (int i = 0; i < maxAttempts; i++) {
+            sleep(interval);
+            if (exists(locator)) {
+                logger.trace("element found after {} retries: {}", i + 1, locator);
+                return;
+            }
+        }
+        // Element still not found - let the operation fail with a clear error
+        throw new DriverException("element not found after " + maxAttempts + " retries: " + locator);
     }
 
     // ========== Wait Methods ==========

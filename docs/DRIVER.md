@@ -387,11 +387,25 @@ engine.putRootBinding("Key", new JavaType(Keys.class));
 
 ### Philosophy: Auto-Wait by Default
 
-V2 waits for actionability before actions (Playwright-style):
-- **Visible** - not `display:none` or `visibility:hidden`
-- **Enabled** - not `disabled` attribute
-- **Stable** - not animating
-- **Receives pointer events** - not covered by other elements
+V2 automatically waits for elements to exist before performing operations. This reduces flaky tests caused by timing issues where elements haven't yet appeared in the DOM.
+
+**Auto-wait is built into all element operations:**
+- `click()`, `input()`, `value()`, `select()`, `focus()`, `clear()`
+- `scroll()`, `highlight()`
+- `text()`, `html()`, `attribute()`, `property()`, `enabled()`
+- `position()`, `script(locator, expr)`, `scriptAll(locator, expr)`
+
+**How it works:**
+1. Before each operation, checks if element exists
+2. If not, polls with `retryInterval` (default 500ms) up to `retryCount` times (default 3)
+3. Throws `DriverException` if element still not found after retries
+
+**Configuration:**
+```gherkin
+* configure driver = { retryCount: 5, retryInterval: 200 }
+```
+
+**Note:** `exists()` does NOT auto-wait - it immediately returns true/false. Use `waitFor()` for explicit waiting with longer timeouts.
 
 ### Override with Explicit Waits
 
