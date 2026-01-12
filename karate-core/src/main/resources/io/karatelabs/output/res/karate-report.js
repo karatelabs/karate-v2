@@ -251,7 +251,11 @@ const KarateReport = {
 
         const groups = new vis.DataSet(data.groups);
         const items = new vis.DataSet(data.items);
-        const options = { groupOrder: 'content' };
+        const options = {
+            groupOrder: 'content',
+            // Require Ctrl/Cmd key to zoom with mouse wheel - allows normal page scrolling
+            zoomKey: 'ctrlKey'
+        };
         const timeline = new vis.Timeline(container, items, groups, options);
         timeline.fit();
     }
