@@ -42,3 +42,16 @@ Feature: Cookie Tests
   Scenario: Cookie not found
     * def c = cookie('nonexistent')
     * match c == null
+
+  Scenario: Cookie stress test - clears cookies repeatedly to cause parallel interference
+    # This scenario intentionally causes interference with other cookie tests
+    # when running in parallel, demonstrating the need for @lock feature
+    * clearCookies()
+    * delay(50)
+    * clearCookies()
+    * delay(50)
+    * clearCookies()
+    * delay(50)
+    * clearCookies()
+    * delay(50)
+    * clearCookies()
