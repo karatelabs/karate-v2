@@ -32,6 +32,8 @@ import io.karatelabs.http.HttpResponse;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 
 import java.util.Map;
 
@@ -40,7 +42,9 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Integration tests for MockServer using real HTTPS connections.
  * Uses SSL to also verify SSL functionality works.
+ * Disabled on Windows due to Netty SSL certificate generation issues.
  */
+@DisabledOnOs(OS.WINDOWS)
 class MockServerTest {
 
     private static MockServer server;

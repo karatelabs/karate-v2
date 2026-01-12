@@ -44,8 +44,8 @@ private void rewind(int state) { yybegin(state); yypushback(yylength()); }
 WS = [ \t]
 LF = \R
 WS_ONE_LF = {WS}* {LF} {WS}*
-NOT_LF = [^\n]
-NOT_WSLF = [^ \t\n]
+NOT_LF = [^\r\n]
+NOT_WSLF = [^ \t\r\n]
 
 DIGIT = [0-9]
 HEX_DIGIT = [0-9a-fA-F]

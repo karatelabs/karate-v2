@@ -83,7 +83,9 @@ class StepIoTest {
             """);
         assertPassed(sr);
         byte[] bytes = (byte[]) get(sr, "bytes");
-        assertEquals(34, bytes.length);
+        // Accept both Unix (LF=34 bytes) and Windows (CRLF=37 bytes) line endings
+        assertTrue(bytes.length == 34 || bytes.length == 37,
+                "Expected 34 (Unix) or 37 (Windows) bytes, got: " + bytes.length);
     }
 
     // ========== readAsStream ==========

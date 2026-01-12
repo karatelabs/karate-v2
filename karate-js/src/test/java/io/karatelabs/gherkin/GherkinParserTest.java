@@ -468,7 +468,7 @@ class GherkinParserTest {
                   [
                       { name: '#notnull' }
                   ]
-                  \"\"\"  
+                  \"\"\"
                   Given path 'search'
                 Examples:
                   | name |
@@ -480,6 +480,50 @@ class GherkinParserTest {
         assertEquals("def", step1.getKeyword());
         assertNotNull(step1.getDocString());
         assertTrue(step1.getDocString().contains("["));
+    }
+
+    // ========== Windows CRLF Compatibility Tests ==========
+
+    @Test
+    void testWindowsCrlfLineEndings() {
+        // Simulate Windows CRLF line endings - tags should not include \r
+        String windowsFeature = "@ignore\r\n" +
+                "Feature: windows test\r\n" +
+                "\r\n" +
+                "@setup\r\n" +
+                "Scenario: test scenario\r\n" +
+                "  * def x = 1\r\n";
+        feature(windowsFeature);
+
+        // Feature @ignore tag should be parsed correctly (no \r)
+        assertEquals(1, feature.getTags().size());
+        assertEquals("ignore", feature.getTags().get(0).getName());
+        assertFalse(feature.getTags().get(0).getName().contains("\r"),
+                "Tag name should not contain carriage return");
+
+        // Scenario @setup tag should be parsed correctly (no \r)
+        assertNotNull(scenario);
+        assertEquals(1, scenario.getTags().size());
+        assertEquals("setup", scenario.getTags().get(0).getName());
+        assertFalse(scenario.getTags().get(0).getName().contains("\r"),
+                "Tag name should not contain carriage return");
+    }
+
+    @Test
+    void testWindowsCrlfWithTagValues() {
+        // Test tags with values using CRLF
+        String windowsFeature = "@env=dev,qa\r\n" +
+                "Feature: env test\r\n" +
+                "Scenario: test\r\n" +
+                "  * print 'hello'\r\n";
+        feature(windowsFeature);
+
+        assertEquals(1, feature.getTags().size());
+        Tag envTag = feature.getTags().get(0);
+        assertEquals("env", envTag.getName());
+        assertEquals(2, envTag.getValues().size());
+        assertEquals("dev", envTag.getValues().get(0));
+        assertEquals("qa", envTag.getValues().get(1));
     }
 
 }
