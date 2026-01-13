@@ -324,7 +324,7 @@ class EngineTest {
             }
         };
         engine.setListener(listener);
-        engine.eval("console.log('foo')");
+        engine.eval("'hello'");
     }
 
     @Test

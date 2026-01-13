@@ -72,8 +72,6 @@ class JavaMirrorTest {
         Engine engine = new Engine();
         Object result = engine.eval("[1, 2, 3]");
         Object rawResult = engine.evalRaw("[1, 2, 3]");
-        System.out.println("Array type (eval): " + result.getClass().getName());
-        System.out.println("Array type (raw): " + rawResult.getClass().getName());
         assertInstanceOf(List.class, result, "JsArray should be instanceof List");
     }
 
@@ -190,7 +188,6 @@ class JavaMirrorTest {
     void testJsObjectIsInstanceOfMap() {
         Engine engine = new Engine();
         Object result = engine.eval("({a: 1, b: 2})");
-        System.out.println("Object type: " + result.getClass().getName());
         assertInstanceOf(Map.class, result, "JsObject should be instanceof Map");
     }
 
@@ -783,11 +780,6 @@ class JavaMirrorTest {
         Map<String, Object> map = (Map<String, Object>) result;
 
         assertEquals(4, map.size());
-
-        // Map.get() returns unwrapped Java types
-        System.out.println("bool type: " + map.get("bool").getClass().getName());
-        System.out.println("num type: " + map.get("num").getClass().getName());
-        System.out.println("str type: " + map.get("str").getClass().getName());
         assertInstanceOf(java.util.Date.class, map.get("date"), "Map.get() auto-unwraps to java.util.Date");
 
         // getMember() returns raw JS types
@@ -808,14 +800,6 @@ class JavaMirrorTest {
         assertEquals(true, list.get(0));   // boolean primitive
         assertEquals(42, list.get(2));      // number primitive
         assertEquals("hello", list.get(4)); // string primitive
-
-        // Wrappers - document their types
-        System.out.println("Primitive true: " + list.get(0).getClass().getName());
-        System.out.println("Wrapper Boolean: " + list.get(1).getClass().getName());
-        System.out.println("Primitive 42: " + list.get(2).getClass().getName());
-        System.out.println("Wrapper Number: " + list.get(3).getClass().getName());
-        System.out.println("Primitive 'hello': " + list.get(4).getClass().getName());
-        System.out.println("Wrapper String: " + list.get(5).getClass().getName());
     }
 
     @Test
@@ -906,12 +890,9 @@ class JavaMirrorTest {
 
         assertEquals(3, list.size());
         assertInstanceOf(JsDate.class, list.get(0));
-        System.out.println("concat Boolean: " + list.get(1).getClass().getName());
-        System.out.println("concat Number: " + list.get(2).getClass().getName());
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testSpreadWithWrappers() {
         // Spread operator with wrapper types
         // List.get() auto-unwraps for Java consumers

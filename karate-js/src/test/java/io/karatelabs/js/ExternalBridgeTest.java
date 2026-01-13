@@ -72,7 +72,6 @@ class ExternalBridgeTest extends EvalBase {
         engine.setExternalBridge(bridge);
         engine.eval("var foo = { bar: function(){ return 'baz' } }");
         Object bar = engine.eval("foo.bar");
-        System.out.println("foo.bar type: " + (bar == null ? "null" : bar.getClass().getName()));
         assertNotNull(bar, "foo.bar should not be null");
         assertTrue(bar instanceof JsCallable, "foo.bar should be JsCallable but was: " + bar.getClass());
     }

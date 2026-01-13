@@ -23,14 +23,12 @@
  */
 package io.karatelabs.core;
 
-import io.karatelabs.js.JavaCallable;
+import io.karatelabs.js.Args;
 import io.karatelabs.js.SimpleObject;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.Collection;
-import java.util.List;
 import java.util.Random;
 
 /**
@@ -95,73 +93,64 @@ public class Faker implements SimpleObject {
     public Object jsGet(String key) {
         return switch (key) {
             // Timestamps
-            case "timestamp" -> (JavaCallable) (ctx, args) -> Instant.now().getEpochSecond();
-            case "timestampMs" -> (JavaCallable) (ctx, args) -> Instant.now().toEpochMilli();
-            case "isoTimestamp" -> (JavaCallable) (ctx, args) -> Instant.now()
+            case "timestamp" -> Args.invoke(() -> Instant.now().getEpochSecond());
+            case "timestampMs" -> Args.invoke(() -> Instant.now().toEpochMilli());
+            case "isoTimestamp" -> Args.invoke((() -> Instant.now()
                     .atZone(ZoneOffset.UTC)
-                    .format(DateTimeFormatter.ISO_INSTANT);
+                    .format(DateTimeFormatter.ISO_INSTANT)));
 
             // Names
-            case "firstName" -> (JavaCallable) (ctx, args) ->
-                    FIRST_NAMES[RANDOM.nextInt(FIRST_NAMES.length)];
-            case "lastName" -> (JavaCallable) (ctx, args) ->
-                    LAST_NAMES[RANDOM.nextInt(LAST_NAMES.length)];
-            case "fullName" -> (JavaCallable) (ctx, args) ->
-                    FIRST_NAMES[RANDOM.nextInt(FIRST_NAMES.length)] + " " +
-                            LAST_NAMES[RANDOM.nextInt(LAST_NAMES.length)];
+            case "firstName" -> Args.invoke(() -> FIRST_NAMES[RANDOM.nextInt(FIRST_NAMES.length)]);
+            case "lastName" -> Args.invoke(() -> LAST_NAMES[RANDOM.nextInt(LAST_NAMES.length)]);
+            case "fullName" -> Args.invoke(() -> FIRST_NAMES[RANDOM.nextInt(FIRST_NAMES.length)] + " "
+                    + LAST_NAMES[RANDOM.nextInt(LAST_NAMES.length)]);
 
             // Contact
-            case "email" -> (JavaCallable) (ctx, args) -> {
+            case "email" -> Args.invoke(() -> {
                 String first = FIRST_NAMES[RANDOM.nextInt(FIRST_NAMES.length)].toLowerCase();
                 String domain = EMAIL_DOMAINS[RANDOM.nextInt(EMAIL_DOMAINS.length)];
                 return first + RANDOM.nextInt(100) + "@" + domain;
-            };
-            case "userName" -> (JavaCallable) (ctx, args) -> {
+            });
+            case "userName" -> Args.invoke(() -> {
                 String first = FIRST_NAMES[RANDOM.nextInt(FIRST_NAMES.length)].toLowerCase();
                 String last = LAST_NAMES[RANDOM.nextInt(LAST_NAMES.length)].toLowerCase();
                 return first + "." + last;
-            };
-            case "phoneNumber" -> (JavaCallable) (ctx, args) ->
-                    "+1-555-" + String.format("%03d", RANDOM.nextInt(1000)) + "-" +
-                            String.format("%04d", RANDOM.nextInt(10000));
+            });
+            case "phoneNumber" -> Args.invoke(() ->
+                    "+1-555-" + String.format("%03d", RANDOM.nextInt(1000))
+                            + "-" + String.format("%04d", RANDOM.nextInt(10000)));
 
             // Location
-            case "city" -> (JavaCallable) (ctx, args) ->
-                    CITIES[RANDOM.nextInt(CITIES.length)];
-            case "country" -> (JavaCallable) (ctx, args) ->
-                    COUNTRIES[RANDOM.nextInt(COUNTRIES.length)];
-            case "streetAddress" -> (JavaCallable) (ctx, args) ->
-                    (RANDOM.nextInt(9999) + 1) + " " + STREET_NAMES[RANDOM.nextInt(STREET_NAMES.length)];
-            case "zipCode" -> (JavaCallable) (ctx, args) ->
-                    String.format("%05d", RANDOM.nextInt(100000));
-            case "latitude" -> (JavaCallable) (ctx, args) ->
-                    RANDOM.nextDouble() * 180 - 90;
-            case "longitude" -> (JavaCallable) (ctx, args) ->
-                    RANDOM.nextDouble() * 360 - 180;
+            case "city" -> Args.invoke(() -> CITIES[RANDOM.nextInt(CITIES.length)]);
+            case "country" -> Args.invoke(() -> COUNTRIES[RANDOM.nextInt(COUNTRIES.length)]);
+            case "streetAddress" -> Args.invoke(() -> (RANDOM.nextInt(9999) + 1)
+                    + " " + STREET_NAMES[RANDOM.nextInt(STREET_NAMES.length)]);
+            case "zipCode" -> Args.invoke(() -> String.format("%05d", RANDOM.nextInt(100000)));
+            case "latitude" -> Args.invoke(() -> RANDOM.nextDouble() * 180 - 90);
+            case "longitude" -> Args.invoke(() -> RANDOM.nextDouble() * 360 - 180);
 
             // Numbers
-            case "randomInt" -> (JavaCallable) (ctx, args) -> {
+            case "randomInt" -> Args.invoke(args -> {
                 if (args.length == 0) return RANDOM.nextInt(1001);
                 if (args.length == 1) return RANDOM.nextInt(((Number) args[0]).intValue() + 1);
                 int min = ((Number) args[0]).intValue();
                 int max = ((Number) args[1]).intValue();
                 return RANDOM.nextInt(max - min + 1) + min;
-            };
-            case "randomFloat" -> (JavaCallable) (ctx, args) -> {
+            });
+            case "randomFloat" -> Args.invoke(args -> {
                 if (args.length == 0) return RANDOM.nextDouble();
                 if (args.length == 1) return RANDOM.nextDouble() * ((Number) args[0]).doubleValue();
                 double min = ((Number) args[0]).doubleValue();
                 double max = ((Number) args[1]).doubleValue();
                 return RANDOM.nextDouble() * (max - min) + min;
-            };
+            });
 
             // Boolean
-            case "randomBoolean" -> (JavaCallable) (ctx, args) -> RANDOM.nextBoolean();
+            case "randomBoolean" -> Args.invoke(RANDOM::nextBoolean);
 
             // Text
-            case "word" -> (JavaCallable) (ctx, args) ->
-                    WORDS[RANDOM.nextInt(WORDS.length)];
-            case "sentence" -> (JavaCallable) (ctx, args) -> {
+            case "word" -> Args.invoke(() -> WORDS[RANDOM.nextInt(WORDS.length)]);
+            case "sentence" -> Args.invoke(() -> {
                 int wordCount = 5 + RANDOM.nextInt(10);
                 StringBuilder sb = new StringBuilder();
                 sb.append(Character.toUpperCase(WORDS[RANDOM.nextInt(WORDS.length)].charAt(0)));
@@ -171,8 +160,8 @@ public class Faker implements SimpleObject {
                 }
                 sb.append(".");
                 return sb.toString();
-            };
-            case "paragraph" -> (JavaCallable) (ctx, args) -> {
+            });
+            case "paragraph" -> Args.invoke(() -> {
                 int sentenceCount = 3 + RANDOM.nextInt(4);
                 StringBuilder sb = new StringBuilder();
                 for (int i = 0; i < sentenceCount; i++) {
@@ -186,23 +175,21 @@ public class Faker implements SimpleObject {
                     sb.append(".");
                 }
                 return sb.toString();
-            };
-            case "alphanumeric" -> (JavaCallable) (ctx, args) -> {
+            });
+            case "alphanumeric" -> Args.invoke(args -> {
                 int length = args.length > 0 ? ((Number) args[0]).intValue() : 10;
                 return generateAlphanumeric(length);
-            };
-            case "hexColor" -> (JavaCallable) (ctx, args) ->
-                    String.format("#%06x", RANDOM.nextInt(0x1000000));
+            });
+            case "hexColor" -> Args.invoke(() -> String.format("#%06x", RANDOM.nextInt(0x1000000)));
 
             // Business
-            case "companyName" -> (JavaCallable) (ctx, args) -> {
+            case "companyName" -> Args.invoke(() -> {
                 String name = LAST_NAMES[RANDOM.nextInt(LAST_NAMES.length)];
                 String suffix = COMPANY_SUFFIXES[RANDOM.nextInt(COMPANY_SUFFIXES.length)];
                 return name + " " + suffix;
-            };
-            case "jobTitle" -> (JavaCallable) (ctx, args) ->
-                    JOB_TITLES[RANDOM.nextInt(JOB_TITLES.length)];
-            case "creditCardNumber" -> (JavaCallable) (ctx, args) -> {
+            });
+            case "jobTitle" -> Args.invoke(() -> JOB_TITLES[RANDOM.nextInt(JOB_TITLES.length)]);
+            case "creditCardNumber" -> Args.invoke(() -> {
                 // Generate fake credit card number (not valid for real transactions)
                 StringBuilder sb = new StringBuilder();
                 sb.append("4"); // Visa prefix
@@ -210,23 +197,10 @@ public class Faker implements SimpleObject {
                     sb.append(RANDOM.nextInt(10));
                 }
                 return sb.toString();
-            };
+            });
 
             default -> null;
         };
-    }
-
-    @Override
-    public Collection<String> jsKeys() {
-        return List.of(
-                "timestamp", "timestampMs", "isoTimestamp",
-                "firstName", "lastName", "fullName",
-                "email", "userName", "phoneNumber",
-                "city", "country", "streetAddress", "zipCode", "latitude", "longitude",
-                "randomInt", "randomFloat", "randomBoolean",
-                "word", "sentence", "paragraph", "alphanumeric", "hexColor",
-                "companyName", "jobTitle", "creditCardNumber"
-        );
     }
 
     private static String generateAlphanumeric(int length) {

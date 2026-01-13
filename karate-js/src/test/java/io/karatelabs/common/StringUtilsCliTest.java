@@ -95,14 +95,12 @@ class StringUtilsCliTest {
     void testUnixEscapeWithSingleQuote() {
         String result = StringUtils.shellEscapeUnix("O'Brien");
         assertEquals("'O'\\''Brien'", result);
-        logger.info("Unix escape with single quote: {}", result);
     }
 
     @Test
     void testUnixEscapeWithMultipleSingleQuotes() {
         String result = StringUtils.shellEscapeUnix("It's John's book");
         assertEquals("'It'\\''s John'\\''s book'", result);
-        logger.info("Unix escape with multiple single quotes: {}", result);
     }
 
     @Test
@@ -153,14 +151,12 @@ class StringUtilsCliTest {
     void testWindowsEscapeWithDoubleQuote() {
         String result = StringUtils.shellEscapeWindows("say \"hello\"");
         assertEquals("\"say \"\"hello\"\"\"", result);
-        logger.info("Windows escape with double quote: {}", result);
     }
 
     @Test
     void testWindowsEscapeAmpersand() {
         String result = StringUtils.shellEscapeWindows("test & special");
         assertEquals("\"test ^& special\"", result);
-        logger.info("Windows escape with ampersand: {}", result);
     }
 
     @Test
@@ -185,7 +181,6 @@ class StringUtilsCliTest {
     void testWindowsEscapePercent() {
         String result = StringUtils.shellEscapeWindows("PATH=%PATH%");
         assertEquals("\"PATH=%%PATH%%\"", result);
-        logger.info("Windows escape with percent: {}", result);
     }
 
     @Test
@@ -210,7 +205,6 @@ class StringUtilsCliTest {
     void testWindowsEscapeAllSpecialChars() {
         String result = StringUtils.shellEscapeWindows("^&|<>%");
         assertEquals("\"^^^&^|^<^>%%\"", result);
-        logger.info("Windows escape all special chars: {}", result);
     }
 
     // ==================== shellEscape (OS-aware) Tests ====================
@@ -221,13 +215,11 @@ class StringUtilsCliTest {
         // Should wrap in quotes (either single or double depending on OS)
         assertTrue(result.startsWith("'") || result.startsWith("\""));
         assertTrue(result.endsWith("'") || result.endsWith("\""));
-        logger.info("Shell escape on {}: {}", OsUtils.OS_NAME, result);
     }
 
     @Test
     void testShellEscapeWithQuotes() {
         String result = StringUtils.shellEscape("It's a test");
-        logger.info("Shell escape with quote on {}: {}", OsUtils.OS_NAME, result);
 
         // Verify it's properly escaped for the OS
         if (OsUtils.isWindows()) {
@@ -243,7 +235,6 @@ class StringUtilsCliTest {
     @Test
     void testBuildShellCommandSimple() {
         String result = StringUtils.buildShellCommand("curl", "https://example.com");
-        logger.info("Build shell command: {}", result);
 
         assertTrue(result.startsWith("curl "));
         assertTrue(result.contains("example.com"));
@@ -252,7 +243,6 @@ class StringUtilsCliTest {
     @Test
     void testBuildShellCommandMultipleArgs() {
         String result = StringUtils.buildShellCommand("curl", "-X", "POST", "https://example.com");
-        logger.info("Build shell command with args: {}", result);
 
         assertTrue(result.startsWith("curl "));
         assertTrue(result.contains("POST"));
@@ -262,8 +252,6 @@ class StringUtilsCliTest {
     @Test
     void testBuildShellCommandWithSpecialChars() {
         String result = StringUtils.buildShellCommand("echo", "Hello World");
-        logger.info("Build shell command with space: {}", result);
-
         assertTrue(result.startsWith("echo "));
         // Should be quoted
         assertTrue(result.contains("'") || result.contains("\""));
@@ -287,10 +275,6 @@ class StringUtilsCliTest {
         String escapedUrl = StringUtils.shellEscape("https://example.com");
         String escapedHeader = StringUtils.shellEscape("Content-Type: application/json");
 
-        logger.info("Original: {}", original);
-        logger.info("Escaped URL: {}", escapedUrl);
-        logger.info("Escaped header: {}", escapedHeader);
-
         // Verify tokens were extracted correctly
         assertEquals(4, tokens.length);
         assertEquals("curl", tokens[0]);
@@ -303,7 +287,6 @@ class StringUtilsCliTest {
     void testJsonInCommand() {
         String json = "{\"name\":\"O'Brien\",\"age\":30}";
         String escaped = StringUtils.shellEscape(json);
-        logger.info("JSON escaped: {}", escaped);
 
         // Should be properly escaped
         assertNotNull(escaped);
@@ -314,7 +297,6 @@ class StringUtilsCliTest {
     void testUrlWithSpecialChars() {
         String url = "https://example.com/search?q=test&category=books";
         String escaped = StringUtils.shellEscape(url);
-        logger.info("URL escaped: {}", escaped);
 
         // Should wrap in quotes to protect special chars
         assertTrue(escaped.startsWith("'") || escaped.startsWith("\""));
@@ -336,7 +318,6 @@ class StringUtilsCliTest {
     void testUnicodeInCommand() {
         String unicode = "Hello 世界 🌍";
         String escaped = StringUtils.shellEscape(unicode);
-        logger.info("Unicode escaped: {}", escaped);
 
         assertNotNull(escaped);
         assertTrue(escaped.contains("世界"));
