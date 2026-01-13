@@ -182,22 +182,25 @@ public class CdpDriver implements Driver {
     private void initialize() {
         logger.debug("initializing CDP driver");
 
-        // Enable required domains
+        // CRITICAL: Get main frame ID FIRST - needed by event handlers
+        // This works without Page.enable and ensures handlers can filter by frame
+        CdpResponse frameResponse = cdp.method("Page.getFrameTree").send();
+        mainFrameId = frameResponse.getResult("frameTree.frame.id");
+        logger.debug("main frame ID: {}", mainFrameId);
+
+        // Setup event handlers BEFORE enabling domains
+        // This prevents race conditions where events fire before handlers are registered
+        setupEventHandlers();
+
+        // NOW enable domains - events will be properly captured
         cdp.method("Page.enable").send();
         cdp.method("Runtime.enable").send();
+        cdp.method("Network.enable").send(); // Required for cookie operations
 
         // Enable lifecycle events (required for Page.lifecycleEvent)
         cdp.method("Page.setLifecycleEventsEnabled")
                 .param("enabled", true)
                 .send();
-
-        // Setup event handlers
-        setupEventHandlers();
-
-        // Get main frame ID
-        CdpResponse response = cdp.method("Page.getFrameTree").send();
-        mainFrameId = response.getResult("frameTree.frame.id");
-        logger.debug("main frame ID: {}", mainFrameId);
     }
 
     @SuppressWarnings("unchecked")
@@ -649,6 +652,9 @@ public class CdpDriver implements Driver {
             return;
         }
 
+        // Wait for frame element to exist (same retry logic as other element operations)
+        retryIfNeeded(locator);
+
         // Find the iframe element and get its frame ID
         String js = Locators.wrapInFunctionInvoke(
                 "var e = " + Locators.selector(locator) + ";" +
@@ -1017,12 +1023,15 @@ public class CdpDriver implements Driver {
         String countJs = Locators.countJs(locator);
         Object countResult = script(countJs);
         int count = countResult instanceof Number ? ((Number) countResult).intValue() : 0;
+
+        // Always return mutable ArrayList for JS engine compatibility
+        // (List.of() returns ImmutableCollections which have module access restrictions)
+        List<Element> elements = new ArrayList<>();
         if (count == 0) {
-            return List.of();
+            return elements;
         }
 
         // Create Element objects with indexed locators
-        List<Element> elements = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             // Use JS expression to select nth element from querySelectorAll/evaluate
             String indexedLocator = createIndexedLocator(locator, i);
@@ -1414,7 +1423,7 @@ public class CdpDriver implements Driver {
     public List<Map<String, Object>> getCookies() {
         CdpResponse response = cdp.method("Network.getCookies").send();
         List<Map<String, Object>> cookies = response.getResult("cookies");
-        return cookies != null ? cookies : List.of();
+        return cookies != null ? cookies : new ArrayList<>();
     }
 
     // ========== Window Management ==========

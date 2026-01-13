@@ -210,6 +210,24 @@ public class JavaUtils {
     }
 
     private static Method findMethod(Class<?> clazz, String name, Object[] args) {
+        Method method = findMethodDirect(clazz, name, args);
+        if (method == null) {
+            return null;
+        }
+        // Check if the method's declaring class is accessible (public and exported)
+        // If not, find the same method on an accessible interface or superclass
+        // This handles internal JDK classes like ImmutableCollections$ListN
+        Class<?> declaringClass = method.getDeclaringClass();
+        if (!Modifier.isPublic(declaringClass.getModifiers()) || isModuleRestricted(declaringClass)) {
+            Method accessibleMethod = findAccessibleMethod(clazz, name, method.getParameterTypes());
+            if (accessibleMethod != null) {
+                return accessibleMethod;
+            }
+        }
+        return method;
+    }
+
+    private static Method findMethodDirect(Class<?> clazz, String name, Object[] args) {
         try {
             return clazz.getMethod(name, paramTypes(args));
         } catch (Exception e) {
@@ -223,6 +241,56 @@ public class JavaUtils {
             }
             return null;
         }
+    }
+
+    private static boolean isModuleRestricted(Class<?> clazz) {
+        // Check if the class is in a module that restricts reflective access
+        // Internal JDK classes like ImmutableCollections$ListN are in java.base but not exported
+        Module module = clazz.getModule();
+        if (module == null || !module.isNamed()) {
+            return false;
+        }
+        String packageName = clazz.getPackageName();
+        // If the package is not exported to our module, it's restricted
+        return !module.isExported(packageName, JavaUtils.class.getModule());
+    }
+
+    private static Method findAccessibleMethod(Class<?> clazz, String name, Class<?>[] paramTypes) {
+        // First try interfaces (most common case: List, Map, Set, etc.)
+        for (Class<?> iface : clazz.getInterfaces()) {
+            try {
+                Method method = iface.getMethod(name, paramTypes);
+                if (Modifier.isPublic(iface.getModifiers())) {
+                    return method;
+                }
+            } catch (NoSuchMethodException e) {
+                // Continue to next interface
+            }
+        }
+        // Then try superclass chain
+        Class<?> superclass = clazz.getSuperclass();
+        while (superclass != null && superclass != Object.class) {
+            if (Modifier.isPublic(superclass.getModifiers()) && !isModuleRestricted(superclass)) {
+                try {
+                    return superclass.getMethod(name, paramTypes);
+                } catch (NoSuchMethodException e) {
+                    // Continue to parent
+                }
+            }
+            // Also check interfaces of superclass
+            for (Class<?> iface : superclass.getInterfaces()) {
+                try {
+                    Method method = iface.getMethod(name, paramTypes);
+                    if (Modifier.isPublic(iface.getModifiers())) {
+                        return method;
+                    }
+                } catch (NoSuchMethodException e) {
+                    // Continue
+                }
+            }
+            superclass = superclass.getSuperclass();
+        }
+        return null;
     }
 
     private static boolean match(Class<?>[] types, Object[] args) {

@@ -163,11 +163,11 @@ Feature: Element Tests
 
   Scenario: Locate all elements
     * def inputs = locateAll("input[type='text'], input[type='email'], input[type='password']")
-    * assert inputs.size() >= 3
+    * assert inputs.length >= 3
 
   Scenario: Locate all options
     * def options = locateAll('#country option')
-    * match options.size() == 5
+    * match options.length == 5
 
   # ========== ScriptAll ==========
 

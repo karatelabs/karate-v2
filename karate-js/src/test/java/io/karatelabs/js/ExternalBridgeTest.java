@@ -292,6 +292,54 @@ class ExternalBridgeTest extends EvalBase {
     }
 
     @Test
+    void testImmutableListMethodCall() {
+        // Test that List.of() (which returns ImmutableCollections$ListN) can have methods called
+        // This is a regression test for module access restrictions on internal JDK classes
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        List<String> immutableList = List.of("a", "b", "c");
+        engine.put("list", immutableList);
+        // This should work - calling size() on an immutable list
+        Object size = engine.eval("list.size()");
+        assertEquals(3, size);
+    }
+
+    @Test
+    void testImmutableListLengthProperty() {
+        // Test that length property works on immutable lists (via JsArray wrapping)
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        List<String> immutableList = List.of("x", "y");
+        engine.put("list", immutableList);
+        // length should work via JsArray prototype
+        Object length = engine.eval("list.length");
+        assertEquals(2, length);
+    }
+
+    @Test
+    void testEmptyImmutableListMethodCall() {
+        // Test that List.of() with no args (empty immutable list) works
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        List<String> emptyList = List.of();
+        engine.put("list", emptyList);
+        Object size = engine.eval("list.size()");
+        assertEquals(0, size);
+    }
+
+    @Test
+    void testImmutableMapMethodCall() {
+        // Test that Map.of() (which returns ImmutableCollections$MapN) can have methods called
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        Map<String, Object> immutableMap = Map.of("a", 1, "b", 2);
+        engine.put("map", immutableMap);
+        assertEquals(2, engine.eval("map.size()"));
+        assertEquals(1, engine.eval("map.get('a')"));
+        assertEquals(true, engine.eval("map.containsKey('b')"));
+    }
+
+    @Test
     void testEvalFunctionWithJavaType() {
         // Replicates what happens with call read('file.js') for a JS file containing Java.type
         // First, evaluate the function definition (like read() does)

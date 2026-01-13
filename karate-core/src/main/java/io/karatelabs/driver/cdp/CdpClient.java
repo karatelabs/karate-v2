@@ -66,13 +66,37 @@ public class CdpClient {
                 .maxPayloadSize(HttpUtils.MEGABYTE * 16) // Screenshots can be large
                 .build();
         WsClient ws = WsClient.connect(options);
-        return new CdpClient(ws, defaultTimeout);
+        CdpClient client = new CdpClient(ws, defaultTimeout);
+        client.waitForReady();
+        return client;
     }
 
     private CdpClient(WsClient ws, Duration defaultTimeout) {
         this.ws = ws;
         this.defaultTimeout = defaultTimeout;
         setupMessageHandler();
+    }
+
+    /**
+     * Wait for CDP to be ready by sending a simple command.
+     * This verifies the WebSocket connection is fully established and CDP is responsive.
+     */
+    private void waitForReady() {
+        try {
+            // Use a shorter timeout for readiness check
+            Duration readyTimeout = defaultTimeout.compareTo(Duration.ofSeconds(10)) > 0
+                    ? Duration.ofSeconds(10) : defaultTimeout;
+            CdpMessage message = new CdpMessage(this, nextId(), "Browser.getVersion");
+            message.timeout(readyTimeout);
+            CdpResponse response = send(message);
+            if (response.isError()) {
+                logger.warn("CDP readiness check returned error: {}", response.getErrorMessage());
+            } else {
+                logger.debug("CDP ready, browser: {}", response.getResult().get("product"));
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("CDP connection failed readiness check: " + e.getMessage(), e);
+        }
     }
 
     private void setupMessageHandler() {
@@ -191,8 +215,15 @@ public class CdpClient {
      * Async send with response tracking.
      */
     CompletableFuture<CdpResponse> sendAsync(CdpMessage message) {
+        // Fail fast if connection is closed
+        if (!ws.isOpen()) {
+            return CompletableFuture.failedFuture(
+                    new WsException(WsException.Type.CONNECTION_CLOSED, "websocket not open"));
+        }
+
         CompletableFuture<CdpResponse> future = new CompletableFuture<>();
-        pending.put(message.getId(), future);
+        int messageId = message.getId();
+        pending.put(messageId, future);
 
         String json = message.toJson();
         logger.trace(">>> {}", json);
@@ -200,13 +231,19 @@ public class CdpClient {
         try {
             ws.send(json);
         } catch (Exception e) {
-            pending.remove(message.getId());
+            pending.remove(messageId);
             return CompletableFuture.failedFuture(e);
         }
 
-        // Apply timeout
+        // Apply timeout and cleanup pending map on timeout
         Duration timeout = message.getTimeout() != null ? message.getTimeout() : defaultTimeout;
-        return future.orTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS);
+        return future.orTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
+                .whenComplete((result, ex) -> {
+                    if (ex instanceof TimeoutException) {
+                        pending.remove(messageId);
+                        logger.debug("CDP request {} ({}) timed out", messageId, message.getMethod());
+                    }
+                });
     }
 
     /**
