@@ -124,10 +124,17 @@ public class FeatureRuntime implements Callable<FeatureResult> {
 
             try {
                 // Use scenario-level parallelism for top-level features in parallel mode
-                if (suite != null && suite.isParallel() && caller == null && suite.getScenarioExecutor() != null) {
+                // Must check BOTH executor AND semaphore to ensure proper synchronization
+                if (suite != null && suite.isParallel() && caller == null
+                        && suite.getScenarioExecutor() != null && suite.getScenarioSemaphore() != null) {
+                    logger.debug("Running scenarios in parallel mode for feature: {}", feature.getName());
                     runScenariosParallel();
                 } else {
                     // Sequential execution for called features or non-parallel mode
+                    if (suite != null && suite.isParallel() && caller == null) {
+                        logger.warn("Falling back to sequential execution for feature '{}' - executor: {}, semaphore: {}",
+                                feature.getName(), suite.getScenarioExecutor() != null, suite.getScenarioSemaphore() != null);
+                    }
                     for (Scenario scenario : selectedScenarios()) {
                         executeScenario(scenario);
                     }
@@ -177,8 +184,11 @@ public class FeatureRuntime implements Callable<FeatureResult> {
         // Dynamic scenarios (from @setup) are evaluated lazily during iteration
         for (Scenario scenario : selectedScenarios()) {
             Future<ScenarioResult> future = executor.submit(() -> {
+                String scenarioName = scenario.getName();
                 // Acquire semaphore to limit concurrent scenarios
+                logger.debug("Waiting for semaphore permit: {} (available: {})", scenarioName, semaphore.availablePermits());
                 semaphore.acquire();
+                logger.debug("Acquired semaphore permit: {} (available: {})", scenarioName, semaphore.availablePermits());
                 // Acquire a lane for timeline reporting (consistent lane names instead of random thread IDs)
                 suite.acquireLane();
                 try {
@@ -186,6 +196,7 @@ public class FeatureRuntime implements Callable<FeatureResult> {
                 } finally {
                     suite.releaseLane();
                     semaphore.release();
+                    logger.debug("Released semaphore permit: {} (available: {})", scenarioName, semaphore.availablePermits());
                 }
             });
             futures.add(future);

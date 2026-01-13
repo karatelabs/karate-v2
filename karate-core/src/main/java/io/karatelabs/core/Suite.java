@@ -103,11 +103,12 @@ public class Suite {
     private final ScenarioLockManager lockManager = new ScenarioLockManager();
 
     // Shared executor and semaphore for scenario-level parallelism
-    private ExecutorService scenarioExecutor;
-    private Semaphore scenarioSemaphore;
+    // These must be volatile for memory visibility across virtual threads
+    private volatile ExecutorService scenarioExecutor;
+    private volatile Semaphore scenarioSemaphore;
 
     // Lane pool for timeline reporting (assigns consistent lane numbers 1-N instead of random thread IDs)
-    private java.util.Queue<Integer> availableLanes;
+    private volatile java.util.Queue<Integer> availableLanes;
     private final ThreadLocal<Integer> currentLane = new ThreadLocal<>();
 
     // Results
@@ -582,14 +583,20 @@ public class Suite {
     }
 
     private void runParallel() {
-        // Scenario-level parallelism: semaphore limits concurrent scenarios across all features
-        scenarioSemaphore = new Semaphore(threadCount);
+        // Initialize ALL parallel infrastructure BEFORE creating executor
+        // This ensures visibility to feature tasks that may start immediately
         // Initialize lane pool for timeline reporting (1 to threadCount)
         availableLanes = new java.util.concurrent.ConcurrentLinkedQueue<>();
         for (int i = 1; i <= threadCount; i++) {
             availableLanes.add(i);
         }
+        // Semaphore limits concurrent scenarios across all features
+        scenarioSemaphore = new Semaphore(threadCount);
+        logger.info("Parallel execution initialized: threadCount={}, semaphore permits={}",
+                threadCount, scenarioSemaphore.availablePermits());
+
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            // Set executor LAST - this signals to features that parallel mode is ready
             scenarioExecutor = executor;
             List<Future<FeatureResult>> futures = new ArrayList<>();
 

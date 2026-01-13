@@ -178,21 +178,24 @@ public class PooledDriverProvider implements DriverProvider {
     }
 
     private Driver waitForDriver(Map<String, Object> config, ScenarioRuntime runtime) {
-        logger.debug("Pool exhausted, waiting for available driver...");
+        String scenarioName = runtime.getScenario().getName();
+        logger.warn("Pool exhausted for scenario '{}', waiting for available driver... [{}]",
+                scenarioName, getStats());
         try {
             Driver driver = availableDrivers.poll(30, TimeUnit.SECONDS);
             if (driver == null) {
-                throw new RuntimeException("Timeout waiting for available driver (pool size: " + poolSize + ")");
+                throw new RuntimeException("Timeout waiting for available driver for scenario '"
+                        + scenarioName + "' [" + getStats() + "]");
             }
             if (driver.isTerminated()) {
                 // Create replacement
                 createdCount.decrementAndGet();
                 driver = createDriver(config);
                 createdCount.incrementAndGet();
-                logger.info("Replaced terminated driver for scenario: {}",
-                        runtime.getScenario().getName());
+                logger.info("Replaced terminated driver for scenario: {}", scenarioName);
             } else {
                 resetDriver(driver);
+                logger.info("Acquired pooled driver after wait for scenario: {}", scenarioName);
             }
             return driver;
         } catch (InterruptedException e) {
