@@ -201,6 +201,33 @@ public class CdpDriver implements Driver {
         cdp.method("Page.setLifecycleEventsEnabled")
                 .param("enabled", true)
                 .send();
+
+        // Safety check: if page is already loaded (we connected late), set the flag
+        // This handles the case where DOMContentLoaded fired before we were listening
+        checkIfPageAlreadyLoaded();
+    }
+
+    /**
+     * Check if the current page is already loaded (document.readyState is 'complete' or 'interactive').
+     * This handles the case where we connect to an already-loaded page or the event was missed.
+     */
+    private void checkIfPageAlreadyLoaded() {
+        try {
+            CdpResponse response = cdp.method("Runtime.evaluate")
+                    .param("expression", "document.readyState")
+                    .param("returnByValue", true)
+                    .send();
+            String readyState = response.getResultAsString("result.value");
+            if ("complete".equals(readyState) || "interactive".equals(readyState)) {
+                if (!domContentEventFired) {
+                    logger.debug("page already loaded (readyState={}), setting domContentEventFired", readyState);
+                    domContentEventFired = true;
+                }
+            }
+        } catch (Exception e) {
+            // Ignore - this is just a safety check
+            logger.warn("readyState check failed: {}", e.getMessage());
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -402,32 +429,132 @@ public class CdpDriver implements Driver {
 
         while (System.currentTimeMillis() < deadline) {
             if (isPageLoadComplete(strategy)) {
-                return;
+                // Verify JS execution works (execution context is ready)
+                // This handles the case where page events fired but context isn't ready
+                if (verifyJsExecution()) {
+                    return;
+                }
+                // Context not ready yet, keep waiting
+                logger.warn("page load complete but JS context not ready yet");
             }
             sleep(pollInterval);
         }
 
-        // Build diagnostic message
+        // Build diagnostic message with comprehensive state info
         String url = pendingNavigationUrl != null ? pendingNavigationUrl : "(unknown)";
+        String readyStateInfo = getReadyStateForDiagnostic();
+        String jsExecInfo = getJsExecStateForDiagnostic();
         String diagnostic = String.format(
                 "page load timeout after %dms - url: %s, strategy: %s, " +
-                "domContentEventFired: %s, framesStillLoading: %s, mainFrameId: %s",
+                "domContentEventFired: %s, framesStillLoading: %s, mainFrameId: %s, " +
+                "readyState: %s, jsExec: %s, cdpOpen: %s",
                 timeout.toMillis(), url, strategy,
-                domContentEventFired, framesStillLoading, mainFrameId);
+                domContentEventFired, framesStillLoading, mainFrameId,
+                readyStateInfo, jsExecInfo, cdp.isOpen());
         logger.warn(diagnostic);
         throw new RuntimeException(diagnostic);
     }
 
+    /**
+     * Verify that JS execution works in the current context.
+     * This ensures the execution context is properly set up after page load.
+     */
+    private boolean verifyJsExecution() {
+        try {
+            CdpResponse response = cdp.method("Runtime.evaluate")
+                    .param("expression", "typeof document !== 'undefined'")
+                    .param("returnByValue", true)
+                    .send();
+            Object value = response.getResult("result.value");
+            return Boolean.TRUE.equals(value);
+        } catch (Exception e) {
+            logger.warn("JS execution verification failed: {}", e.getMessage());
+            return false;
+        }
+    }
+
     private boolean isPageLoadComplete(PageLoadStrategy strategy) {
+        // First check if event was received
+        boolean domReady = domContentEventFired;
+
+        // Fallback: if event wasn't received, check document.readyState directly
+        // This handles cases where the event fired before our handler was registered
+        if (!domReady) {
+            domReady = checkDocumentReadyState();
+            if (domReady && !domContentEventFired) {
+                logger.warn("retry succeeded: document.readyState fallback (event was missed)");
+                domContentEventFired = true; // Update flag so we don't keep checking
+            }
+        }
+
         return switch (strategy) {
-            case DOMCONTENT -> domContentEventFired;
-            case DOMCONTENT_AND_FRAMES -> domContentEventFired && framesStillLoading.isEmpty();
+            case DOMCONTENT -> domReady;
+            case DOMCONTENT_AND_FRAMES -> domReady && framesStillLoading.isEmpty();
             case LOAD, NETWORKIDLE -> {
                 // For now, use DOMCONTENT_AND_FRAMES behavior
                 // Full LOAD and NETWORKIDLE implementation will be added later
-                yield domContentEventFired && framesStillLoading.isEmpty();
+                yield domReady && framesStillLoading.isEmpty();
             }
         };
+    }
+
+    /**
+     * Check document.readyState directly as fallback for missed events.
+     */
+    private boolean checkDocumentReadyState() {
+        try {
+            CdpResponse response = cdp.method("Runtime.evaluate")
+                    .param("expression", "document.readyState")
+                    .param("returnByValue", true)
+                    .send();
+            if (response.isError()) {
+                // Log the error so we can diagnose CI failures
+                logger.warn("readyState check CDP error: {}", response.getErrorMessage());
+                return false;
+            }
+            String readyState = response.getResultAsString("result.value");
+            logger.trace("readyState check returned: {}", readyState); // keep trace, this is success path
+            return "complete".equals(readyState) || "interactive".equals(readyState);
+        } catch (Exception e) {
+            logger.warn("readyState check exception: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Get document.readyState for diagnostic output (not for logic).
+     */
+    private String getReadyStateForDiagnostic() {
+        try {
+            CdpResponse response = cdp.method("Runtime.evaluate")
+                    .param("expression", "document.readyState")
+                    .param("returnByValue", true)
+                    .send();
+            if (response.isError()) {
+                return "error:" + response.getErrorMessage();
+            }
+            return response.getResultAsString("result.value");
+        } catch (Exception e) {
+            return "exception:" + e.getMessage();
+        }
+    }
+
+    /**
+     * Check if JS execution works for diagnostic output.
+     */
+    private String getJsExecStateForDiagnostic() {
+        try {
+            CdpResponse response = cdp.method("Runtime.evaluate")
+                    .param("expression", "typeof document")
+                    .param("returnByValue", true)
+                    .send();
+            if (response.isError()) {
+                return "error:" + response.getErrorMessage();
+            }
+            return "ok:" + response.getResultAsString("result.value");
+        } catch (Exception e) {
+            return "exception:" + e.getMessage();
+        }
     }
 
     /**
@@ -488,17 +615,76 @@ public class CdpDriver implements Driver {
     }
 
     private CdpResponse eval(String expression) {
-        CdpMessage message = cdp.method("Runtime.evaluate")
-                .param("expression", expression)
-                .param("returnByValue", true);
+        int maxRetries = options.getRetryCount();
+        int retryInterval = options.getRetryInterval();
 
-        // If in a frame, use its execution context
-        Integer contextId = getFrameContext();
-        if (contextId != null) {
-            message.param("contextId", contextId);
+        for (int attempt = 0; attempt <= maxRetries; attempt++) {
+            CdpMessage message = cdp.method("Runtime.evaluate")
+                    .param("expression", expression)
+                    .param("returnByValue", true);
+
+            // If in a frame, use its execution context
+            Integer contextId = getFrameContext();
+            if (contextId != null) {
+                message.param("contextId", contextId);
+            }
+
+            CdpResponse response = message.send();
+
+            // Check for transient context errors that should be retried
+            if (isTransientContextError(response)) {
+                if (attempt < maxRetries) {
+                    logger.warn("transient context error, retry {}/{}: {}", attempt + 1, maxRetries, truncate(expression, 100));
+                    sleep(retryInterval);
+                    continue;
+                }
+                logger.warn("retry exhausted for transient context error: {}", truncate(expression, 100));
+            }
+
+            // Success or non-transient error
+            if (attempt > 0 && !response.isError()) {
+                logger.warn("retry succeeded after {} attempt(s): eval {}", attempt, truncate(expression, 50));
+            }
+            return response;
         }
 
-        return message.send();
+        // Should not reach here, but return last response if somehow we do
+        throw new RuntimeException("eval retry logic error for: " + expression);
+    }
+
+    // Known CDP error messages for destroyed/invalid execution contexts
+    // These match Puppeteer's error detection: https://github.com/puppeteer/puppeteer/blob/main/packages/puppeteer-core/src/cdp/ExecutionContext.ts
+    private static final String[] CONTEXT_DESTROYED_MESSAGES = {
+            "Execution context was destroyed",          // Standard Chrome message
+            "Cannot find context with specified id",    // Context ID lookup failure
+            "Inspected target navigated or closed",     // Navigation during execution
+            "Execution context with given id not found" // Alternative Chrome message
+    };
+
+    /**
+     * Check if a CDP response indicates a transient execution context error
+     * that should be retried. Uses exact message matching based on known Chrome
+     * error messages (same approach as Puppeteer).
+     */
+    private boolean isTransientContextError(CdpResponse response) {
+        if (!response.isError()) {
+            return false;
+        }
+        // Context errors use generic server error code -32000
+        Integer errorCode = response.getErrorCode();
+        if (errorCode == null || errorCode != -32000) {
+            return false;
+        }
+        String errorMessage = response.getErrorMessage();
+        if (errorMessage == null) {
+            return false;
+        }
+        for (String pattern : CONTEXT_DESTROYED_MESSAGES) {
+            if (errorMessage.contains(pattern)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private Integer getFrameContext() {
@@ -637,27 +823,25 @@ public class CdpDriver implements Driver {
      * Wait for child frames to be available in the frame tree.
      * Frames may load asynchronously after the main page.
      */
+    @SuppressWarnings("unchecked")
     private List<Map<String, Object>> waitForChildFrames(int minIndex) {
-        int maxAttempts = options.getRetryCount();
-        int interval = options.getRetryInterval();
+        // Use holder to capture result since lambda needs effectively final variable
+        final List<Map<String, Object>>[] holder = new List[1];
 
-        for (int i = 0; i <= maxAttempts; i++) {
+        boolean found = retry("frame at index " + minIndex, () -> {
             CdpResponse response = cdp.method("Page.getFrameTree").send();
             List<Map<String, Object>> childFrames = response.getResult("frameTree.childFrames");
-
             if (childFrames != null && minIndex >= 0 && minIndex < childFrames.size()) {
-                if (i > 0) {
-                    logger.trace("child frames found after {} retries", i);
-                }
-                return childFrames;
+                holder[0] = childFrames;
+                return true;
             }
+            return false;
+        });
 
-            if (i < maxAttempts) {
-                sleep(interval);
-            }
+        if (!found) {
+            throw new DriverException("no frame at index: " + minIndex + " after " + options.getRetryCount() + " retries");
         }
-
-        throw new DriverException("no frame at index: " + minIndex + " after " + maxAttempts + " retries");
+        return holder[0];
     }
 
     /**
@@ -1121,21 +1305,12 @@ public class CdpDriver implements Driver {
      * This is called automatically before element operations to reduce flaky tests.
      */
     private void retryIfNeeded(String locator) {
-        if (exists(locator)) {
-            return;
+        boolean found = retry("element: " + locator, () -> exists(locator));
+        if (!found) {
+            // Include driver state in exception for better diagnostics
+            throw new DriverException("element not found after " + options.getRetryCount() +
+                    " retries: " + locator + " | " + getDriverState());
         }
-        // Element doesn't exist, wait for it using retry settings
-        int maxAttempts = options.getRetryCount();
-        int interval = options.getRetryInterval();
-        for (int i = 0; i < maxAttempts; i++) {
-            sleep(interval);
-            if (exists(locator)) {
-                logger.trace("element found after {} retries: {}", i + 1, locator);
-                return;
-            }
-        }
-        // Element still not found - let the operation fail with a clear error
-        throw new DriverException("element not found after " + maxAttempts + " retries: " + locator);
     }
 
     // ========== Wait Methods ==========
@@ -1893,6 +2068,70 @@ public class CdpDriver implements Driver {
     }
 
     // ========== Utilities ==========
+
+    /**
+     * Centralized retry mechanism with warning logging.
+     * Use this for all retry operations to ensure consistent behavior and logging.
+     *
+     * @param description what we're waiting for (used in warning logs)
+     * @param condition   returns true when the condition is met
+     * @param maxAttempts maximum number of retry attempts (0 means try once)
+     * @param interval    milliseconds between retries
+     * @return true if condition was met, false if all retries exhausted
+     */
+    private boolean retry(String description, Supplier<Boolean> condition, int maxAttempts, int interval) {
+        // First attempt (not a retry)
+        if (Boolean.TRUE.equals(condition.get())) {
+            return true;
+        }
+
+        // Log that we're starting retries (helps diagnose flaky tests)
+        logger.warn("retry started: {} (max {} attempts, {}ms interval)", description, maxAttempts, interval);
+
+        // Retry loop
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            sleep(interval);
+            if (Boolean.TRUE.equals(condition.get())) {
+                logger.warn("retry succeeded after {} attempt(s): {}", attempt, description);
+                return true;
+            }
+            logger.warn("retry attempt {}/{} failed for: {}", attempt, maxAttempts, description);
+        }
+
+        // Log failure with driver state for diagnostics
+        logger.warn("retry FAILED after {} attempts: {} | {}", maxAttempts, description, getDriverState());
+        return false;
+    }
+
+    /**
+     * Centralized retry mechanism using default options.
+     */
+    private boolean retry(String description, Supplier<Boolean> condition) {
+        return retry(description, condition, options.getRetryCount(), options.getRetryInterval());
+    }
+
+    /**
+     * Get current driver state for diagnostic logging.
+     * Captures key state that helps debug flaky test failures.
+     */
+    private String getDriverState() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("url=");
+        try {
+            sb.append(getUrl());
+        } catch (Exception e) {
+            sb.append("(error: ").append(e.getMessage()).append(")");
+        }
+        sb.append(", domContentEventFired=").append(domContentEventFired);
+        sb.append(", framesLoading=").append(framesStillLoading.size());
+        sb.append(", mainFrameId=").append(mainFrameId);
+        if (currentFrame != null) {
+            sb.append(", currentFrame=").append(currentFrame.id);
+        }
+        sb.append(", frameContexts=").append(frameContexts.size());
+        sb.append(", terminated=").append(terminated);
+        return sb.toString();
+    }
 
     private static void sleep(long millis) {
         try {
