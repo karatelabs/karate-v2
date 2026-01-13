@@ -29,17 +29,14 @@ import io.karatelabs.common.StringUtils;
 import io.karatelabs.driver.Driver;
 import io.karatelabs.driver.cdp.CdpDriver;
 import io.karatelabs.driver.cdp.CdpDriverOptions;
+import io.karatelabs.driver.DriverUtils;
 import io.karatelabs.gherkin.Feature;
-import io.karatelabs.gherkin.FeatureSection;
 import io.karatelabs.gherkin.Scenario;
-import io.karatelabs.gherkin.ScenarioOutline;
 import io.karatelabs.gherkin.Step;
-import io.karatelabs.gherkin.Tag;
 import io.karatelabs.http.HttpRequestBuilder;
 import io.karatelabs.js.JavaCallable;
 import io.karatelabs.output.LogContext;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -1008,13 +1005,6 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
     }
 
     /**
-     * Check if a driver has been initialized.
-     */
-    public boolean hasDriver() {
-        return driver != null;
-    }
-
-    /**
      * Initialize the browser driver from configuration.
      */
     @SuppressWarnings("unchecked")
@@ -1057,237 +1047,11 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
             driverFromProvider = false;
         }
 
-        // Bind driver to JS engine as root binding (hidden from getAllVariables)
         karate.engine.putRootBinding("driver", driver);
 
-        // Bind driver action methods as global functions (V1 compatibility)
-        bindDriverActions(driver);
+        DriverUtils.bindJsHelpers(karate.engine, driver);
 
         return driver;
-    }
-
-    /**
-     * Bind driver action methods as global functions for V1 syntax compatibility.
-     * This allows writing `* click('#button')` instead of `* driver.click('#button')`.
-     */
-    private void bindDriverActions(Driver d) {
-        io.karatelabs.js.Engine engine = karate.engine;
-
-        // Element actions (return Element for chaining)
-        engine.putRootBinding("click", (JavaCallable) (ctx, args) -> {
-            return d.click(args[0].toString());
-        });
-        engine.putRootBinding("input", (JavaCallable) (ctx, args) -> {
-            return d.input(args[0].toString(), args.length > 1 ? args[1].toString() : "");
-        });
-        engine.putRootBinding("clear", (JavaCallable) (ctx, args) -> {
-            return d.clear(args[0].toString());
-        });
-        engine.putRootBinding("focus", (JavaCallable) (ctx, args) -> {
-            return d.focus(args[0].toString());
-        });
-        engine.putRootBinding("scroll", (JavaCallable) (ctx, args) -> {
-            return d.scroll(args[0].toString());
-        });
-        engine.putRootBinding("highlight", (JavaCallable) (ctx, args) -> {
-            return d.highlight(args[0].toString());
-        });
-        engine.putRootBinding("select", (JavaCallable) (ctx, args) -> {
-            String locator = args[0].toString();
-            Object value = args.length > 1 ? args[1] : null;
-            if (value instanceof Number n) {
-                return d.select(locator, n.intValue());
-            }
-            return d.select(locator, value != null ? value.toString() : "");
-        });
-
-        // Element state (return primitives)
-        engine.putRootBinding("text", (JavaCallable) (ctx, args) -> {
-            return d.text(args[0].toString());
-        });
-        engine.putRootBinding("html", (JavaCallable) (ctx, args) -> {
-            return d.html(args[0].toString());
-        });
-        engine.putRootBinding("value", (JavaCallable) (ctx, args) -> {
-            if (args.length == 1) {
-                // Getter: value('#input')
-                return d.value(args[0].toString());
-            } else {
-                // Setter: value('#input', 'text')
-                return d.value(args[0].toString(), args[1].toString());
-            }
-        });
-        engine.putRootBinding("attribute", (JavaCallable) (ctx, args) -> {
-            return d.attribute(args[0].toString(), args[1].toString());
-        });
-        engine.putRootBinding("exists", (JavaCallable) (ctx, args) -> {
-            return d.exists(args[0].toString());
-        });
-        engine.putRootBinding("enabled", (JavaCallable) (ctx, args) -> {
-            return d.enabled(args[0].toString());
-        });
-        engine.putRootBinding("position", (JavaCallable) (ctx, args) -> {
-            return d.position(args[0].toString());
-        });
-
-        // Wait methods
-        engine.putRootBinding("waitFor", (JavaCallable) (ctx, args) -> {
-            return d.waitFor(args[0].toString());
-        });
-        engine.putRootBinding("waitForText", (JavaCallable) (ctx, args) -> {
-            return d.waitForText(args[0].toString(), args[1].toString());
-        });
-        engine.putRootBinding("waitForEnabled", (JavaCallable) (ctx, args) -> {
-            return d.waitForEnabled(args[0].toString());
-        });
-        engine.putRootBinding("waitForUrl", (JavaCallable) (ctx, args) -> {
-            return d.waitForUrl(args[0].toString());
-        });
-        engine.putRootBinding("waitUntil", (JavaCallable) (ctx, args) -> {
-            if (args.length == 1) {
-                // waitUntil(expression) - wait for JS expression to be truthy
-                return d.waitUntil(args[0].toString());
-            } else {
-                // waitUntil(locator, expression) - wait for element expression
-                return d.waitUntil(args[0].toString(), args[1].toString());
-            }
-        });
-
-        // Locators
-        engine.putRootBinding("locate", (JavaCallable) (ctx, args) -> {
-            return d.locate(args[0].toString());
-        });
-        engine.putRootBinding("locateAll", (JavaCallable) (ctx, args) -> {
-            return d.locateAll(args[0].toString());
-        });
-        engine.putRootBinding("optional", (JavaCallable) (ctx, args) -> {
-            return d.optional(args[0].toString());
-        });
-
-        // Frame switching
-        engine.putRootBinding("switchFrame", (JavaCallable) (ctx, args) -> {
-            Object arg = args.length > 0 ? args[0] : null;
-            if (arg == null) {
-                d.switchFrame((String) null);
-            } else if (arg instanceof Number n) {
-                d.switchFrame(n.intValue());
-            } else {
-                d.switchFrame(arg.toString());
-            }
-            return null;
-        });
-
-        // Script execution
-        engine.putRootBinding("script", (JavaCallable) (ctx, args) -> {
-            if (args.length == 1) {
-                return d.script(args[0].toString());
-            } else {
-                return d.script(args[0].toString(), args[1].toString());
-            }
-        });
-        engine.putRootBinding("scriptAll", (JavaCallable) (ctx, args) -> {
-            return d.scriptAll(args[0].toString(), args[1].toString());
-        });
-
-        // Navigation
-        engine.putRootBinding("refresh", (JavaCallable) (ctx, args) -> {
-            d.refresh();
-            return null;
-        });
-        engine.putRootBinding("back", (JavaCallable) (ctx, args) -> {
-            d.back();
-            return null;
-        });
-        engine.putRootBinding("forward", (JavaCallable) (ctx, args) -> {
-            d.forward();
-            return null;
-        });
-
-        // Screenshots
-        engine.putRootBinding("screenshot", (JavaCallable) (ctx, args) -> {
-            if (args.length == 0) {
-                return d.screenshot();
-            } else if (args[0] instanceof Boolean b) {
-                return d.screenshot(b);
-            }
-            return d.screenshot();
-        });
-
-        // Cookies
-        engine.putRootBinding("clearCookies", (JavaCallable) (ctx, args) -> {
-            d.clearCookies();
-            return null;
-        });
-        engine.putRootBinding("deleteCookie", (JavaCallable) (ctx, args) -> {
-            d.deleteCookie(args[0].toString());
-            return null;
-        });
-        @SuppressWarnings("unchecked")
-        JavaCallable cookieFn = (ctx, args) -> {
-            Object arg = args[0];
-            if (arg instanceof String s) {
-                return d.cookie(s);
-            } else if (arg instanceof Map) {
-                d.cookie((Map<String, Object>) arg);
-                return null;
-            }
-            return null;
-        };
-        engine.putRootBinding("cookie", cookieFn);
-
-        // Dialog handling
-        engine.putRootBinding("dialog", (JavaCallable) (ctx, args) -> {
-            boolean accept = args.length > 0 && Boolean.TRUE.equals(args[0]);
-            if (args.length > 1 && args[1] != null) {
-                d.dialog(accept, args[1].toString());
-            } else {
-                d.dialog(accept);
-            }
-            return null;
-        });
-
-        // Dialog handler registration (wraps JsCallable to DialogHandler)
-        engine.putRootBinding("onDialog", (JavaCallable) (ctx, args) -> {
-            if (args.length == 0 || args[0] == null) {
-                d.onDialog(null);
-            } else if (args[0] instanceof JavaCallable) {
-                JavaCallable jsHandler = (JavaCallable) args[0];
-                d.onDialog(dialog -> {
-                    jsHandler.call(ctx, dialog);
-                });
-            }
-            return null;
-        });
-
-        // Mouse and keys
-        engine.putRootBinding("mouse", (JavaCallable) (ctx, args) -> {
-            if (args.length == 0) {
-                return d.mouse();
-            } else if (args.length == 1) {
-                return d.mouse(args[0].toString());
-            } else {
-                return d.mouse((Number) args[0], (Number) args[1]);
-            }
-        });
-        engine.putRootBinding("keys", (JavaCallable) (ctx, args) -> {
-            return d.keys();
-        });
-
-        // Key constants (e.g., Key.ENTER, Key.TAB)
-        engine.putRootBinding("Key", new io.karatelabs.js.JavaType(io.karatelabs.driver.Keys.class));
-
-        // Utility: delay/sleep (milliseconds)
-        engine.putRootBinding("delay", (JavaCallable) (ctx, args) -> {
-            int millis = args.length > 0 ? ((Number) args[0]).intValue() : 0;
-            if (millis > 0) {
-                try {
-                    Thread.sleep(millis);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-            return null;
-        });
     }
 
     /**
