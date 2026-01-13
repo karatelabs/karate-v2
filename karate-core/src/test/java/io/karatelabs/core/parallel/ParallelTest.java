@@ -69,6 +69,7 @@ class ParallelTest {
     void testDynamicOutlineParallel() {
         SuiteResult result = Runner.path("classpath:io/karatelabs/core/parallel/outline-parallel.feature")
                 .configDir("classpath:io/karatelabs/core/parallel")
+                .outputHtmlReport(false)
                 .outputConsoleSummary(false)
                 .parallel(4);
         assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
@@ -84,6 +85,7 @@ class ParallelTest {
     void testCallSingleThreadSafety() {
         SuiteResult result = Runner.path("classpath:io/karatelabs/core/parallel/callsingle-parallel.feature")
                 .configDir("classpath:io/karatelabs/core/parallel")
+                .outputHtmlReport(false)
                 .outputConsoleSummary(false)
                 .parallel(5);
         assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
@@ -96,6 +98,7 @@ class ParallelTest {
     void testCallonceParallel() {
         SuiteResult result = Runner.path("classpath:io/karatelabs/core/parallel/callonce-parallel.feature")
                 .configDir("classpath:io/karatelabs/core/parallel")
+                .outputHtmlReport(false)
                 .outputConsoleSummary(false)
                 .parallel(3);
         assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
@@ -109,6 +112,7 @@ class ParallelTest {
     void testVariableIsolation() {
         SuiteResult result = Runner.path("classpath:io/karatelabs/core/parallel/variable-isolation.feature")
                 .configDir("classpath:io/karatelabs/core/parallel")
+                .outputHtmlReport(false)
                 .outputConsoleSummary(false)
                 .parallel(4);
         assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
@@ -121,6 +125,7 @@ class ParallelTest {
     void testConfigFunctionsParallel() {
         SuiteResult result = Runner.path("classpath:io/karatelabs/core/parallel/config-functions-parallel.feature")
                 .configDir("classpath:io/karatelabs/core/parallel")
+                .outputHtmlReport(false)
                 .outputConsoleSummary(false)
                 .parallel(4);
         assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
@@ -133,6 +138,7 @@ class ParallelTest {
     void testKarateBaseParallel() {
         SuiteResult result = Runner.path("classpath:io/karatelabs/core/parallel/karate-base-parallel.feature")
                 .configDir("classpath:io/karatelabs/core/parallel")
+                .outputHtmlReport(false)
                 .outputConsoleSummary(false)
                 .parallel(4);
         assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
@@ -149,6 +155,7 @@ class ParallelTest {
                         "classpath:io/karatelabs/core/parallel/feature3.feature"
                 )
                 .configDir("classpath:io/karatelabs/core/parallel")
+                .outputHtmlReport(false)
                 .outputConsoleSummary(false)
                 .parallel(3);
         assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
@@ -162,6 +169,7 @@ class ParallelTest {
     void testKarateConfigApi() {
         SuiteResult result = Runner.path("classpath:io/karatelabs/core/parallel/config-test.feature")
                 .configDir("classpath:io/karatelabs/core/parallel")
+                .outputHtmlReport(false)
                 .outputConsoleSummary(false)
                 .parallel(1);
         assertEquals(0, result.getScenarioFailedCount(), String.join("\n", result.getErrors()));
@@ -183,6 +191,7 @@ class ParallelTest {
                         "classpath:io/karatelabs/core/parallel/callonce-feature-b.feature"
                 )
                 .configDir("classpath:io/karatelabs/core/parallel")
+                .outputHtmlReport(false)
                 .outputConsoleSummary(false)
                 .parallel(2);
 
@@ -208,6 +217,7 @@ class ParallelTest {
         // If scenarios run in parallel, max concurrent should be > 1
         SuiteResult result = Runner.path("classpath:io/karatelabs/core/parallel/scenario-parallel.feature")
                 .configDir("classpath:io/karatelabs/core/parallel")
+                .outputHtmlReport(false)
                 .outputConsoleSummary(false)
                 .parallel(4);
 
@@ -236,6 +246,7 @@ class ParallelTest {
                         "classpath:io/karatelabs/core/parallel/lock-feature-b.feature"
                 )
                 .configDir("classpath:io/karatelabs/core/parallel")
+                .outputHtmlReport(false)
                 .outputConsoleSummary(false)
                 .parallel(4);
 
@@ -259,6 +270,7 @@ class ParallelTest {
 
         SuiteResult result = Runner.path("classpath:io/karatelabs/core/parallel/lock-exclusive.feature")
                 .configDir("classpath:io/karatelabs/core/parallel")
+                .outputHtmlReport(false)
                 .outputConsoleSummary(false)
                 .parallel(4);
 
