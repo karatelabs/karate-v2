@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * CDP-based browser launcher.
@@ -66,7 +67,7 @@ public class CdpLauncher {
     private final String host;
     private final int port;
     private String webSocketUrl;
-    private volatile boolean closed = false;
+    private final AtomicBoolean closed = new AtomicBoolean(false);
 
     private CdpLauncher(ProcessHandle process, String host, int port) {
         this.process = process;
@@ -86,9 +87,19 @@ public class CdpLauncher {
      * Launch Chrome browser and return launcher instance.
      */
     public static CdpLauncher start(CdpDriverOptions options) {
+        if (options == null) {
+            throw new IllegalArgumentException("options cannot be null");
+        }
+
         String executable = resolveExecutable(options.getExecutable());
         int port = options.getPort() > 0 ? options.getPort() : PortUtils.findFreePort();
         String host = options.getHost();
+        if (host == null || host.isEmpty()) {
+            host = "localhost";
+        }
+
+        // Ensure timeout is reasonable (minimum 1 second)
+        int timeout = Math.max(options.getTimeout(), 1000);
 
         List<String> args = buildArgs(executable, port, options);
         logger.debug("launching chrome: {}", args);
@@ -105,10 +116,10 @@ public class CdpLauncher {
         // Wait for Chrome to be ready AND get WebSocket URL atomically
         // This avoids a race condition where /json/version returns 200
         // before any page targets are available
-        launcher.webSocketUrl = launcher.waitForWebSocketUrl(options.getTimeout());
+        launcher.webSocketUrl = launcher.waitForWebSocketUrl(timeout);
         if (launcher.webSocketUrl == null) {
             launcher.close();
-            throw new RuntimeException("chrome failed to start or no page targets available within timeout");
+            throw new RuntimeException("chrome failed to start or no page targets available within timeout (" + timeout + "ms)");
         }
 
         logger.info("chrome started on port {} with WebSocket: {}", port, launcher.webSocketUrl);
@@ -119,6 +130,12 @@ public class CdpLauncher {
      * Get WebSocket URL from existing browser at host:port.
      */
     public static String getWebSocketUrl(String host, int port) {
+        if (host == null || host.isEmpty()) {
+            host = "localhost";
+        }
+        if (port <= 0 || port > 65535) {
+            throw new IllegalArgumentException("port must be between 1 and 65535");
+        }
         return fetchWebSocketUrl(host, port);
     }
 
@@ -188,21 +205,33 @@ public class CdpLauncher {
      * Wait for Chrome to be ready and return the WebSocket URL for a page target.
      * This combines readiness checking and URL fetching into a single atomic operation
      * to avoid the race condition where /json/version returns 200 before page targets exist.
+     * <p>
+     * NOTE: Do NOT use try-with-resources for HttpClient here. HttpClient.close() performs
+     * a graceful shutdown that waits for pending operations, which can cause hangs when
+     * used with virtual threads in parallel execution scenarios.
      */
     @SuppressWarnings("unchecked")
     private String waitForWebSocketUrl(int timeoutMs) {
+        // Intentionally not using try-with-resources - see method javadoc
         HttpClient client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5))
                 .build();
 
+        long startTime = System.nanoTime();
+        long timeoutNanos = timeoutMs * 1_000_000L;
         String url = "http://" + host + ":" + port + "/json";
         int intervalMs = 250;
-        int attempts = timeoutMs / intervalMs;
+        int attemptCount = 0;
 
-        for (int i = 0; i < attempts; i++) {
+        // Use elapsed time instead of attempt count to handle variable request durations
+        // Always make at least one attempt even if timeout is very small
+        while (attemptCount == 0 || (System.nanoTime() - startTime) < timeoutNanos) {
+            attemptCount++;
+
             // Check if process died
             if (process != null && !process.isAlive()) {
-                logger.warn("chrome process died while waiting for page targets");
+                int exitCode = process.getExitCode();
+                logger.warn("chrome process died while waiting for page targets (exit code: {})", exitCode);
                 return null;
             }
 
@@ -234,31 +263,39 @@ public class CdpLauncher {
 
                             String wsUrl = (String) target.get("webSocketDebuggerUrl");
                             if (wsUrl != null) {
-                                logger.debug("found page target after {} attempts", i + 1);
+                                long elapsedMs = (System.nanoTime() - startTime) / 1_000_000L;
+                                logger.debug("found page target after {} attempts ({}ms)", attemptCount, elapsedMs);
                                 return wsUrl;
                             }
                         }
                     }
                     // 200 but no valid page targets yet - keep waiting
-                    logger.trace("/json returned 200 but no page targets yet (attempt {})", i + 1);
+                    logger.trace("/json returned 200 but no page targets yet (attempt {})", attemptCount);
                 }
             } catch (Exception e) {
-                logger.trace("/json not available (attempt {}): {}", i + 1, e.getMessage());
+                logger.trace("/json not available (attempt {}): {}", attemptCount, e.getMessage());
             }
 
-            sleep(intervalMs);
+            // Don't sleep if we've exceeded the timeout
+            if ((System.nanoTime() - startTime) < timeoutNanos) {
+                sleep(intervalMs);
+            }
         }
 
-        logger.warn("no page targets available after {} attempts", attempts);
+        long elapsedMs = (System.nanoTime() - startTime) / 1_000_000L;
+        logger.warn("no page targets available after {} attempts ({}ms)", attemptCount, elapsedMs);
         return null;
     }
 
     /**
      * Fetch WebSocket URL from an already-running browser.
      * Used for connecting to existing browser instances.
+     * <p>
+     * NOTE: Do NOT use try-with-resources for HttpClient here - see waitForWebSocketUrl javadoc.
      */
     @SuppressWarnings("unchecked")
     private static String fetchWebSocketUrl(String host, int port) {
+        // Intentionally not using try-with-resources to avoid hangs with virtual threads
         HttpClient client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5))
                 .build();
@@ -347,12 +384,12 @@ public class CdpLauncher {
 
     /**
      * Close the browser process.
+     * Thread-safe: only the first caller will actually close the process.
      */
     public void close() {
-        if (closed) {
-            return;
+        if (!closed.compareAndSet(false, true)) {
+            return; // another thread is already closing
         }
-        closed = true;
         ACTIVE.remove(this);
 
         if (process != null) {
@@ -363,12 +400,12 @@ public class CdpLauncher {
 
     /**
      * Close the browser process and wait for it to terminate.
+     * Thread-safe: only the first caller will actually close the process.
      */
     public void closeAndWait() {
-        if (closed) {
-            return;
+        if (!closed.compareAndSet(false, true)) {
+            return; // another thread is already closing
         }
-        closed = true;
         ACTIVE.remove(this);
 
         if (process != null) {
@@ -381,6 +418,13 @@ public class CdpLauncher {
                 process.close(true);
             }
         }
+    }
+
+    /**
+     * Check if this launcher has been closed.
+     */
+    public boolean isClosed() {
+        return closed.get();
     }
 
 }
