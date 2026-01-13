@@ -210,7 +210,7 @@ class Interpreter {
             Node argNode = fnArgNode.get(0);
             if (argNode.isToken()) { // DOT_DOT_DOT
                 Object arg = eval(fnArgNode.get(1), context);
-                if (arg instanceof List list) {
+                if (arg instanceof List<?> list) {
                     argsList.addAll(list);
                 }
             } else {
@@ -218,12 +218,10 @@ class Interpreter {
                 argsList.add(arg);
             }
         }
-        // Convert JS types to Java types at JS/Java boundary:
+        // Convert JS types to Java types if JS/Java boundary:
         // - undefined → null
         // - JavaMirror (JsDate, etc.) → unwrapped via getJavaValue()
-        // JavaCallable is the public marker interface for external Java code
-        // JsFunction implements JavaCallable for sharing but preserves undefined internally
-        if (callable instanceof JavaCallable && !(callable instanceof JsFunction)) {
+        if (callable.isExternal()) {
             argsList.replaceAll(arg -> {
                 if (arg == Terms.UNDEFINED) return null;
                 // Unwrap JavaMirror (JsDate, JsUint8Array) but not JsPrimitive (Boolean/String/Number constructors)

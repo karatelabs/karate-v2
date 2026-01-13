@@ -29,6 +29,11 @@ import java.util.List;
 
 public abstract class JsFunction extends JsObject implements JavaCallable {
 
+    @Override
+    public boolean isExternal() {
+        return false; // mark this as JS native while allowing Java code to cast to public JavaCallable
+    }
+
     String name;
     private JsObject functionPrototype;
 

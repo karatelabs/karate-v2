@@ -28,4 +28,8 @@ interface JsCallable {
 
     Object call(Context context, Object... args);
 
+    default boolean isExternal() {
+        return false;
+    }
+
 }

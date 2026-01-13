@@ -48,9 +48,16 @@ interface JsPrimitive extends JavaMirror {
     // Enables single instanceof check instead of 3 separate checks
 }
 
-// Public interface for callable objects exposed to JavaScript
-public interface JavaCallable {
+// Internal interface - base for all callable objects
+interface JsCallable {
     Object call(Context context, Object... args);
+    default boolean isExternal() { return false; }  // JS-native by default
+}
+
+// Public interface for Java code to implement callables
+public interface JavaCallable extends JsCallable {
+    @Override
+    default boolean isExternal() { return true; }  // External Java code
 }
 
 // Convenience interface that ignores context
@@ -63,7 +70,13 @@ public interface JavaInvokable extends JavaCallable {
 }
 ```
 
-**Boundary conversion:** When JavaScript calls a `JavaCallable`, arguments are converted:
+**The `isExternal()` pattern:** Determines whether arguments should be converted at the JS/Java boundary:
+- `true` (default for `JavaCallable`): External Java code - convert `undefined`→`null`, `JsDate`→`Date`
+- `false` (default for `JsCallable`): Internal JS functions - preserve JS semantics
+
+`JsFunction` implements `JavaCallable` (for sharing functions with Java code) but overrides `isExternal()` to `false` to preserve `undefined` semantics internally.
+
+**Boundary conversion:** When `callable.isExternal()` is true, arguments are converted:
 - `undefined` → `null`
 - `JsDate` → `java.util.Date`
 - Other `JavaMirror` types → unwrapped via `getJavaValue()`
@@ -677,6 +690,8 @@ runScript("const json = response.json(); pm.test('ok', () => {});");  // No conf
 | SimpleObject | `karate-js/src/main/java/io/karatelabs/js/SimpleObject.java` |
 | JavaMirror | `karate-js/src/main/java/io/karatelabs/js/JavaMirror.java` |
 | JsPrimitive | `karate-js/src/main/java/io/karatelabs/js/JsPrimitive.java` |
+| JsCallable | `karate-js/src/main/java/io/karatelabs/js/JsCallable.java` |
+| JavaCallable | `karate-js/src/main/java/io/karatelabs/js/JavaCallable.java` |
 | Terms | `karate-js/src/main/java/io/karatelabs/js/Terms.java` |
 | JsDate | `karate-js/src/main/java/io/karatelabs/js/JsDate.java` |
 | CallInfo | `karate-js/src/main/java/io/karatelabs/js/CallInfo.java` |

@@ -25,4 +25,9 @@ package io.karatelabs.js;
 
 public interface JavaCallable extends JsCallable {
 
+    @Override
+    default boolean isExternal() {
+        return true;
+    }
+
 }
