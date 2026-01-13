@@ -24,6 +24,7 @@
 package io.karatelabs.output;
 
 import io.karatelabs.common.Json;
+import io.karatelabs.core.Suite;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -210,7 +211,7 @@ public final class HtmlReport {
                 suiteData.put("summary", summary);
 
                 // Write merged JSON Lines to karate-json subfolder
-                Path karateJsonDir = outputDir.resolve(KarateJsonReportListener.SUBFOLDER);
+                Path karateJsonDir = outputDir.resolve(Suite.KARATE_JSON_SUBFOLDER);
                 Files.createDirectories(karateJsonDir);
                 Path mergedJsonl = karateJsonDir.resolve("karate-events.jsonl");
                 writeMergedJsonLines(mergedJsonl, suiteData, allFeatures, summary);

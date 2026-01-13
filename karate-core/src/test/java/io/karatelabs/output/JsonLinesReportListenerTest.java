@@ -26,6 +26,7 @@ package io.karatelabs.output;
 import io.karatelabs.common.Json;
 import io.karatelabs.core.Globals;
 import io.karatelabs.core.Runner;
+import io.karatelabs.core.Suite;
 import io.karatelabs.core.SuiteResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -71,7 +72,7 @@ class JsonLinesReportListenerTest {
         assertTrue(result.isPassed());
 
         // Verify JSON Lines file was created
-        Path jsonlPath = reportDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl");
+        Path jsonlPath = reportDir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl");
         assertTrue(Files.exists(jsonlPath), "JSON Lines file should exist");
 
         String content = Files.readString(jsonlPath);
@@ -100,7 +101,7 @@ class JsonLinesReportListenerTest {
                 .outputConsoleSummary(false)
                 .parallel(1);
 
-        Path jsonlPath = reportDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl");
+        Path jsonlPath = reportDir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl");
         String[] lines = Files.readString(jsonlPath).trim().split("\n");
 
         // Parse SUITE_ENTER event (first line)
@@ -136,7 +137,7 @@ class JsonLinesReportListenerTest {
                 .outputConsoleSummary(false)
                 .parallel(1);
 
-        Path jsonlPath = reportDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl");
+        Path jsonlPath = reportDir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl");
         String[] lines = Files.readString(jsonlPath).trim().split("\n");
 
         // Find FEATURE_EXIT event
@@ -199,7 +200,7 @@ class JsonLinesReportListenerTest {
                 .outputConsoleSummary(false)
                 .parallel(1);
 
-        Path jsonlPath = reportDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl");
+        Path jsonlPath = reportDir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl");
         String[] lines = Files.readString(jsonlPath).trim().split("\n");
 
         // Find SUITE_EXIT event (last line)
@@ -250,7 +251,7 @@ class JsonLinesReportListenerTest {
 
         assertTrue(result.isFailed());
 
-        Path jsonlPath = reportDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl");
+        Path jsonlPath = reportDir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl");
         String[] lines = Files.readString(jsonlPath).trim().split("\n");
 
         // Find FEATURE_EXIT event
@@ -316,7 +317,7 @@ class JsonLinesReportListenerTest {
                 .outputConsoleSummary(false)
                 .parallel(1);
 
-        Path jsonlPath = reportDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl");
+        Path jsonlPath = reportDir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl");
         String[] lines = Files.readString(jsonlPath).trim().split("\n");
 
         // Find FEATURE_EXIT event
@@ -368,7 +369,7 @@ class JsonLinesReportListenerTest {
                 .outputConsoleSummary(false)
                 .parallel(1);
 
-        Path jsonlPath = reportDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl");
+        Path jsonlPath = reportDir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl");
         String[] lines = Files.readString(jsonlPath).trim().split("\n");
 
         // Should have at least 4 event lines: SUITE_ENTER, 2x FEATURE_EXIT, SUITE_EXIT
@@ -424,7 +425,7 @@ class JsonLinesReportListenerTest {
                 .parallel(1);
 
         // Verify both JSON Lines and HTML reports exist when both are enabled
-        assertTrue(Files.exists(reportDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl")));
+        assertTrue(Files.exists(reportDir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl")));
         assertTrue(Files.exists(reportDir.resolve("karate-summary.html")));
         assertTrue(Files.exists(reportDir.resolve("index.html")));
     }

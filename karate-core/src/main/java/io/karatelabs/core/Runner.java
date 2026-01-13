@@ -113,8 +113,7 @@ public final class Runner {
         // Create and configure the suite
         Suite suite = Suite.of(feature)
                 .outputHtmlReport(false)
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
 
         // Set PerfHook if provided (for Gatling integration)
         if (perfHook != null) {
@@ -163,7 +162,6 @@ public final class Runner {
         private boolean outputJsonLines;
         private boolean outputJunitXml;
         private boolean outputCucumberJson;
-        private boolean outputKarateJson;
         private boolean backupOutputDir = true;
         private boolean outputConsoleSummary = true;
         private Map<String, String> systemProperties;
@@ -363,15 +361,6 @@ public final class Runner {
          */
         public Builder outputCucumberJson(boolean enabled) {
             this.outputCucumberJson = enabled;
-            return this;
-        }
-
-        /**
-         * Enable/disable Karate JSON report generation.
-         * Writes per-feature JSON files to karate-json/ subfolder.
-         */
-        public Builder outputKarateJson(boolean enabled) {
-            this.outputKarateJson = enabled;
             return this;
         }
 
@@ -590,7 +579,6 @@ public final class Runner {
             suite.outputJsonLines(outputJsonLines);
             suite.outputJunitXml(outputJunitXml);
             suite.outputCucumberJson(outputCucumberJson);
-            suite.outputKarateJson(outputKarateJson);
             suite.backupReportDir(backupOutputDir);
             suite.outputConsoleSummary(outputConsoleSummary);
             if (systemProperties != null) {

@@ -69,8 +69,7 @@ class CallSingleTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "callSingle basic should work: " + getFailureMessage(result));
@@ -96,8 +95,7 @@ class CallSingleTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "callSingle with JS should work: " + getFailureMessage(result));
@@ -127,8 +125,7 @@ class CallSingleTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "callSingle caching should work: " + getFailureMessage(result));
@@ -173,8 +170,7 @@ class CallSingleTest {
         // Run with 4 parallel threads
         Suite suite = Suite.of(tempDir, parallelFeature.toString())
                 .parallel(4)
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
 
         long startTime = System.currentTimeMillis();
         SuiteResult result = suite.run();
@@ -208,8 +204,7 @@ class CallSingleTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isFailed(), "callSingle with failing feature should fail");
@@ -235,8 +230,7 @@ class CallSingleTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "callSingle with argument should work: " + getFailureMessage(result));
@@ -271,8 +265,7 @@ class CallSingleTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "callSingle with multiple paths should work: " + getFailureMessage(result));
@@ -301,8 +294,7 @@ class CallSingleTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "callSingle with ?suffix cache keys should work: " + getFailureMessage(result));
@@ -332,8 +324,7 @@ class CallSingleTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "callSingle without suffix should share cache: " + getFailureMessage(result));
@@ -375,8 +366,7 @@ class CallSingleTest {
 
         Suite suite = Suite.of(tempDir, testFeature.toString())
                 .configPath(configJs.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "callSingle from config should work: " + getFailureMessage(result));
@@ -421,8 +411,7 @@ class CallSingleTest {
 
         Suite suite = Suite.of(tempDir, testFeature.toString())
                 .configPath(configJs.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "callSingle from config with JS file should work: " + getFailureMessage(result));
@@ -476,8 +465,7 @@ class CallSingleTest {
         Suite suite = Suite.of(tempDir, testFeature.toString())
                 .configPath(configJs.toString())
                 .parallel(4)
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
 
         SuiteResult result = suite.run();
 
@@ -525,8 +513,7 @@ class CallSingleTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "callSingle with tag selector should work: " + getFailureMessage(result));
@@ -562,8 +549,7 @@ class CallSingleTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "callSingle with different tags should return different results: " + getFailureMessage(result));

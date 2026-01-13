@@ -53,9 +53,9 @@ Test Execution
       ↓
 FeatureResult.toJson()  ← Single canonical format
       ↓
-  ┌───┼───────┬──────────┬────────────┐
-  ↓   ↓       ↓          ↓            ↓
-JSONL HTML  Cucumber   JUnit       karate-summary.json
+  ┌───┼───────┬──────────┐
+  ↓   ↓       ↓          ↓
+JSONL HTML  Cucumber   JUnit
            JSON        XML
 ```
 
@@ -76,7 +76,6 @@ JSONL HTML  Cucumber   JUnit       karate-summary.json
 | `CucumberJsonWriter` | Cucumber JSON conversion from `FeatureResult` |
 | `JunitXmlReportListener` | Async per-feature JUnit XML (opt-in via `.outputJunitXml(true)`), writes to `junit-xml/` |
 | `JunitXmlWriter` | JUnit XML conversion from `FeatureResult` |
-| `KarateJsonReportListener` | Async per-feature Karate JSON (opt-in via `.outputKarateJson(true)`), writes to `karate-json/` |
 
 ### Runner API
 
@@ -98,11 +97,6 @@ Runner.path("features/")
 // Generate Cucumber JSON (per-feature files, async)
 Runner.path("features/")
     .outputCucumberJson(true)
-    .parallel(5);
-
-// Generate Karate JSON (per-feature files, async)
-Runner.path("features/")
-    .outputKarateJson(true)
     .parallel(5);
 ```
 
@@ -709,11 +703,8 @@ target/karate-reports/
 ├── feature-html/                 # Per-feature HTML reports
 │   ├── users.list.html
 │   └── orders.create.html
-├── karate-json/                  # Karate JSON reports
-│   ├── karate-summary.json       # Suite summary JSON (always written)
-│   ├── karate-events.jsonl       # JSONL event stream (opt-in via .outputJsonLines(true))
-│   ├── users.list.json           # Per-feature JSON (opt-in via .outputKarateJson(true))
-│   └── orders.create.json
+├── karate-json/                  # JSON data (opt-in)
+│   └── karate-events.jsonl       # JSONL event stream (opt-in via .outputJsonLines(true))
 ├── junit-xml/                    # JUnit XML reports (optional)
 │   ├── users.list.xml
 │   └── orders.create.xml
@@ -898,7 +889,6 @@ open target/karate-reports/karate-summary.html
 | `src/main/java/io/karatelabs/output/HtmlReportListener.java` | Async HTML report generation listener |
 | `src/main/java/io/karatelabs/output/CucumberJsonWriter.java` | Cucumber JSON conversion logic |
 | `src/main/java/io/karatelabs/output/CucumberJsonReportListener.java` | Async Cucumber JSON generation listener |
-| `src/main/java/io/karatelabs/output/KarateJsonReportListener.java` | Async Karate JSON generation listener |
 
 ### Template Architecture
 
@@ -1257,7 +1247,7 @@ public Map<String, Object> toJson() {
 Update Alpine.js templates for new JSON structure:
 
 **`karate-summary.html`:**
-- Read from `SUITE_EXIT.data` or standalone `karate-summary.json`
+- Read from `SUITE_EXIT.data` in karate-events.jsonl (or inline JSON)
 - Access `data.featureSummary` for feature table
 - Access `data.featuresPassed`, `data.scenariosFailed`, etc. for stats
 

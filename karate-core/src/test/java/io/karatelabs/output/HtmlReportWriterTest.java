@@ -25,6 +25,7 @@ package io.karatelabs.output;
 
 import io.karatelabs.core.Globals;
 import io.karatelabs.core.Runner;
+import io.karatelabs.core.Suite;
 import io.karatelabs.core.SuiteResult;
 import io.karatelabs.http.ServerTestHarness;
 import org.junit.jupiter.api.AfterAll;
@@ -132,7 +133,7 @@ class HtmlReportWriterTest {
         assertTrue(Files.exists(OUTPUT_DIR.resolve("res/favicon.ico")));
 
         // Verify JSON Lines file was created
-        assertTrue(Files.exists(OUTPUT_DIR.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl")));
+        assertTrue(Files.exists(OUTPUT_DIR.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl")));
 
         System.out.println("\n=== HTML Reports Generated ===");
         System.out.println("Open: file://" + OUTPUT_DIR.toAbsolutePath().resolve("karate-summary.html"));
@@ -152,7 +153,7 @@ class HtmlReportWriterTest {
                 .parallel(1);
 
         assertTrue(Files.exists(outputDir.resolve("karate-summary.html")));
-        assertTrue(Files.exists(outputDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl")));
+        assertTrue(Files.exists(outputDir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl")));
 
         System.out.println("\n=== HTML Reports (with env) Generated ===");
         System.out.println("Open: " + outputDir.toAbsolutePath().resolve("karate-summary.html"));
@@ -219,7 +220,7 @@ class HtmlReportWriterTest {
                 .parallel(1);
 
         // Verify JSON Lines format (new event envelope format)
-        String jsonl = Files.readString(reportDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl"));
+        String jsonl = Files.readString(reportDir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl"));
         String[] lines = jsonl.trim().split("\n");
 
         assertTrue(lines.length >= 3, "Should have at least 3 event lines");
@@ -281,22 +282,22 @@ class HtmlReportWriterTest {
                 .parallel(1);
 
         // Verify both JSON Lines files exist
-        assertTrue(Files.exists(run1Dir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl")));
-        assertTrue(Files.exists(run2Dir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl")));
+        assertTrue(Files.exists(run1Dir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl")));
+        assertTrue(Files.exists(run2Dir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl")));
 
         // Aggregate reports
         HtmlReport.aggregate()
-                .json(run1Dir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl"))
-                .json(run2Dir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl"))
+                .json(run1Dir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl"))
+                .json(run2Dir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl"))
                 .outputDir(combinedDir)
                 .generate();
 
         // Verify combined report
         assertTrue(Files.exists(combinedDir.resolve("karate-summary.html")));
-        assertTrue(Files.exists(combinedDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl")));
+        assertTrue(Files.exists(combinedDir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl")));
 
         // Verify the combined JSON Lines has both features
-        String combinedJsonl = Files.readString(combinedDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl"));
+        String combinedJsonl = Files.readString(combinedDir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl"));
         assertTrue(combinedJsonl.contains("Aggregation Test 1"));
         assertTrue(combinedJsonl.contains("Aggregation Test 2"));
 
@@ -342,7 +343,7 @@ class HtmlReportWriterTest {
         assertEquals(2, result.getScenarioPassedCount());
 
         // Verify JSON Lines contains the substituted scenario names
-        String jsonl = Files.readString(reportDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl"));
+        String jsonl = Files.readString(reportDir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl"));
         assertTrue(jsonl.contains("Testing foo with value 1"),
             "Should contain substituted scenario name for first example");
         assertTrue(jsonl.contains("Testing bar with value 2"),
@@ -375,7 +376,7 @@ class HtmlReportWriterTest {
 
         // Verify EXIT events contain evaluated scenario name
         // Note: SCENARIO_ENTER fires before steps run, so it has the unevaluated name - that's expected
-        String jsonl = Files.readString(reportDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl"));
+        String jsonl = Files.readString(reportDir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl"));
 
         // Check SCENARIO_EXIT and FEATURE_EXIT events have evaluated name
         for (String line : jsonl.split("\n")) {
@@ -412,7 +413,7 @@ class HtmlReportWriterTest {
         assertTrue(result.isPassed());
 
         // Verify JSON Lines contains the evaluated scenario name with variable value
-        String jsonl = Files.readString(reportDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl"));
+        String jsonl = Files.readString(reportDir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl"));
         assertTrue(jsonl.contains("status is active"),
             "Should contain evaluated scenario name with variable value");
     }
@@ -447,81 +448,11 @@ class HtmlReportWriterTest {
         assertEquals(2, result.getScenarioPassedCount());
 
         // Verify JSON Lines contains the evaluated scenario names with outline variables
-        String jsonl = Files.readString(reportDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl"));
+        String jsonl = Files.readString(reportDir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl"));
         assertTrue(jsonl.contains("testing foo = 10"),
             "Should contain evaluated name for first example (5 * 2 = 10)");
         assertTrue(jsonl.contains("testing bar = 20"),
             "Should contain evaluated name for second example (10 * 2 = 20)");
-    }
-
-    @Test
-    void testKarateJsonReportListener(@TempDir Path tempDir) throws Exception {
-        Path feature = tempDir.resolve("users/list.feature");
-        Files.createDirectories(feature.getParent());
-        Files.writeString(feature, """
-            Feature: User List
-
-            Scenario: Get users
-            * def a = 1
-            * match a == 1
-            """);
-
-        Path reportDir = tempDir.resolve("reports");
-
-        Runner.path(feature.toString())
-                .workingDir(tempDir)
-                .outputDir(reportDir)
-                .outputKarateJson(true)  // Enable Karate JSON output
-                .outputConsoleSummary(false)
-                .parallel(1);
-
-        // Verify karate-json subfolder exists
-        Path karateJsonDir = reportDir.resolve("karate-json");
-        assertTrue(Files.exists(karateJsonDir), "karate-json folder should exist");
-
-        // Verify karate-summary.json is in the karate-json folder
-        assertTrue(Files.exists(karateJsonDir.resolve("karate-summary.json")),
-            "karate-summary.json should be in karate-json folder");
-
-        // Verify per-feature JSON uses same naming convention as HTML reports
-        // users/list.feature -> users.list.json
-        assertTrue(Files.exists(karateJsonDir.resolve("users.list.json")),
-            "Per-feature JSON should use relativePath-based naming: users.list.json");
-
-        // Verify content is valid JSON with expected structure
-        String featureJson = Files.readString(karateJsonDir.resolve("users.list.json"));
-        assertTrue(featureJson.contains("\"name\":"), "JSON should contain feature name");
-        assertTrue(featureJson.contains("\"scenarioResults\":"), "JSON should contain scenarioResults");
-    }
-
-    @Test
-    void testKarateJsonNotWrittenByDefault(@TempDir Path tempDir) throws Exception {
-        Path feature = tempDir.resolve("test.feature");
-        Files.writeString(feature, """
-            Feature: Test Feature
-
-            Scenario: Simple test
-            * def a = 1
-            """);
-
-        Path reportDir = tempDir.resolve("reports");
-
-        Runner.path(feature.toString())
-                .workingDir(tempDir)
-                .outputDir(reportDir)
-                // Note: NOT enabling outputKarateJson
-                .outputConsoleSummary(false)
-                .parallel(1);
-
-        // Verify karate-summary.json is still written (in karate-json folder)
-        Path karateJsonDir = reportDir.resolve("karate-json");
-        assertTrue(Files.exists(karateJsonDir.resolve("karate-summary.json")),
-            "karate-summary.json should be in karate-json folder");
-
-        // Verify per-feature JSON is NOT written when outputKarateJson is not enabled
-        String[] jsonFiles = karateJsonDir.toFile().list((dir, name) -> name.endsWith(".json") && !name.equals("karate-summary.json"));
-        assertTrue(jsonFiles == null || jsonFiles.length == 0,
-            "Per-feature JSON should NOT be written when outputKarateJson is not enabled");
     }
 
     @Test
@@ -549,7 +480,7 @@ class HtmlReportWriterTest {
         assertTrue(result.isPassed());
 
         // Original name should be preserved (with backticks) in the report
-        String jsonl = Files.readString(reportDir.resolve(KarateJsonReportListener.SUBFOLDER).resolve("karate-events.jsonl"));
+        String jsonl = Files.readString(reportDir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl"));
         assertTrue(jsonl.contains("`result is ${undefinedVariable}`"),
             "Original name should be preserved when eval fails");
         // Warning should appear in the step log

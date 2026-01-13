@@ -1357,8 +1357,7 @@ class MockE2eTest {
             """.formatted(port, port));
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertEquals(2, result.getScenarioCount());

@@ -90,7 +90,7 @@ The Gherkin parser lives in `karate-js` (reuses the JS lexer). The ScenarioEngin
 
 ### Reporting
 
-- [x] Karate JSON report format (`karate-summary.json`)
+- [x] Karate JSONL event stream (`karate-events.jsonl`) - opt-in via `.outputJsonLines(true)`
 - [x] JUnit XML report format (`karate-junit.xml`)
 - [x] Summary statistics (pass/fail counts, durations)
 - [x] Console output with ANSI colors
@@ -404,7 +404,6 @@ Beyond being LLM-friendly, Karate can be a tool for testing AI systems:
 
 ### Performance & Consistency
 - [ ] Cache `Scenario.getTagsEffective()` result (currently creates new merged list each call)
-- [ ] Align `karate-summary.json` structure with HTML embedded JSON (currently differ slightly)
 - [ ] Consider porting v1 `Tags` wrapper class for rich tag evaluation (v2 uses raw `List<Tag>`)
 
 ---

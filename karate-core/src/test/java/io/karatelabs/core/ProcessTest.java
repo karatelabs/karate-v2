@@ -59,8 +59,7 @@ class ProcessTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "exec simple command should pass");
@@ -78,8 +77,7 @@ class ProcessTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "exec with args should pass");
@@ -97,8 +95,7 @@ class ProcessTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "exec with options should pass");
@@ -116,8 +113,7 @@ class ProcessTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "exec with env var should pass");
@@ -139,8 +135,7 @@ class ProcessTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "fork basic should pass");
@@ -160,8 +155,7 @@ class ProcessTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "fork with listener should pass");
@@ -181,8 +175,7 @@ class ProcessTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "fork deferred start should pass");
@@ -202,8 +195,7 @@ class ProcessTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "fork waitForOutput should pass");
@@ -225,8 +217,7 @@ class ProcessTest {
             """);
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "fork close should pass");

@@ -322,8 +322,7 @@ class StepInfoTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), getFailureMessage(result));
@@ -348,8 +347,7 @@ class StepInfoTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), getFailureMessage(result));

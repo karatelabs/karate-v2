@@ -375,7 +375,6 @@ class RunListenerTest {
         Feature feature = Feature.read(Resource.text(featureText));
 
         Suite suite = Suite.of(feature)
-            .writeReport(false)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
             .listener(event -> {
@@ -415,7 +414,6 @@ class RunListenerTest {
         Feature feature = Feature.read(Resource.text(featureText));
 
         Suite suite = Suite.of(feature)
-            .writeReport(false)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
             .listener(event -> {
@@ -451,7 +449,6 @@ class RunListenerTest {
         Feature feature = Feature.read(Resource.text(featureText));
 
         Suite suite = Suite.of(feature)
-            .writeReport(false)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
             .httpClientFactory(() -> client)
@@ -498,7 +495,6 @@ class RunListenerTest {
         Feature feature = Feature.read(Resource.text(featureText));
 
         Suite suite = Suite.of(feature)
-            .writeReport(false)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
             .httpClientFactory(() -> client)
@@ -533,7 +529,6 @@ class RunListenerTest {
         Feature feature = Feature.read(Resource.text(featureText));
 
         Suite suite = Suite.of(feature)
-            .writeReport(false)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
             .httpClientFactory(() -> client)
@@ -573,7 +568,6 @@ class RunListenerTest {
         Feature feature = Feature.read(Resource.text(featureText));
 
         Suite suite = Suite.of(feature)
-            .writeReport(false)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
             .httpClientFactory(() -> client)
@@ -626,7 +620,6 @@ class RunListenerTest {
         Feature feature = Feature.read(Resource.text(featureText));
 
         Suite suite = Suite.of(feature)
-            .writeReport(false)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
             .httpClientFactory(() -> client)

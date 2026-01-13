@@ -606,12 +606,8 @@ After running tests, verify:
 ls -la home/test-project/target/reports/
 
 # Expected files
-# - karate-summary.json
 # - karate-summary.html
-# - features/*.html (per-feature reports)
-
-# Check relative paths in report (should NOT have ugly ../../../ paths)
-grep "relativePath" home/test-project/target/reports/karate-summary.json
+# - feature-html/*.html (per-feature reports)
 ```
 
 ### Cleanup

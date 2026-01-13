@@ -57,8 +57,7 @@ class BackgroundTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), getFailureMessage(result));
@@ -83,8 +82,7 @@ class BackgroundTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), getFailureMessage(result));
@@ -106,8 +104,7 @@ class BackgroundTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), getFailureMessage(result));
@@ -131,8 +128,7 @@ class BackgroundTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), getFailureMessage(result));
@@ -153,8 +149,7 @@ class BackgroundTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertFalse(result.isPassed());
@@ -173,8 +168,7 @@ class BackgroundTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), getFailureMessage(result));
@@ -194,8 +188,7 @@ class BackgroundTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed());

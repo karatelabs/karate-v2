@@ -59,8 +59,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "Suite should pass: " + getFailureMessage(result));
@@ -86,8 +85,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "Suite should pass: " + getFailureMessage(result));
@@ -115,8 +113,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         // Both scenarios should pass
@@ -144,8 +141,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed());
@@ -180,8 +176,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, outer.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "Nested calls should work: " + getFailureMessage(result));
@@ -207,8 +202,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "karate.call() with args should work: " + getFailureMessage(result));
@@ -234,8 +228,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "karate.call() without args should work: " + getFailureMessage(result));
@@ -264,8 +257,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "Call with feature var and array loop should work: " + getFailureMessage(result));
@@ -300,8 +292,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "Call by tag should work: " + getFailureMessage(result));
@@ -324,8 +315,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "Same-file tag call should work: " + getFailureMessage(result));
@@ -350,8 +340,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "__arg should be available: " + getFailureMessage(result));
@@ -379,8 +368,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "__arg should be available with assignment: " + getFailureMessage(result));
@@ -405,8 +393,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "Shared scope call should merge variables: " + getFailureMessage(result));
@@ -432,8 +419,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "Isolated call should NOT merge variables: " + getFailureMessage(result));
@@ -459,8 +445,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "JSONPath on parent variable should work: " + getFailureMessage(result));
@@ -485,8 +470,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "call read('file.js') should work: " + getFailureMessage(result));
@@ -511,8 +495,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "call read('file.js') with named function should work: " + getFailureMessage(result));
@@ -538,8 +521,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "Multi-line JS function should work: " + getFailureMessage(result));
@@ -567,8 +549,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "JS function with Java.type should work: " + getFailureMessage(result));
@@ -601,8 +582,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "JS function with Java sort should work: " + getFailureMessage(result));
@@ -628,8 +608,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "Embedded expressions should be evaluated: " + getFailureMessage(result));
@@ -654,8 +633,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "Path with spaces should work: " + getFailureMessage(result));
@@ -681,8 +659,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "call read(variable) should work: " + getFailureMessage(result));
@@ -708,8 +685,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "call read(variable) for feature should work: " + getFailureMessage(result));
@@ -728,8 +704,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "call with inline JSON should work: " + getFailureMessage(result));
@@ -754,8 +729,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "Embedded expressions in function call args should be evaluated: " + getFailureMessage(result));
@@ -775,8 +749,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "call in expression RHS should work: " + getFailureMessage(result));
@@ -815,8 +788,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "call loop with __loop and __arg should work: " + getFailureMessage(result));
@@ -850,8 +822,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "callonce loop should work: " + getFailureMessage(result));
@@ -879,8 +850,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "loop call should access parent variables: " + getFailureMessage(result));
@@ -912,8 +882,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "Shared scope call should propagate config: " + getFailureMessage(result));
@@ -946,8 +915,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertEquals(2, result.getScenarioCount());
@@ -998,8 +966,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "Shared scope should propagate both vars and headers function: " + getFailureMessage(result));
@@ -1038,8 +1005,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "Shared scope should propagate cookies config: " + getFailureMessage(result));
@@ -1078,8 +1044,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertEquals(2, result.getScenarioCount());
@@ -1111,8 +1076,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "Isolated scope call should NOT propagate config: " + getFailureMessage(result));
@@ -1150,8 +1114,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "Functions in callonce results should be callable: " + getFailureMessage(result));
@@ -1176,8 +1139,7 @@ class StepCallTest {
             """);
 
         Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         SuiteResult result = suite.run();
 
         assertTrue(result.isPassed(), "Functions in object literals should be callable: " + getFailureMessage(result));

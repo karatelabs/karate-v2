@@ -95,8 +95,7 @@ class ResultListenerTest {
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
                 .resultListener(listener)
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         suite.run();
 
         // Verify all events fired
@@ -178,8 +177,7 @@ class ResultListenerTest {
         Suite suite = Suite.of(tempDir, featureFile.toString())
                 .resultListener(listener1)
                 .resultListener(listener2)
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         suite.run();
 
         // Both listeners should receive events
@@ -213,8 +211,7 @@ class ResultListenerTest {
 
         Suite suite = Suite.of(tempDir, featureFile.toString())
                 .resultListener(listener)
-                .outputConsoleSummary(false)
-                .writeReport(false);
+                .outputConsoleSummary(false);
         suite.run();
 
         assertEquals(2, results.size());
