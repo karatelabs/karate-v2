@@ -617,12 +617,8 @@ public class CdpDriver implements Driver {
      */
     @SuppressWarnings("unchecked")
     public void switchFrame(int index) {
-        CdpResponse response = cdp.method("Page.getFrameTree").send();
-        List<Map<String, Object>> childFrames = response.getResult("frameTree.childFrames");
-
-        if (childFrames == null || index < 0 || index >= childFrames.size()) {
-            throw new DriverException("no frame at index: " + index);
-        }
+        // Wait for frame to appear in frame tree (frames may load after page)
+        List<Map<String, Object>> childFrames = waitForChildFrames(index);
 
         Map<String, Object> frameData = childFrames.get(index);
         Map<String, Object> frame = (Map<String, Object>) frameData.get("frame");
@@ -635,6 +631,33 @@ public class CdpDriver implements Driver {
 
         // Ensure we have execution context for this frame
         ensureFrameContext(frameId);
+    }
+
+    /**
+     * Wait for child frames to be available in the frame tree.
+     * Frames may load asynchronously after the main page.
+     */
+    private List<Map<String, Object>> waitForChildFrames(int minIndex) {
+        int maxAttempts = options.getRetryCount();
+        int interval = options.getRetryInterval();
+
+        for (int i = 0; i <= maxAttempts; i++) {
+            CdpResponse response = cdp.method("Page.getFrameTree").send();
+            List<Map<String, Object>> childFrames = response.getResult("frameTree.childFrames");
+
+            if (childFrames != null && minIndex >= 0 && minIndex < childFrames.size()) {
+                if (i > 0) {
+                    logger.trace("child frames found after {} retries", i);
+                }
+                return childFrames;
+            }
+
+            if (i < maxAttempts) {
+                sleep(interval);
+            }
+        }
+
+        throw new DriverException("no frame at index: " + minIndex + " after " + maxAttempts + " retries");
     }
 
     /**
