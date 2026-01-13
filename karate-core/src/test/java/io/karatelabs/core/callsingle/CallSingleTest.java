@@ -26,7 +26,6 @@ package io.karatelabs.core.callsingle;
 import io.karatelabs.core.FeatureResult;
 import io.karatelabs.core.Runner;
 import io.karatelabs.core.ScenarioResult;
-import io.karatelabs.core.Suite;
 import io.karatelabs.core.SuiteResult;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -68,9 +67,13 @@ class CallSingleTest {
             * match result.value == 42
             """);
 
-        Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = Runner.builder()
+                .path(callerFeature.toString())
+                .workingDir(tempDir)
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle basic should work: " + getFailureMessage(result));
     }
@@ -94,9 +97,13 @@ class CallSingleTest {
             * match auth.token == 'abc123'
             """);
 
-        Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = Runner.builder()
+                .path(callerFeature.toString())
+                .workingDir(tempDir)
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle with JS should work: " + getFailureMessage(result));
     }
@@ -124,9 +131,13 @@ class CallSingleTest {
             * def ts2 = result2.timestamp
             """);
 
-        Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = Runner.builder()
+                .path(callerFeature.toString())
+                .workingDir(tempDir)
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle caching should work: " + getFailureMessage(result));
         assertEquals(2, result.getScenarioCount());
@@ -168,12 +179,14 @@ class CallSingleTest {
             """);
 
         // Run with 4 parallel threads
-        Suite suite = Suite.of(tempDir, parallelFeature.toString())
-                .parallel(4)
-                .outputConsoleSummary(false);
-
         long startTime = System.currentTimeMillis();
-        SuiteResult result = suite.run();
+        SuiteResult result = Runner.builder()
+                .path(parallelFeature.toString())
+                .workingDir(tempDir)
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .parallel(4);
         long elapsed = System.currentTimeMillis() - startTime;
 
         assertTrue(result.isPassed(), "Parallel callSingle should work: " + getFailureMessage(result));
@@ -203,9 +216,13 @@ class CallSingleTest {
             * def result = karate.callSingle('fail.feature')
             """);
 
-        Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = Runner.builder()
+                .path(callerFeature.toString())
+                .workingDir(tempDir)
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .parallel(1);
 
         assertTrue(result.isFailed(), "callSingle with failing feature should fail");
     }
@@ -229,9 +246,13 @@ class CallSingleTest {
             * match response.result == 'Hello World'
             """);
 
-        Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = Runner.builder()
+                .path(callerFeature.toString())
+                .workingDir(tempDir)
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle with argument should work: " + getFailureMessage(result));
     }
@@ -264,9 +285,13 @@ class CallSingleTest {
             * match result2.value == 'second'
             """);
 
-        Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = Runner.builder()
+                .path(callerFeature.toString())
+                .workingDir(tempDir)
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle with multiple paths should work: " + getFailureMessage(result));
     }
@@ -293,9 +318,13 @@ class CallSingleTest {
             * match userResult.token == 'token-for-user'
             """);
 
-        Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = Runner.builder()
+                .path(callerFeature.toString())
+                .workingDir(tempDir)
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle with ?suffix cache keys should work: " + getFailureMessage(result));
     }
@@ -323,9 +352,13 @@ class CallSingleTest {
             * match userResult.token == 'token-for-admin'
             """);
 
-        Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = Runner.builder()
+                .path(callerFeature.toString())
+                .workingDir(tempDir)
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle without suffix should share cache: " + getFailureMessage(result));
     }
@@ -364,10 +397,14 @@ class CallSingleTest {
             * match baseUrl == 'http://localhost:8080'
             """);
 
-        Suite suite = Suite.of(tempDir, testFeature.toString())
-                .configPath(configJs.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = Runner.builder()
+                .path(testFeature.toString())
+                .workingDir(tempDir)
+                .configDir(configJs.toString())
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle from config should work: " + getFailureMessage(result));
     }
@@ -409,10 +446,14 @@ class CallSingleTest {
             * match userId == 'user-42'
             """);
 
-        Suite suite = Suite.of(tempDir, testFeature.toString())
-                .configPath(configJs.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = Runner.builder()
+                .path(testFeature.toString())
+                .workingDir(tempDir)
+                .configDir(configJs.toString())
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle from config with JS file should work: " + getFailureMessage(result));
     }
@@ -462,12 +503,14 @@ class CallSingleTest {
             """);
 
         // Run with 4 parallel threads
-        Suite suite = Suite.of(tempDir, testFeature.toString())
-                .configPath(configJs.toString())
-                .parallel(4)
-                .outputConsoleSummary(false);
-
-        SuiteResult result = suite.run();
+        SuiteResult result = Runner.builder()
+                .path(testFeature.toString())
+                .workingDir(tempDir)
+                .configDir(configJs.toString())
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .parallel(4);
 
         assertTrue(result.isPassed(), "Parallel scenarios with config callSingle should work: " + getFailureMessage(result));
         assertEquals(4, result.getScenarioCount());
@@ -512,9 +555,13 @@ class CallSingleTest {
             * match result.token == 'user-token-456'
             """);
 
-        Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = Runner.builder()
+                .path(callerFeature.toString())
+                .workingDir(tempDir)
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle with tag selector should work: " + getFailureMessage(result));
     }
@@ -548,9 +595,13 @@ class CallSingleTest {
             * match prodResult.env == 'production'
             """);
 
-        Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = Runner.builder()
+                .path(callerFeature.toString())
+                .workingDir(tempDir)
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle with different tags should return different results: " + getFailureMessage(result));
     }

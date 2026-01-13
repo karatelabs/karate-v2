@@ -34,6 +34,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
+import static io.karatelabs.core.TestUtils.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -58,9 +59,7 @@ class ProcessTest {
               * match output contains 'hello'
             """);
 
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, featureFile.toString());
 
         assertTrue(result.isPassed(), "exec simple command should pass");
     }
@@ -76,9 +75,7 @@ class ProcessTest {
               * match output contains 'hello world'
             """);
 
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, featureFile.toString());
 
         assertTrue(result.isPassed(), "exec with args should pass");
     }
@@ -94,9 +91,7 @@ class ProcessTest {
               * match output contains 'tmp'
             """);
 
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, featureFile.toString());
 
         assertTrue(result.isPassed(), "exec with options should pass");
     }
@@ -112,9 +107,7 @@ class ProcessTest {
               * match output contains 'test-value'
             """);
 
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, featureFile.toString());
 
         assertTrue(result.isPassed(), "exec with env var should pass");
     }
@@ -134,9 +127,7 @@ class ProcessTest {
               * match proc.exitCode == 0
             """);
 
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, featureFile.toString());
 
         assertTrue(result.isPassed(), "fork basic should pass");
     }
@@ -154,9 +145,7 @@ class ProcessTest {
               * match proc.exitCode == 0
             """);
 
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, featureFile.toString());
 
         assertTrue(result.isPassed(), "fork with listener should pass");
     }
@@ -174,9 +163,7 @@ class ProcessTest {
               * match proc.stdOut contains 'deferred'
             """);
 
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, featureFile.toString());
 
         assertTrue(result.isPassed(), "fork deferred start should pass");
     }
@@ -194,9 +181,7 @@ class ProcessTest {
               * proc.close()
             """);
 
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, featureFile.toString());
 
         assertTrue(result.isPassed(), "fork waitForOutput should pass");
     }
@@ -216,9 +201,7 @@ class ProcessTest {
               * match proc.alive == false
             """);
 
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, featureFile.toString());
 
         assertTrue(result.isPassed(), "fork close should pass");
     }

@@ -101,7 +101,7 @@ public class JsonLinesReportListener implements ResultListener {
 
             // Capture suite info
             suiteStartTime = System.currentTimeMillis();
-            threadCount = suite.getThreadCount();
+            threadCount = suite.threadCount;
 
             // Write suite header line
             Map<String, Object> suiteHeader = new LinkedHashMap<>();

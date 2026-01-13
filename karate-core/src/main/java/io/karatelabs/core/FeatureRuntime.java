@@ -125,13 +125,13 @@ public class FeatureRuntime implements Callable<FeatureResult> {
             try {
                 // Use scenario-level parallelism for top-level features in parallel mode
                 // Must check BOTH executor AND semaphore to ensure proper synchronization
-                if (suite != null && suite.isParallel() && caller == null
+                if (suite != null && suite.parallel && caller == null
                         && suite.getScenarioExecutor() != null && suite.getScenarioSemaphore() != null) {
                     logger.debug("Running scenarios in parallel mode for feature: {}", feature.getName());
                     runScenariosParallel();
                 } else {
                     // Sequential execution for called features or non-parallel mode
-                    if (suite != null && suite.isParallel() && caller == null) {
+                    if (suite != null && suite.parallel && caller == null) {
                         logger.warn("Falling back to sequential execution for feature '{}' - executor: {}, semaphore: {}",
                                 feature.getName(), suite.getScenarioExecutor() != null, suite.getScenarioSemaphore() != null);
                     }
@@ -657,8 +657,8 @@ public class FeatureRuntime implements Callable<FeatureResult> {
             // This handles @ignore, @setup, @env, and complex expressions like anyOf(), allOf()
             List<Tag> tags = scenario.getTagsEffective();
             TagSelector selector = new TagSelector(tags);
-            String karateEnv = suite != null ? suite.getEnv() : null;
-            return selector.evaluate(suite != null ? suite.getTagSelector() : null, karateEnv);
+            String karateEnv = suite != null ? suite.env : null;
+            return selector.evaluate(suite != null ? suite.tagSelector : null, karateEnv);
         }
 
         /**

@@ -135,7 +135,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
 
         // Set karate.env before config evaluation
         if (featureRuntime != null && featureRuntime.getSuite() != null) {
-            karate.setEnv(featureRuntime.getSuite().getEnv());
+            karate.setEnv(featureRuntime.getSuite().env);
         }
 
         // Evaluate config (only for top-level scenarios, not called features)
@@ -186,21 +186,21 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         Suite suite = featureRuntime.getSuite();
 
         // Evaluate karate-base.js first (shared functions available to configs)
-        String baseContent = suite.getBaseContent();
+        String baseContent = suite.baseContent;
         if (baseContent != null) {
             evalConfigJs(baseContent, "karate-base.js");
         }
 
         // Evaluate main config
-        String configContent = suite.getConfigContent();
+        String configContent = suite.configContent;
         if (configContent != null) {
             evalConfigJs(configContent, "karate-config.js");
         }
 
         // Evaluate env-specific config
-        String configEnvContent = suite.getConfigEnvContent();
+        String configEnvContent = suite.configEnvContent;
         if (configEnvContent != null) {
-            String envName = suite.getEnv();
+            String envName = suite.env;
             evalConfigJs(configEnvContent, "karate-config-" + envName + ".js");
         }
     }

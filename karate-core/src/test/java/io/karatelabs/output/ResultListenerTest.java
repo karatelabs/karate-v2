@@ -55,7 +55,7 @@ class ResultListenerTest {
         ResultListener listener = new ResultListener() {
             @Override
             public void onSuiteStart(Suite suite) {
-                events.add("suiteStart:" + suite.getFeatures().size());
+                events.add("suiteStart:" + suite.features.size());
             }
 
             @Override
@@ -93,9 +93,14 @@ class ResultListenerTest {
             * def b = 2
             """);
 
-        Suite suite = Suite.of(tempDir, featureFile.toString())
+        Suite suite = Runner.builder()
+                .path(featureFile.toString())
+                .workingDir(tempDir)
                 .resultListener(listener)
-                .outputConsoleSummary(false);
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .buildSuite();
         suite.run();
 
         // Verify all events fired
@@ -174,10 +179,15 @@ class ResultListenerTest {
             * def a = 1
             """);
 
-        Suite suite = Suite.of(tempDir, featureFile.toString())
+        Suite suite = Runner.builder()
+                .path(featureFile.toString())
+                .workingDir(tempDir)
                 .resultListener(listener1)
                 .resultListener(listener2)
-                .outputConsoleSummary(false);
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .buildSuite();
         suite.run();
 
         // Both listeners should receive events
@@ -209,9 +219,14 @@ class ResultListenerTest {
             * match b == 999
             """);
 
-        Suite suite = Suite.of(tempDir, featureFile.toString())
+        Suite suite = Runner.builder()
+                .path(featureFile.toString())
+                .workingDir(tempDir)
                 .resultListener(listener)
-                .outputConsoleSummary(false);
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .buildSuite();
         suite.run();
 
         assertEquals(2, results.size());

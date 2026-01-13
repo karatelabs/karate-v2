@@ -29,28 +29,30 @@ import io.karatelabs.common.ResourceNotFoundException;
 import io.karatelabs.driver.DriverProvider;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.Tag;
-import io.karatelabs.js.Engine;
 import io.karatelabs.output.*;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.Semaphore;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * Immutable suite configuration and execution engine.
+ * <p>
+ * Suite instances can only be created via {@link Runner.Builder}.
+ * All configuration fields are public final for inspection.
+ * <p>
+ * Example usage:
+ * <pre>
+ * SuiteResult result = Runner.path("features/")
+ *     .tags("@smoke")
+ *     .parallel(4);
+ * </pre>
+ */
 public class Suite {
 
     private static final Logger logger = LogContext.RUNTIME_LOGGER;
@@ -58,319 +60,139 @@ public class Suite {
     /** Subfolder for JSON output (JSONL events, etc.) */
     public static final String KARATE_JSON_SUBFOLDER = "karate-json";
 
-    // Features to run
-    private final List<Feature> features = new ArrayList<>();
+    // ========== Configuration (immutable, public final) ==========
 
-    // Configuration
-    private String env;
-    private String tagSelector;
-    private int threadCount = 1;
-    private boolean parallel = false;
-    private boolean dryRun = false;
-    private String configPath = "classpath:karate-config.js";
-    private Path outputDir = Path.of("target/karate-reports");
-    private Path workingDir = FileUtils.WORKING_DIR.toPath();
-    private boolean outputHtmlReport = true;
-    private boolean outputJsonLines = false;
-    private boolean outputJunitXml = false;
-    private boolean outputCucumberJson = false;
-    private boolean backupReportDir = true;
-    private boolean outputConsoleSummary = true;
+    public final List<Feature> features;
+    public final String env;
+    public final String tagSelector;
+    public final int threadCount;
+    public final boolean parallel;
+    public final boolean dryRun;
+    public final String configPath;
+    public final Path outputDir;
+    public final Path workingDir;
+    public final boolean outputHtmlReport;
+    public final boolean outputJsonLines;
+    public final boolean outputJunitXml;
+    public final boolean outputCucumberJson;
+    public final boolean backupReportDir;
+    public final boolean outputConsoleSummary;
+    public final Map<String, String> systemProperties;
+    public final List<RunListener> listeners;
+    public final List<RunListenerFactory> listenerFactories;
+    public final DriverProvider driverProvider;
+    public final io.karatelabs.http.HttpClientFactory httpClientFactory;
+    public final boolean skipTagFiltering;
 
-    // Config content (loaded at Suite level, evaluated per-scenario)
-    private String baseContent;      // karate-base.js (shared functions)
-    private String configContent;
-    private String configEnvContent;
-    // Legacy: evaluated config variables (for backward compatibility with tests)
-    private Map<String, Object> configVariables = Collections.emptyMap();
+    // Config content (loaded in constructor, immutable)
+    public final String baseContent;
+    public final String configContent;
+    public final String configEnvContent;
 
-    // System properties (available via karate.properties)
-    private Map<String, String> systemProperties;
+    // ========== Runtime State (mutable, private) ==========
 
-    // Run event listeners
-    private final List<RunListener> listeners = new ArrayList<>();
-    private final List<RunListenerFactory> listenerFactories = new ArrayList<>();
-    private final ThreadLocal<List<RunListener>> threadListeners = new ThreadLocal<>();
+    // Result listeners are mutable because auto-registered listeners are added in run()
+    private final List<ResultListener> resultListeners;
 
-    // Result listeners
-    private final List<ResultListener> resultListeners = new ArrayList<>();
 
     // Caches (shared across features)
-    // Note: CALLONCE is now feature-scoped in FeatureRuntime, not suite-scoped
     private final Map<String, Object> CALLSINGLE_CACHE = new ConcurrentHashMap<>();
     private final ReentrantLock callSingleLock = new ReentrantLock();
 
     // Lock manager for @lock tag support (mutual exclusion across parallel scenarios)
     private final ScenarioLockManager lockManager = new ScenarioLockManager();
 
+    // Per-thread listeners
+    private final ThreadLocal<List<RunListener>> threadListeners = new ThreadLocal<>();
+
     // Shared executor and semaphore for scenario-level parallelism
-    // These must be volatile for memory visibility across virtual threads
     private volatile ExecutorService scenarioExecutor;
     private volatile Semaphore scenarioSemaphore;
 
-    // Lane pool for timeline reporting (assigns consistent lane numbers 1-N instead of random thread IDs)
-    private volatile java.util.Queue<Integer> availableLanes;
+    // Lane pool for timeline reporting
+    private volatile Queue<Integer> availableLanes;
     private final ThreadLocal<Integer> currentLane = new ThreadLocal<>();
 
     // Results
     private SuiteResult result;
 
-    // Driver provider (manages driver lifecycle across scenarios)
-    private DriverProvider driverProvider;
-
     // Performance testing hook (for Gatling integration)
     private PerfHook perfHook;
 
-    // HTTP client factory (for custom/mock HTTP clients)
-    private io.karatelabs.http.HttpClientFactory httpClientFactory;
+    // ========== Constructor (package-private) ==========
 
-    // Skip tag filtering (@env, @ignore) - useful for unit tests
-    private boolean skipTagFiltering = false;
+    /**
+     * Creates an immutable Suite from a Runner.Builder.
+     * This constructor is package-private - only Runner.Builder can create Suite instances.
+     */
+    Suite(Runner.Builder builder, int threadCount) {
+        // Core configuration
+        this.features = List.copyOf(builder.getResolvedFeatures());
+        this.env = builder.getEnv();
+        this.tagSelector = builder.getTags() != null
+                ? TagSelector.fromKarateOptionsTags(builder.getTags())
+                : null;
+        this.threadCount = Math.max(1, threadCount);
+        this.parallel = this.threadCount > 1;
+        this.dryRun = builder.isDryRun();
+        this.configPath = resolveConfigPath(builder.getConfigDir());
+        this.outputDir = builder.getOutputDir() != null
+                ? builder.getOutputDir()
+                : Path.of("target/karate-reports");
+        this.workingDir = builder.getWorkingDir() != null
+                ? builder.getWorkingDir()
+                : FileUtils.WORKING_DIR.toPath();
+        this.outputHtmlReport = builder.isOutputHtmlReport();
+        this.outputJsonLines = builder.isOutputJsonLines();
+        this.outputJunitXml = builder.isOutputJunitXml();
+        this.outputCucumberJson = builder.isOutputCucumberJson();
+        this.backupReportDir = builder.isBackupOutputDir();
+        this.outputConsoleSummary = builder.isOutputConsoleSummary();
+        this.systemProperties = builder.getSystemProperties() != null
+                ? Collections.unmodifiableMap(new HashMap<>(builder.getSystemProperties()))
+                : null;
+        this.listeners = List.copyOf(builder.getListeners());
+        this.listenerFactories = List.copyOf(builder.getListenerFactories());
+        this.resultListeners = new ArrayList<>(builder.getResultListeners());
+        this.driverProvider = builder.getDriverProvider();
+        this.httpClientFactory = builder.getHttpClientFactory();
+        this.skipTagFiltering = builder.isSkipTagFiltering();
 
-    private Suite() {
-    }
-
-    public static Suite of(String... paths) {
-        return of((Path) null, paths);
-    }
-
-    public static Suite of(Path workingDir, String... paths) {
-        Suite suite = new Suite();
-        if (workingDir != null) {
-            suite.workingDir = workingDir.toAbsolutePath().normalize();
+        // Load config content (all inputs are now available)
+        this.baseContent = tryLoadConfig(getBasePath(this.configPath), false);
+        if (this.baseContent != null) {
+            logger.info("Loaded karate-base.js from {}", getBasePath(this.configPath));
         }
-        for (String path : paths) {
-            File file = new File(path);
-            if (file.isDirectory()) {
-                // Find all .feature files in directory
-                addFeaturesFromDirectory(suite, file, suite.workingDir);
-            } else if (file.exists() && file.getName().endsWith(".feature")) {
-                Feature feature = Feature.read(Resource.from(file.toPath(), suite.workingDir));
-                suite.features.add(feature);
+        this.configContent = tryLoadConfig(this.configPath, true);
+        if (this.configContent != null) {
+            logger.info("Loaded karate-config.js from {}", this.configPath);
+        }
+        if (this.env != null && !this.env.isEmpty()) {
+            String envConfigPath = this.configPath.replace(".js", "-" + this.env + ".js");
+            this.configEnvContent = tryLoadConfig(envConfigPath, false);
+            if (this.configEnvContent != null) {
+                logger.info("Loaded {} config from {}", this.env, envConfigPath);
             }
-        }
-        return suite;
-    }
-
-    public static Suite of(Feature... features) {
-        Suite suite = new Suite();
-        for (Feature feature : features) {
-            suite.features.add(feature);
-        }
-        return suite;
-    }
-
-    private static void addFeaturesFromDirectory(Suite suite, File dir, Path workingDir) {
-        File[] files = dir.listFiles();
-        if (files == null) return;
-
-        for (File file : files) {
-            if (file.isDirectory()) {
-                addFeaturesFromDirectory(suite, file, workingDir);
-            } else if (file.getName().endsWith(".feature")) {
-                Feature feature = Feature.read(Resource.from(file.toPath(), workingDir));
-                suite.features.add(feature);
-            }
-        }
-    }
-
-    // ========== Configuration (Builder Pattern) ==========
-
-    public Suite parallel(int threads) {
-        this.threadCount = threads;
-        this.parallel = threads > 1;
-        return this;
-    }
-
-    /**
-     * Set tag selector expression. Supports both V1-style JS expressions and cucumber-style tags.
-     * <p>
-     * Examples:
-     * <ul>
-     *   <li>JS-style: "anyOf('@foo', '@bar') && not('@ignore')"</li>
-     *   <li>Cucumber-style: "@foo" (converted to "anyOf('@foo')")</li>
-     *   <li>Cucumber OR: "@foo, @bar" (converted to "anyOf('@foo','@bar')")</li>
-     * </ul>
-     */
-    public Suite tags(String tagExpression) {
-        this.tagSelector = TagSelector.fromKarateOptionsTags(tagExpression);
-        return this;
-    }
-
-    /**
-     * Set tag selector from multiple expressions (cucumber-style AND).
-     * Each expression is ANDed together.
-     * <p>
-     * Example: tags("@foo", "@bar") becomes "anyOf('@foo') && anyOf('@bar')"
-     */
-    public Suite tags(String... tagExpressions) {
-        this.tagSelector = TagSelector.fromKarateOptionsTags(tagExpressions);
-        return this;
-    }
-
-    public Suite env(String env) {
-        this.env = env;
-        return this;
-    }
-
-    /**
-     * Add a run event listener. Listeners receive all runtime events.
-     * @param listener the listener
-     * @return this suite for chaining
-     */
-    public Suite listener(RunListener listener) {
-        this.listeners.add(listener);
-        return this;
-    }
-
-    /**
-     * Add a run listener factory for per-thread listeners.
-     * A new listener is created for each execution thread.
-     * @param factory the factory
-     * @return this suite for chaining
-     */
-    public Suite listenerFactory(RunListenerFactory factory) {
-        this.listenerFactories.add(factory);
-        return this;
-    }
-
-    public Suite dryRun(boolean dryRun) {
-        this.dryRun = dryRun;
-        return this;
-    }
-
-    public Suite configPath(String configPath) {
-        this.configPath = configPath;
-        return this;
-    }
-
-    public Suite outputDir(Path outputDir) {
-        this.outputDir = outputDir;
-        return this;
-    }
-
-    public Suite outputDir(String outputDir) {
-        this.outputDir = Path.of(outputDir);
-        return this;
-    }
-
-    public Suite workingDir(Path workingDir) {
-        if (workingDir != null) {
-            this.workingDir = workingDir.toAbsolutePath().normalize();
-        }
-        return this;
-    }
-
-    public Suite workingDir(String workingDir) {
-        if (workingDir != null) {
-            this.workingDir = Path.of(workingDir).toAbsolutePath().normalize();
-        }
-        return this;
-    }
-
-    public Suite outputHtmlReport(boolean outputHtmlReport) {
-        this.outputHtmlReport = outputHtmlReport;
-        return this;
-    }
-
-    public Suite outputJsonLines(boolean outputJsonLines) {
-        this.outputJsonLines = outputJsonLines;
-        return this;
-    }
-
-    public Suite outputJunitXml(boolean outputJunitXml) {
-        this.outputJunitXml = outputJunitXml;
-        return this;
-    }
-
-    public Suite outputCucumberJson(boolean outputCucumberJson) {
-        this.outputCucumberJson = outputCucumberJson;
-        return this;
-    }
-
-    public Suite backupReportDir(boolean backupReportDir) {
-        this.backupReportDir = backupReportDir;
-        return this;
-    }
-
-    public Suite outputConsoleSummary(boolean outputConsoleSummary) {
-        this.outputConsoleSummary = outputConsoleSummary;
-        return this;
-    }
-
-    /**
-     * Skip tag filtering (@env, @ignore) so all scenarios run regardless of tags.
-     * Use this for unit tests that need to run scenarios with any tags.
-     */
-    public Suite skipTagFiltering(boolean skip) {
-        this.skipTagFiltering = skip;
-        return this;
-    }
-
-    /**
-     * Check if tag filtering is skipped.
-     */
-    public boolean isSkipTagFiltering() {
-        return skipTagFiltering;
-    }
-
-    public Suite resultListener(ResultListener listener) {
-        this.resultListeners.add(listener);
-        return this;
-    }
-
-    /**
-     * Set system properties that will be available via karate.properties in scripts.
-     * If null, defaults to System.getProperties() at runtime.
-     */
-    public Suite systemProperties(Map<String, String> props) {
-        this.systemProperties = props;
-        return this;
-    }
-
-    // ========== Execution ==========
-
-    /**
-     * Loads karate-base.js, karate-config.js content (and env-specific config) without evaluating.
-     * The content is evaluated per-scenario in ScenarioRuntime where callSingle is available.
-     */
-    private void loadConfig() {
-        // Derive base.js path from config path (same directory)
-        String basePath;
-        if (configPath.endsWith("karate-config.js")) {
-            basePath = configPath.replace("karate-config.js", "karate-base.js");
         } else {
-            basePath = "classpath:karate-base.js";
+            this.configEnvContent = null;
         }
+    }
 
-        // Load karate-base.js (optional - silent if not found)
-        baseContent = tryLoadConfig(basePath, false);
-        if (baseContent != null) {
-            logger.info("Loaded karate-base.js from {}", basePath);
+    private String resolveConfigPath(String configDir) {
+        if (configDir == null) {
+            return "classpath:karate-config.js";
         }
+        return configDir.endsWith(".js") ? configDir : configDir + "/karate-config.js";
+    }
 
-        // Load main config (warn if not found)
-        configContent = tryLoadConfig(configPath, true);
-        if (configContent != null) {
-            logger.info("Loaded karate-config.js from {}", configPath);
-        }
-
-        // Load env-specific config content (optional - silent if not found)
-        if (env != null && !env.isEmpty()) {
-            String envConfigPath = configPath.replace(".js", "-" + env + ".js");
-            configEnvContent = tryLoadConfig(envConfigPath, false);
-            if (configEnvContent != null) {
-                logger.info("Loaded {} config from {}", env, envConfigPath);
-            }
-        }
+    private String getBasePath(String configPath) {
+        return configPath.endsWith("karate-config.js")
+                ? configPath.replace("karate-config.js", "karate-base.js")
+                : "classpath:karate-base.js";
     }
 
     /**
      * Try to load a config file.
-     *
-     * @param path the config path
-     * @param warnIfMissing if true, log a warning when file is not found
-     * @return the file content, or null if not found
      */
     private String tryLoadConfig(String path, boolean warnIfMissing) {
         // Try the explicit path first
@@ -387,18 +209,15 @@ public class Suite {
         }
 
         // V2 enhancement: Try working directory as fallback
-        // This allows users to run Karate from any directory without Java classpath setup
         String fileName = path;
-        // Strip classpath: prefix to get the filename
         if (path.startsWith("classpath:")) {
             fileName = path.substring("classpath:".length());
         }
-        // Only try working dir for relative paths (not absolute)
         if (!fileName.startsWith("/")) {
             try {
                 Path workingDirConfig = workingDir.resolve(fileName);
-                if (java.nio.file.Files.exists(workingDirConfig)) {
-                    return java.nio.file.Files.readString(workingDirConfig);
+                if (Files.exists(workingDirConfig)) {
+                    return Files.readString(workingDirConfig);
                 }
             } catch (Exception e) {
                 logger.debug("Could not load config from working dir: {}", e.getMessage());
@@ -411,14 +230,7 @@ public class Suite {
         return null;
     }
 
-    /**
-     * Initialize the suite without running tests.
-     * Loads karate-config.js and karate-base.js.
-     * This is used by karate-gatling for running features with pre-loaded config.
-     */
-    public void init() {
-        loadConfig();
-    }
+    // ========== Execution ==========
 
     public SuiteResult run() {
         result = new SuiteResult();
@@ -429,28 +241,29 @@ public class Suite {
             backupReportDirIfExists();
         }
 
-        // Auto-register HTML report listener (writes feature HTML async, summary at end)
+        // Auto-register HTML report listener
         if (outputHtmlReport) {
             resultListeners.add(new HtmlReportListener(outputDir, env));
         }
 
-        // Auto-register Cucumber JSON report listener (writes per-feature JSON async)
+        // Auto-register Cucumber JSON report listener
         if (outputCucumberJson) {
             resultListeners.add(new CucumberJsonReportListener(outputDir));
         }
 
-        // Auto-register JUnit XML report listener (writes per-feature XML async)
+        // Auto-register JUnit XML report listener
         if (outputJunitXml) {
             resultListeners.add(new JunitXmlReportListener(outputDir));
         }
 
-        // Optionally register JSON Lines event stream writer (karate-events.jsonl)
+        // Optionally register JSON Lines event stream writer
         JsonLinesEventWriter jsonlWriter = null;
         if (outputJsonLines) {
             jsonlWriter = new JsonLinesEventWriter(outputDir, env, threadCount);
             try {
                 jsonlWriter.init();
-                listeners.add(jsonlWriter);
+                // Add to a mutable copy for event firing
+                addJsonlListener(jsonlWriter);
             } catch (Exception e) {
                 logger.warn("Failed to initialize JSONL event stream: {}", e.getMessage());
                 jsonlWriter = null;
@@ -458,15 +271,12 @@ public class Suite {
         }
 
         try {
-            // Load config before anything else
-            loadConfig();
-
             // Notify listeners
             for (ResultListener listener : resultListeners) {
                 listener.onSuiteStart(this);
             }
 
-            // Fire SUITE_ENTER event (RuntimeHookAdapter calls beforeSuite)
+            // Fire SUITE_ENTER event
             fireEvent(SuiteRunEvent.enter(this));
 
             if (parallel && threadCount > 1) {
@@ -475,7 +285,7 @@ public class Suite {
                 runSequential();
             }
 
-            // Fire SUITE_EXIT event (RuntimeHookAdapter calls afterSuite)
+            // Fire SUITE_EXIT event
             fireEvent(SuiteRunEvent.exit(this, result));
         } finally {
             result.setEndTime(System.currentTimeMillis());
@@ -488,7 +298,7 @@ public class Suite {
             // Close JSONL event writer
             if (jsonlWriter != null) {
                 try {
-                    listeners.remove(jsonlWriter);
+                    removeJsonlListener(jsonlWriter);
                     jsonlWriter.close();
                 } catch (Exception e) {
                     logger.warn("Failed to close JSONL event stream: {}", e.getMessage());
@@ -499,19 +309,30 @@ public class Suite {
             for (ResultListener listener : resultListeners) {
                 listener.onSuiteEnd(result);
             }
-            // Note: HTML report is generated by HtmlReportListener
-            // Note: Cucumber JSON is generated by CucumberJsonReportListener
-            // Note: JUnit XML is generated by JunitXmlReportListener
         }
 
         return result;
+    }
+
+    // Thread-safe listener management for JSONL writer
+    private final List<RunListener> mutableListeners = new ArrayList<>();
+
+    private void addJsonlListener(RunListener listener) {
+        synchronized (mutableListeners) {
+            mutableListeners.add(listener);
+        }
+    }
+
+    private void removeJsonlListener(RunListener listener) {
+        synchronized (mutableListeners) {
+            mutableListeners.remove(listener);
+        }
     }
 
     private void runSequential() {
         initThreadListeners();
         try {
             for (Feature feature : features) {
-                // Skip features with @ignore tag at feature level
                 if (isFeatureIgnored(feature)) {
                     continue;
                 }
@@ -526,18 +347,12 @@ public class Suite {
         }
     }
 
-    /**
-     * Run a feature with exception handling.
-     * If an unexpected exception occurs, creates a failed FeatureResult instead of crashing.
-     */
     private FeatureResult runFeatureSafely(Feature feature) {
         long startTime = System.currentTimeMillis();
         try {
             FeatureRuntime fr = new FeatureRuntime(this, feature);
             return fr.call();
         } catch (Exception e) {
-            // Safety net: if FeatureRuntime.call() throws (shouldn't happen with internal handling),
-            // create a failed result instead of crashing the runner
             logger.error("Unexpected error running feature '{}': {}", feature.getName(), e.getMessage(), e);
             return FeatureResult.fromException(feature, e, startTime);
         }
@@ -545,29 +360,22 @@ public class Suite {
 
     private void runParallel() {
         // Initialize ALL parallel infrastructure BEFORE creating executor
-        // This ensures visibility to feature tasks that may start immediately
-        // Initialize lane pool for timeline reporting (1 to threadCount)
-        availableLanes = new java.util.concurrent.ConcurrentLinkedQueue<>();
+        availableLanes = new ConcurrentLinkedQueue<>();
         for (int i = 1; i <= threadCount; i++) {
             availableLanes.add(i);
         }
-        // Semaphore limits concurrent scenarios across all features
         scenarioSemaphore = new Semaphore(threadCount);
         logger.info("Parallel execution initialized: threadCount={}, semaphore permits={}",
                 threadCount, scenarioSemaphore.availablePermits());
 
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            // Set executor LAST - this signals to features that parallel mode is ready
             scenarioExecutor = executor;
             List<Future<FeatureResult>> futures = new ArrayList<>();
 
             for (Feature feature : features) {
-                // Skip features with @ignore tag at feature level
                 if (isFeatureIgnored(feature)) {
                     continue;
                 }
-                // Features are dispatched immediately (no semaphore at feature level)
-                // Scenario-level semaphore controls actual concurrency
                 Future<FeatureResult> future = executor.submit(() -> {
                     initThreadListeners();
                     try {
@@ -589,9 +397,7 @@ public class Suite {
                     FeatureResult featureResult = future.get();
                     result.addFeatureResult(featureResult);
                 } catch (Exception e) {
-                    // This should rarely happen now with runFeatureSafely, but handle gracefully
                     logger.error("Unexpected error collecting feature result: {}", e.getMessage(), e);
-                    // The feature result was already added in the task, so we can continue
                 }
             }
         } finally {
@@ -600,9 +406,6 @@ public class Suite {
         }
     }
 
-    /**
-     * Check if a feature has @ignore tag at the feature level.
-     */
     private boolean isFeatureIgnored(Feature feature) {
         for (Tag tag : feature.getTags()) {
             if (Tag.IGNORE.equals(tag.getName())) {
@@ -614,10 +417,6 @@ public class Suite {
 
     // ========== Event System ==========
 
-    /**
-     * Initialize per-thread listeners from factories.
-     * Called at the start of each execution thread.
-     */
     void initThreadListeners() {
         if (listenerFactories.isEmpty()) {
             return;
@@ -629,32 +428,30 @@ public class Suite {
         threadListeners.set(perThread);
     }
 
-    /**
-     * Clean up per-thread listeners.
-     * Called at the end of each execution thread.
-     */
     void cleanupThreadListeners() {
         threadListeners.remove();
     }
 
-    /**
-     * Fire an event to all listeners.
-     * Returns false if any listener returns false (for ENTER events, this means skip).
-     *
-     * @param event the event to fire
-     * @return true to continue, false to skip
-     */
     public boolean fireEvent(RunEvent event) {
         boolean proceed = true;
 
-        // Global listeners (shared across threads)
+        // Global listeners (immutable list)
         for (RunListener listener : listeners) {
             if (!listener.onEvent(event)) {
                 proceed = false;
             }
         }
 
-        // Per-thread listeners (created from factories)
+        // Mutable listeners (JSONL writer)
+        synchronized (mutableListeners) {
+            for (RunListener listener : mutableListeners) {
+                if (!listener.onEvent(event)) {
+                    proceed = false;
+                }
+            }
+        }
+
+        // Per-thread listeners
         List<RunListener> perThread = threadListeners.get();
         if (perThread != null) {
             for (RunListener listener : perThread) {
@@ -677,7 +474,6 @@ public class Suite {
         String timestamp = LocalDateTime.now().format(BACKUP_DATE_FORMAT);
         String baseName = outputDir.getFileName() + "_" + timestamp;
         Path backupPath = outputDir.resolveSibling(baseName);
-        // If backup path already exists, increment suffix
         int suffix = 1;
         while (Files.exists(backupPath)) {
             backupPath = outputDir.resolveSibling(baseName + "_" + suffix);
@@ -691,38 +487,10 @@ public class Suite {
         }
     }
 
-    // ========== Accessors ==========
-
-    public String getEnv() {
-        return env;
-    }
-
-    public String getTagSelector() {
-        return tagSelector;
-    }
-
-    public int getThreadCount() {
-        return threadCount;
-    }
-
-    public boolean isParallel() {
-        return parallel;
-    }
-
-    public boolean isDryRun() {
-        return dryRun;
-    }
-
-    public Path getWorkingDir() {
-        return workingDir;
-    }
+    // ========== Accessors (for private fields) ==========
 
     public String getOutputDir() {
         return outputDir.toString();
-    }
-
-    public List<Feature> getFeatures() {
-        return features;
     }
 
     public Map<String, Object> getCallSingleCache() {
@@ -737,27 +505,14 @@ public class Suite {
         return lockManager;
     }
 
-    /**
-     * Get the shared executor for scenario-level parallelism.
-     * Only available during parallel execution.
-     */
     public ExecutorService getScenarioExecutor() {
         return scenarioExecutor;
     }
 
-    /**
-     * Get the semaphore that limits concurrent scenario execution.
-     * Only available during parallel execution.
-     */
     public Semaphore getScenarioSemaphore() {
         return scenarioSemaphore;
     }
 
-    /**
-     * Acquire a lane for timeline reporting.
-     * Call this after acquiring the semaphore and before executing a scenario.
-     * The lane is stored in a ThreadLocal for the current thread.
-     */
     public void acquireLane() {
         if (availableLanes != null) {
             Integer lane = availableLanes.poll();
@@ -767,10 +522,6 @@ public class Suite {
         }
     }
 
-    /**
-     * Release the current lane back to the pool.
-     * Call this after scenario execution completes.
-     */
     public void releaseLane() {
         if (availableLanes != null) {
             Integer lane = currentLane.get();
@@ -781,11 +532,6 @@ public class Suite {
         }
     }
 
-    /**
-     * Get the current lane name for timeline reporting.
-     * Returns a consistent name like "1", "2", etc. based on the lane pool.
-     * Returns null if not in parallel mode or no lane assigned.
-     */
     public String getCurrentLaneName() {
         Integer lane = currentLane.get();
         return lane != null ? String.valueOf(lane) : null;
@@ -795,68 +541,27 @@ public class Suite {
         return result;
     }
 
-    public Map<String, Object> getConfigVariables() {
-        return configVariables;
-    }
-
-    public String getBaseContent() {
-        return baseContent;
-    }
-
-    public String getConfigContent() {
-        return configContent;
-    }
-
-    public String getConfigEnvContent() {
-        return configEnvContent;
-    }
-
-    public List<RunListener> getListeners() {
-        return listeners;
-    }
-
-    public List<RunListenerFactory> getListenerFactories() {
-        return listenerFactories;
-    }
-
     public List<ResultListener> getResultListeners() {
         return resultListeners;
     }
 
     /**
      * Get system properties for karate.properties.
-     * If none were set explicitly, returns System.getProperties() as a Map.
      */
     public Map<String, String> getSystemProperties() {
         if (systemProperties == null) {
-            // Fallback to JVM system properties
             Map<String, String> props = new HashMap<>();
             System.getProperties().forEach((k, v) -> props.put(k.toString(), v.toString()));
             return props;
         }
-        // Merge with JVM system properties (explicit properties take precedence)
         Map<String, String> merged = new HashMap<>();
         System.getProperties().forEach((k, v) -> merged.put(k.toString(), v.toString()));
         merged.putAll(systemProperties);
         return merged;
     }
 
-    // ========== Driver Provider ==========
-
-    /**
-     * Get the driver provider. May be null if not configured.
-     */
     public DriverProvider getDriverProvider() {
         return driverProvider;
-    }
-
-    /**
-     * Set the driver provider.
-     * Called via Runner.driverProvider() or Suite.driverProvider().
-     */
-    public Suite driverProvider(DriverProvider provider) {
-        this.driverProvider = provider;
-        return this;
     }
 
     public PerfHook getPerfHook() {
@@ -865,34 +570,22 @@ public class Suite {
 
     /**
      * Set the performance hook for Gatling integration.
-     * When set, HTTP request timing will be reported via this hook.
+     * This is the only mutable setter, needed for Gatling's deferred perfHook setup.
      */
-    public Suite perfHook(PerfHook hook) {
+    void setPerfHook(PerfHook hook) {
         this.perfHook = hook;
-        return this;
     }
 
-    /**
-     * Set the HTTP client factory for custom/mock HTTP clients.
-     * When set, this factory is used instead of the default Netty client.
-     */
-    public Suite httpClientFactory(io.karatelabs.http.HttpClientFactory factory) {
-        this.httpClientFactory = factory;
-        return this;
-    }
-
-    /**
-     * Get the HTTP client factory, or null if using the default.
-     */
     public io.karatelabs.http.HttpClientFactory getHttpClientFactory() {
         return httpClientFactory;
     }
 
-    /**
-     * Check if performance mode is enabled (perfHook is set).
-     */
     public boolean isPerfMode() {
         return perfHook != null;
+    }
+
+    public boolean isSkipTagFiltering() {
+        return skipTagFiltering;
     }
 
 }

@@ -31,6 +31,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static io.karatelabs.core.TestUtils.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -61,9 +62,7 @@ public class OutlineTest {
             | carol |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
         assertEquals(3, result.getScenarioCount());
@@ -87,9 +86,7 @@ public class OutlineTest {
             | 0  | 0  | 0    |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
         assertEquals(3, result.getScenarioCount());
@@ -111,9 +108,7 @@ public class OutlineTest {
             | Karate | Hello Karate! |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
     }
@@ -135,9 +130,7 @@ public class OutlineTest {
             | jane  | 25   |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
     }
@@ -163,9 +156,7 @@ public class OutlineTest {
             | negative | -5   |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
         // 2 rows from first table + 2 rows from second table = 4 scenarios
@@ -191,9 +182,7 @@ public class OutlineTest {
             | 50   | 150       |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
         assertEquals(2, result.getScenarioCount());
@@ -215,9 +204,7 @@ public class OutlineTest {
             | 2    | 999       |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertFalse(result.isPassed());
         assertEquals(2, result.getScenarioCount());
@@ -242,9 +229,7 @@ public class OutlineTest {
             | 002 | bob   |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
         assertEquals(2, result.getScenarioCount());
@@ -268,9 +253,7 @@ public class OutlineTest {
             | b  | 2    |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
         assertEquals(2, result.getScenarioCount());
@@ -291,9 +274,7 @@ public class OutlineTest {
             | foo  | bar   |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
     }
@@ -316,9 +297,7 @@ public class OutlineTest {
             | Nyan | 6    |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
         assertEquals(2, result.getScenarioPassedCount());
@@ -344,9 +323,7 @@ public class OutlineTest {
             | Karate |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
         assertEquals(2, result.getScenarioPassedCount());
@@ -373,9 +350,7 @@ public class OutlineTest {
             | bar  | two   |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
         assertEquals(2, result.getScenarioPassedCount());
@@ -405,9 +380,7 @@ public class OutlineTest {
             * match z == 4
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
         // 1 regular + 2 from outline + 1 regular = 4 scenarios
@@ -434,9 +407,7 @@ public class OutlineTest {
             | object            | { a: 1 }         | { a: 1 }               |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
         assertEquals(6, result.getScenarioCount());
@@ -459,9 +430,7 @@ public class OutlineTest {
             | abc |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
     }
@@ -483,9 +452,7 @@ public class OutlineTest {
             | true   | true      |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
         assertEquals(3, result.getScenarioCount());
@@ -511,9 +478,7 @@ public class OutlineTest {
             | baz  |         |        | 'baz'         | null             | null           |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
         assertEquals(3, result.getScenarioCount());
@@ -1023,8 +988,7 @@ public class OutlineTest {
             | read('data.csv') |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString()).outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), "CSV-based outline should pass: " + getFailureMessage(result));
         assertEquals(2, result.getScenarioCount(), "Should have 2 scenarios from CSV");
@@ -1055,9 +1019,7 @@ public class OutlineTest {
             | carol |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
         assertEquals(3, result.getScenarioCount());
@@ -1093,9 +1055,7 @@ public class OutlineTest {
             | 20   |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
         assertEquals(4, result.getScenarioCount());
@@ -1120,9 +1080,7 @@ public class OutlineTest {
             * def y = 2
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
         // Verify hook was NOT called (since there are no outlines)
@@ -1157,9 +1115,7 @@ public class OutlineTest {
             | bar  |         |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
         assertEquals(3, result.getScenarioCount());
@@ -1189,9 +1145,7 @@ public class OutlineTest {
             |      |         |
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
         assertEquals(4, result.getScenarioCount());

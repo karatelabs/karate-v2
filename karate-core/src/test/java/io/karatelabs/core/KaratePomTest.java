@@ -215,7 +215,7 @@ class KaratePomTest {
         // Build suite to verify settings were applied
         Suite suite = builder.buildSuite();
         assertNotNull(suite);
-        assertEquals("dev", suite.getEnv());
+        assertEquals("dev", suite.env);
     }
 
     @Test
@@ -367,9 +367,9 @@ class KaratePomTest {
         // Build suite to verify workingDir was applied
         Suite suite = builder.buildSuite();
         assertNotNull(suite);
-        assertNotNull(suite.getWorkingDir());
-        assertTrue(suite.getWorkingDir().toString().contains("workdir") ||
-                   suite.getWorkingDir().isAbsolute());
+        assertNotNull(suite.workingDir);
+        assertTrue(suite.workingDir.toString().contains("workdir") ||
+                   suite.workingDir.isAbsolute());
     }
 
 }

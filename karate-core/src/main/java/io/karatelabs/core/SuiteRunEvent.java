@@ -62,8 +62,8 @@ public record SuiteRunEvent(
         }
         // SUITE_ENTER data
         if (source != null) {
-            map.put("env", source.getEnv());
-            map.put("threads", source.getThreadCount());
+            map.put("env", source.env);
+            map.put("threads", source.threadCount);
         }
         return map;
     }

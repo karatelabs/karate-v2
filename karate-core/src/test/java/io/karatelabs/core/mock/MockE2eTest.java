@@ -1356,9 +1356,7 @@ class MockE2eTest {
             * match response.receivedCookies contains 'session=abc123'
             """.formatted(port, port));
 
-        Suite suite = Suite.of(tempDir, callerFeature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, callerFeature.toString());
 
         assertEquals(2, result.getScenarioCount());
         assertTrue(result.isPassed(), "Cookie jar should propagate from called feature: " + getFailureMessage(result));

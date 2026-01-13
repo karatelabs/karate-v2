@@ -166,7 +166,7 @@ public class PooledDriverProvider implements DriverProvider {
             // Auto-detect pool size from Suite's threadCount
             if (poolSize < 1 && runtime.getFeatureRuntime() != null
                     && runtime.getFeatureRuntime().getSuite() != null) {
-                poolSize = runtime.getFeatureRuntime().getSuite().getThreadCount();
+                poolSize = runtime.getFeatureRuntime().getSuite().threadCount;
                 logger.info("Auto-detected pool size from Suite: {}", poolSize);
             }
             if (poolSize < 1) {

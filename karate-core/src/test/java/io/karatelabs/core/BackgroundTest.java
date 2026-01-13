@@ -29,6 +29,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static io.karatelabs.core.TestUtils.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -56,9 +57,7 @@ class BackgroundTest {
             * match shared == 'from-background'
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
         assertEquals(2, result.getScenarioCount());
@@ -81,9 +80,7 @@ class BackgroundTest {
             * match headers['Content-Type'] == 'application/json'
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
     }
@@ -103,9 +100,7 @@ class BackgroundTest {
             * match c == 3
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
     }
@@ -127,9 +122,7 @@ class BackgroundTest {
             * match value == 'original'
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
         assertEquals(2, result.getScenarioPassedCount());
@@ -148,9 +141,7 @@ class BackgroundTest {
             * def x = 1
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertFalse(result.isPassed());
         assertEquals(1, result.getScenarioFailedCount());
@@ -167,9 +158,7 @@ class BackgroundTest {
             * match x == 42
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed(), getFailureMessage(result));
     }
@@ -187,9 +176,7 @@ class BackgroundTest {
             * def sc = 'scenario-step'
             """);
 
-        Suite suite = Suite.of(tempDir, feature.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, feature.toString());
 
         assertTrue(result.isPassed());
 

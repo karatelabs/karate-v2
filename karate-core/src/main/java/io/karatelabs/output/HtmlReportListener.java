@@ -85,7 +85,7 @@ public class HtmlReportListener implements ResultListener {
     @Override
     public void onSuiteStart(Suite suite) {
         suiteStartTime = System.currentTimeMillis();
-        threadCount = suite.getThreadCount();
+        threadCount = suite.threadCount;
 
         // Create directories eagerly
         try {

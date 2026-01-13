@@ -110,18 +110,17 @@ public final class Runner {
         Resource resource = Resource.path(path);
         Feature feature = Feature.read(resource);
 
-        // Create and configure the suite
-        Suite suite = Suite.of(feature)
+        // Create the suite using Builder
+        Suite suite = Runner.builder()
+                .features(feature)
                 .outputHtmlReport(false)
-                .outputConsoleSummary(false);
+                .outputConsoleSummary(false)
+                .buildSuite();
 
         // Set PerfHook if provided (for Gatling integration)
         if (perfHook != null) {
-            suite.perfHook(perfHook);
+            suite.setPerfHook(perfHook);
         }
-
-        // Initialize the suite (loads karate-config.js)
-        suite.init();
 
         // Run the feature with the arg map
         FeatureRuntime fr = new FeatureRuntime(suite, feature, null, null, false, arg, null);
@@ -523,6 +522,40 @@ public final class Runner {
             return this;
         }
 
+        // ========== Package-private accessors for Suite constructor ==========
+
+        private List<Feature> resolvedFeatures;
+
+        List<Feature> getResolvedFeatures() {
+            if (resolvedFeatures == null) {
+                resolvedFeatures = new ArrayList<>(features);
+                for (String path : paths) {
+                    resolveFeatures(path, resolvedFeatures, workingDir);
+                }
+            }
+            return resolvedFeatures;
+        }
+
+        String getEnv() { return env; }
+        String getTags() { return tags; }
+        String getConfigDir() { return configDir; }
+        Path getOutputDir() { return outputDir; }
+        Path getWorkingDir() { return workingDir; }
+        boolean isDryRun() { return dryRun; }
+        boolean isOutputHtmlReport() { return outputHtmlReport; }
+        boolean isOutputJsonLines() { return outputJsonLines; }
+        boolean isOutputJunitXml() { return outputJunitXml; }
+        boolean isOutputCucumberJson() { return outputCucumberJson; }
+        boolean isBackupOutputDir() { return backupOutputDir; }
+        boolean isOutputConsoleSummary() { return outputConsoleSummary; }
+        Map<String, String> getSystemProperties() { return systemProperties; }
+        List<RunListener> getListeners() { return listeners; }
+        List<RunListenerFactory> getListenerFactories() { return listenerFactories; }
+        List<ResultListener> getResultListeners() { return resultListeners; }
+        io.karatelabs.driver.DriverProvider getDriverProvider() { return driverProvider; }
+        io.karatelabs.http.HttpClientFactory getHttpClientFactory() { return httpClientFactory; }
+        boolean isSkipTagFiltering() { return skipTagFiltering; }
+
         /**
          * Execute the tests with the specified thread count.
          * This is the terminal operation that runs the tests.
@@ -531,9 +564,10 @@ public final class Runner {
          * @return the test results
          */
         public SuiteResult parallel(int threadCount) {
-            Suite suite = buildSuite();
-            suite.parallel(Math.max(1, threadCount));
+            // Apply log level (this is a global setting)
+            io.karatelabs.output.LogContext.setLogLevel(logLevel);
 
+            Suite suite = new Suite(this, Math.max(1, threadCount));
             SuiteResult result = suite.run();
 
             // Print summary if enabled
@@ -546,79 +580,21 @@ public final class Runner {
 
         /**
          * Build the Suite without running it.
-         * Useful for advanced scenarios.
+         * Useful for advanced scenarios where you need to configure the Suite
+         * further or run it manually.
          */
         public Suite buildSuite() {
-            // Resolve features from paths
-            List<Feature> allFeatures = new ArrayList<>(features);
-            for (String path : paths) {
-                resolveFeatures(path, allFeatures, workingDir);
-            }
+            return buildSuite(1);
+        }
 
-            // Build suite
-            Suite suite = Suite.of(allFeatures.toArray(new Feature[0]));
-            suite.workingDir(workingDir);
-
-            // Apply configuration
-            if (env != null) {
-                suite.env(env);
-            }
-            if (tags != null) {
-                suite.tags(tags);
-            }
-            if (configDir != null) {
-                suite.configPath(configDir.endsWith(".js")
-                        ? configDir
-                        : configDir + "/karate-config.js");
-            }
-            if (outputDir != null) {
-                suite.outputDir(outputDir);
-            }
-            suite.dryRun(dryRun);
-            suite.outputHtmlReport(outputHtmlReport);
-            suite.outputJsonLines(outputJsonLines);
-            suite.outputJunitXml(outputJunitXml);
-            suite.outputCucumberJson(outputCucumberJson);
-            suite.backupReportDir(backupOutputDir);
-            suite.outputConsoleSummary(outputConsoleSummary);
-            if (systemProperties != null) {
-                suite.systemProperties(systemProperties);
-            }
-
-            // Add listeners
-            for (RunListener listener : listeners) {
-                suite.listener(listener);
-            }
-
-            // Add listener factories
-            for (RunListenerFactory factory : listenerFactories) {
-                suite.listenerFactory(factory);
-            }
-
-            // Add result listeners
-            for (ResultListener listener : resultListeners) {
-                suite.resultListener(listener);
-            }
-
-            // Set driver provider
-            if (driverProvider != null) {
-                suite.driverProvider(driverProvider);
-            }
-
-            // Set HTTP client factory
-            if (httpClientFactory != null) {
-                suite.httpClientFactory(httpClientFactory);
-            }
-
-            // Set skip tag filtering
-            if (skipTagFiltering) {
-                suite.skipTagFiltering(true);
-            }
-
+        /**
+         * Build the Suite with specified thread count without running it.
+         */
+        Suite buildSuite(int threadCount) {
             // Apply log level (this is a global setting)
             io.karatelabs.output.LogContext.setLogLevel(logLevel);
 
-            return suite;
+            return new Suite(this, Math.max(1, threadCount));
         }
 
         private void resolveFeatures(String path, List<Feature> target, Path root) {

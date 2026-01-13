@@ -223,4 +223,72 @@ public class TestUtils {
         return text == null ? "" : text.replace("\r\n", "\n").replace("\r", "\n");
     }
 
+    // ========== Suite Creation Utilities ==========
+
+    /**
+     * Create a test Suite from Feature objects with test-friendly defaults.
+     * Equivalent to the old Suite.of(Feature...) pattern.
+     * <p>
+     * Test defaults: no console summary, no HTML reports, no backup, skip tag filtering.
+     */
+    public static Suite createTestSuite(Feature... features) {
+        return Runner.builder()
+                .features(features)
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .skipTagFiltering(true)
+                .buildSuite();
+    }
+
+    /**
+     * Create a test Suite from paths with test-friendly defaults.
+     * Equivalent to the old Suite.of(Path, String...) pattern.
+     */
+    public static Suite createTestSuite(Path workingDir, String... paths) {
+        return Runner.builder()
+                .path(paths)
+                .workingDir(workingDir)
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .skipTagFiltering(true)
+                .buildSuite();
+    }
+
+    /**
+     * Run tests from Feature objects and return SuiteResult.
+     * Equivalent to the old Suite.of(Feature...).run() pattern.
+     */
+    public static SuiteResult runTestSuite(Feature... features) {
+        return createTestSuite(features).run();
+    }
+
+    /**
+     * Run tests from paths and return SuiteResult.
+     * Equivalent to the old Suite.of(Path, String...).run() pattern.
+     */
+    public static SuiteResult runTestSuite(Path workingDir, String... paths) {
+        return createTestSuite(workingDir, paths).run();
+    }
+
+    /**
+     * Get a Runner.Builder pre-configured with test-friendly defaults.
+     * Use this when you need to customize the Suite further.
+     * <p>
+     * Example:
+     * <pre>
+     * SuiteResult result = TestUtils.testBuilder()
+     *     .path("features/")
+     *     .parallel(4);
+     * </pre>
+     */
+    public static Runner.Builder testBuilder() {
+        return Runner.builder()
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .skipTagFiltering(true);
+    }
+
 }

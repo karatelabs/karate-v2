@@ -23,14 +23,13 @@
  */
 package io.karatelabs.core;
 
-import io.karatelabs.common.Resource;
-import io.karatelabs.gherkin.Feature;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static io.karatelabs.core.TestUtils.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -66,10 +65,14 @@ class ScenarioConfigTest {
             """);
 
         // Run with config
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .configPath(configFile.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = Runner.builder()
+                .path(featureFile.toString())
+                .workingDir(tempDir)
+                .configDir(configFile.toString())
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .parallel(1);
 
         assertEquals(1, result.getScenarioCount());
         assertEquals(1, result.getScenarioPassedCount());
@@ -111,11 +114,15 @@ class ScenarioConfigTest {
             """);
 
         // Run with env=dev
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .configPath(configFile.toString())
-                .env("dev")
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = Runner.builder()
+                .path(featureFile.toString())
+                .workingDir(tempDir)
+                .configDir(configFile.toString())
+                .karateEnv("dev")
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .parallel(1);
 
         assertTrue(result.isPassed(), "Suite should pass");
         assertEquals(1, result.getScenarioPassedCount());
@@ -133,10 +140,14 @@ class ScenarioConfigTest {
             """);
 
         // Run without config file (missing config should be ignored)
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .configPath(tempDir.resolve("nonexistent-config.js").toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = Runner.builder()
+                .path(featureFile.toString())
+                .workingDir(tempDir)
+                .configDir(tempDir.resolve("nonexistent-config.js").toString())
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .parallel(1);
 
         assertTrue(result.isPassed());
     }
@@ -161,10 +172,14 @@ class ScenarioConfigTest {
             * match version == '1.0'
             """);
 
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .configPath(configFile.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = Runner.builder()
+                .path(featureFile.toString())
+                .workingDir(tempDir)
+                .configDir(configFile.toString())
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .parallel(1);
 
         assertTrue(result.isPassed());
     }
@@ -196,9 +211,7 @@ class ScenarioConfigTest {
 
         // Run WITHOUT specifying configPath - should use default 'classpath:karate-config.js'
         // which won't be found on classpath, but will be found in working directory
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, featureFile.toString());
 
         assertTrue(result.isPassed(), "Config should be loaded from working directory");
     }
@@ -233,9 +246,7 @@ class ScenarioConfigTest {
             * call configUtils.hello
             """);
 
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, featureFile.toString());
 
         assertTrue(result.isPassed(), "V1-style config with karate.call should work");
     }
@@ -269,9 +280,7 @@ class ScenarioConfigTest {
             * call configUtils.hello
             """);
 
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, featureFile.toString());
 
         assertTrue(result.isPassed(), "Config with karate.call should work");
     }
@@ -297,9 +306,7 @@ class ScenarioConfigTest {
             * match data.exampleIndex == -1
             """);
 
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, featureFile.toString());
 
         assertTrue(result.isPassed(), "karate.scenario property should work in config");
     }
@@ -332,9 +339,7 @@ class ScenarioConfigTest {
             * match result == 'hello world'
             """);
 
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, featureFile.toString());
 
         assertTrue(result.isPassed(), "karate.callonce() in config should work");
     }
@@ -372,10 +377,14 @@ class ScenarioConfigTest {
             """);
 
         // Run with env=staging, no explicit configPath
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .env("staging")
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = Runner.builder()
+                .path(featureFile.toString())
+                .workingDir(tempDir)
+                .karateEnv("staging")
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .parallel(1);
 
         assertTrue(result.isPassed(), "Base and env configs should load from working directory");
     }
@@ -413,9 +422,7 @@ class ScenarioConfigTest {
             """);
 
         // Run with configs from working directory
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, featureFile.toString());
 
         assertTrue(result.isPassed(), "karate-base.js function should be available to karate-config.js");
     }
@@ -455,10 +462,14 @@ class ScenarioConfigTest {
             """);
 
         // Run with env=dev
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .env("dev")
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = Runner.builder()
+                .path(featureFile.toString())
+                .workingDir(tempDir)
+                .karateEnv("dev")
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupReportDir(false)
+                .parallel(1);
 
         assertTrue(result.isPassed(), "karate-base.js functions should work with env config");
     }
@@ -482,9 +493,7 @@ class ScenarioConfigTest {
             \"\"\"
             """);
 
-        Suite suite = Suite.of(tempDir, featureFile.toString())
-                .outputConsoleSummary(false);
-        SuiteResult result = suite.run();
+        SuiteResult result = runTestSuite(tempDir, featureFile.toString());
 
         assertTrue(result.isPassed(), "karate.configure() should work from JavaScript eval block");
     }

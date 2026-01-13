@@ -160,7 +160,7 @@ class RunnerTest {
 
         Suite suite = builder.buildSuite();
         assertNotNull(suite);
-        assertEquals("test", suite.getEnv());
+        assertEquals("test", suite.env);
     }
 
     @Test

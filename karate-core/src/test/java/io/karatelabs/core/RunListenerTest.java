@@ -62,7 +62,7 @@ class RunListenerTest {
 
     @Test
     void testSuiteRunEventEnter() {
-        Suite suite = Suite.of(new String[0]);
+        Suite suite = Runner.builder().buildSuite();
         SuiteRunEvent event = SuiteRunEvent.enter(suite);
 
         assertEquals(RunEventType.SUITE_ENTER, event.getType());
@@ -76,7 +76,7 @@ class RunListenerTest {
 
     @Test
     void testSuiteRunEventExit() {
-        Suite suite = Suite.of(new String[0]);
+        Suite suite = Runner.builder().buildSuite();
         SuiteResult result = new SuiteResult();
         SuiteRunEvent event = SuiteRunEvent.exit(suite, result);
 
@@ -87,7 +87,7 @@ class RunListenerTest {
 
     @Test
     void testProgressRunEvent() {
-        Suite suite = Suite.of(new String[0]);
+        Suite suite = Runner.builder().buildSuite();
         ProgressRunEvent event = ProgressRunEvent.of(suite, 5, 10);
 
         assertEquals(RunEventType.PROGRESS, event.getType());
@@ -122,7 +122,7 @@ class RunListenerTest {
         // RunListener is a functional interface, so we can use a lambda
         RunListener listener = event -> event.getType() != RunEventType.ERROR;
 
-        Suite suite = Suite.of(new String[0]);
+        Suite suite = Runner.builder().buildSuite();
 
         assertTrue(listener.onEvent(SuiteRunEvent.enter(suite)));
         assertFalse(listener.onEvent(ErrorRunEvent.of(new RuntimeException(), null)));
@@ -144,7 +144,7 @@ class RunListenerTest {
             default -> true;
         };
 
-        Suite suite = Suite.of(new String[0]);
+        Suite suite = Runner.builder().buildSuite();
 
         assertTrue(listener.onEvent(SuiteRunEvent.enter(suite)));
         assertTrue(listener.onEvent(ProgressRunEvent.of(suite, 1, 10)));
@@ -203,7 +203,7 @@ class RunListenerTest {
     @Test
     void testPatternMatchingOnEventTypes() {
         // Verify pattern matching works for all core event types
-        Suite suite = Suite.of(new String[0]);
+        Suite suite = Runner.builder().buildSuite();
 
         RunEvent[] events = {
             SuiteRunEvent.enter(suite),
@@ -240,11 +240,12 @@ class RunListenerTest {
             return true;
         };
 
-        Suite suite = Suite.of(new String[0])
-            .listener(listener);
+        Suite suite = Runner.builder()
+            .listener(listener)
+            .buildSuite();
 
-        assertEquals(1, suite.getListeners().size());
-        assertSame(listener, suite.getListeners().get(0));
+        assertEquals(1, suite.listeners.size());
+        assertSame(listener, suite.listeners.get(0));
     }
 
     @Test
@@ -255,21 +256,23 @@ class RunListenerTest {
             return event -> true;
         };
 
-        Suite suite = Suite.of(new String[0])
-            .listenerFactory(factory);
+        Suite suite = Runner.builder()
+            .listenerFactory(factory)
+            .buildSuite();
 
-        assertEquals(1, suite.getListenerFactories().size());
+        assertEquals(1, suite.listenerFactories.size());
         assertEquals(0, createCount[0]); // Not created yet
     }
 
     @Test
     void testSuiteFireEventToGlobalListeners() {
         List<RunEvent> received = new ArrayList<>();
-        Suite suite = Suite.of(new String[0])
+        Suite suite = Runner.builder()
             .listener(event -> {
                 received.add(event);
                 return true;
-            });
+            })
+            .buildSuite();
 
         SuiteRunEvent event = SuiteRunEvent.enter(suite);
         boolean result = suite.fireEvent(event);
@@ -281,8 +284,9 @@ class RunListenerTest {
 
     @Test
     void testSuiteFireEventReturnsFalseWhenListenerRejects() {
-        Suite suite = Suite.of(new String[0])
-            .listener(event -> false); // Always reject
+        Suite suite = Runner.builder()
+            .listener(event -> false) // Always reject
+            .buildSuite();
 
         boolean result = suite.fireEvent(SuiteRunEvent.enter(suite));
 
@@ -293,7 +297,7 @@ class RunListenerTest {
     void testSuiteFireEventMultipleListeners() {
         List<String> order = new ArrayList<>();
 
-        Suite suite = Suite.of(new String[0])
+        Suite suite = Runner.builder()
             .listener(event -> {
                 order.add("first");
                 return true;
@@ -301,7 +305,8 @@ class RunListenerTest {
             .listener(event -> {
                 order.add("second");
                 return true;
-            });
+            })
+            .buildSuite();
 
         suite.fireEvent(SuiteRunEvent.enter(suite));
 
@@ -312,23 +317,25 @@ class RunListenerTest {
     void testSuitePerThreadListeners() {
         List<String> threadIds = new ArrayList<>();
 
-        Suite suite = Suite.of(new String[0])
+        Suite suite = Runner.builder()
             .listenerFactory(() -> {
                 String threadId = Thread.currentThread().getName();
                 threadIds.add(threadId);
                 return event -> true;
-            });
+            })
+            .buildSuite();
 
         // Simulate thread initialization
         suite.initThreadListeners();
 
         // Fire an event - should go to per-thread listener
         List<RunEvent> received = new ArrayList<>();
-        Suite suite2 = Suite.of(new String[0])
+        Suite suite2 = Runner.builder()
             .listenerFactory(() -> event -> {
                 received.add(event);
                 return true;
-            });
+            })
+            .buildSuite();
         suite2.initThreadListeners();
         suite2.fireEvent(SuiteRunEvent.enter(suite2));
 
@@ -343,7 +350,7 @@ class RunListenerTest {
     void testSuiteFireEventCombinesGlobalAndPerThread() {
         List<String> order = new ArrayList<>();
 
-        Suite suite = Suite.of(new String[0])
+        Suite suite = Runner.builder()
             .listener(event -> {
                 order.add("global");
                 return true;
@@ -351,7 +358,8 @@ class RunListenerTest {
             .listenerFactory(() -> event -> {
                 order.add("perThread");
                 return true;
-            });
+            })
+            .buildSuite();
 
         suite.initThreadListeners();
         suite.fireEvent(SuiteRunEvent.enter(suite));
@@ -374,13 +382,16 @@ class RunListenerTest {
             """;
         Feature feature = Feature.read(Resource.text(featureText));
 
-        Suite suite = Suite.of(feature)
+        Suite suite = Runner.builder()
+            .features(feature)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
+            .backupReportDir(false)
             .listener(event -> {
                 eventTypes.add(event.getType());
                 return true;
-            });
+            })
+            .buildSuite();
 
         SuiteResult result = suite.run();
 
@@ -413,16 +424,19 @@ class RunListenerTest {
             """;
         Feature feature = Feature.read(Resource.text(featureText));
 
-        Suite suite = Suite.of(feature)
+        Suite suite = Runner.builder()
+            .features(feature)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
+            .backupReportDir(false)
             .listener(event -> {
                 // Skip scenarios by returning false on SCENARIO_ENTER
                 if (event instanceof ScenarioRunEvent e && e.type() == RunEventType.SCENARIO_ENTER) {
                     return false;
                 }
                 return true;
-            });
+            })
+            .buildSuite();
 
         SuiteResult result = suite.run();
 
@@ -448,16 +462,19 @@ class RunListenerTest {
             """;
         Feature feature = Feature.read(Resource.text(featureText));
 
-        Suite suite = Suite.of(feature)
+        Suite suite = Runner.builder()
+            .features(feature)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
+            .backupReportDir(false)
             .httpClientFactory(() -> client)
             .listener(event -> {
                 if (event instanceof HttpRunEvent) {
                     httpEvents.add(event);
                 }
                 return true;
-            });
+            })
+            .buildSuite();
 
         SuiteResult result = suite.run();
 
@@ -494,16 +511,19 @@ class RunListenerTest {
             """;
         Feature feature = Feature.read(Resource.text(featureText));
 
-        Suite suite = Suite.of(feature)
+        Suite suite = Runner.builder()
+            .features(feature)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
+            .backupReportDir(false)
             .httpClientFactory(() -> client)
             .listener(event -> {
                 if (event instanceof HttpRunEvent e && e.type() == RunEventType.HTTP_EXIT) {
                     jsonEvents.add(e.toJson());
                 }
                 return true;
-            });
+            })
+            .buildSuite();
 
         suite.run();
 
@@ -528,9 +548,11 @@ class RunListenerTest {
             """;
         Feature feature = Feature.read(Resource.text(featureText));
 
-        Suite suite = Suite.of(feature)
+        Suite suite = Runner.builder()
+            .features(feature)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
+            .backupReportDir(false)
             .httpClientFactory(() -> client)
             .listener(event -> {
                 if (event instanceof HttpRunEvent e && e.type() == RunEventType.HTTP_EXIT) {
@@ -540,7 +562,8 @@ class RunListenerTest {
                     }
                 }
                 return true;
-            });
+            })
+            .buildSuite();
 
         suite.run();
 
@@ -567,9 +590,11 @@ class RunListenerTest {
             """;
         Feature feature = Feature.read(Resource.text(featureText));
 
-        Suite suite = Suite.of(feature)
+        Suite suite = Runner.builder()
+            .features(feature)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
+            .backupReportDir(false)
             .httpClientFactory(() -> client)
             .listener(event -> {
                 if (event instanceof HttpRunEvent e) {
@@ -579,7 +604,8 @@ class RunListenerTest {
                     }
                 }
                 return true;
-            });
+            })
+            .buildSuite();
 
         suite.run();
 
@@ -619,16 +645,19 @@ class RunListenerTest {
             """;
         Feature feature = Feature.read(Resource.text(featureText));
 
-        Suite suite = Suite.of(feature)
+        Suite suite = Runner.builder()
+            .features(feature)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
+            .backupReportDir(false)
             .httpClientFactory(() -> client)
             .listener(event -> {
                 if (event instanceof HttpRunEvent e) {
                     httpEvents.add(e);
                 }
                 return true;
-            });
+            })
+            .buildSuite();
 
         suite.run();
 
