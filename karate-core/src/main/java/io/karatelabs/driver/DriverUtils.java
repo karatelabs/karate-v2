@@ -86,12 +86,14 @@ public class DriverUtils {
         // Script execution
         engine.putRootBinding("script", Args.invoke(args -> {
             if (args.length == 1) {
-                return driver.script(args[0].toString());
+                // Single arg: can be String or JsFunction (arrow function)
+                return driver.script(args[0]);
             } else {
-                return driver.script(args[0].toString(), args[1].toString());
+                // Two args: locator and expression (String or JsFunction)
+                return driver.script(args[0].toString(), args[1]);
             }
         }));
-        engine.putRootBinding("scriptAll", Args.invoke(args -> driver.scriptAll(args[0].toString(), args[1].toString())));
+        engine.putRootBinding("scriptAll", Args.invoke(args -> driver.scriptAll(args[0].toString(), args[1])));
 
         // Navigation
         engine.putRootBinding("refresh", Args.invoke(() -> {

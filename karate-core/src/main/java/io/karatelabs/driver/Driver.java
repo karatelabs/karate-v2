@@ -87,6 +87,17 @@ public interface Driver extends CoreDriver, SimpleObject {
     }
 
     /**
+     * Execute JavaScript with support for JsFunction.
+     * Delegates to {@link #script(Object)}.
+     *
+     * @param expression JavaScript expression as String or JsFunction
+     * @return the result of the JavaScript execution
+     */
+    default Object eval(Object expression) {
+        return script(expression);
+    }
+
+    /**
      * Navigate to URL. Delegates to {@link #setUrl(String)}.
      */
     @Override
@@ -187,6 +198,30 @@ public interface Driver extends CoreDriver, SimpleObject {
      * Execute JavaScript and return result.
      */
     Object script(String expression);
+
+    /**
+     * Execute JavaScript with support for JsFunction.
+     * If the argument is a JsFunction (e.g., arrow function), it will be serialized
+     * to its source code and invoked as an IIFE.
+     *
+     * <p>Examples:</p>
+     * <pre>
+     * script("document.title")                    // string expression
+     * script(() => document.title)                // arrow function (from Karate JS)
+     * script(() => { return document.title })     // arrow function with block body
+     * </pre>
+     *
+     * @param expression JavaScript expression as String or JsFunction
+     * @return the result of the JavaScript execution
+     */
+    default Object script(Object expression) {
+        String js = Locators.toFunction(expression);
+        // If it's a function, wrap in IIFE to invoke it
+        if (js.contains("=>") || js.startsWith("function")) {
+            js = "(" + js + ")()";
+        }
+        return script(js);
+    }
 
     /**
      * Execute a script on an element.

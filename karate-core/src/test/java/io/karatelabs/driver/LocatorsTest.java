@@ -23,6 +23,8 @@
  */
 package io.karatelabs.driver;
 
+import io.karatelabs.js.Engine;
+import io.karatelabs.js.JsFunction;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -270,6 +272,25 @@ class LocatorsTest {
     void testToFunctionRegular() {
         String fn = "function(e){ return e.id }";
         assertEquals(fn, Locators.toFunction(fn));
+    }
+
+    @Test
+    void testToFunctionWithJsFunction() {
+        // Create a JsFunction using the JS engine
+        Engine engine = new Engine();
+        engine.eval("var fn = _ => _.value");
+        Object fn = engine.getBindings().get("fn");
+        assertTrue(fn instanceof JsFunction);
+        assertEquals("_ => _.value", Locators.toFunction(fn));
+    }
+
+    @Test
+    void testToFunctionWithJsFunctionBlockBody() {
+        Engine engine = new Engine();
+        engine.eval("var fn = () => { return document.title }");
+        Object fn = engine.getBindings().get("fn");
+        assertTrue(fn instanceof JsFunction);
+        assertEquals("() => { return document.title }", Locators.toFunction(fn));
     }
 
     // ========== wrapInFunctionInvoke Tests ==========

@@ -634,11 +634,19 @@ public class CdpDriver implements Driver {
             // Check for transient context errors that should be retried
             if (isTransientContextError(response)) {
                 if (attempt < maxRetries) {
-                    logger.warn("transient context error, retry {}/{}: {}", attempt + 1, maxRetries, truncate(expression, 100));
+                    // If in a frame, recreate the execution context (it may have been invalidated)
+                    if (currentFrame != null) {
+                        logger.warn("transient context error in frame {}, recreating context, retry {}/{}: {}",
+                                currentFrame.id, attempt + 1, maxRetries, truncate(expression, 100));
+                        frameContexts.remove(currentFrame.id);
+                        ensureFrameContext(currentFrame.id);
+                    } else {
+                        logger.warn("transient context error, retry {}/{}: {}", attempt + 1, maxRetries, truncate(expression, 100));
+                    }
                     sleep(retryInterval);
                     continue;
                 }
-                logger.warn("retry exhausted for transient context error: {}", truncate(expression, 100));
+                logger.warn("retry exhausted for transient context error: {} | {}", truncate(expression, 100), getDriverState());
             }
 
             // Success or non-transient error

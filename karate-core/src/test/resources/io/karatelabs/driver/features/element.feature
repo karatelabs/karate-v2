@@ -29,6 +29,17 @@ Feature: Element Tests
     * def type = script("document.getElementById('email').type")
     * match type == 'email'
 
+  Scenario: Script with arrow function
+    * waitFor('h1')
+    * def fn = () => document.title
+    * def title = script(fn)
+    * match title == 'Input Test'
+
+  Scenario: Script with arrow function returning expression
+    * def fn = () => document.querySelectorAll('input').length
+    * def count = script(fn)
+    * assert count >= 3
+
   Scenario: Element enabled check
     * match enabled('#username') == true
     * match enabled('#submit-btn') == true
