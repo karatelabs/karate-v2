@@ -23,8 +23,6 @@
  */
 package io.karatelabs.driver;
 
-import io.karatelabs.driver.cdp.CdpDriver;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +33,7 @@ import java.util.Map;
  */
 public class Finder {
 
-    private final CdpDriver driver;
+    private final Driver driver;
     private final String referenceLocator;
     private final Position position;
     private final double tolerance;
@@ -51,11 +49,11 @@ public class Finder {
         NEAR
     }
 
-    public Finder(CdpDriver driver, String referenceLocator, Position position) {
+    public Finder(Driver driver, String referenceLocator, Position position) {
         this(driver, referenceLocator, position, DEFAULT_TOLERANCE);
     }
 
-    Finder(CdpDriver driver, String referenceLocator, Position position, double tolerance) {
+    Finder(Driver driver, String referenceLocator, Position position, double tolerance) {
         this.driver = driver;
         this.referenceLocator = referenceLocator;
         this.position = position;

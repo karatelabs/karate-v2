@@ -23,7 +23,6 @@
  */
 package io.karatelabs.driver;
 
-import io.karatelabs.js.ObjectLike;
 import io.karatelabs.js.SimpleObject;
 
 import java.time.Duration;
@@ -35,11 +34,18 @@ import java.util.function.Supplier;
 /**
  * Browser automation driver interface.
  * Provides a unified API for browser automation across different backends (CDP, Playwright, WebDriver).
- * <p>
- * Phase 8: Extracted from CdpDriver to enable multi-backend support.
- * Phase 9: Implements ObjectLike for Gherkin/DSL integration (JS property access).
+ *
+ * <p>This interface extends {@link CoreDriver} which defines the ~12 primitive operations.
+ * Most methods in this interface are convenience methods that delegate to those primitives,
+ * primarily to {@link CoreDriver#eval(String)}.</p>
+ *
+ * <p>Phase 8: Extracted from CdpDriver to enable multi-backend support.</p>
+ * <p>Phase 9: Implements ObjectLike for Gherkin/DSL integration (JS property access).</p>
+ * <p>Phase 10: Extends CoreDriver to clearly separate primitives from convenience methods.</p>
+ *
+ * @see CoreDriver
  */
-public interface Driver extends SimpleObject {
+public interface Driver extends CoreDriver, SimpleObject {
 
     // ========== ObjectLike Implementation (for JS property access) ==========
 
@@ -67,6 +73,65 @@ public interface Driver extends SimpleObject {
         map.put("title", getTitle());
         map.put("cookies", getCookies());
         return map;
+    }
+
+    // ========== CoreDriver Primitive Implementations ==========
+    // These default methods implement CoreDriver primitives by delegating to Driver methods
+
+    /**
+     * Execute JavaScript. Delegates to {@link #script(String)}.
+     */
+    @Override
+    default Object eval(String js) {
+        return script(js);
+    }
+
+    /**
+     * Navigate to URL. Delegates to {@link #setUrl(String)}.
+     */
+    @Override
+    default void navigate(String url) {
+        setUrl(url);
+    }
+
+    /**
+     * Switch frames. Dispatches to {@link #switchFrame(int)} or {@link #switchFrame(String)}.
+     */
+    @Override
+    default void frame(Object target) {
+        if (target == null) {
+            switchFrame((String) null);
+        } else if (target instanceof Number n) {
+            switchFrame(n.intValue());
+        } else {
+            switchFrame(target.toString());
+        }
+    }
+
+    /**
+     * Window management. Dispatches to maximize(), minimize(), fullscreen().
+     */
+    @Override
+    default void window(String operation) {
+        switch (operation) {
+            case "maximize" -> maximize();
+            case "minimize" -> minimize();
+            case "fullscreen" -> fullscreen();
+            case "normal" -> setDimensions(Map.of("windowState", "normal"));
+            default -> throw new DriverException("unknown window operation: " + operation);
+        }
+    }
+
+    /**
+     * Tab switching. Dispatches to {@link #switchPage(int)} or {@link #switchPage(String)}.
+     */
+    @Override
+    default void tab(Object target) {
+        if (target instanceof Number n) {
+            switchPage(n.intValue());
+        } else {
+            switchPage(target.toString());
+        }
     }
 
     // ========== Navigation ==========
@@ -126,14 +191,21 @@ public interface Driver extends SimpleObject {
     /**
      * Execute a script on an element.
      * The element is available as '_' in the expression.
+     * Expression can be a String ("_.value") or JsFunction (_ => _.value).
      */
-    Object script(String locator, String expression);
+    default Object script(String locator, Object expression) {
+        return script(Locators.scriptSelector(locator, expression));
+    }
 
     /**
      * Execute a script on all matching elements.
      * Each element is available as '_' in the expression.
+     * Expression can be a String or JsFunction.
      */
-    List<Object> scriptAll(String locator, String expression);
+    @SuppressWarnings("unchecked")
+    default List<Object> scriptAll(String locator, Object expression) {
+        return (List<Object>) script(Locators.scriptAllSelector(locator, expression));
+    }
 
     // ========== Screenshot ==========
 
@@ -186,117 +258,185 @@ public interface Driver extends SimpleObject {
      */
     Map<String, Object> getCurrentFrame();
 
-    // ========== Element Operations ==========
+    // ========== Element Operations (defaults delegate to script + Locators) ==========
 
     /**
      * Click an element.
      */
-    Element click(String locator);
+    default Element click(String locator) {
+        script(Locators.clickJs(locator));
+        return Element.of(this, locator);
+    }
 
     /**
      * Focus an element.
      */
-    Element focus(String locator);
+    default Element focus(String locator) {
+        script(Locators.focusJs(locator));
+        return Element.of(this, locator);
+    }
 
     /**
      * Clear an input element.
      */
-    Element clear(String locator);
+    default Element clear(String locator) {
+        script(Locators.clearJs(locator));
+        return Element.of(this, locator);
+    }
 
     /**
-     * Input text into an element.
+     * Input text into an element (focus, clear, type).
      */
-    Element input(String locator, String value);
+    default Element input(String locator, String value) {
+        focus(locator);
+        clear(locator);
+        keys().type(value);
+        return Element.of(this, locator);
+    }
 
     /**
-     * Set the value of an input element.
+     * Set the value of an input element directly.
      */
-    Element value(String locator, String value);
+    default Element value(String locator, String value) {
+        script(Locators.inputJs(locator, value));
+        return Element.of(this, locator);
+    }
 
     /**
      * Select an option from a dropdown by text or value.
      */
-    Element select(String locator, String text);
+    default Element select(String locator, String text) {
+        script(Locators.optionSelector(locator, text));
+        return Element.of(this, locator);
+    }
 
     /**
      * Select an option from a dropdown by index.
      */
-    Element select(String locator, int index);
+    default Element select(String locator, int index) {
+        String js = Locators.wrapInFunctionInvoke(
+                "var e = " + Locators.selector(locator) + ";" +
+                        " e.options[" + index + "].selected = true;" +
+                        " e.dispatchEvent(new Event('input', {bubbles: true}));" +
+                        " e.dispatchEvent(new Event('change', {bubbles: true}))");
+        script(js);
+        return Element.of(this, locator);
+    }
 
     /**
      * Scroll an element into view.
      */
-    Element scroll(String locator);
+    default Element scroll(String locator) {
+        script(Locators.scrollJs(locator));
+        return Element.of(this, locator);
+    }
 
     /**
-     * Highlight an element.
+     * Highlight an element (for debugging).
      */
-    Element highlight(String locator);
+    default Element highlight(String locator) {
+        script(Locators.highlight(locator, getOptions().getHighlightDuration()));
+        return Element.of(this, locator);
+    }
 
-    // ========== Element State ==========
+    // ========== Element State (defaults delegate to script + Locators) ==========
 
     /**
      * Get the text content of an element.
      */
-    String text(String locator);
+    default String text(String locator) {
+        return (String) script(Locators.textJs(locator));
+    }
 
     /**
      * Get the outer HTML of an element.
      */
-    String html(String locator);
+    default String html(String locator) {
+        return (String) script(Locators.outerHtmlJs(locator));
+    }
 
     /**
      * Get the value of an input element.
      */
-    String value(String locator);
+    default String value(String locator) {
+        return (String) script(Locators.valueJs(locator));
+    }
 
     /**
      * Get an attribute of an element.
      */
-    String attribute(String locator, String name);
+    default String attribute(String locator, String name) {
+        return (String) script(Locators.attributeJs(locator, name));
+    }
 
     /**
      * Get a property of an element.
      */
-    Object property(String locator, String name);
+    default Object property(String locator, String name) {
+        return script(Locators.propertyJs(locator, name));
+    }
 
     /**
      * Check if an element is enabled.
      */
-    boolean enabled(String locator);
+    default boolean enabled(String locator) {
+        return Boolean.TRUE.equals(script(Locators.enabledJs(locator)));
+    }
 
     /**
      * Check if an element exists.
      */
-    boolean exists(String locator);
+    default boolean exists(String locator) {
+        return Boolean.TRUE.equals(script(Locators.existsJs(locator)));
+    }
 
     /**
      * Get the position of an element (absolute).
      */
-    Map<String, Object> position(String locator);
+    @SuppressWarnings("unchecked")
+    default Map<String, Object> position(String locator) {
+        return (Map<String, Object>) script(Locators.getPositionJs(locator));
+    }
 
     /**
      * Get the position of an element.
+     *
      * @param relative if true, returns viewport-relative position
      */
-    Map<String, Object> position(String locator, boolean relative);
+    @SuppressWarnings("unchecked")
+    default Map<String, Object> position(String locator, boolean relative) {
+        if (relative) {
+            String js = Locators.wrapInFunctionInvoke(
+                    "var r = " + Locators.selector(locator) + ".getBoundingClientRect();" +
+                            " return { x: r.x, y: r.y, width: r.width, height: r.height }");
+            return (Map<String, Object>) script(js);
+        }
+        return position(locator);
+    }
 
     // ========== Locators ==========
 
     /**
      * Find an element by locator.
+     * This is a convenience method that creates an Element wrapper.
      */
-    Element locate(String locator);
+    default Element locate(String locator) {
+        return Element.of(this, locator);
+    }
 
     /**
      * Find all elements matching a locator.
+     * Implementation requires driver-specific indexed locator support.
      */
     List<Element> locateAll(String locator);
 
     /**
      * Find an element that may not exist (optional).
+     * This is a convenience method that creates an optional Element wrapper.
      */
-    Element optional(String locator);
+    default Element optional(String locator) {
+        return Element.optional(this, locator);
+    }
 
     // ========== Wait Methods ==========
 
@@ -509,28 +649,43 @@ public interface Driver extends SimpleObject {
 
     /**
      * Create a finder for elements to the right of the reference element.
+     * This is a convenience method that creates a Finder.
      */
-    Finder rightOf(String locator);
+    default Finder rightOf(String locator) {
+        return new Finder(this, locator, Finder.Position.RIGHT_OF);
+    }
 
     /**
      * Create a finder for elements to the left of the reference element.
+     * This is a convenience method that creates a Finder.
      */
-    Finder leftOf(String locator);
+    default Finder leftOf(String locator) {
+        return new Finder(this, locator, Finder.Position.LEFT_OF);
+    }
 
     /**
      * Create a finder for elements above the reference element.
+     * This is a convenience method that creates a Finder.
      */
-    Finder above(String locator);
+    default Finder above(String locator) {
+        return new Finder(this, locator, Finder.Position.ABOVE);
+    }
 
     /**
      * Create a finder for elements below the reference element.
+     * This is a convenience method that creates a Finder.
      */
-    Finder below(String locator);
+    default Finder below(String locator) {
+        return new Finder(this, locator, Finder.Position.BELOW);
+    }
 
     /**
      * Create a finder for elements near the reference element.
+     * This is a convenience method that creates a Finder.
      */
-    Finder near(String locator);
+    default Finder near(String locator) {
+        return new Finder(this, locator, Finder.Position.NEAR);
+    }
 
     // ========== Request Interception ==========
 

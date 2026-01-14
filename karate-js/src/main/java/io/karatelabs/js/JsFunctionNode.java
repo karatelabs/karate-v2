@@ -128,6 +128,11 @@ class JsFunctionNode extends JsFunction {
     }
 
     @Override
+    public String getSource() {
+        return node.getTextIncludingWhitespace();
+    }
+
+    @Override
     public String toString() {
         return node.toString();
     }

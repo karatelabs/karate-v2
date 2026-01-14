@@ -242,19 +242,22 @@ class LocatorsTest {
 
     @Test
     void testToFunctionIdentity() {
-        assertEquals("function(_){ return _ }", Locators.toFunction(null));
-        assertEquals("function(_){ return _ }", Locators.toFunction(""));
+        // Now uses arrow function syntax
+        assertEquals("_ => _", Locators.toFunction(null));
+        assertEquals("_ => _", Locators.toFunction(""));
     }
 
     @Test
     void testToFunctionUnderscore() {
-        assertEquals("function(_){ return _.value }", Locators.toFunction("_.value"));
-        assertEquals("function(_){ return _.textContent }", Locators.toFunction("_.textContent"));
+        // Now uses arrow function syntax
+        assertEquals("_ => _.value", Locators.toFunction("_.value"));
+        assertEquals("_ => _.textContent", Locators.toFunction("_.textContent"));
     }
 
     @Test
     void testToFunctionNegation() {
-        assertEquals("function(_){ return !_.disabled }", Locators.toFunction("!_.disabled"));
+        // Now uses arrow function syntax
+        assertEquals("_ => !_.disabled", Locators.toFunction("!_.disabled"));
     }
 
     @Test
@@ -283,7 +286,8 @@ class LocatorsTest {
     void testScriptSelector() {
         String result = Locators.scriptSelector("#myInput", "_.value");
         assertTrue(result.startsWith("(function(){"));
-        assertTrue(result.contains("var fun = function(_){ return _.value }"));
+        // Now uses arrow function syntax
+        assertTrue(result.contains("var fun = _ => _.value"));
         assertTrue(result.contains("document.querySelector(\"#myInput\")"));
         assertTrue(result.contains("return fun(e)"));
         assertTrue(result.endsWith("})()"));

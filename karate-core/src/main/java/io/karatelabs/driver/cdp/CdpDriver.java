@@ -561,7 +561,7 @@ public class CdpDriver implements Driver {
      * Get current URL.
      */
     public String getUrl() {
-        CdpResponse response = eval("window.location.href");
+        CdpResponse response = cdpEval("window.location.href");
         return response.getResultAsString("result.value");
     }
 
@@ -569,7 +569,7 @@ public class CdpDriver implements Driver {
      * Get page title.
      */
     public String getTitle() {
-        CdpResponse response = eval("document.title");
+        CdpResponse response = cdpEval("document.title");
         return response.getResultAsString("result.value");
     }
 
@@ -598,7 +598,7 @@ public class CdpDriver implements Driver {
             ensureKjsRuntime();
         }
         logger.trace("script: {}", truncate(expression, 200));
-        CdpResponse response = eval(expression);
+        CdpResponse response = cdpEval(expression);
         return extractJsValue(response, expression);
     }
 
@@ -610,11 +610,11 @@ public class CdpDriver implements Driver {
      * Execute JavaScript without checking for wildcard support (used internally).
      */
     private Object evalDirect(String expression) {
-        CdpResponse response = eval(expression);
+        CdpResponse response = cdpEval(expression);
         return extractJsValue(response, expression);
     }
 
-    private CdpResponse eval(String expression) {
+    private CdpResponse cdpEval(String expression) {
         int maxRetries = options.getRetryCount();
         int retryInterval = options.getRetryInterval();
 
@@ -1279,8 +1279,9 @@ public class CdpDriver implements Driver {
     /**
      * Execute a script on an element.
      * The element is available as '_' in the expression.
+     * Expression can be a String ("_.value") or JsFunction (_ => _.value).
      */
-    public Object script(String locator, String expression) {
+    public Object script(String locator, Object expression) {
         retryIfNeeded(locator);
         String js = Locators.scriptSelector(locator, expression);
         return script(js);
@@ -1289,9 +1290,10 @@ public class CdpDriver implements Driver {
     /**
      * Execute a script on all matching elements.
      * Each element is available as '_' in the expression.
+     * Expression can be a String or JsFunction.
      */
     @SuppressWarnings("unchecked")
-    public List<Object> scriptAll(String locator, String expression) {
+    public List<Object> scriptAll(String locator, Object expression) {
         retryIfNeeded(locator);
         String js = Locators.scriptAllSelector(locator, expression);
         return (List<Object>) script(js);

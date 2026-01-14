@@ -23,6 +23,8 @@
  */
 package io.karatelabs.driver;
 
+import io.karatelabs.js.JsFunction;
+
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -218,34 +220,53 @@ public class Locators {
     /**
      * Convert shorthand expression to a function.
      * <ul>
-     *   <li>"_" expressions: "_.value" → function(_){ return _.value }</li>
-     *   <li>"!" expressions: "!_.disabled" → function(_){ return !_.disabled }</li>
+     *   <li>JsFunction: arrow functions like {@code _ => _.value} are serialized to source</li>
+     *   <li>"_" expressions: "_.value" → _ => _.value</li>
+     *   <li>"!" expressions: "!_.disabled" → _ => !_.disabled</li>
      * </ul>
      */
-    public static String toFunction(String expression) {
-        if (expression == null || expression.isEmpty()) {
-            return "function(_){ return _ }";  // identity function
+    public static String toFunction(Object expression) {
+        if (expression == null) {
+            return "_ => _";  // identity function
         }
-        char first = expression.charAt(0);
-        if ((first == '_' || first == '!') && !expression.contains("=>")) {
-            return "function(_){ return " + expression + " }";
+        // Arrow functions passed directly: _ => _.value
+        if (expression instanceof JsFunction fn) {
+            String source = fn.getSource();
+            if (source != null) {
+                return source;
+            }
         }
-        return expression;
+        // String expressions - convert to arrow functions
+        String expr = expression.toString();
+        if (expr.isEmpty()) {
+            return "_ => _";
+        }
+        // Already an arrow function or full function
+        if (expr.contains("=>") || expr.startsWith("function")) {
+            return expr;
+        }
+        char first = expr.charAt(0);
+        if (first == '_' || first == '!') {
+            return "_ => " + expr;
+        }
+        return expr;
     }
 
     // ========== Script Execution Helpers ==========
 
     /**
      * Execute a function on a single element found by locator.
+     * Expression can be a String or JsFunction (arrow function).
      */
-    public static String scriptSelector(String locator, String expression) {
+    public static String scriptSelector(String locator, Object expression) {
         return scriptSelector(locator, expression, DOCUMENT);
     }
 
     /**
      * Execute a function on a single element found by locator with context.
+     * Expression can be a String or JsFunction (arrow function).
      */
-    public static String scriptSelector(String locator, String expression, String contextNode) {
+    public static String scriptSelector(String locator, Object expression, String contextNode) {
         String js = "var fun = " + toFunction(expression) +
                 "; var e = " + selector(locator, contextNode) +
                 "; return fun(e)";
@@ -254,15 +275,17 @@ public class Locators {
 
     /**
      * Execute a function on all elements matching locator.
+     * Expression can be a String or JsFunction (arrow function).
      */
-    public static String scriptAllSelector(String locator, String expression) {
+    public static String scriptAllSelector(String locator, Object expression) {
         return scriptAllSelector(locator, expression, DOCUMENT);
     }
 
     /**
      * Execute a function on all elements matching locator with context.
+     * Expression can be a String or JsFunction (arrow function).
      */
-    public static String scriptAllSelector(String locator, String expression, String contextNode) {
+    public static String scriptAllSelector(String locator, Object expression, String contextNode) {
         // Wildcard returns single element - apply function to it
         if (locator.startsWith("{")) {
             String resolverJs = expandWildcard(locator);

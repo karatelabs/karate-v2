@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JsFunctionTest extends EvalBase {
 
@@ -121,6 +123,49 @@ class JsFunctionTest extends EvalBase {
         assertEquals("x => x * 2", eval("var double = x => x * 2; double.toString()"));
         // Arrow function with block body
         assertEquals("(a, b) => { return a + b }", eval("var add = (a, b) => { return a + b }; add.toString()"));
+    }
+
+    @Test
+    void testFunctionSerializationForDriverExpressions() {
+        // Arrow functions with underscore placeholder (for driver.script(locator, fn))
+        assertEquals("_ => _.value", eval("var fn = _ => _.value; fn.toString()"));
+        assertEquals("_ => _.textContent", eval("var fn = _ => _.textContent; fn.toString()"));
+        assertEquals("_ => !_.disabled", eval("var fn = _ => !_.disabled; fn.toString()"));
+
+        // Property access with method calls
+        assertEquals("_ => _.getAttribute('data-id')", eval("var fn = _ => _.getAttribute('data-id'); fn.toString()"));
+        assertEquals("_ => _.querySelector('.child')", eval("var fn = _ => _.querySelector('.child'); fn.toString()"));
+
+        // Nested arrow functions (for scriptAll/findAll)
+        assertEquals("_ => _.map(e => e.textContent)", eval("var fn = _ => _.map(e => e.textContent); fn.toString()"));
+        assertEquals("els => els.filter(e => e.disabled)", eval("var fn = els => els.filter(e => e.disabled); fn.toString()"));
+
+        // Complex expressions with template literals would need escaping in string form
+        assertEquals("_ => _.style.display === 'none'", eval("var fn = _ => _.style.display === 'none'; fn.toString()"));
+
+        // Block body with multiple statements
+        assertEquals("_ => { var v = _.value; return v.trim() }",
+                eval("var fn = _ => { var v = _.value; return v.trim() }; fn.toString()"));
+    }
+
+    @Test
+    void testFunctionCanBePassedAndSerialized() {
+        // Simulate what happens when a function is passed to a Java method
+        // The Java code receives JsFunction and can call getSource()
+
+        // First verify we can get a reference to the function
+        eval("var fn = _ => _.value");
+        Object fn = get("fn");
+        assertNotNull(fn);
+
+        // The function should be a JsFunction
+        // When passed to Java, we can serialize it back to source via getSource()
+        assertTrue(fn instanceof JsFunction);
+
+        // Use the public getSource() method
+        JsFunction jsFn = (JsFunction) fn;
+        String source = jsFn.getSource();
+        assertEquals("_ => _.value", source);
     }
 
     @Test

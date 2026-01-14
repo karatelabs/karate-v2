@@ -23,7 +23,8 @@
  */
 package io.karatelabs.driver;
 
-import io.karatelabs.driver.cdp.CdpDriver;
+import io.karatelabs.js.JavaCallable;
+import io.karatelabs.js.SimpleObject;
 
 import java.util.List;
 import java.util.Map;
@@ -31,14 +32,15 @@ import java.util.Map;
 /**
  * Represents a DOM element found by a locator.
  * Provides element-scoped operations and fluent API for chaining.
+ * Implements SimpleObject for JavaScript interoperability.
  */
-public class Element {
+public class Element implements SimpleObject {
 
-    private final CdpDriver driver;
+    private final Driver driver;
     private final String locator;
     private final boolean exists;
 
-    public Element(CdpDriver driver, String locator, boolean exists) {
+    public Element(Driver driver, String locator, boolean exists) {
         this.driver = driver;
         this.locator = locator;
         this.exists = exists;
@@ -46,12 +48,12 @@ public class Element {
 
     // ========== Factory Methods ==========
 
-    public static Element of(CdpDriver driver, String locator) {
+    public static Element of(Driver driver, String locator) {
         boolean exists = driver.exists(locator);
         return new Element(driver, locator, exists);
     }
 
-    public static Element optional(CdpDriver driver, String locator) {
+    public static Element optional(Driver driver, String locator) {
         boolean exists = driver.exists(locator);
         return new Element(driver, locator, exists);
     }
@@ -344,6 +346,33 @@ public class Element {
         return new RetryElement(driver, locator, exists, count, interval);
     }
 
+    // ========== SimpleObject Implementation (JS interop) ==========
+
+    @Override
+    public Object jsGet(String name) {
+        return switch (name) {
+            // Properties as getters (return callables that return the value)
+            case "exists", "present" -> (JavaCallable) (ctx, args) -> exists;
+            case "locator" -> (JavaCallable) (ctx, args) -> locator;
+            case "text" -> (JavaCallable) (ctx, args) -> exists ? text() : null;
+            case "html" -> (JavaCallable) (ctx, args) -> exists ? html() : null;
+            case "value" -> (JavaCallable) (ctx, args) -> exists ? value() : null;
+            case "enabled" -> (JavaCallable) (ctx, args) -> enabled();
+            case "position" -> (JavaCallable) (ctx, args) -> exists ? position() : null;
+            // Actions (return callables)
+            case "click" -> (JavaCallable) (ctx, args) -> click();
+            case "focus" -> (JavaCallable) (ctx, args) -> focus();
+            case "clear" -> (JavaCallable) (ctx, args) -> clear();
+            case "scroll" -> (JavaCallable) (ctx, args) -> scroll();
+            case "highlight" -> (JavaCallable) (ctx, args) -> highlight();
+            case "input" -> (JavaCallable) (ctx, args) -> input(args.length > 0 ? String.valueOf(args[0]) : "");
+            case "attribute" -> (JavaCallable) (ctx, args) -> attribute(args.length > 0 ? String.valueOf(args[0]) : "");
+            case "property" -> (JavaCallable) (ctx, args) -> property(args.length > 0 ? String.valueOf(args[0]) : "");
+            case "script" -> (JavaCallable) (ctx, args) -> script(args.length > 0 ? String.valueOf(args[0]) : "");
+            default -> null;
+        };
+    }
+
     // ========== Utilities ==========
 
     private void assertExists() {
@@ -363,13 +392,13 @@ public class Element {
         private final Integer retryCount;
         private final Integer retryInterval;
 
-        RetryElement(CdpDriver driver, String locator, boolean exists) {
+        RetryElement(Driver driver, String locator, boolean exists) {
             super(driver, locator, exists);
             this.retryCount = null;
             this.retryInterval = null;
         }
 
-        RetryElement(CdpDriver driver, String locator, boolean exists, Integer count, Integer interval) {
+        RetryElement(Driver driver, String locator, boolean exists, Integer count, Integer interval) {
             super(driver, locator, exists);
             this.retryCount = count;
             this.retryInterval = interval;
@@ -377,17 +406,17 @@ public class Element {
 
         @Override
         public Element click() {
-            getRetryDriver().click(getLocator());
+            getDriver().click(getLocator());
             return this;
         }
 
         @Override
         public Element input(String value) {
-            getRetryDriver().input(getLocator(), value);
+            getDriver().input(getLocator(), value);
             return this;
         }
 
-        private CdpDriver getRetryDriver() {
+        private Driver getDriver() {
             // For now, just return the base driver
             // Full retry implementation will be added later
             return super.driver;

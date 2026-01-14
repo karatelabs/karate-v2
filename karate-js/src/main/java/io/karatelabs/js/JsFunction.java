@@ -34,6 +34,15 @@ public abstract class JsFunction extends JsObject implements JavaCallable {
         return false; // mark this as JS native while allowing Java code to cast to public JavaCallable
     }
 
+    /**
+     * Returns the source code of this function, or null if not available.
+     * User-defined functions (JsFunctionNode) override to return their original source.
+     * Built-in functions return null by default.
+     */
+    public String getSource() {
+        return null;
+    }
+
     String name;
     private JsObject functionPrototype;
 
