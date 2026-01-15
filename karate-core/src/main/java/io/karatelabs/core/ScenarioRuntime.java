@@ -82,6 +82,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
     // assertion failures can be attributed to the preceding HTTP request
     private PerfEvent prevPerfEvent;
     private boolean driverFromProvider;  // true if driver came from provider (use release, not quit)
+    private boolean driverInherited;     // true if driver was inherited from caller (don't close)
 
     // Cookie jar for auto-sending responseCookies on subsequent requests (V1 compatibility)
     private final Map<String, Map<String, Object>> cookieJar = new LinkedHashMap<>();
@@ -664,18 +665,44 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
                 }
                 karate.engine.put(entry.getKey(), value);
             }
+            // Inherit driver and driver helper root bindings from caller
+            inheritDriverFromCaller(callerScenario);
             return;
         }
         // Fallback to lastExecuted for other cases (e.g., sequential scenarios in same feature)
         FeatureRuntime caller = featureRuntime.getCaller();
         if (caller != null && caller.getLastExecuted() != null) {
-            Map<String, Object> parentVars = caller.getLastExecuted().getAllVariables();
+            ScenarioRuntime lastExecuted = caller.getLastExecuted();
+            Map<String, Object> parentVars = lastExecuted.getAllVariables();
             for (var entry : parentVars.entrySet()) {
                 Object value = entry.getValue();
                 if (!sharedScope) {
                     value = shallowCopy(value);
                 }
                 karate.engine.put(entry.getKey(), value);
+            }
+            // Inherit driver from lastExecuted
+            inheritDriverFromCaller(lastExecuted);
+        }
+    }
+
+    /**
+     * Inherit driver and driver helper root bindings from caller scenario.
+     * This enables browser reuse across called features (V1 behavior).
+     */
+    private void inheritDriverFromCaller(ScenarioRuntime callerScenario) {
+        if (callerScenario.driver != null && !callerScenario.driver.isTerminated()) {
+            this.driver = callerScenario.driver;
+            this.driverInherited = true;
+            logger.debug("Inherited driver from caller: {}", driver);
+            // Copy driver-related root bindings from parent
+            Map<String, Object> parentRootBindings = callerScenario.karate.engine.getRootBindings();
+            for (var entry : parentRootBindings.entrySet()) {
+                String key = entry.getKey();
+                // Skip karate/read/match - they were re-initialized for this context
+                if (!"karate".equals(key) && !"read".equals(key) && !"match".equals(key)) {
+                    karate.engine.putRootBinding(key, entry.getValue());
+                }
             }
         }
     }
@@ -1061,6 +1088,12 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
      */
     private void closeDriver() {
         if (driver == null) {
+            return;
+        }
+
+        // Don't close inherited driver - the owner (caller scenario) will close it
+        if (driverInherited) {
+            driver = null;
             return;
         }
 

@@ -94,6 +94,13 @@ public class Engine {
         return root;
     }
 
+    public Map<String, Object> getRootBindings() {
+        if (root._bindings != null) {
+            return root._bindings;
+        }
+        return java.util.Collections.emptyMap();
+    }
+
     public void setListener(ContextListener listener) {
         root.listener = listener;
     }
