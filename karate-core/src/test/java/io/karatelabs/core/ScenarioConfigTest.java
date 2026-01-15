@@ -71,7 +71,7 @@ class ScenarioConfigTest {
                 .configDir(configFile.toString())
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .parallel(1);
 
         assertEquals(1, result.getScenarioCount());
@@ -121,7 +121,7 @@ class ScenarioConfigTest {
                 .karateEnv("dev")
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .parallel(1);
 
         assertTrue(result.isPassed(), "Suite should pass");
@@ -146,7 +146,7 @@ class ScenarioConfigTest {
                 .configDir(tempDir.resolve("nonexistent-config.js").toString())
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .parallel(1);
 
         assertTrue(result.isPassed());
@@ -178,7 +178,7 @@ class ScenarioConfigTest {
                 .configDir(configFile.toString())
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .parallel(1);
 
         assertTrue(result.isPassed());
@@ -383,7 +383,7 @@ class ScenarioConfigTest {
                 .karateEnv("staging")
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .parallel(1);
 
         assertTrue(result.isPassed(), "Base and env configs should load from working directory");
@@ -468,7 +468,7 @@ class ScenarioConfigTest {
                 .karateEnv("dev")
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .parallel(1);
 
         assertTrue(result.isPassed(), "karate-base.js functions should work with env config");

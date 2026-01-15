@@ -274,7 +274,7 @@ public class RunCommand implements Callable<Integer> {
                 builder.workingDir(effectiveWorkingDir);
             }
 
-            builder.backupReportDir(effectiveBackup);
+            builder.backupOutputDir(effectiveBackup);
 
             // Log level
             String effectiveLogLevel = resolveLogLevel();

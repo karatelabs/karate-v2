@@ -72,7 +72,7 @@ class CallSingleTest {
                 .workingDir(tempDir)
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle basic should work: " + getFailureMessage(result));
@@ -102,7 +102,7 @@ class CallSingleTest {
                 .workingDir(tempDir)
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle with JS should work: " + getFailureMessage(result));
@@ -136,7 +136,7 @@ class CallSingleTest {
                 .workingDir(tempDir)
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle caching should work: " + getFailureMessage(result));
@@ -185,7 +185,7 @@ class CallSingleTest {
                 .workingDir(tempDir)
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .parallel(4);
         long elapsed = System.currentTimeMillis() - startTime;
 
@@ -221,7 +221,7 @@ class CallSingleTest {
                 .workingDir(tempDir)
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .parallel(1);
 
         assertTrue(result.isFailed(), "callSingle with failing feature should fail");
@@ -251,7 +251,7 @@ class CallSingleTest {
                 .workingDir(tempDir)
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle with argument should work: " + getFailureMessage(result));
@@ -290,7 +290,7 @@ class CallSingleTest {
                 .workingDir(tempDir)
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle with multiple paths should work: " + getFailureMessage(result));
@@ -323,7 +323,7 @@ class CallSingleTest {
                 .workingDir(tempDir)
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle with ?suffix cache keys should work: " + getFailureMessage(result));
@@ -357,7 +357,7 @@ class CallSingleTest {
                 .workingDir(tempDir)
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle without suffix should share cache: " + getFailureMessage(result));
@@ -403,7 +403,7 @@ class CallSingleTest {
                 .configDir(configJs.toString())
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle from config should work: " + getFailureMessage(result));
@@ -452,7 +452,7 @@ class CallSingleTest {
                 .configDir(configJs.toString())
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle from config with JS file should work: " + getFailureMessage(result));
@@ -509,7 +509,7 @@ class CallSingleTest {
                 .configDir(configJs.toString())
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .parallel(4);
 
         assertTrue(result.isPassed(), "Parallel scenarios with config callSingle should work: " + getFailureMessage(result));
@@ -560,7 +560,7 @@ class CallSingleTest {
                 .workingDir(tempDir)
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle with tag selector should work: " + getFailureMessage(result));
@@ -600,7 +600,7 @@ class CallSingleTest {
                 .workingDir(tempDir)
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .parallel(1);
 
         assertTrue(result.isPassed(), "callSingle with different tags should return different results: " + getFailureMessage(result));

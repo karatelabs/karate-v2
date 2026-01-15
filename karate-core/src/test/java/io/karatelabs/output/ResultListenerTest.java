@@ -99,7 +99,7 @@ class ResultListenerTest {
                 .resultListener(listener)
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .buildSuite();
         suite.run();
 
@@ -186,7 +186,7 @@ class ResultListenerTest {
                 .resultListener(listener2)
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .buildSuite();
         suite.run();
 
@@ -225,7 +225,7 @@ class ResultListenerTest {
                 .resultListener(listener)
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .buildSuite();
         suite.run();
 

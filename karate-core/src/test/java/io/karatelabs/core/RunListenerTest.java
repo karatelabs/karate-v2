@@ -386,7 +386,7 @@ class RunListenerTest {
             .features(feature)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
-            .backupReportDir(false)
+            .backupOutputDir(false)
             .listener(event -> {
                 eventTypes.add(event.getType());
                 return true;
@@ -428,7 +428,7 @@ class RunListenerTest {
             .features(feature)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
-            .backupReportDir(false)
+            .backupOutputDir(false)
             .listener(event -> {
                 // Skip scenarios by returning false on SCENARIO_ENTER
                 if (event instanceof ScenarioRunEvent e && e.type() == RunEventType.SCENARIO_ENTER) {
@@ -466,7 +466,7 @@ class RunListenerTest {
             .features(feature)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
-            .backupReportDir(false)
+            .backupOutputDir(false)
             .httpClientFactory(() -> client)
             .listener(event -> {
                 if (event instanceof HttpRunEvent) {
@@ -515,7 +515,7 @@ class RunListenerTest {
             .features(feature)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
-            .backupReportDir(false)
+            .backupOutputDir(false)
             .httpClientFactory(() -> client)
             .listener(event -> {
                 if (event instanceof HttpRunEvent e && e.type() == RunEventType.HTTP_EXIT) {
@@ -552,7 +552,7 @@ class RunListenerTest {
             .features(feature)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
-            .backupReportDir(false)
+            .backupOutputDir(false)
             .httpClientFactory(() -> client)
             .listener(event -> {
                 if (event instanceof HttpRunEvent e && e.type() == RunEventType.HTTP_EXIT) {
@@ -594,7 +594,7 @@ class RunListenerTest {
             .features(feature)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
-            .backupReportDir(false)
+            .backupOutputDir(false)
             .httpClientFactory(() -> client)
             .listener(event -> {
                 if (event instanceof HttpRunEvent e) {
@@ -649,7 +649,7 @@ class RunListenerTest {
             .features(feature)
             .outputHtmlReport(false)
             .outputConsoleSummary(false)
-            .backupReportDir(false)
+            .backupOutputDir(false)
             .httpClientFactory(() -> client)
             .listener(event -> {
                 if (event instanceof HttpRunEvent e) {

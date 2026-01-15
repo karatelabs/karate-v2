@@ -301,14 +301,6 @@ public final class Runner {
         }
 
         /**
-         * Alias for {@link #outputDir(String)}.
-         * Provided for backward compatibility with v1 API.
-         */
-        public Builder reportDir(String dir) {
-            return outputDir(dir);
-        }
-
-        /**
          * Set the working directory for relative path resolution.
          * This affects how feature file paths are displayed in reports.
          */
@@ -371,14 +363,6 @@ public final class Runner {
         public Builder backupOutputDir(boolean enabled) {
             this.backupOutputDir = enabled;
             return this;
-        }
-
-        /**
-         * Alias for {@link #backupOutputDir(boolean)}.
-         * Provided for backward compatibility with v1 API.
-         */
-        public Builder backupReportDir(boolean enabled) {
-            return backupOutputDir(enabled);
         }
 
         /**
@@ -503,14 +487,6 @@ public final class Runner {
         public Builder httpClientFactory(io.karatelabs.http.HttpClientFactory factory) {
             this.httpClientFactory = factory;
             return this;
-        }
-
-        /**
-         * Alias for {@link #httpClientFactory(io.karatelabs.http.HttpClientFactory)}.
-         * Provided for backward compatibility with v1 API.
-         */
-        public Builder clientFactory(io.karatelabs.http.HttpClientFactory factory) {
-            return httpClientFactory(factory);
         }
 
         /**

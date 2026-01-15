@@ -123,7 +123,7 @@ public class TestUtils {
                 .skipTagFiltering(true)
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .listener(listener)
                 .parallel(1);
 
@@ -236,7 +236,7 @@ public class TestUtils {
                 .features(features)
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .skipTagFiltering(true)
                 .buildSuite();
     }
@@ -251,7 +251,7 @@ public class TestUtils {
                 .workingDir(workingDir)
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .skipTagFiltering(true)
                 .buildSuite();
     }
@@ -287,7 +287,7 @@ public class TestUtils {
         return Runner.builder()
                 .outputConsoleSummary(false)
                 .outputHtmlReport(false)
-                .backupReportDir(false)
+                .backupOutputDir(false)
                 .skipTagFiltering(true);
     }
 
