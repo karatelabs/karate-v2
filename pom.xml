@@ -45,6 +45,7 @@
 	<modules>
         <module>karate-js</module>
 		<module>karate-core</module>
+		<module>karate-junit6</module>
 		<module>karate-gatling</module>
 	</modules>
 
