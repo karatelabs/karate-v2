@@ -324,6 +324,13 @@ public class KarateConfig implements SimpleObject {
                 yield false;
             }
 
+            // Deprecated v1 options - no-op with warning
+            case "logPrettyRequest", "logPrettyResponse", "printEnabled",
+                 "lowerCaseResponseHeaders", "logModifier" -> {
+                logger.warn("configure '{}' is deprecated and has no effect in v2", key);
+                yield false;
+            }
+
             default -> throw new RuntimeException("unexpected 'configure' key: '" + key + "'");
         };
     }

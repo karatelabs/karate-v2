@@ -59,10 +59,11 @@ import org.brotli.dec.BrotliInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.karatelabs.common.Resource;
+
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
-import java.io.File;
-import java.io.FileInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
@@ -568,8 +569,8 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
         return map;
     }
 
-    private static KeyStore getKeyStore(String trustStoreFile, String password, String type) {
-        if (trustStoreFile == null) {
+    private static KeyStore getKeyStore(String keyStorePath, String password, String type) {
+        if (keyStorePath == null) {
             return null;
         }
         char[] passwordChars = password == null ? null : password.toCharArray();
@@ -578,10 +579,12 @@ public class ApacheHttpClient implements HttpClient, HttpRequestInterceptor {
         }
         try {
             KeyStore keyStore = KeyStore.getInstance(type);
-            File file = new File(trustStoreFile); // TODO relative path
-            InputStream is = new FileInputStream(file);
-            keyStore.load(is, passwordChars);
-            LOGGER.debug("key store key count for {}: {}", trustStoreFile, keyStore.size());
+            Resource resource = Resource.path(keyStorePath);
+            byte[] bytes = resource.getStream().readAllBytes();
+            try (InputStream is = new ByteArrayInputStream(bytes)) {
+                keyStore.load(is, passwordChars);
+            }
+            LOGGER.debug("key store key count for {}: {}", keyStorePath, keyStore.size());
             return keyStore;
         } catch (Exception e) {
             LOGGER.error("key store init failed: {}", e.getMessage());

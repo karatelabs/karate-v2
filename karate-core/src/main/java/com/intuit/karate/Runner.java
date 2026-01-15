@@ -107,6 +107,21 @@ public final class Runner {
         return result.getResultVariables();
     }
 
+    /**
+     * Execute a single feature with pre-defined variables using a classpath path.
+     *
+     * @param path             the feature file path
+     * @param arg              variables to inject into the feature
+     * @param evalKarateConfig ignored in v2 (config is always evaluated)
+     * @return the result variables from the last executed scenario
+     * @deprecated Use {@link io.karatelabs.core.Runner#runFeature(String, Map)} instead.
+     */
+    @Deprecated(since = "2.0", forRemoval = true)
+    public static Map<String, Object> runFeature(String path, Map<String, Object> arg, boolean evalKarateConfig) {
+        FeatureResult result = io.karatelabs.core.Runner.runFeature(path, arg);
+        return result.getResultVariables();
+    }
+
     private static String toClasspathPath(Class<?> relativeTo, String path) {
         if (path.startsWith("classpath:")) {
             return path;
@@ -269,6 +284,24 @@ public final class Runner {
         @Deprecated(since = "2.0", forRemoval = true)
         public Builder outputHtmlReport(boolean enabled) {
             delegate.outputHtmlReport(enabled);
+            return this;
+        }
+
+        /**
+         * Enable/disable Cucumber JSON report generation.
+         */
+        @Deprecated(since = "2.0", forRemoval = true)
+        public Builder outputCucumberJson(boolean enabled) {
+            delegate.outputCucumberJson(enabled);
+            return this;
+        }
+
+        /**
+         * Set a system property.
+         */
+        @Deprecated(since = "2.0", forRemoval = true)
+        public Builder systemProperty(String key, String value) {
+            delegate.systemProperty(key, value);
             return this;
         }
 
