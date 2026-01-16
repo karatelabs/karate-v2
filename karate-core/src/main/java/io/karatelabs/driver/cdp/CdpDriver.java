@@ -614,6 +614,18 @@ public class CdpDriver implements Driver {
         return extractJsValue(response, expression);
     }
 
+    /**
+     * Execute JavaScript via CDP Runtime.evaluate with retry logic for transient errors.
+     *
+     * DESIGN NOTES (for future maintainers):
+     * - Transient context errors occur when execution context is destroyed (e.g., navigation)
+     * - Simple sleep-and-retry works well; CDP events will update frameContexts in background
+     * - AVOID recreating frame contexts on error (calling ensureFrameContext) - this caused
+     *   flaky tests because it could create a new isolated world while the page was still
+     *   transitioning, leading to stale context IDs
+     * - First retry is common and expected (e.g., click triggers navigation, next call fails)
+     * - Multiple retries may indicate a real problem worth investigating
+     */
     private CdpResponse cdpEval(String expression) {
         int maxRetries = options.getRetryCount();
         int retryInterval = options.getRetryInterval();
@@ -623,7 +635,7 @@ public class CdpDriver implements Driver {
                     .param("expression", expression)
                     .param("returnByValue", true);
 
-            // If in a frame, use its execution context
+            // Use explicit context ID for reliable frame targeting (see getFrameContext notes)
             Integer contextId = getFrameContext();
             if (contextId != null) {
                 message.param("contextId", contextId);
@@ -634,19 +646,12 @@ public class CdpDriver implements Driver {
             // Check for transient context errors that should be retried
             if (isTransientContextError(response)) {
                 if (attempt < maxRetries) {
-                    // If in a frame, recreate the execution context (it may have been invalidated)
-                    if (currentFrame != null) {
-                        logger.warn("transient context error in frame {}, recreating context, retry {}/{}: {}",
-                                currentFrame.id, attempt + 1, maxRetries, truncate(expression, 100));
-                        frameContexts.remove(currentFrame.id);
-                        ensureFrameContext(currentFrame.id);
-                    } else {
-                        logger.warn("transient context error, retry {}/{}: {}", attempt + 1, maxRetries, truncate(expression, 100));
-                    }
+                    // Simple retry with sleep - let CDP events update context in background
+                    logger.warn("transient context error, retry {}/{}: {}", attempt + 1, maxRetries, truncate(expression, 100));
                     sleep(retryInterval);
                     continue;
                 }
-                logger.warn("retry exhausted for transient context error: {} | {}", truncate(expression, 100), getDriverState());
+                logger.warn("retry exhausted for transient context error: {}", truncate(expression, 100));
             }
 
             // Success or non-transient error
@@ -695,9 +700,21 @@ public class CdpDriver implements Driver {
         return false;
     }
 
+    /**
+     * Get execution context ID for the current frame.
+     *
+     * DESIGN NOTES:
+     * - When in main frame (currentFrame == null), we explicitly use mainFrameId context
+     * - Previously returned null for main frame, relying on CDP's "default" context
+     * - This caused flaky "Switch back to main frame" tests because CDP's default context
+     *   is unreliable immediately after frame navigation (switchFrame(null))
+     * - The frameContexts map is updated by Runtime.executionContextCreated events
+     * - Returns null if context not yet registered (rare, handled by retry logic)
+     */
     private Integer getFrameContext() {
         if (currentFrame == null) {
-            return null;
+            // Explicit main frame context - more reliable than CDP's default after frame switches
+            return frameContexts.get(mainFrameId);
         }
         return frameContexts.get(currentFrame.id);
     }
