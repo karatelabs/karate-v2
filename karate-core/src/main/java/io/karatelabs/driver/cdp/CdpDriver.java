@@ -205,6 +205,47 @@ public class CdpDriver implements Driver {
         // Safety check: if page is already loaded (we connected late), set the flag
         // This handles the case where DOMContentLoaded fired before we were listening
         checkIfPageAlreadyLoaded();
+
+        // Wait for main frame execution context to be ready
+        // This prevents transient context errors on the first script() call
+        waitForMainFrameContext();
+    }
+
+    /**
+     * Wait for the main frame's execution context to be registered.
+     * Called during initialization to prevent transient errors on first use.
+     *
+     * After Runtime.enable, CDP sends executionContextCreated events asynchronously.
+     * Without this wait, the first script() call might happen before the context
+     * is registered, causing a transient error and retry.
+     */
+    private void waitForMainFrameContext() {
+        int maxWaitMs = 2000;
+        int pollInterval = 50;
+        long deadline = System.currentTimeMillis() + maxWaitMs;
+
+        while (System.currentTimeMillis() < deadline) {
+            Integer contextId = frameContexts.get(mainFrameId);
+            if (contextId != null) {
+                // Verify the context works
+                try {
+                    CdpResponse response = cdp.method("Runtime.evaluate")
+                            .param("expression", "1")
+                            .param("returnByValue", true)
+                            .param("contextId", contextId)
+                            .send();
+                    if (!response.isError()) {
+                        logger.debug("main frame context ready: contextId={}", contextId);
+                        return;
+                    }
+                } catch (Exception e) {
+                    // Context not ready yet
+                }
+            }
+            sleep(pollInterval);
+        }
+        // Timeout is not fatal - retry logic will handle it, but log for diagnostics
+        logger.warn("timeout waiting for main frame context during init (will retry on first use)");
     }
 
     /**
