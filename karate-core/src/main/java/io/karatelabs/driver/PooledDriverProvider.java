@@ -236,7 +236,7 @@ public class PooledDriverProvider implements DriverProvider {
     public void shutdown() {
         shutdown = true;
         int count = createdCount.get();
-        logger.info("Shutting down PooledDriverProvider, closing {} drivers", count);
+        logger.debug("Shutting down PooledDriverProvider, closing {} drivers", count);
 
         // Close all assigned drivers
         for (Driver driver : assignedDrivers.values()) {
