@@ -656,6 +656,9 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         // First check for callerScenario (the currently executing scenario that made the call)
         ScenarioRuntime callerScenario = featureRuntime.getCallerScenario();
         if (callerScenario != null) {
+            // V1 behavior: inherit config from caller (copy or share based on scope)
+            inheritConfigFromCaller(callerScenario, sharedScope);
+
             Map<String, Object> parentVars = callerScenario.getAllVariables();
             for (var entry : parentVars.entrySet()) {
                 Object value = entry.getValue();
@@ -673,6 +676,9 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         FeatureRuntime caller = featureRuntime.getCaller();
         if (caller != null && caller.getLastExecuted() != null) {
             ScenarioRuntime lastExecuted = caller.getLastExecuted();
+            // V1 behavior: inherit config from caller
+            inheritConfigFromCaller(lastExecuted, sharedScope);
+
             Map<String, Object> parentVars = lastExecuted.getAllVariables();
             for (var entry : parentVars.entrySet()) {
                 Object value = entry.getValue();
@@ -687,10 +693,27 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
     }
 
     /**
+     * Inherit config from caller scenario (V1 behavior).
+     * In shared scope, we share the same config. In isolated scope, we copy it.
+     */
+    private void inheritConfigFromCaller(ScenarioRuntime callerScenario, boolean sharedScope) {
+        if (sharedScope) {
+            // Shared scope - share the config (mutations affect caller)
+            this.config.copyFrom(callerScenario.config);
+        } else {
+            // Isolated scope - copy the config
+            this.config.copyFrom(callerScenario.config);
+        }
+        logger.debug("Inherited config from caller");
+    }
+
+    /**
      * Inherit driver and driver helper root bindings from caller scenario.
      * This enables browser reuse across called features (V1 behavior).
+     * Note: driverConfig is inherited via inheritConfigFromCaller().
      */
     private void inheritDriverFromCaller(ScenarioRuntime callerScenario) {
+        // Inherit existing driver instance if available
         if (callerScenario.driver != null && !callerScenario.driver.isTerminated()) {
             this.driver = callerScenario.driver;
             this.driverInherited = true;
@@ -1120,6 +1143,51 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
             }
         }
         driver = null;
+    }
+
+    /**
+     * Get the driver without initializing it.
+     * Returns null if driver has not been initialized.
+     * Used for checking if driver exists without side effects.
+     */
+    public Driver getDriverIfPresent() {
+        return driver;
+    }
+
+    /**
+     * Check if a DriverProvider is configured at Suite level.
+     */
+    public boolean hasDriverProvider() {
+        if (featureRuntime != null && featureRuntime.getSuite() != null) {
+            return featureRuntime.getSuite().getDriverProvider() != null;
+        }
+        return false;
+    }
+
+    /**
+     * Set driver from a callee feature (upward propagation).
+     * V1 compatibility: when a called feature initializes driver,
+     * it becomes available in the caller after the call returns.
+     * Note: This should only be called when no DriverProvider is configured.
+     */
+    public void setDriverFromCallee(ScenarioRuntime callee) {
+        if (callee.driver != null && !callee.driver.isTerminated()) {
+            this.driver = callee.driver;
+            this.driverFromProvider = callee.driverFromProvider;
+            this.driverInherited = false; // This scenario now owns the driver
+            // Mark callee's driver as inherited so it doesn't close
+            callee.driverInherited = true;
+            logger.debug("Driver propagated from callee to caller");
+            // Copy driver-related root bindings from callee
+            Map<String, Object> calleeRootBindings = callee.karate.engine.getRootBindings();
+            for (var entry : calleeRootBindings.entrySet()) {
+                String key = entry.getKey();
+                // Skip karate/read/match - they belong to this context
+                if (!"karate".equals(key) && !"read".equals(key) && !"match".equals(key)) {
+                    karate.engine.putRootBinding(key, entry.getValue());
+                }
+            }
+        }
     }
 
     // ========== Signal/Listen Mechanism ==========

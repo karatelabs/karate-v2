@@ -2507,6 +2507,12 @@ public class StepExecutor {
                 runtime.getConfig().copyFrom(nestedFr.getLastExecuted().getConfig());
                 // V1 compatibility: Also propagate cookie jar back to caller
                 runtime.getCookieJar().putAll(nestedFr.getLastExecuted().getCookieJar());
+                // V1 compatibility: Propagate driver upward ONLY when no DriverProvider is set
+                // With DriverProvider, drivers are managed at Suite level and shouldn't be propagated
+                ScenarioRuntime calleeRuntime = nestedFr.getLastExecuted();
+                if (!runtime.hasDriverProvider() && calleeRuntime.getDriverIfPresent() != null) {
+                    runtime.setDriverFromCallee(calleeRuntime);
+                }
             }
         }
     }

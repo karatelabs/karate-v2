@@ -126,6 +126,106 @@ io.karatelabs.driver/
 | `keys()` | ✅ Working |
 | `Key.ENTER`, `Key.TAB` | ✅ Working |
 
+### Driver Lifecycle (V1 Behavior)
+
+V2 preserves V1's driver lifecycle behavior for called features:
+
+**Auto-Start on First Use:**
+```gherkin
+# In karate-config.js
+karate.configure('driver', { type: 'chrome', headless: true })
+
+# In feature file - driver auto-starts when keyword is encountered
+* driver serverUrl + '/login'
+```
+
+When `driver url` is encountered:
+1. If driver is null or terminated, `initDriver()` is called
+2. Driver is created using the configured `driverConfig`
+3. If `DriverProvider` is set (via `Runner.driverProvider()`), it's used to acquire the driver
+4. Otherwise, driver is created directly based on config
+
+**Config Inheritance for Called Features:**
+
+When a feature calls another feature (`call read('sub.feature')`), the called feature inherits:
+- **All config** from the caller (via `KarateConfig.copyFrom()`) - including driverConfig, ssl, proxy, headers, cookies, timeouts, etc.
+- All variables from the caller
+- The driver instance (if already initialized in the caller)
+
+This matches V1 behavior where the entire `Config` object is copied/shared with called features.
+
+```gherkin
+# main.feature - Scenario Outline entry point
+Scenario Outline: <config>
+* call read('orchestration.feature')
+
+# orchestration.feature - receives inherited driverConfig
+Background:
+* driver serverUrl + '/index.html'  # auto-starts using inherited config
+
+Scenario:
+* call read('sub.feature')  # sub inherits the driver instance
+
+# sub.feature - uses inherited driver, no new browser opened
+Scenario:
+* driver serverUrl + '/page2'  # same browser, navigates to new page
+* match driver.title == 'Page 2'
+```
+
+**Driver Not Closed Until Top-Level Exit:**
+
+The driver is only closed when the top-level scenario (the entry point) completes:
+- Called features mark their driver as "inherited" (`driverInherited = true`)
+- Inherited drivers are not closed when the callee scenario exits
+- Only the owner (the scenario that created the driver) closes it
+
+**Driver Upward Propagation (V1 Behavior):**
+
+When a called feature initializes a driver, V1 propagates it back to the caller so the caller can use it after the call returns. V2 implements this behavior conditionally:
+
+| Scenario | With DriverProvider | Without DriverProvider |
+|----------|---------------------|------------------------|
+| Caller has driver, callee inherits | ✅ Driver shared | ✅ Driver shared |
+| Callee inits driver, propagates to caller | ❌ Not propagated | ✅ Propagated |
+
+**Why the difference?**
+- **Without DriverProvider**: V1-style behavior. One driver per scenario hierarchy. Callee's driver ownership transfers to caller.
+- **With DriverProvider**: Drivers are pooled at Suite level. Callee acquires from pool, releases back. Caller should acquire its own driver if needed.
+
+```gherkin
+# V1-style (no DriverProvider) - driver propagates upward
+# main.feature
+Scenario:
+* call read('init-driver.feature')
+* match driver.title == 'Page'  # works - driver propagated from callee
+
+# init-driver.feature
+Scenario:
+* driver serverUrl + '/page.html'  # initializes driver
+```
+
+This distinction keeps DriverProvider semantics clean (pooling, container-based drivers) while maintaining V1 compatibility for simple use cases.
+
+**Two Approaches to Driver Management:**
+
+| Approach | Use Case | How It Works |
+|----------|----------|--------------|
+| **configure driver** | Simple tests, single browser | Config in karate-config.js, auto-start on `driver url` |
+| **DriverProvider** | Parallel tests, browser pooling | Provider set via `Runner.driverProvider()`, manages pool |
+
+Both approaches can coexist:
+- `configure driver` sets the `driverConfig` (timeout, headless, etc.)
+- `DriverProvider` (if set) uses that config when creating/acquiring drivers
+- If no provider, driver is created directly from config
+
+```java
+// Example: DriverProvider with config from karate-config.js
+Runner.path("features/")
+    .configDir("classpath:karate-config.js")  // sets driverConfig
+    .driverProvider(new PooledDriverProvider()) // uses driverConfig
+    .parallel(4);
+```
+
 ---
 
 ## Driver Interface
@@ -506,6 +606,28 @@ public class ContainerDriverProvider extends PooledDriverProvider {
 ### Cloud Provider Pattern
 
 See [Cloud Provider Integration](#cloud-provider-integration) for SauceLabs, BrowserStack examples.
+
+### Interaction with `configure driver`
+
+`DriverProvider` works alongside `configure driver`:
+
+1. `configure driver` in karate-config.js sets driver options (timeout, headless, etc.)
+2. When `driver url` is encountered, `ScenarioRuntime.initDriver()` checks for a provider
+3. If provider exists, it calls `provider.acquire(runtime, configMap)` with the config
+4. The provider can use or override the config when creating the driver
+
+```gherkin
+# karate-config.js
+karate.configure('driver', { timeout: 30000, headless: true })
+
+# feature file
+* driver serverUrl + '/login'  # uses provider if set, passes config
+```
+
+This allows:
+- Config (timeout, options) to be centralized in karate-config.js
+- Browser lifecycle to be managed by provider (pooling, containers, cloud)
+- Both approaches to coexist without conflict
 
 ---
 

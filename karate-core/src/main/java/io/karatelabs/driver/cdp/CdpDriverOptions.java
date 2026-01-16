@@ -26,10 +26,12 @@ package io.karatelabs.driver.cdp;
 import io.karatelabs.driver.DriverOptions;
 import io.karatelabs.driver.PageLoadStrategy;
 
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * CDP-specific driver configuration options.
@@ -323,6 +325,12 @@ public class CdpDriverOptions implements DriverOptions {
         }
 
         public CdpDriverOptions build() {
+            // Default userDataDir to temp sandbox if not specified
+            // This prevents conflicts with user's existing Chrome browser
+            if (userDataDir == null) {
+                userDataDir = Path.of("target", "chrome-temp-" + UUID.randomUUID().toString().substring(0, 8))
+                        .toAbsolutePath().toString();
+            }
             return new CdpDriverOptions(this);
         }
     }

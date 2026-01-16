@@ -119,7 +119,10 @@ class DriverFeatureTest {
 
         // Run all driver feature tests with scenario-level parallelism
         // Cookie tests use @lock=cookies for mutual exclusion (cookies are browser-level shared state)
+        // Skip @skipProvider scenarios - they test V1-style driver upward propagation
+        // which is incompatible with DriverProvider (drivers are pooled and shouldn't propagate)
         SuiteResult result = Runner.path("classpath:io/karatelabs/driver/features")
+                .tags("~@skipProvider")
                 .configDir("classpath:io/karatelabs/driver/features/karate-config.js")
                 .outputDir(Path.of("target", "driver-feature-reports"))
                 .outputHtmlReport(true)
