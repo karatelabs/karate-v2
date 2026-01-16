@@ -167,6 +167,7 @@ public class CdpClient {
 
     /**
      * Create a new CDP message builder.
+     * Automatically includes sessionId if one is set.
      */
     public CdpMessage method(String method) {
         CdpMessage message = new CdpMessage(this, nextId(), method);
@@ -174,6 +175,14 @@ public class CdpClient {
             message.sessionId(sessionId);
         }
         return message;
+    }
+
+    /**
+     * Create a new CDP message builder for browser-level commands.
+     * Does NOT include sessionId - use for Target.* commands that operate at browser level.
+     */
+    public CdpMessage browserMethod(String method) {
+        return new CdpMessage(this, nextId(), method);
     }
 
     /**

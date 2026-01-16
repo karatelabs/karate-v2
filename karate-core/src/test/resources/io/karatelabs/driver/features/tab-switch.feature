@@ -24,3 +24,11 @@ Feature: Tab Switch Tests
     * switchPage('/tab-main')
     * match text('#title') == 'Tab Main Page'
     * match script('window.pageType') == 'main'
+
+    # Close the new tab and verify count
+    * switchPage('Tab New Page')
+    * driver.close()
+    * assert getPages().length == initialCount
+    # After close(), explicitly switch back to main
+    * switchPage('/tab-main')
+    * match text('#title') == 'Tab Main Page'

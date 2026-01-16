@@ -97,6 +97,9 @@ public class CdpDriver implements Driver {
     private Frame currentFrame;
     private final Map<String, Integer> frameContexts = new ConcurrentHashMap<>();
 
+    // Tab/target tracking for close() support
+    private String currentTargetId;
+
     // Keyboard state (reused to maintain modifier state across calls)
     private CdpKeys keysInstance;
 
@@ -187,6 +190,13 @@ public class CdpDriver implements Driver {
         CdpResponse frameResponse = cdp.method("Page.getFrameTree").send();
         mainFrameId = frameResponse.getResult("frameTree.frame.id");
         logger.debug("main frame ID: {}", mainFrameId);
+
+        // Track current target for close() support
+        List<String> pages = getPages();
+        if (!pages.isEmpty()) {
+            currentTargetId = pages.get(0);
+            logger.debug("current target ID: {}", currentTargetId);
+        }
 
         // Setup event handlers BEFORE enabling domains
         // This prevents race conditions where events fire before handlers are registered
@@ -1095,10 +1105,60 @@ public class CdpDriver implements Driver {
     }
 
     /**
-     * Alias for quit().
+     * Close the current tab/page.
+     * After closing, automatically switches to another open tab if available.
+     * If this is the last tab, creates a blank page first to keep the browser alive.
+     *
+     * DESIGN NOTE: We must switch to another tab BEFORE closing the current one.
+     * When connected via page-specific WebSocket URL (e.g., /devtools/page/xxx),
+     * closing that page also closes the WebSocket connection. By switching first,
+     * we establish a new session on a different target, then safely close the old one.
      */
     public void close() {
-        quit();
+        if (terminated || currentTargetId == null) {
+            return;
+        }
+
+        String targetToClose = currentTargetId;
+        logger.debug("close() - target to close: {}", targetToClose);
+
+        // Get all pages and find one to switch to before closing
+        List<String> allPages = getPages();
+        logger.debug("close() - all pages: {}", allPages);
+
+        String nextTarget = null;
+        for (String pageId : allPages) {
+            if (!pageId.equals(targetToClose)) {
+                nextTarget = pageId;
+                break;
+            }
+        }
+        logger.debug("close() - switching to: {}", nextTarget);
+
+        if (nextTarget == null) {
+            // Last tab - create a blank page to keep browser alive
+            // Uses browserMethod() because Target.createTarget is browser-level
+            CdpResponse response = cdp.browserMethod("Target.createTarget")
+                    .param("url", "about:blank")
+                    .send();
+            nextTarget = response.getResult("targetId");
+            logger.debug("close() - created blank tab: {}", nextTarget);
+            if (nextTarget == null) {
+                logger.warn("failed to create blank tab, quitting driver");
+                quit();
+                return;
+            }
+        }
+
+        // Switch to another tab first (establishes new session)
+        activateTarget(nextTarget);
+        logger.debug("close() - switched to: {}, now closing: {}", nextTarget, targetToClose);
+
+        // Now safe to close the old target (browser-level command)
+        cdp.browserMethod("Target.closeTarget")
+                .param("targetId", targetToClose)
+                .send();
+        logger.debug("close() - closed: {}", targetToClose);
     }
 
     public boolean isTerminated() {
@@ -1974,12 +2034,13 @@ public class CdpDriver implements Driver {
 
     /**
      * Get list of all page targets (tabs).
+     * Uses browserMethod() because Target.getTargets is a browser-level command.
      *
      * @return list of target IDs
      */
     @SuppressWarnings("unchecked")
     public List<String> getPages() {
-        CdpResponse response = cdp.method("Target.getTargets").send();
+        CdpResponse response = cdp.browserMethod("Target.getTargets").send();
         List<Map<String, Object>> targets = response.getResult("targetInfos");
         List<String> pages = new ArrayList<>();
         if (targets != null) {
@@ -2152,12 +2213,15 @@ public class CdpDriver implements Driver {
      * events from old sessions would corrupt the context map.
      */
     private void activateTarget(String targetId) {
-        cdp.method("Target.activateTarget")
+        this.currentTargetId = targetId;
+
+        // Browser-level command to bring tab to focus
+        cdp.browserMethod("Target.activateTarget")
                 .param("targetId", targetId)
                 .send();
 
-        // Attach to the target to get its session
-        CdpResponse attachResponse = cdp.method("Target.attachToTarget")
+        // Browser-level command to create session for this tab
+        CdpResponse attachResponse = cdp.browserMethod("Target.attachToTarget")
                 .param("targetId", targetId)
                 .param("flatten", true)
                 .send();
