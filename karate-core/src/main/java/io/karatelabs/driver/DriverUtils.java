@@ -83,6 +83,18 @@ public class DriverUtils {
             return null;
         }));
 
+        // Page/Tab switching
+        engine.putRootBinding("switchPage", Args.invoke(args -> {
+            Object arg = args[0];
+            if (arg instanceof Number n) {
+                driver.switchPage(n.intValue());
+            } else {
+                driver.switchPage(arg.toString());
+            }
+            return null;
+        }));
+        engine.putRootBinding("getPages", Args.invoke(args -> driver.getPages()));
+
         // Script execution
         engine.putRootBinding("script", Args.invoke(args -> {
             if (args.length == 1) {

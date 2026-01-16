@@ -220,7 +220,7 @@ public class CdpDriver implements Driver {
      * is registered, causing a transient error and retry.
      */
     private void waitForMainFrameContext() {
-        int maxWaitMs = 2000;
+        int maxWaitMs = 1000;
         int pollInterval = 50;
         long deadline = System.currentTimeMillis() + maxWaitMs;
 
@@ -333,7 +333,28 @@ public class CdpDriver implements Driver {
         });
 
         // Track execution contexts for frames
+        //
+        // DESIGN NOTES (tab switching / session management):
+        // - Each browser tab (CDP "target") has its own session when attached via Target.attachToTarget
+        // - When switching tabs with switchPage(), we attach to a new target and get a new sessionId
+        // - CDP events arrive on the WebSocket with a sessionId indicating which session they're from
+        // - WITHOUT session filtering: events from old sessions pollute frameContexts map, causing
+        //   script execution to use wrong context (e.g., after switchPage('Tab A'), we'd still
+        //   execute JS in Tab B because its context was registered last)
+        // - WITH session filtering: only events from current session update frameContexts, ensuring
+        //   script execution targets the correct tab
+        // - This was a critical fix for reliable tab switching - without it, switchPage() would
+        //   appear to work (target activated) but subsequent operations would affect the wrong tab
+        //
         cdp.on("Runtime.executionContextCreated", event -> {
+            // Filter by session: only process events from current session
+            String eventSession = event.getSessionId();
+            String currentSession = cdp.getSessionId();
+            if (eventSession != null && !eventSession.equals(currentSession)) {
+                logger.trace("ignoring executionContextCreated from old session: {}", eventSession);
+                return;
+            }
+
             Map<String, Object> context = event.get("context");
             if (context != null) {
                 Number contextId = (Number) context.get("id");
@@ -350,6 +371,13 @@ public class CdpDriver implements Driver {
         });
 
         cdp.on("Runtime.executionContextsCleared", event -> {
+            // Filter by session: only process events from current session (see notes above)
+            String eventSession = event.getSessionId();
+            String currentSession = cdp.getSessionId();
+            if (eventSession != null && !eventSession.equals(currentSession)) {
+                logger.trace("ignoring executionContextsCleared from old session: {}", eventSession);
+                return;
+            }
             frameContexts.clear();
             logger.trace("execution contexts cleared");
         });
@@ -1968,6 +1996,7 @@ public class CdpDriver implements Driver {
 
     /**
      * Switch to a page by title or URL substring.
+     * Includes verification that the switch was successful.
      *
      * @param titleOrUrl the title or URL substring to match
      */
@@ -2102,6 +2131,26 @@ public class CdpDriver implements Driver {
         cdp.method("Fetch.disable").send();
     }
 
+    /**
+     * Activate and attach to a browser tab (CDP target) for tab switching.
+     *
+     * DESIGN NOTES (tab switching flow):
+     * 1. Target.activateTarget - brings the tab to visual focus in the browser
+     * 2. Target.attachToTarget - creates a NEW CDP session for this tab
+     *    - Each attachment creates a fresh session, even if previously attached
+     *    - The "flatten: true" param sends events on main WebSocket (not nested)
+     * 3. Update sessionId - all subsequent CDP commands use this session
+     * 4. Re-enable domains - Page/Runtime must be enabled per-session
+     *    - This triggers Runtime.executionContextCreated events for new session
+     * 5. Get mainFrameId - each tab has its own frame tree
+     * 6. Clear frameContexts - old contexts are invalid for new session
+     * 7. Wait for context - ensures executionContextCreated event is processed
+     *    before returning (prevents "context not found" errors on first script())
+     *
+     * CRITICAL: Session filtering in event handlers (see setupEventHandlers) ensures
+     * that only events from the CURRENT session update frameContexts. Without this,
+     * events from old sessions would corrupt the context map.
+     */
     private void activateTarget(String targetId) {
         cdp.method("Target.activateTarget")
                 .param("targetId", targetId)
@@ -2119,20 +2168,26 @@ public class CdpDriver implements Driver {
             cdp.setSessionId(sessionId);
         }
 
-        // Re-enable required domains on new target
+        // Re-enable required domains on new target (triggers executionContextCreated)
         cdp.method("Page.enable").send();
         cdp.method("Runtime.enable").send();
         cdp.method("Page.setLifecycleEventsEnabled")
                 .param("enabled", true)
                 .send();
 
-        // Get new main frame ID
+        // Get new main frame ID (each tab has its own frame tree)
         CdpResponse frameResponse = cdp.method("Page.getFrameTree").send();
         mainFrameId = frameResponse.getResult("frameTree.frame.id");
 
-        // Reset frame state
+        // Reset frame state (old contexts are invalid for new session)
         currentFrame = null;
         frameContexts.clear();
+
+        // Wait for execution context to be ready before returning
+        // Without this, script() calls immediately after switchPage() fail
+        // with "Cannot find context" errors because the executionContextCreated
+        // event hasn't been processed yet
+        waitForMainFrameContext();
     }
 
     // ========== Utilities ==========
