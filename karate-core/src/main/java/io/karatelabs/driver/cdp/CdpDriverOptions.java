@@ -55,6 +55,7 @@ public class CdpDriverOptions implements DriverOptions {
     private final PageLoadStrategy pageLoadStrategy;
     private final List<String> addOptions;
     private final String webSocketUrl;
+    private final String scope;
 
     private CdpDriverOptions(Builder builder) {
         this.timeout = builder.timeout;
@@ -72,6 +73,7 @@ public class CdpDriverOptions implements DriverOptions {
         this.pageLoadStrategy = builder.pageLoadStrategy;
         this.addOptions = builder.addOptions != null ? List.copyOf(builder.addOptions) : List.of();
         this.webSocketUrl = builder.webSocketUrl;
+        this.scope = builder.scope;
     }
 
     public static Builder builder() {
@@ -134,6 +136,9 @@ public class CdpDriverOptions implements DriverOptions {
         }
         if (map.containsKey("webSocketUrl")) {
             builder.webSocketUrl((String) map.get("webSocketUrl"));
+        }
+        if (map.containsKey("scope")) {
+            builder.scope((String) map.get("scope"));
         }
 
         return builder.build();
@@ -215,6 +220,24 @@ public class CdpDriverOptions implements DriverOptions {
         return webSocketUrl;
     }
 
+    /**
+     * Get driver scope (default: "scenario").
+     * <ul>
+     *   <li>"scenario" - driver released at scenario end (pooled behavior)</li>
+     *   <li>"caller" - driver propagates to caller hierarchy (V1 behavior)</li>
+     * </ul>
+     */
+    public String getScope() {
+        return scope;
+    }
+
+    /**
+     * Check if driver scope is "caller" (V1-style behavior).
+     */
+    public boolean isCallerScope() {
+        return "caller".equals(scope);
+    }
+
     public Duration getTimeoutDuration() {
         return Duration.ofMillis(timeout);
     }
@@ -235,6 +258,7 @@ public class CdpDriverOptions implements DriverOptions {
         private PageLoadStrategy pageLoadStrategy = PageLoadStrategy.DOMCONTENT_AND_FRAMES;
         private List<String> addOptions;
         private String webSocketUrl;
+        private String scope = "scenario";
 
         public Builder timeout(int millis) {
             this.timeout = millis;
@@ -321,6 +345,18 @@ public class CdpDriverOptions implements DriverOptions {
 
         public Builder webSocketUrl(String url) {
             this.webSocketUrl = url;
+            return this;
+        }
+
+        /**
+         * Set driver scope (default: "scenario").
+         * <ul>
+         *   <li>"scenario" - driver released at scenario end (pooled behavior)</li>
+         *   <li>"caller" - driver propagates to caller hierarchy (V1 behavior)</li>
+         * </ul>
+         */
+        public Builder scope(String scope) {
+            this.scope = scope != null ? scope : "scenario";
             return this;
         }
 

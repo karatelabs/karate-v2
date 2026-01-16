@@ -168,6 +168,7 @@ public final class Runner {
         private io.karatelabs.driver.DriverProvider driverProvider;
         private io.karatelabs.http.HttpClientFactory httpClientFactory;
         private boolean skipTagFiltering;
+        private int poolSize = -1; // -1 means auto-detect from parallel count
 
         Builder() {
         }
@@ -477,6 +478,42 @@ public final class Runner {
          */
         public Builder driverProvider(io.karatelabs.driver.DriverProvider provider) {
             this.driverProvider = provider;
+            return this;
+        }
+
+        /**
+         * Enable browser driver pooling for parallel UI tests.
+         * Creates a PooledDriverProvider that reuses browser instances across scenarios.
+         * <p>
+         * Pool size is auto-detected from the parallel thread count.
+         * <p>
+         * Example:
+         * <pre>
+         * Runner.path("features/")
+         *     .pool()       // Enable pooling
+         *     .parallel(4); // Pool size = 4
+         * </pre>
+         */
+        public Builder pool() {
+            this.poolSize = -1; // Auto-detect from parallel count
+            return this;
+        }
+
+        /**
+         * Enable browser driver pooling with explicit pool size.
+         * Creates a PooledDriverProvider that reuses browser instances across scenarios.
+         * <p>
+         * Example:
+         * <pre>
+         * Runner.path("features/")
+         *     .pool(2)      // Pool of 2 browsers
+         *     .parallel(4); // 4 threads share 2 browsers
+         * </pre>
+         *
+         * @param size number of browser instances to pool
+         */
+        public Builder pool(int size) {
+            this.poolSize = size;
             return this;
         }
 

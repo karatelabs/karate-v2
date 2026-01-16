@@ -27,6 +27,7 @@ import io.karatelabs.common.FileUtils;
 import io.karatelabs.common.Resource;
 import io.karatelabs.common.ResourceNotFoundException;
 import io.karatelabs.driver.DriverProvider;
+import io.karatelabs.driver.PooledDriverProvider;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.Tag;
 import io.karatelabs.output.*;
@@ -154,7 +155,15 @@ public class Suite {
         this.listeners = List.copyOf(builder.getListeners());
         this.listenerFactories = List.copyOf(builder.getListenerFactories());
         this.resultListeners = new ArrayList<>(builder.getResultListeners());
-        this.driverProvider = builder.getDriverProvider();
+        // Auto-create PooledDriverProvider if none is set (default pooling behavior)
+        DriverProvider configuredProvider = builder.getDriverProvider();
+        if (configuredProvider != null) {
+            this.driverProvider = configuredProvider;
+        } else {
+            // Default to pooled driver provider with pool size = thread count
+            this.driverProvider = new PooledDriverProvider(threadCount);
+            logger.debug("Auto-created PooledDriverProvider with pool size: {}", threadCount);
+        }
         this.httpClientFactory = builder.getHttpClientFactory();
         this.skipTagFiltering = builder.isSkipTagFiltering();
 

@@ -179,44 +179,59 @@ The driver is only closed when the top-level scenario (the entry point) complete
 - Inherited drivers are not closed when the callee scenario exits
 - Only the owner (the scenario that created the driver) closes it
 
-**Driver Upward Propagation (V1 Behavior):**
+**Driver Upward Propagation with `scope: 'caller'`:**
 
-When a called feature initializes a driver, V1 propagates it back to the caller so the caller can use it after the call returns. V2 implements this behavior conditionally:
+By default, drivers are pooled (PooledDriverProvider is the default). Each scenario acquires a driver from the pool and releases it when done. To get V1-style behavior where a called feature's driver propagates back to the caller, use `scope: 'caller'`.
 
-| Scenario | With DriverProvider | Without DriverProvider |
-|----------|---------------------|------------------------|
-| Caller has driver, callee inherits | ✅ Driver shared | ✅ Driver shared |
-| Callee inits driver, propagates to caller | ❌ Not propagated | ✅ Propagated |
-
-**Why the difference?**
-- **Without DriverProvider**: V1-style behavior. One driver per scenario hierarchy. Callee's driver ownership transfers to caller.
-- **With DriverProvider**: Drivers are pooled at Suite level. Callee acquires from pool, releases back. Caller should acquire its own driver if needed.
+**Note:** This only applies to shared scope calls (`call read('...')` without a result variable). The `scope` option only affects driver propagation - variables, config, and cookies still follow standard shared/isolated scope rules.
 
 ```gherkin
-# V1-style (no DriverProvider) - driver propagates upward
-# main.feature
+# init-driver.feature - called feature with scope: 'caller'
+@ignore
+Feature: Initialize driver with caller scope
+
+Background:
+# Merge scope into existing driver config
+* def driverWithScope = karate.merge(driverConfig, { scope: 'caller' })
+* configure driver = driverWithScope
+
+Scenario: Init driver
+* driver serverUrl + '/page.html'  # driver will propagate to caller
+```
+
+```gherkin
+# main.feature - caller receives the driver
 Scenario:
 * call read('init-driver.feature')
 * match driver.title == 'Page'  # works - driver propagated from callee
-
-# init-driver.feature
-Scenario:
-* driver serverUrl + '/page.html'  # initializes driver
 ```
 
-This distinction keeps DriverProvider semantics clean (pooling, container-based drivers) while maintaining V1 compatibility for simple use cases.
+| Scenario | Default (scope: 'scenario') | scope: 'caller' |
+|----------|----------------------------|-----------------|
+| Caller has driver, callee inherits | ✅ Driver shared | ✅ Driver shared |
+| Callee inits driver, propagates to caller | ❌ Released to pool | ✅ Propagated to caller |
+
+**When to use `scope: 'caller'`:**
+- V1 migration where called features initialize the driver
+- Reusable "driver setup" features that callers depend on
+- Scenario Outlines that call orchestration features
+
+**Default `scope: 'scenario'` is recommended for:**
+- New tests using parallel execution
+- Tests using containerized browsers
+- Any test that doesn't need V1-style propagation
 
 **Two Approaches to Driver Management:**
 
 | Approach | Use Case | How It Works |
 |----------|----------|--------------|
-| **configure driver** | Simple tests, single browser | Config in karate-config.js, auto-start on `driver url` |
-| **DriverProvider** | Parallel tests, browser pooling | Provider set via `Runner.driverProvider()`, manages pool |
+| **Default (PooledDriverProvider)** | Parallel tests, browser pooling | Auto-created, pool size = thread count |
+| **Custom DriverProvider** | Containers, cloud providers | Set via `Runner.driverProvider()` |
 
-Both approaches can coexist:
-- `configure driver` sets the `driverConfig` (timeout, headless, etc.)
-- `DriverProvider` (if set) uses that config when creating/acquiring drivers
-- If no provider, driver is created directly from config
+How it works:
+- `configure driver` sets driver options (timeout, headless, etc.)
+- PooledDriverProvider is auto-created by default (pool size = parallel thread count)
+- Custom DriverProvider (if set) overrides the default
 
 ```java
 // Example: DriverProvider with config from karate-config.js

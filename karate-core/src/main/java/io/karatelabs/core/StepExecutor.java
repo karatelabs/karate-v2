@@ -482,6 +482,35 @@ public class StepExecutor {
         return new HashMap<>();
     }
 
+    /**
+     * Propagate results from a called feature back to the caller.
+     * Handles both isolated scope (resultVar set) and shared scope (resultVar null).
+     * For shared scope, also propagates config, cookies, and driver (if scope: 'caller').
+     */
+    private void propagateFromCallee(ScenarioRuntime calleeRuntime, String resultVar) {
+        if (calleeRuntime == null) {
+            return;
+        }
+        Map<String, Object> resultVars = calleeRuntime.getAllVariables();
+        if (resultVar != null) {
+            // Isolated scope - store result in the specified variable
+            runtime.setVariable(resultVar, resultVars);
+        } else {
+            // Shared scope - propagate all variables back to caller
+            for (Map.Entry<String, Object> entry : resultVars.entrySet()) {
+                runtime.setVariable(entry.getKey(), entry.getValue());
+            }
+            // V1 compatibility: Also propagate config changes back to caller
+            runtime.getConfig().copyFrom(calleeRuntime.getConfig());
+            // V1 compatibility: Also propagate cookie jar back to caller
+            runtime.getCookieJar().putAll(calleeRuntime.getCookieJar());
+            // Propagate driver upward when scope is "caller"
+            if (calleeRuntime.isCallerScope() && calleeRuntime.getDriverIfPresent() != null) {
+                runtime.setDriverFromCallee(calleeRuntime);
+            }
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private void executeSet(Step step) {
         String text = step.getText().trim();
@@ -2373,23 +2402,8 @@ public class StepExecutor {
         // Capture feature result for HTML report display (V1 style)
         addCallResult(result);
 
-        // Capture result variables from the last executed scenario
-        if (nestedFr.getLastExecuted() != null) {
-            Map<String, Object> resultVars = nestedFr.getLastExecuted().getAllVariables();
-            if (call.resultVar != null) {
-                // Isolated scope - store result in the specified variable
-                runtime.setVariable(call.resultVar, resultVars);
-            } else {
-                // Shared scope - propagate all variables back to caller
-                for (Map.Entry<String, Object> entry : resultVars.entrySet()) {
-                    runtime.setVariable(entry.getKey(), entry.getValue());
-                }
-                // V1 compatibility: Also propagate config changes back to caller
-                runtime.getConfig().copyFrom(nestedFr.getLastExecuted().getConfig());
-                // V1 compatibility: Also propagate cookie jar back to caller
-                runtime.getCookieJar().putAll(nestedFr.getLastExecuted().getCookieJar());
-            }
-        }
+        // Propagate results back to caller
+        propagateFromCallee(nestedFr.getLastExecuted(), call.resultVar);
     }
 
     /**
@@ -2494,27 +2508,8 @@ public class StepExecutor {
         // Capture feature result for HTML report display (V1 style)
         addCallResult(featureResult);
 
-        // Capture result variables
-        if (nestedFr.getLastExecuted() != null) {
-            Map<String, Object> resultVars = nestedFr.getLastExecuted().getAllVariables();
-            if (resultVar != null) {
-                runtime.setVariable(resultVar, resultVars);
-            } else {
-                for (Map.Entry<String, Object> entry : resultVars.entrySet()) {
-                    runtime.setVariable(entry.getKey(), entry.getValue());
-                }
-                // V1 compatibility: Also propagate config changes back to caller
-                runtime.getConfig().copyFrom(nestedFr.getLastExecuted().getConfig());
-                // V1 compatibility: Also propagate cookie jar back to caller
-                runtime.getCookieJar().putAll(nestedFr.getLastExecuted().getCookieJar());
-                // V1 compatibility: Propagate driver upward ONLY when no DriverProvider is set
-                // With DriverProvider, drivers are managed at Suite level and shouldn't be propagated
-                ScenarioRuntime calleeRuntime = nestedFr.getLastExecuted();
-                if (!runtime.hasDriverProvider() && calleeRuntime.getDriverIfPresent() != null) {
-                    runtime.setDriverFromCallee(calleeRuntime);
-                }
-            }
-        }
+        // Propagate results back to caller
+        propagateFromCallee(nestedFr.getLastExecuted(), resultVar);
     }
 
     private void executeCallOnce(Step step) {

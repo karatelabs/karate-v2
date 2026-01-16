@@ -15,14 +15,10 @@ Scenario: driver should work in called feature
 * print 'Back in main feature'
 * match driver.title == 'Karate Driver Test'
 
-@skipProvider
-Scenario: called feature can init driver using inherited config
+Scenario: called feature with scope caller propagates driver up
 # This scenario does NOT init driver - calls a feature that inits driver
-# The called feature should be able to init driver using inherited driverConfig
-# Note: This scenario tests V1-style driver upward propagation which only works
-# when no DriverProvider is configured. With DriverProvider, drivers are pooled
-# and shouldn't propagate upward.
+# The called feature uses scope: 'caller' so driver propagates back
 * print 'Main feature - not initializing driver'
 * call read('call-config-inherit.feature')
-* print 'Back in main - driver should still work'
+* print 'Back in main - driver should be available (propagated from callee)'
 * match driver.title == 'Karate Driver Test'

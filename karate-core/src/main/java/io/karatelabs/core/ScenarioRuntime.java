@@ -76,6 +76,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
 
     // Browser driver (lazily initialized)
     private Driver driver;
+    private String driverScope = "scenario"; // "scenario" (default) or "caller"
 
     // Performance testing - tracks the previous HTTP request's perf event
     // Events are held until the next HTTP request or scenario end, so that
@@ -1077,15 +1078,18 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
             provider = featureRuntime.getSuite().getDriverProvider();
         }
 
+        // Parse options to get scope
+        CdpDriverOptions options = CdpDriverOptions.fromMap(configMap);
+        this.driverScope = options.getScope();
+
         Driver driver;
         if (provider != null) {
             // Use provider to acquire driver
             driver = provider.acquire(this, configMap);
             driverFromProvider = true;
-            logger.info("Acquired driver from provider for scenario: {}", scenario.getName());
+            logger.info("Acquired driver from provider for scenario: {} (scope: {})", scenario.getName(), driverScope);
         } else {
-            // Create driver directly (default behavior)
-            CdpDriverOptions options = CdpDriverOptions.fromMap(configMap);
+            // Create driver directly (fallback, shouldn't happen with default pool)
             String wsUrl = options.getWebSocketUrl();
             if (wsUrl != null && !wsUrl.isEmpty()) {
                 logger.info("Connecting to existing browser: {}", wsUrl);
@@ -1117,6 +1121,13 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         // Don't close inherited driver - the owner (caller scenario) will close it
         if (driverInherited) {
             driver = null;
+            return;
+        }
+
+        // Don't release if scope is "caller" - driver will propagate to caller
+        // The caller will be responsible for releasing it
+        if ("caller".equals(driverScope)) {
+            logger.debug("Keeping driver for caller propagation (scope: caller)");
             return;
         }
 
@@ -1155,20 +1166,23 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
     }
 
     /**
-     * Check if a DriverProvider is configured at Suite level.
+     * Get the driver scope ("scenario" or "caller").
      */
-    public boolean hasDriverProvider() {
-        if (featureRuntime != null && featureRuntime.getSuite() != null) {
-            return featureRuntime.getSuite().getDriverProvider() != null;
-        }
-        return false;
+    public String getDriverScope() {
+        return driverScope;
+    }
+
+    /**
+     * Check if driver scope is "caller" (V1-style propagation).
+     */
+    public boolean isCallerScope() {
+        return "caller".equals(driverScope);
     }
 
     /**
      * Set driver from a callee feature (upward propagation).
-     * V1 compatibility: when a called feature initializes driver,
-     * it becomes available in the caller after the call returns.
-     * Note: This should only be called when no DriverProvider is configured.
+     * When callee has scope: "caller", driver propagates to the caller
+     * so it can be used after the call returns.
      */
     public void setDriverFromCallee(ScenarioRuntime callee) {
         if (callee.driver != null && !callee.driver.isTerminated()) {

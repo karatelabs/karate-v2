@@ -46,7 +46,9 @@ class CdpDriverOptionsTest {
         assertEquals("localhost", options.getHost());
         assertEquals(0, options.getPort());
         assertNull(options.getExecutable());
-        assertNull(options.getUserDataDir());
+        // userDataDir auto-generates a temp sandbox by default
+        assertNotNull(options.getUserDataDir());
+        assertTrue(options.getUserDataDir().contains("chrome-temp-"));
         assertNull(options.getUserAgent());
         assertTrue(options.isScreenshotOnFailure());
         assertFalse(options.isHighlight());
