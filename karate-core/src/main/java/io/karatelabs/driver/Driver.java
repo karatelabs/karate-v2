@@ -23,10 +23,10 @@
  */
 package io.karatelabs.driver;
 
+import io.karatelabs.js.JavaCallable;
 import io.karatelabs.js.SimpleObject;
 
 import java.time.Duration;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -50,29 +50,214 @@ public interface Driver extends CoreDriver, SimpleObject {
     // ========== ObjectLike Implementation (for JS property access) ==========
 
     /**
-     * Get a property value by name for JavaScript access.
-     * Supports: driver.url, driver.title, driver.cookies
+     * Get a property value or method by name for JavaScript access.
+     * Properties return values directly; methods return JavaCallables.
      */
+    @SuppressWarnings("unchecked")
     @Override
     default Object jsGet(String name) {
         return switch (name) {
-            case "url" -> getUrl();
-            case "title" -> getTitle();
-            case "cookies" -> getCookies();
+            // Properties (direct values)
+            case DriverApi.URL -> getUrl();
+            case DriverApi.TITLE -> getTitle();
+            case DriverApi.COOKIES -> getCookies();
+            case DriverApi.DIMENSIONS -> getDimensions();
+
+            // Element actions (return Element for chaining)
+            case DriverApi.CLICK -> (JavaCallable) (ctx, args) ->
+                    click(String.valueOf(args[0]));
+            case DriverApi.INPUT -> (JavaCallable) (ctx, args) ->
+                    input(String.valueOf(args[0]), args.length > 1 ? String.valueOf(args[1]) : "");
+            case DriverApi.CLEAR -> (JavaCallable) (ctx, args) ->
+                    clear(String.valueOf(args[0]));
+            case DriverApi.FOCUS -> (JavaCallable) (ctx, args) ->
+                    focus(String.valueOf(args[0]));
+            case DriverApi.SCROLL -> (JavaCallable) (ctx, args) ->
+                    scroll(String.valueOf(args[0]));
+            case DriverApi.HIGHLIGHT -> (JavaCallable) (ctx, args) ->
+                    highlight(String.valueOf(args[0]));
+            case DriverApi.SELECT -> (JavaCallable) (ctx, args) -> {
+                String locator = String.valueOf(args[0]);
+                Object value = args.length > 1 ? args[1] : null;
+                if (value instanceof Number n) {
+                    return select(locator, n.intValue());
+                }
+                return select(locator, value != null ? String.valueOf(value) : "");
+            };
+
+            // Element state (return primitives)
+            case DriverApi.TEXT -> (JavaCallable) (ctx, args) ->
+                    text(String.valueOf(args[0]));
+            case DriverApi.HTML -> (JavaCallable) (ctx, args) ->
+                    html(String.valueOf(args[0]));
+            case DriverApi.VALUE -> (JavaCallable) (ctx, args) -> {
+                if (args.length == 1) {
+                    return value(String.valueOf(args[0]));
+                } else {
+                    return value(String.valueOf(args[0]), String.valueOf(args[1]));
+                }
+            };
+            case DriverApi.ATTRIBUTE -> (JavaCallable) (ctx, args) ->
+                    attribute(String.valueOf(args[0]), String.valueOf(args[1]));
+            case DriverApi.PROPERTY -> (JavaCallable) (ctx, args) ->
+                    property(String.valueOf(args[0]), String.valueOf(args[1]));
+            case DriverApi.EXISTS -> (JavaCallable) (ctx, args) ->
+                    exists(String.valueOf(args[0]));
+            case DriverApi.ENABLED -> (JavaCallable) (ctx, args) ->
+                    enabled(String.valueOf(args[0]));
+            case DriverApi.POSITION -> (JavaCallable) (ctx, args) ->
+                    position(String.valueOf(args[0]));
+
+            // Locators
+            case DriverApi.LOCATE -> (JavaCallable) (ctx, args) ->
+                    locate(String.valueOf(args[0]));
+            case DriverApi.LOCATE_ALL -> (JavaCallable) (ctx, args) ->
+                    locateAll(String.valueOf(args[0]));
+            case DriverApi.OPTIONAL -> (JavaCallable) (ctx, args) ->
+                    optional(String.valueOf(args[0]));
+
+            // Wait methods
+            case DriverApi.WAIT_FOR -> (JavaCallable) (ctx, args) ->
+                    waitFor(String.valueOf(args[0]));
+            case DriverApi.WAIT_FOR_TEXT -> (JavaCallable) (ctx, args) ->
+                    waitForText(String.valueOf(args[0]), String.valueOf(args[1]));
+            case DriverApi.WAIT_FOR_ENABLED -> (JavaCallable) (ctx, args) ->
+                    waitForEnabled(String.valueOf(args[0]));
+            case DriverApi.WAIT_FOR_URL -> (JavaCallable) (ctx, args) ->
+                    waitForUrl(String.valueOf(args[0]));
+            case DriverApi.WAIT_UNTIL -> (JavaCallable) (ctx, args) -> {
+                if (args.length == 1) {
+                    return waitUntil(String.valueOf(args[0]));
+                } else {
+                    return waitUntil(String.valueOf(args[0]), String.valueOf(args[1]));
+                }
+            };
+
+            // Frame/Page switching
+            case DriverApi.SWITCH_FRAME -> (JavaCallable) (ctx, args) -> {
+                Object arg = args.length > 0 ? args[0] : null;
+                if (arg == null) {
+                    switchFrame((String) null);
+                } else if (arg instanceof Number n) {
+                    switchFrame(n.intValue());
+                } else {
+                    switchFrame(String.valueOf(arg));
+                }
+                return null;
+            };
+            case DriverApi.SWITCH_PAGE -> (JavaCallable) (ctx, args) -> {
+                Object arg = args[0];
+                if (arg instanceof Number n) {
+                    switchPage(n.intValue());
+                } else {
+                    switchPage(String.valueOf(arg));
+                }
+                return null;
+            };
+            case DriverApi.GET_PAGES -> (JavaCallable) (ctx, args) -> getPages();
+
+            // Script execution
+            case DriverApi.SCRIPT -> (JavaCallable) (ctx, args) -> {
+                if (args.length == 1) {
+                    return script(args[0]);
+                } else {
+                    return script(String.valueOf(args[0]), args[1]);
+                }
+            };
+            case DriverApi.SCRIPT_ALL -> (JavaCallable) (ctx, args) ->
+                    scriptAll(String.valueOf(args[0]), args[1]);
+
+            // Navigation
+            case DriverApi.REFRESH -> (JavaCallable) (ctx, args) -> {
+                refresh();
+                return null;
+            };
+            case DriverApi.BACK -> (JavaCallable) (ctx, args) -> {
+                back();
+                return null;
+            };
+            case DriverApi.FORWARD -> (JavaCallable) (ctx, args) -> {
+                forward();
+                return null;
+            };
+
+            // Screenshot
+            case DriverApi.SCREENSHOT -> (JavaCallable) (ctx, args) -> {
+                if (args.length == 0) {
+                    return screenshot();
+                } else if (args[0] instanceof Boolean b) {
+                    return screenshot(b);
+                }
+                return screenshot();
+            };
+
+            // Cookies
+            case DriverApi.COOKIE -> (JavaCallable) (ctx, args) -> {
+                Object arg = args[0];
+                if (arg instanceof String s) {
+                    return cookie(s);
+                } else if (arg instanceof Map) {
+                    cookie((Map<String, Object>) arg);
+                    return null;
+                }
+                return null;
+            };
+            case DriverApi.CLEAR_COOKIES -> (JavaCallable) (ctx, args) -> {
+                clearCookies();
+                return null;
+            };
+            case DriverApi.DELETE_COOKIE -> (JavaCallable) (ctx, args) -> {
+                deleteCookie(String.valueOf(args[0]));
+                return null;
+            };
+
+            // Dialog handling
+            case DriverApi.DIALOG -> (JavaCallable) (ctx, args) -> {
+                boolean accept = args.length > 0 && Boolean.TRUE.equals(args[0]);
+                if (args.length > 1 && args[1] != null) {
+                    dialog(accept, String.valueOf(args[1]));
+                } else {
+                    dialog(accept);
+                }
+                return null;
+            };
+            case DriverApi.ON_DIALOG -> (JavaCallable) (ctx, args) -> {
+                if (args.length == 0 || args[0] == null) {
+                    onDialog(null);
+                } else if (args[0] instanceof JavaCallable jsHandler) {
+                    onDialog(dialog -> jsHandler.call(ctx, dialog));
+                }
+                return this;
+            };
+
+            // Mouse and keys
+            case DriverApi.MOUSE -> (JavaCallable) (ctx, args) -> {
+                if (args.length == 0) {
+                    return mouse();
+                } else if (args.length == 1) {
+                    return mouse(String.valueOf(args[0]));
+                } else {
+                    return mouse((Number) args[0], (Number) args[1]);
+                }
+            };
+            case DriverApi.KEYS -> (JavaCallable) (ctx, args) -> keys();
+
             default -> null;
         };
     }
 
     /**
-     * Convert driver state to a map for JS/JSON serialization.
+     * Set a property value by name for JavaScript assignment.
+     * Supports: driver.url = '...', driver.dimensions = {...}
      */
+    @SuppressWarnings("unchecked")
     @Override
-    default Map<String, Object> toMap() {
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("url", getUrl());
-        map.put("title", getTitle());
-        map.put("cookies", getCookies());
-        return map;
+    default void putMember(String name, Object value) {
+        switch (name) {
+            case DriverApi.URL -> setUrl(String.valueOf(value));
+            case DriverApi.DIMENSIONS -> setDimensions((Map<String, Object>) value);
+            default -> SimpleObject.super.putMember(name, value);
+        }
     }
 
     // ========== CoreDriver Primitive Implementations ==========

@@ -29,7 +29,7 @@ import io.karatelabs.common.StringUtils;
 import io.karatelabs.driver.Driver;
 import io.karatelabs.driver.cdp.CdpDriver;
 import io.karatelabs.driver.cdp.CdpDriverOptions;
-import io.karatelabs.driver.DriverUtils;
+import io.karatelabs.driver.DriverApi;
 import io.karatelabs.gherkin.Feature;
 import io.karatelabs.gherkin.Scenario;
 import io.karatelabs.gherkin.Step;
@@ -1103,7 +1103,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
 
         karate.engine.putRootBinding("driver", driver);
 
-        DriverUtils.bindJsHelpers(karate.engine, driver);
+        DriverApi.bindJsHelpers(karate.engine, driver);
 
         return driver;
     }
