@@ -28,11 +28,11 @@ We need a JavaScript engine we completely control, ensuring that engine changes 
 
 | Package | Description |
 |---------|-------------|
-| `io.karatelabs.js` | Core JavaScript engine (parser, interpreter, runtime) |
-| `io.karatelabs.gherkin` | Gherkin syntax parser for test specifications (reuses the JS lexer) |
+| `io.karatelabs.js` | Core JavaScript engine (interpreter, runtime, built-in types) |
+| `io.karatelabs.parser` | Parsing infrastructure (lexer, parser, AST nodes) shared with karate-core |
 | `io.karatelabs.common` | Shared utilities (file, OS, string operations) |
 
-> **Note:** The Gherkin parser lives in this module because it reuses the JS lexer infrastructure. The ScenarioEngine and test execution runtime live in `karate-core`.
+> **Note:** The Gherkin parser lives in `karate-core` (`io.karatelabs.gherkin` package) and extends the base lexer/parser classes from `io.karatelabs.parser`.
 
 ### JavaScript Engine Components
 

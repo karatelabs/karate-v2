@@ -695,4 +695,6 @@ runScript("const json = response.json(); pm.test('ok', () => {});");  // No conf
 | Terms | `karate-js/src/main/java/io/karatelabs/js/Terms.java` |
 | JsDate | `karate-js/src/main/java/io/karatelabs/js/JsDate.java` |
 | CallInfo | `karate-js/src/main/java/io/karatelabs/js/CallInfo.java` |
+| Parser infrastructure | `karate-js/src/main/java/io/karatelabs/parser/` |
+| Gherkin parser | `karate-core/src/main/java/io/karatelabs/gherkin/` |
 | Tests | `karate-js/src/test/java/io/karatelabs/js/` |
