@@ -27,7 +27,6 @@ import io.karatelabs.common.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.CharArrayReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -298,59 +297,34 @@ abstract class Parser {
     }
 
     static List<Token> getTokens(Resource resource, boolean gherkin) {
-        CharArrayReader reader = new CharArrayReader(resource.getText().toCharArray());
-        Lexer lexer = new Lexer(reader);
-        if (gherkin) {
-            lexer.yybegin(Lexer.GHERKIN);
-        }
-        List<Token> comments = new ArrayList<>();
+        JsLexer lexer = gherkin
+                ? new GherkinLexer(resource)
+                : new JsLexer(resource);
+
         List<Token> list = new ArrayList<>();
+        List<Token> comments = new ArrayList<>();
         Token prev = null;
-        int line = 0;
-        int col = 0;
-        long pos = 0;
-        TokenType type;
-        try {
-            do {
-                type = lexer.yylex();
-                String text = lexer.yytext();
-                Token token = new Token(resource, type, pos, line, col, text);
-                int length = lexer.yylength();
-                pos += length;
-                if (type == WS_LF || type == T_STRING || type == B_COMMENT) {
-                    for (int i = 0; i < length; i++) {
-                        if (text.charAt(i) == '\n') {
-                            col = 0;
-                            line++;
-                        } else {
-                            col++;
-                        }
-                    }
-                } else {
-                    col += length;
-                }
-                token.prev = prev;
-                if (prev != null) {
-                    prev.next = token;
-                }
-                prev = token;
-                if (type.primary) {
-                    list.add(token);
-                    if (!comments.isEmpty()) {
-                        token.comments = comments;
-                        comments = new ArrayList<>();
-                    }
-                } else if (type == L_COMMENT || type == G_COMMENT || type == B_COMMENT) {
-                    comments.add(token);
-                }
-            } while (type != EOF);
-        } catch (Throwable e) {
-            String message = "lexer failed at [" + (line + 1) + ":" + (col + 1) + "] prev: " + prev;
-            if (resource.isFile()) {
-                message = message + "\n" + resource.getRelativePath();
+        Token token;
+
+        do {
+            token = lexer.nextToken();
+            token.prev = prev;
+            if (prev != null) {
+                prev.next = token;
             }
-            throw new ParserException(message, e);
-        }
+            prev = token;
+
+            if (token.type.primary) {
+                list.add(token);
+                if (!comments.isEmpty()) {
+                    token.comments = comments;
+                    comments = new ArrayList<>();
+                }
+            } else if (token.type == L_COMMENT || token.type == G_COMMENT || token.type == B_COMMENT) {
+                comments.add(token);
+            }
+        } while (token.type != EOF);
+
         return list;
     }
 

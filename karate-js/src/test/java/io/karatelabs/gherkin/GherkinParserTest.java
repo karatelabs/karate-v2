@@ -5,6 +5,8 @@ import io.karatelabs.js.GherkinParser;
 import io.karatelabs.js.Node;
 import io.karatelabs.js.NodeType;
 import io.karatelabs.js.SyntaxError;
+import io.karatelabs.js.Token;
+import io.karatelabs.js.TokenType;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -324,6 +326,60 @@ class GherkinParserTest {
         assertEquals("foo", me.getActualExpr());
         assertEquals("contains deep", me.getOperator());
         assertEquals("{ a: 1 }", me.getExpectedExpr());
+        assertEquals("CONTAINS_DEEP", me.getMatchTypeName());
+    }
+
+    @Test
+    void testParseMatchExpressionContainsDeepWithNewline() {
+        // This simulates "* match message contains deep" followed by content on next line
+        // The operator should be "contains deep", not just "contains" with "deep" as expected
+        // Note: Using docstring syntax to match actual Gherkin usage
+        MatchExpression me = GherkinParser.parseMatchExpression("message contains deep\n\"\"\"\n{ order_id: 5 }\n\"\"\"");
+        assertFalse(me.isEach());
+        assertEquals("message", me.getActualExpr());
+        assertEquals("contains deep", me.getOperator());
+        assertTrue(me.getExpectedExpr().contains("order_id"));
+        assertEquals("CONTAINS_DEEP", me.getMatchTypeName());
+    }
+
+    @Test
+    void testParseMatchExpressionContainsDeepWithIndentedDocstring() {
+        // Match actual failing test: "* match message contains deep" with indented docstring
+        MatchExpression me = GherkinParser.parseMatchExpression("message contains deep\n  \"\"\"\n  { order_id: 5 }\n  \"\"\"");
+        assertFalse(me.isEach());
+        assertEquals("message", me.getActualExpr());
+        assertEquals("contains deep", me.getOperator());
+        assertTrue(me.getExpectedExpr().contains("order_id"));
+        assertEquals("CONTAINS_DEEP", me.getMatchTypeName());
+    }
+
+    @Test
+    void testTokenizeContainsDeepWithNewline() {
+        // Verify "contains deep" is tokenized as single G_KEYWORD when followed by docstring
+        Resource resource = Resource.text("* match message contains deep\n  \"\"\"\n  { order_id: 5 }\n  \"\"\"");
+        io.karatelabs.js.GherkinLexer lexer = new io.karatelabs.js.GherkinLexer(resource);
+        Token token;
+        boolean foundContainsDeep = false;
+        do {
+            token = lexer.nextToken();
+            if (token.type == TokenType.G_KEYWORD && "contains deep".equals(token.text)) {
+                foundContainsDeep = true;
+            }
+        } while (token.type != TokenType.EOF);
+        assertTrue(foundContainsDeep, "Expected 'contains deep' as single G_KEYWORD token");
+    }
+
+    @Test
+    void testParseMatchExpressionContainsDeepNoExpected() {
+        // When step.getText() is "message contains deep" (no expected value on same line),
+        // the docstring provides the expected value separately.
+        // The operator should be "contains deep", not just "contains" with "deep" as expected.
+        MatchExpression me = GherkinParser.parseMatchExpression("message contains deep");
+        assertEquals("message", me.getActualExpr());
+        assertEquals("contains deep", me.getOperator());
+        // Expected should be null or empty since docstring will provide it
+        assertTrue(me.getExpectedExpr() == null || me.getExpectedExpr().isEmpty(),
+                "Expected expr should be null/empty, but was: '" + me.getExpectedExpr() + "'");
         assertEquals("CONTAINS_DEEP", me.getMatchTypeName());
     }
 
