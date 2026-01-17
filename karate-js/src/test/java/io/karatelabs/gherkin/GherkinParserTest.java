@@ -582,4 +582,79 @@ class GherkinParserTest {
         assertEquals("qa", envTag.getValues().get(1));
     }
 
+    // ========== Keyword vs JS Expression Tests ==========
+
+    @Test
+    void testCookieKeywordVsJsExpression() {
+        // Test that "cookie foo = 'bar'" is parsed with cookie as keyword
+        // but "cookie({...})" is parsed as JS expression (no keyword)
+        feature("""
+                Feature: cookie parsing
+                Scenario: keyword form
+                  * cookie foo = 'bar'
+                Scenario: js expression form
+                  * cookie({ name: 'test', value: 'hello' })
+                """);
+
+        // First scenario: cookie as keyword
+        Scenario keywordScenario = feature.getSections().get(0).getScenario();
+        Step keywordStep = keywordScenario.getSteps().getFirst();
+        assertEquals("cookie", keywordStep.getKeyword());
+        assertEquals("foo = 'bar'", keywordStep.getText());
+
+        // Second scenario: cookie as JS expression (no keyword)
+        Scenario exprScenario = feature.getSections().get(1).getScenario();
+        Step exprStep = exprScenario.getSteps().getFirst();
+        assertNull(exprStep.getKeyword(), "cookie({...}) should not have a keyword");
+        assertEquals("cookie({ name: 'test', value: 'hello' })", exprStep.getText());
+    }
+
+    @Test
+    void testHeaderKeywordVsJsExpression() {
+        // Same pattern applies to other assign keywords like header
+        feature("""
+                Feature: header parsing
+                Scenario: keyword form
+                  * header Authorization = 'Bearer token'
+                Scenario: js expression form
+                  * header({ name: 'Authorization', value: 'Bearer token' })
+                """);
+
+        // First scenario: header as keyword
+        Scenario keywordScenario = feature.getSections().get(0).getScenario();
+        Step keywordStep = keywordScenario.getSteps().getFirst();
+        assertEquals("header", keywordStep.getKeyword());
+        assertEquals("Authorization = 'Bearer token'", keywordStep.getText());
+
+        // Second scenario: header as JS expression (no keyword)
+        Scenario exprScenario = feature.getSections().get(1).getScenario();
+        Step exprStep = exprScenario.getSteps().getFirst();
+        assertNull(exprStep.getKeyword(), "header({...}) should not have a keyword");
+        assertEquals("header({ name: 'Authorization', value: 'Bearer token' })", exprStep.getText());
+    }
+
+    @Test
+    void testDefKeywordVsArrayAccess() {
+        // Test that "def foo = bar" is keyword but "def[0]" is JS expression
+        feature("""
+                Feature: def parsing
+                Scenario: keyword form
+                  * def foo = 'bar'
+                Scenario: array access form
+                  * def[0].name
+                """);
+
+        // First scenario: def as keyword
+        Scenario keywordScenario = feature.getSections().get(0).getScenario();
+        Step keywordStep = keywordScenario.getSteps().getFirst();
+        assertEquals("def", keywordStep.getKeyword());
+        assertEquals("foo = 'bar'", keywordStep.getText());
+
+        // Second scenario: def[0] as JS expression (no keyword)
+        Scenario exprScenario = feature.getSections().get(1).getScenario();
+        Step exprStep = exprScenario.getSteps().getFirst();
+        assertNull(exprStep.getKeyword(), "def[0] should not have a keyword");
+        assertEquals("def[0].name", exprStep.getText());
+    }
+
 }

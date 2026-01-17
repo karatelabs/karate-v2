@@ -414,6 +414,16 @@ public class GherkinLexer extends JsLexer {
 
         String text = source.substring(start, pos);
 
+        // Check if followed by [ or ( - treat as JS expression, not keyword
+        // This must be checked BEFORE keyword checks so that cookie({...}) is JS, not keyword
+        if (peek() == '[' || peek() == '(') {
+            // Rewind and treat as JS
+            pos = start;
+            col = tokenCol;
+            gState = GherkinState.GS_RHS;
+            return scanGherkinRhs();
+        }
+
         // Check for "match" keyword
         if (text.equals("match")) {
             gState = GherkinState.GS_STEP_MATCH;
@@ -435,15 +445,6 @@ public class GherkinLexer extends JsLexer {
         if (peek() == '\r' || peek() == '\n' || isAtEnd()) {
             gState = GherkinState.GHERKIN;
             return G_KEYWORD;
-        }
-
-        // Check if followed by [ or ( - JS expression
-        if (peek() == '[' || peek() == '(') {
-            // Rewind and treat as JS
-            pos = start;
-            col = tokenCol;
-            gState = GherkinState.GS_RHS;
-            return scanGherkinRhs();
         }
 
         // Regular keyword
