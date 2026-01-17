@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.js;
+package io.karatelabs.parser;
 
 import io.karatelabs.common.Resource;
 import org.slf4j.Logger;
@@ -32,11 +32,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
-import static io.karatelabs.js.TokenType.*;
+import static io.karatelabs.parser.TokenType.*;
 
-abstract class Parser {
+public abstract class BaseParser {
 
-    static final Logger logger = LoggerFactory.getLogger(Parser.class);
+    static final Logger logger = LoggerFactory.getLogger(BaseParser.class);
 
     static class Marker {
 
@@ -69,8 +69,8 @@ abstract class Parser {
 
     }
 
-    final Resource resource;
-    final List<Token> tokens;
+    protected final Resource resource;
+    protected final List<Token> tokens;
     private final int size;
 
     private int position = 0;
@@ -81,22 +81,22 @@ abstract class Parser {
     private final List<SyntaxError> errors = new ArrayList<>();
     private int lastRecoveryPosition = -1;
 
-    Node markerNode() {
+    protected Node markerNode() {
         return marker.node;
     }
 
-    boolean isCallerType(NodeType type) {
+    protected boolean isCallerType(NodeType type) {
         return marker.caller != null && marker.caller.node.type == type;
     }
 
-    enum Shift {
+    protected enum Shift {
         NONE, LEFT, RIGHT
     }
 
-    Parser(Resource resource, boolean gherkin, boolean errorRecovery) {
+    protected BaseParser(Resource resource, List<Token> tokens, boolean errorRecovery) {
         this.resource = resource;
         this.errorRecoveryEnabled = errorRecovery;
-        tokens = getTokens(resource, gherkin);
+        this.tokens = tokens;
         size = tokens.size();
         marker = new Marker(position, null, new Node(NodeType.ROOT), -1);
     }
@@ -125,7 +125,7 @@ abstract class Parser {
         return sb.toString();
     }
 
-    void error(String message) {
+    protected void error(String message) {
         Token token = peekToken();
         if (errorRecoveryEnabled) {
             errors.add(new SyntaxError(token, message));
@@ -139,7 +139,7 @@ abstract class Parser {
                 + " " + token + "\nparser state: " + this);
     }
 
-    void error(NodeType... expected) {
+    protected void error(NodeType... expected) {
         if (errorRecoveryEnabled) {
             errors.add(new SyntaxError(peekToken(), "expected: " + Arrays.asList(expected), expected[0]));
             return;
@@ -147,7 +147,7 @@ abstract class Parser {
         error("expected: " + Arrays.asList(expected));
     }
 
-    void error(TokenType... expected) {
+    protected void error(TokenType... expected) {
         if (errorRecoveryEnabled) {
             errors.add(new SyntaxError(peekToken(), "expected: " + Arrays.asList(expected)));
             return;
@@ -219,15 +219,15 @@ abstract class Parser {
 
     // ========== End Error Recovery Methods ==========
 
-    void enter(NodeType type) {
+    protected void enter(NodeType type) {
         enterIf(type, null);
     }
 
-    boolean enter(NodeType type, TokenType... tokens) {
+    protected boolean enter(NodeType type, TokenType... tokens) {
         return enterIf(type, tokens);
     }
 
-    boolean enterIf(NodeType type, TokenType[] tokens) {
+    protected boolean enterIf(NodeType type, TokenType[] tokens) {
         if (tokens != null) {
             if (!peekAnyOf(tokens)) {
                 return false;
@@ -244,15 +244,15 @@ abstract class Parser {
         return true;
     }
 
-    boolean exit() {
+    protected boolean exit() {
         return exit(true, false, Shift.NONE);
     }
 
-    boolean exit(boolean result, boolean mandatory) {
+    protected boolean exit(boolean result, boolean mandatory) {
         return exit(result, mandatory, Shift.NONE);
     }
 
-    void exit(Shift shift) {
+    protected void exit(Shift shift) {
         exit(true, false, shift);
     }
 
@@ -296,46 +296,14 @@ abstract class Parser {
         return result;
     }
 
-    static List<Token> getTokens(Resource resource, boolean gherkin) {
-        JsLexer lexer = gherkin
-                ? new GherkinLexer(resource)
-                : new JsLexer(resource);
-
-        List<Token> list = new ArrayList<>();
-        List<Token> comments = new ArrayList<>();
-        Token prev = null;
-        Token token;
-
-        do {
-            token = lexer.nextToken();
-            token.prev = prev;
-            if (prev != null) {
-                prev.next = token;
-            }
-            prev = token;
-
-            if (token.type.primary) {
-                list.add(token);
-                if (!comments.isEmpty()) {
-                    token.comments = comments;
-                    comments = new ArrayList<>();
-                }
-            } else if (token.type == L_COMMENT || token.type == G_COMMENT || token.type == B_COMMENT) {
-                comments.add(token);
-            }
-        } while (token.type != EOF);
-
-        return list;
-    }
-
     private Token cachedPeek = Token.EMPTY;
     private int cachedPeekPos = -1;
 
-    TokenType peek() {
+    protected TokenType peek() {
         return peekToken().type;
     }
 
-    Token peekToken() {
+    protected Token peekToken() {
         if (cachedPeekPos != position) {
             cachedPeekPos = position;
             cachedPeek = (position == size) ? Token.EMPTY : tokens.get(position);
@@ -343,13 +311,13 @@ abstract class Parser {
         return cachedPeek;
     }
 
-    void consume(TokenType token) {
+    protected void consume(TokenType token) {
         if (!consumeIf(token)) {
             error(token);
         }
     }
 
-    boolean anyOf(TokenType... tokens) {
+    protected boolean anyOf(TokenType... tokens) {
         for (TokenType token : tokens) {
             if (consumeIf(token)) {
                 return true;
@@ -358,7 +326,7 @@ abstract class Parser {
         return false;
     }
 
-    boolean consumeIf(TokenType token) {
+    protected boolean consumeIf(TokenType token) {
         if (peekIf(token)) {
             consumeNext();
             return true;
@@ -366,11 +334,11 @@ abstract class Parser {
         return false;
     }
 
-    boolean peekIf(TokenType token) {
+    protected boolean peekIf(TokenType token) {
         return peek() == token;
     }
 
-    boolean peekAnyOf(TokenType... tokens) {
+    protected boolean peekAnyOf(TokenType... tokens) {
         for (TokenType token : tokens) {
             if (peekIf(token)) {
                 return true;
@@ -379,15 +347,15 @@ abstract class Parser {
         return false;
     }
 
-    TokenType lastConsumed() {
+    protected TokenType lastConsumed() {
         return marker.node.getLast().token.type;
     }
 
-    void consumeNext() {
+    protected void consumeNext() {
         marker.node.add(new Node(next()));
     }
 
-    Token next() {
+    protected Token next() {
         return position == size ? Token.EMPTY : tokens.get(position++);
     }
 

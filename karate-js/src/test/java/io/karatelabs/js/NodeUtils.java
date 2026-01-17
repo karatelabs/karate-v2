@@ -1,5 +1,8 @@
 package io.karatelabs.js;
 
+import io.karatelabs.parser.Node;
+import io.karatelabs.parser.NodeType;
+import io.karatelabs.parser.TokenType;
 import net.minidev.json.JSONValue;
 import org.junit.jupiter.api.Assertions;
 import org.slf4j.Logger;
@@ -125,7 +128,7 @@ public class NodeUtils {
                     case NULL:
                     case TRUE:
                     case FALSE:
-                        return node.token.literalValue();
+                        return Terms.literalValue(node.token);
                     default:
                         return node.token.text;
                 }

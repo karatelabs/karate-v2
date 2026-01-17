@@ -25,7 +25,6 @@ package io.karatelabs.gherkin;
 
 import io.karatelabs.common.Resource;
 import io.karatelabs.common.StringUtils;
-import io.karatelabs.js.GherkinParser;
 
 import java.io.File;
 import java.util.ArrayList;

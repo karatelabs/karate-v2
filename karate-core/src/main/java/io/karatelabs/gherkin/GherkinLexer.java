@@ -21,17 +21,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.js;
+package io.karatelabs.gherkin;
 
 import io.karatelabs.common.Resource;
+import io.karatelabs.parser.BaseLexer;
+import io.karatelabs.parser.Token;
+import io.karatelabs.parser.TokenType;
 
-import static io.karatelabs.js.TokenType.*;
+import static io.karatelabs.parser.TokenType.*;
 
 /**
  * Lexer for Gherkin syntax with embedded JavaScript expressions.
- * Extends JsLexer to handle Gherkin-specific tokens and states.
+ * Extends BaseLexer to handle Gherkin-specific tokens and states.
  */
-public class GherkinLexer extends JsLexer {
+public class GherkinLexer extends BaseLexer {
 
     private GherkinState gState = GherkinState.GHERKIN;
 
@@ -44,8 +47,7 @@ public class GherkinLexer extends JsLexer {
         GS_DOC_STRING,  // Doc string state (between """)
         GS_STEP,        // Step state (after Given/When/Then/And/But/*)
         GS_STEP_MATCH,  // Match keyword state
-        GS_RHS,         // Right-hand side (JS expression)
-        JS              // Full JavaScript mode (null gState means JS mode)
+        GS_RHS          // Right-hand side (JS expression)
     }
 
     public GherkinLexer(Resource resource) {
@@ -53,14 +55,19 @@ public class GherkinLexer extends JsLexer {
     }
 
     @Override
+    public Token nextToken() {
+        tokenStart = pos;
+        tokenLine = line;
+        tokenCol = col;
+        TokenType type = scanToken();
+        String text = source.substring(tokenStart, pos);
+        return new Token(resource, type, tokenStart, tokenLine, tokenCol, text);
+    }
+
+    @Override
     protected TokenType scanToken() {
         if (isAtEnd()) {
             return EOF;
-        }
-
-        // If in JS mode (null gState), use parent lexer
-        if (gState == GherkinState.JS) {
-            return super.scanToken();
         }
 
         // Handle Gherkin states
@@ -85,7 +92,7 @@ public class GherkinLexer extends JsLexer {
             case GS_STEP -> scanGherkinStep();
             case GS_STEP_MATCH -> scanGherkinStepMatch();
             case GS_RHS -> scanGherkinRhs();
-            default -> super.scanToken();
+            default -> throw new IllegalStateException("Unexpected state: " + gState);
         };
     }
 

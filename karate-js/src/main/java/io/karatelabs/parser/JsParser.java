@@ -21,22 +21,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.js;
+package io.karatelabs.parser;
 
 import io.karatelabs.common.Resource;
 
-import static io.karatelabs.js.TokenType.*;
+import static io.karatelabs.parser.TokenType.*;
 
-public class JsParser extends Parser {
+public class JsParser extends BaseParser {
 
     private Node ast;
 
     public JsParser(Resource resource) {
-        super(resource, false, false);
+        super(resource, JsLexer.getTokens(resource), false);
     }
 
     public JsParser(Resource resource, boolean errorRecovery) {
-        super(resource, false, errorRecovery);
+        super(resource, JsLexer.getTokens(resource), errorRecovery);
     }
 
     /**

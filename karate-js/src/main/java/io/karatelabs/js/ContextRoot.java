@@ -23,6 +23,8 @@
  */
 package io.karatelabs.js;
 
+import io.karatelabs.parser.Node;
+
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 

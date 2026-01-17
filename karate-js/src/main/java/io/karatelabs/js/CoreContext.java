@@ -23,6 +23,7 @@
  */
 package io.karatelabs.js;
 
+import io.karatelabs.parser.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

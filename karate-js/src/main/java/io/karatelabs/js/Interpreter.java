@@ -23,12 +23,16 @@
  */
 package io.karatelabs.js;
 
+import io.karatelabs.parser.Node;
+import io.karatelabs.parser.NodeType;
+import io.karatelabs.parser.Token;
+import io.karatelabs.parser.TokenType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
-import static io.karatelabs.js.TokenType.*;
+import static io.karatelabs.parser.TokenType.*;
 
 class Interpreter {
 
@@ -485,7 +489,7 @@ class Interpreter {
             if (token == DOT_DOT_DOT) {
                 key = elem.get(1).getText();
             } else if (token == S_STRING || token == D_STRING) {
-                key = (String) keyNode.token.literalValue();
+                key = (String) Terms.literalValue(keyNode.token);
             } else { // IDENT, NUMBER
                 key = keyNode.getText();
             }
@@ -600,7 +604,7 @@ class Interpreter {
     private static Object evalLitExpr(Node node, CoreContext context) {
         node = node.getFirst();
         if (node.isToken()) {
-            Object value = node.token.literalValue();
+            Object value = Terms.literalValue(node.token);
             // Unescape string literals at runtime
             if (value instanceof String s && (node.token.type == TokenType.S_STRING || node.token.type == TokenType.D_STRING)) {
                 return unescapeString(s);

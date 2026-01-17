@@ -37,7 +37,7 @@ import io.karatelabs.http.HttpClientFactory;
 import io.karatelabs.http.HttpRequest;
 import io.karatelabs.http.HttpRequestBuilder;
 import io.karatelabs.http.HttpResponse;
-import io.karatelabs.js.GherkinParser;
+import io.karatelabs.gherkin.GherkinParser;
 import io.karatelabs.js.JavaInvokable;
 import io.karatelabs.markup.Markup;
 import io.karatelabs.js.JavaCallable;

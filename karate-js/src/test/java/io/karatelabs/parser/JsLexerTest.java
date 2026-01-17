@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.js;
+package io.karatelabs.parser;
 
 import io.karatelabs.common.Resource;
 import org.junit.jupiter.api.Test;
@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.karatelabs.js.TokenType.*;
+import static io.karatelabs.parser.TokenType.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class JsLexerTest {

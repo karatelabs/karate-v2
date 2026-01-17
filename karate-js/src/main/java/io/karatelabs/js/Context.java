@@ -23,6 +23,8 @@
  */
 package io.karatelabs.js;
 
+import io.karatelabs.parser.Node;
+
 public interface Context {
 
     Engine getEngine();

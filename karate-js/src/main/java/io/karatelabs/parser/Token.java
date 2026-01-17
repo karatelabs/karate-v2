@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.js;
+package io.karatelabs.parser;
 
 import io.karatelabs.common.Resource;
 
@@ -30,7 +30,7 @@ import java.util.List;
 
 public class Token {
 
-    static final Token EMPTY = new Token(Resource.text(""), TokenType.EOF, 0, 0, 0, "");
+    public static final Token EMPTY = new Token(Resource.text(""), TokenType.EOF, 0, 0, 0, "");
 
     public final Resource resource;
     public final long pos;
@@ -43,7 +43,7 @@ public class Token {
     Token prev;
     Token next;
 
-    Token(Resource resource, TokenType type, long pos, int line, int col, String text) {
+    public Token(Resource resource, TokenType type, long pos, int line, int col, String text) {
         this.resource = resource;
         this.type = type;
         this.pos = pos;
@@ -81,16 +81,6 @@ public class Token {
             case WS_LF -> "_\\n_";
             case EOF -> "_EOF_";
             default -> text;
-        };
-    }
-
-    Object literalValue() {
-        return switch (type) {
-            case S_STRING, D_STRING -> text.substring(1, text.length() - 1);
-            case NUMBER -> Terms.toNumber(text);
-            case TRUE -> true;
-            case FALSE -> false;
-            default -> null; // includes NULL
         };
     }
 

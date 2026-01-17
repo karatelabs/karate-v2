@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.js;
+package io.karatelabs.parser;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,12 +40,12 @@ public class Node implements Iterable<Node> {
 
     private Node parent;
 
-    Node(NodeType type) {
+    public Node(NodeType type) {
         this.type = type;
         token = Token.EMPTY;
     }
 
-    Node(Token token) {
+    public Node(Token token) {
         this.token = token;
         type = NodeType.TOKEN;
     }
@@ -101,7 +101,7 @@ public class Node implements Iterable<Node> {
         return "[" + type + "] " + getTextIncludingWhitespace();
     }
 
-    String toStringWithoutType() {
+    public String toStringWithoutType() {
         if (isToken()) {
             return token.text;
         }
@@ -164,7 +164,7 @@ public class Node implements Iterable<Node> {
         return temp;
     }
 
-    List<Node> findImmediateChildren(NodeType type) {
+    public List<Node> findImmediateChildren(NodeType type) {
         List<Node> results = new ArrayList<>();
         for (Node child : children) {
             if (child.type == type) {
@@ -211,37 +211,37 @@ public class Node implements Iterable<Node> {
         return last.resource.getText().substring(start, end);
     }
 
-    Node removeFirst() {
+    public Node removeFirst() {
         return children.removeFirst();
     }
 
-    void addFirst(Node child) {
+    public void addFirst(Node child) {
         child.parent = this;
         children.addFirst(child);
     }
 
-    void add(Node child) {
+    public void add(Node child) {
         child.parent = this;
         children.add(child);
     }
 
-    Node getFirst() {
+    public Node getFirst() {
         return children.getFirst();
     }
 
-    Node getLast() {
+    public Node getLast() {
         return children.getLast();
     }
 
-    Node get(int index) {
+    public Node get(int index) {
         return children.get(index);
     }
 
-    int size() {
+    public int size() {
         return children.size();
     }
 
-    boolean isEmpty() {
+    public boolean isEmpty() {
         return children.isEmpty();
     }
 

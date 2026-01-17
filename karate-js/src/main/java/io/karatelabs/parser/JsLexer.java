@@ -21,30 +21,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.js;
+package io.karatelabs.parser;
 
 import io.karatelabs.common.Resource;
 
 import java.util.ArrayDeque;
+import java.util.List;
 
-import static io.karatelabs.js.TokenType.*;
+import static io.karatelabs.parser.TokenType.*;
 
 /**
  * Hand-rolled lexer for JavaScript. This implementation is designed to be
  * portable to other languages (JS, Rust) and serves as the canonical spec.
  */
-public class JsLexer {
-
-    protected final Resource resource;
-    protected final String source;
-    protected final int length;
-
-    protected int pos;
-    protected int line;
-    protected int col;
-    protected int tokenStart;
-    protected int tokenLine;
-    protected int tokenCol;
+public class JsLexer extends BaseLexer {
 
     private boolean regexAllowed = true;
     private final ArrayDeque<LexerState> stateStack = new ArrayDeque<>();
@@ -54,17 +44,17 @@ public class JsLexer {
     }
 
     public JsLexer(Resource resource) {
-        this.resource = resource;
-        this.source = resource.getText();
-        this.length = source.length();
-        this.pos = 0;
-        this.line = 0;
-        this.col = 0;
+        super(resource);
         stateStack.push(LexerState.INITIAL);
+    }
+
+    public static List<Token> getTokens(Resource resource) {
+        return tokenize(new JsLexer(resource));
     }
 
     // ========== Public API ==========
 
+    @Override
     public Token nextToken() {
         tokenStart = pos;
         tokenLine = line;
@@ -94,42 +84,9 @@ public class JsLexer {
         return stateStack.peek();
     }
 
-    // ========== Character Utilities ==========
-
-    protected boolean isAtEnd() {
-        return pos >= length;
-    }
-
-    protected char peek() {
-        return pos >= length ? '\0' : source.charAt(pos);
-    }
-
-    protected char peek(int offset) {
-        int index = pos + offset;
-        return (index < 0 || index >= length) ? '\0' : source.charAt(index);
-    }
-
-    protected char advance() {
-        char c = source.charAt(pos++);
-        if (c == '\n') {
-            line++;
-            col = 0;
-        } else {
-            col++;
-        }
-        return c;
-    }
-
-    protected boolean match(char expected) {
-        if (pos >= length || source.charAt(pos) != expected) {
-            return false;
-        }
-        advance();
-        return true;
-    }
-
     // ========== Main Scanner ==========
 
+    @Override
     protected TokenType scanToken() {
         if (isAtEnd()) {
             return EOF;
@@ -671,24 +628,6 @@ public class JsLexer {
                 // Unknown character - return as IDENT (will likely cause parse error)
                 return IDENT;
         }
-    }
-
-    // ========== Character Classification ==========
-
-    protected static boolean isDigit(char c) {
-        return c >= '0' && c <= '9';
-    }
-
-    protected static boolean isHexDigit(char c) {
-        return isDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
-    }
-
-    protected static boolean isIdentifierStart(char c) {
-        return Character.isJavaIdentifierStart(c);
-    }
-
-    protected static boolean isIdentifierPart(char c) {
-        return Character.isJavaIdentifierPart(c);
     }
 
 }

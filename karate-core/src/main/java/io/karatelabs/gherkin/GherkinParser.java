@@ -21,28 +21,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.js;
+package io.karatelabs.gherkin;
 
 import io.karatelabs.common.Pair;
 import io.karatelabs.common.Resource;
 import io.karatelabs.common.StringUtils;
-import io.karatelabs.gherkin.*;
+import io.karatelabs.parser.*;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.karatelabs.js.TokenType.*;
+import static io.karatelabs.parser.TokenType.*;
 
-public class GherkinParser extends Parser {
+public class GherkinParser extends BaseParser {
 
     private Node ast;
 
     public GherkinParser(Resource resource) {
-        super(resource, true, false);
+        super(resource, getTokens(resource), false);
     }
 
     public GherkinParser(Resource resource, boolean errorRecovery) {
-        super(resource, true, errorRecovery);
+        super(resource, getTokens(resource), errorRecovery);
+    }
+
+    public static List<Token> getTokens(Resource resource) {
+        return BaseLexer.tokenize(new GherkinLexer(resource));
     }
 
     /**
@@ -603,7 +607,7 @@ public class GherkinParser extends Parser {
         String text = resource.getText();
 
         // Tokenize with Gherkin mode
-        List<Token> tokens = getTokens(resource, true);
+        List<Token> tokens = getTokens(resource);
 
         boolean each = false;
         String operator = null;

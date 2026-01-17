@@ -1,12 +1,11 @@
 package io.karatelabs.gherkin;
 
 import io.karatelabs.common.Resource;
-import io.karatelabs.js.GherkinParser;
-import io.karatelabs.js.Node;
-import io.karatelabs.js.NodeType;
-import io.karatelabs.js.SyntaxError;
-import io.karatelabs.js.Token;
-import io.karatelabs.js.TokenType;
+import io.karatelabs.parser.Node;
+import io.karatelabs.parser.NodeType;
+import io.karatelabs.parser.SyntaxError;
+import io.karatelabs.parser.Token;
+import io.karatelabs.parser.TokenType;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -357,7 +356,7 @@ class GherkinParserTest {
     void testTokenizeContainsDeepWithNewline() {
         // Verify "contains deep" is tokenized as single G_KEYWORD when followed by docstring
         Resource resource = Resource.text("* match message contains deep\n  \"\"\"\n  { order_id: 5 }\n  \"\"\"");
-        io.karatelabs.js.GherkinLexer lexer = new io.karatelabs.js.GherkinLexer(resource);
+        GherkinLexer lexer = new GherkinLexer(resource);
         Token token;
         boolean foundContainsDeep = false;
         do {

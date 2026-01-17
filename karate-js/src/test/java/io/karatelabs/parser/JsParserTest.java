@@ -1,6 +1,7 @@
-package io.karatelabs.js;
+package io.karatelabs.parser;
 
 import io.karatelabs.common.Resource;
+import io.karatelabs.js.NodeUtils;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

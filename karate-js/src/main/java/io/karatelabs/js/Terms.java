@@ -25,6 +25,8 @@ package io.karatelabs.js;
 
 import io.karatelabs.common.StringUtils;
 import io.karatelabs.common.Xml;
+import io.karatelabs.parser.Token;
+import io.karatelabs.parser.TokenType;
 import net.minidev.json.JSONValue;
 import org.w3c.dom.Node;
 
@@ -141,6 +143,16 @@ public class Terms {
             Number hex = fromHex(text);
             return hex == null ? Double.NaN : narrow(hex.doubleValue());
         }
+    }
+
+    public static Object literalValue(Token token) {
+        return switch (token.type) {
+            case S_STRING, D_STRING -> token.text.substring(1, token.text.length() - 1);
+            case NUMBER -> toNumber(token.text);
+            case TRUE -> true;
+            case FALSE -> false;
+            default -> null; // includes NULL
+        };
     }
 
     static Number fromHex(String text) {

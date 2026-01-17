@@ -21,45 +21,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.karatelabs.js;
+package io.karatelabs.parser;
 
-/**
- * Represents a recoverable syntax error during lenient parsing.
- * Unlike ParserException which is thrown for fatal errors, SyntaxError
- * is collected during error-tolerant parsing to enable IDE features
- * like syntax coloring even when the source code is incomplete.
- */
-public class SyntaxError {
+public class ParserException extends RuntimeException {
 
-    public final Token token;
-    public final String message;
-    public final NodeType expected;
-
-    public SyntaxError(Token token, String message, NodeType expected) {
-        this.token = token;
-        this.message = message;
-        this.expected = expected;
+    public ParserException(String message) {
+        super(message);
     }
 
-    public SyntaxError(Token token, String message) {
-        this(token, message, null);
-    }
-
-    public int getLine() {
-        return token.line + 1;
-    }
-
-    public int getColumn() {
-        return token.col + 1;
-    }
-
-    public long getOffset() {
-        return token.pos;
-    }
-
-    @Override
-    public String toString() {
-        return "[" + getLine() + ":" + getColumn() + "] " + message;
+    public ParserException(String message, Throwable cause) {
+        super(message, cause);
     }
 
 }

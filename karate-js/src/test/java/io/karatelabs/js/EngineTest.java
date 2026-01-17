@@ -1,6 +1,11 @@
 package io.karatelabs.js;
 
 import io.karatelabs.common.Resource;
+import io.karatelabs.parser.JsParser;
+import io.karatelabs.parser.Node;
+import io.karatelabs.parser.NodeType;
+import io.karatelabs.parser.Token;
+import io.karatelabs.parser.TokenType;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -411,7 +416,7 @@ class EngineTest {
         assertTrue(node.getFirstToken().getComments().isEmpty());
         Node secondStatement = node.get(1);
         Token thenFirst = secondStatement.getFirstToken();
-        assertEquals("// hello world", thenFirst.comments.getFirst().text);
+        assertEquals("// hello world", thenFirst.getComments().getFirst().text);
     }
 
     @Test

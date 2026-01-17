@@ -24,6 +24,9 @@
 package io.karatelabs.js;
 
 import io.karatelabs.common.Resource;
+import io.karatelabs.parser.JsParser;
+import io.karatelabs.parser.Node;
+import io.karatelabs.parser.NodeType;
 
 import java.io.File;
 import java.util.HashMap;

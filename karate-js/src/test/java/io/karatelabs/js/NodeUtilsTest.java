@@ -1,6 +1,10 @@
 package io.karatelabs.js;
 
 import io.karatelabs.common.Resource;
+import io.karatelabs.parser.Node;
+import io.karatelabs.parser.NodeType;
+import io.karatelabs.parser.Token;
+import io.karatelabs.parser.TokenType;
 import org.junit.jupiter.api.Test;
 
 class NodeUtilsTest {

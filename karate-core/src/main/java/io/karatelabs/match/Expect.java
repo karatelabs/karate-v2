@@ -28,10 +28,10 @@ import io.karatelabs.js.Context;
 import io.karatelabs.js.ContextScope;
 import io.karatelabs.js.JavaCallable;
 import io.karatelabs.js.JsRegex;
-import io.karatelabs.js.Node;
-import io.karatelabs.js.NodeType;
 import io.karatelabs.js.SimpleObject;
 import io.karatelabs.js.Terms;
+import io.karatelabs.parser.Node;
+import io.karatelabs.parser.NodeType;
 
 import java.util.List;
 import java.util.Map;

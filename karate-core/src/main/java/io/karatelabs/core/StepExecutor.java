@@ -40,7 +40,7 @@ import io.karatelabs.http.ClientCredentialsAuthHandler;
 import io.karatelabs.http.HttpRequest;
 import io.karatelabs.http.HttpRequestBuilder;
 import io.karatelabs.http.HttpResponse;
-import io.karatelabs.js.GherkinParser;
+import io.karatelabs.gherkin.GherkinParser;
 import io.karatelabs.js.JavaCallable;
 import io.karatelabs.output.LogContext;
 import org.slf4j.Logger;
