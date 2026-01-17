@@ -36,7 +36,7 @@ We need a JavaScript engine we completely control, ensuring that engine changes 
 
 ### JavaScript Engine Components
 
-- **Lexer** - JFlex-generated tokenizer
+- **Lexer** - Hand-rolled tokenizer designed for portability (JS/Rust)
 - **Parser** - Hand-written recursive descent parser
 - **Interpreter** - Tree-walking interpreter
 - **Java Interop** - Reflection-based Java object access

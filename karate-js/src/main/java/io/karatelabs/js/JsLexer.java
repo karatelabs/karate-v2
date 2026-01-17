@@ -101,7 +101,7 @@ public class JsLexer {
     }
 
     protected char peek() {
-        return isAtEnd() ? '\0' : source.charAt(pos);
+        return pos >= length ? '\0' : source.charAt(pos);
     }
 
     protected char peek(int offset) {
@@ -121,25 +121,10 @@ public class JsLexer {
     }
 
     protected boolean match(char expected) {
-        if (isAtEnd() || source.charAt(pos) != expected) {
+        if (pos >= length || source.charAt(pos) != expected) {
             return false;
         }
         advance();
-        return true;
-    }
-
-    protected boolean matchSequence(String seq) {
-        if (pos + seq.length() > length) {
-            return false;
-        }
-        for (int i = 0; i < seq.length(); i++) {
-            if (source.charAt(pos + i) != seq.charAt(i)) {
-                return false;
-            }
-        }
-        for (int i = 0; i < seq.length(); i++) {
-            advance();
-        }
         return true;
     }
 
@@ -155,14 +140,11 @@ public class JsLexer {
             return scanTemplateContent();
         }
 
-        char c = peek();
+        char c = source.charAt(pos);
 
-        // Whitespace
-        if (c == ' ' || c == '\t') {
+        // Whitespace (most common in typical code)
+        if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
             return scanWhitespace();
-        }
-        if (c == '\r' || c == '\n') {
-            return scanWhitespaceWithNewline();
         }
 
         // Comments and slash
@@ -185,13 +167,18 @@ public class JsLexer {
             return BACKTICK;
         }
 
+        // Identifiers and keywords (very common - check before numbers)
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == '$') {
+            return scanIdentifier();
+        }
+
         // Numbers
-        if (isDigit(c) || (c == '.' && isDigit(peek(1)))) {
+        if ((c >= '0' && c <= '9') || (c == '.' && pos + 1 < length && isDigit(source.charAt(pos + 1)))) {
             return scanNumber();
         }
 
-        // Identifiers and keywords
-        if (isIdentifierStart(c)) {
+        // Unicode identifiers (rare)
+        if (c > 127 && Character.isJavaIdentifierStart(c)) {
             return scanIdentifier();
         }
 
@@ -202,29 +189,27 @@ public class JsLexer {
     // ========== Whitespace ==========
 
     private TokenType scanWhitespace() {
-        while (!isAtEnd()) {
-            char c = peek();
+        // Fast path: consume spaces/tabs with minimal overhead
+        boolean hasNewline = false;
+        while (pos < length) {
+            char c = source.charAt(pos);
             if (c == ' ' || c == '\t') {
-                advance();
-            } else if (c == '\r' || c == '\n') {
-                return scanWhitespaceWithNewline();
+                pos++;
+                col++;
+            } else if (c == '\n') {
+                pos++;
+                line++;
+                col = 0;
+                hasNewline = true;
+            } else if (c == '\r') {
+                pos++;
+                col++;
+                hasNewline = true;
             } else {
                 break;
             }
         }
-        return WS;
-    }
-
-    private TokenType scanWhitespaceWithNewline() {
-        while (!isAtEnd()) {
-            char c = peek();
-            if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
-                advance();
-            } else {
-                break;
-            }
-        }
-        return WS_LF;
+        return hasNewline ? WS_LF : WS;
     }
 
     // ========== Comments and Slash ==========
@@ -244,20 +229,32 @@ public class JsLexer {
     }
 
     private TokenType scanLineComment() {
-        while (!isAtEnd() && peek() != '\n' && peek() != '\r') {
-            advance();
+        // Fast scan to end of line
+        while (pos < length) {
+            char c = source.charAt(pos);
+            if (c == '\n' || c == '\r') break;
+            pos++;
+            col++;
         }
         return L_COMMENT;
     }
 
     private TokenType scanBlockComment() {
-        while (!isAtEnd()) {
-            if (peek() == '*' && peek(1) == '/') {
-                advance(); // *
-                advance(); // /
+        while (pos < length) {
+            char c = source.charAt(pos);
+            if (c == '*' && pos + 1 < length && source.charAt(pos + 1) == '/') {
+                pos += 2;
+                col += 2;
                 break;
             }
-            advance();
+            if (c == '\n') {
+                pos++;
+                line++;
+                col = 0;
+            } else {
+                pos++;
+                col++;
+            }
         }
         return B_COMMENT;
     }
@@ -305,41 +302,67 @@ public class JsLexer {
     // ========== Strings ==========
 
     private TokenType scanDoubleString() {
-        advance(); // consume opening "
-        while (!isAtEnd()) {
-            char c = peek();
+        pos++; col++; // consume opening "
+        while (pos < length) {
+            char c = source.charAt(pos);
             if (c == '"') {
-                advance();
+                pos++; col++;
                 break;
             }
-            if (c == '\\') {
-                advance();
-                if (!isAtEnd()) {
-                    advance();
+            if (c == '\\' && pos + 1 < length) {
+                // Skip escape sequence
+                char next = source.charAt(pos + 1);
+                if (next == '\n') {
+                    pos += 2;
+                    line++;
+                    col = 0;
+                } else {
+                    pos += 2;
+                    col += 2;
                 }
                 continue;
             }
-            advance();
+            if (c == '\n') {
+                pos++;
+                line++;
+                col = 0;
+            } else {
+                pos++;
+                col++;
+            }
         }
         return D_STRING;
     }
 
     private TokenType scanSingleString() {
-        advance(); // consume opening '
-        while (!isAtEnd()) {
-            char c = peek();
+        pos++; col++; // consume opening '
+        while (pos < length) {
+            char c = source.charAt(pos);
             if (c == '\'') {
-                advance();
+                pos++; col++;
                 break;
             }
-            if (c == '\\') {
-                advance();
-                if (!isAtEnd()) {
-                    advance();
+            if (c == '\\' && pos + 1 < length) {
+                // Skip escape sequence
+                char next = source.charAt(pos + 1);
+                if (next == '\n') {
+                    pos += 2;
+                    line++;
+                    col = 0;
+                } else {
+                    pos += 2;
+                    col += 2;
                 }
                 continue;
             }
-            advance();
+            if (c == '\n') {
+                pos++;
+                line++;
+                col = 0;
+            } else {
+                pos++;
+                col++;
+            }
         }
         return S_STRING;
     }
@@ -442,47 +465,91 @@ public class JsLexer {
     // ========== Identifiers and Keywords ==========
 
     private TokenType scanIdentifier() {
-        while (!isAtEnd() && isIdentifierPart(peek())) {
-            advance();
+        // Fast path for ASCII identifiers (most common case)
+        while (pos < length) {
+            char c = source.charAt(pos);
+            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                (c >= '0' && c <= '9') || c == '_' || c == '$') {
+                pos++;
+                col++;
+            } else if (c > 127 && Character.isJavaIdentifierPart(c)) {
+                // Unicode identifier part - rare but must handle
+                pos++;
+                col++;
+            } else {
+                break;
+            }
         }
-        String text = source.substring(tokenStart, pos);
-        return keywordOrIdent(text);
+        return keywordOrIdent(tokenStart, pos - tokenStart);
     }
 
-    private TokenType keywordOrIdent(String text) {
+    private TokenType keywordOrIdent(int start, int len) {
         // Note: "this" and "void" are NOT keywords in the lexer - they're identifiers
         // that get special handling in the parser/evaluator
-        return switch (text) {
-            case "null" -> NULL;
-            case "true" -> TRUE;
-            case "false" -> FALSE;
-            case "function" -> FUNCTION;
-            case "return" -> RETURN;
-            case "try" -> TRY;
-            case "catch" -> CATCH;
-            case "finally" -> FINALLY;
-            case "throw" -> THROW;
-            case "new" -> NEW;
-            case "var" -> VAR;
-            case "let" -> LET;
-            case "const" -> CONST;
-            case "if" -> IF;
-            case "else" -> ELSE;
-            case "typeof" -> TYPEOF;
-            case "instanceof" -> INSTANCEOF;
-            case "delete" -> DELETE;
-            case "for" -> FOR;
-            case "in" -> IN;
-            case "of" -> OF;
-            case "do" -> DO;
-            case "while" -> WHILE;
-            case "switch" -> SWITCH;
-            case "case" -> CASE;
-            case "default" -> DEFAULT;
-            case "break" -> BREAK;
-            case "continue" -> CONTINUE;
-            default -> IDENT;
-        };
+        // Fast path: switch on length first, then first char
+        if (len == 2) {
+            char c0 = source.charAt(start);
+            if (c0 == 'i') {
+                if (source.charAt(start + 1) == 'f') return IF;
+                if (source.charAt(start + 1) == 'n') return IN;
+            } else if (c0 == 'o' && source.charAt(start + 1) == 'f') {
+                return OF;
+            } else if (c0 == 'd' && source.charAt(start + 1) == 'o') {
+                return DO;
+            }
+        } else if (len == 3) {
+            char c0 = source.charAt(start);
+            if (c0 == 'v' && source.charAt(start + 1) == 'a' && source.charAt(start + 2) == 'r') return VAR;
+            if (c0 == 'l' && source.charAt(start + 1) == 'e' && source.charAt(start + 2) == 't') return LET;
+            if (c0 == 'n' && source.charAt(start + 1) == 'e' && source.charAt(start + 2) == 'w') return NEW;
+            if (c0 == 't' && source.charAt(start + 1) == 'r' && source.charAt(start + 2) == 'y') return TRY;
+            if (c0 == 'f' && source.charAt(start + 1) == 'o' && source.charAt(start + 2) == 'r') return FOR;
+        } else if (len == 4) {
+            char c0 = source.charAt(start);
+            if (c0 == 'n' && matchKeyword(start, "null")) return NULL;
+            if (c0 == 't' && matchKeyword(start, "true")) return TRUE;
+            if (c0 == 'e' && matchKeyword(start, "else")) return ELSE;
+            if (c0 == 'c' && matchKeyword(start, "case")) return CASE;
+        } else if (len == 5) {
+            char c0 = source.charAt(start);
+            if (c0 == 'f' && matchKeyword(start, "false")) return FALSE;
+            if (c0 == 'c') {
+                if (matchKeyword(start, "const")) return CONST;
+                if (matchKeyword(start, "catch")) return CATCH;
+            }
+            if (c0 == 't' && matchKeyword(start, "throw")) return THROW;
+            if (c0 == 'w' && matchKeyword(start, "while")) return WHILE;
+            if (c0 == 'b' && matchKeyword(start, "break")) return BREAK;
+        } else if (len == 6) {
+            char c0 = source.charAt(start);
+            if (c0 == 'r' && matchKeyword(start, "return")) return RETURN;
+            if (c0 == 't' && matchKeyword(start, "typeof")) return TYPEOF;
+            if (c0 == 'd' && matchKeyword(start, "delete")) return DELETE;
+            if (c0 == 's' && matchKeyword(start, "switch")) return SWITCH;
+        } else if (len == 7) {
+            char c0 = source.charAt(start);
+            if (c0 == 'f') {
+                if (matchKeyword(start, "finally")) return FINALLY;
+            }
+            if (c0 == 'd' && matchKeyword(start, "default")) return DEFAULT;
+        } else if (len == 8) {
+            char c0 = source.charAt(start);
+            if (c0 == 'f' && matchKeyword(start, "function")) return FUNCTION;
+            if (c0 == 'c' && matchKeyword(start, "continue")) return CONTINUE;
+        } else if (len == 10) {
+            if (source.charAt(start) == 'i' && matchKeyword(start, "instanceof")) return INSTANCEOF;
+        }
+        return IDENT;
+    }
+
+    private boolean matchKeyword(int start, String keyword) {
+        int len = keyword.length();
+        for (int i = 0; i < len; i++) {
+            if (source.charAt(start + i) != keyword.charAt(i)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     // ========== Operators and Punctuation ==========
