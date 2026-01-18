@@ -698,3 +698,206 @@ runScript("const json = response.json(); pm.test('ok', () => {});");  // No conf
 | Parser infrastructure | `karate-js/src/main/java/io/karatelabs/parser/` |
 | Gherkin parser | `karate-core/src/main/java/io/karatelabs/gherkin/` |
 | Tests | `karate-js/src/test/java/io/karatelabs/js/` |
+
+---
+
+## Future Improvements (Swift Engine Comparison)
+
+This section documents potential improvements identified by comparing the Java engine with a Swift-based JavaScript engine implementation. The Swift engine is smaller (~8 files vs 50+) because it implements fewer features (no prototype chain, no regex, simpler scoping). The Java engine's complexity is justified by its requirements: full ES6 scoping, prototype chain, Java interop, IDE tooling support, and event/debugging system.
+
+**Overall Assessment:** The Java engine is reasonably well-designed given its feature requirements. The areas below represent opportunities for modernization and cleanup rather than fundamental architectural issues.
+
+### 1. NodeType-based Evaluation Dispatch
+
+**Current:** The `Interpreter.java` has a 1000+ line `eval()` method with a massive switch statement dispatching to 35+ separate eval methods.
+
+**Swift Pattern:** Uses pattern matching on AST node enum cases, which is more compact.
+
+**Proposed:** Move evaluation logic into the `NodeType` enum itself using Java 21+ features:
+
+```java
+public enum NodeType {
+    IF_STMT {
+        @Override
+        public Object evaluate(Node node, CoreContext ctx) {
+            // If statement evaluation logic
+        }
+    },
+    FOR_STMT {
+        @Override
+        public Object evaluate(Node node, CoreContext ctx) {
+            // For statement evaluation logic
+        }
+    },
+    // ...other node types
+    ;
+
+    public abstract Object evaluate(Node node, CoreContext ctx);
+}
+```
+
+**Benefits:**
+- Each node type owns its evaluation logic
+- Compiler enforces exhaustive handling when adding new node types
+- Cleaner code organization
+- Preserves AST node reusability (no methods added to `Node` class)
+
+**Trade-offs:**
+- Large enum file, but organized by node type
+- May need helper methods in a companion class for shared logic
+
+---
+
+### 2. Sealed Interface for Value Types (Java 21+)
+
+**Current:** Value types use `instanceof` chains scattered throughout `Terms.java` and other classes. The compiler cannot verify exhaustive handling.
+
+**Swift Pattern:** Uses `enum JsValue` with exhaustive switch expressions - the compiler ensures all cases are handled.
+
+**Proposed:** Introduce a sealed interface hierarchy for core JS values:
+
+```java
+public sealed interface JsValue permits
+    JsUndefined, JsNull, JsBoolean, JsNumber, JsString,
+    JsArray, JsObject, JsFunction, JsNativeFunction {
+
+    // Common operations
+    boolean isTruthy();
+    String typeOf();
+    Object toJava();
+}
+
+// Pattern matching in Terms.java becomes exhaustive:
+static Number objectToNumber(JsValue value) {
+    return switch (value) {
+        case JsUndefined _ -> Double.NaN;
+        case JsNull _ -> 0;
+        case JsBoolean(var b) -> b ? 1 : 0;
+        case JsNumber(var n) -> n;
+        case JsString(var s) -> parseNumber(s);
+        case JsArray _, JsObject _, JsFunction _, JsNativeFunction _ -> Double.NaN;
+    };
+}
+```
+
+**Benefits:**
+- Compiler-enforced exhaustive handling
+- Cleaner type coercion in `Terms.java`
+- Safer refactoring (adding new value types forces updates)
+- Better IDE support for "find usages" of value types
+
+**Trade-offs:**
+- Significant refactor touching many files
+- Need to handle Java interop values that aren't JsValue (raw Maps, Lists, etc.)
+- May need adapter layer at boundaries
+
+---
+
+### 3. PropertyAccessor Strategy Pattern
+
+**Current:** `JsProperty.java` is 330+ lines handling property access with many branches for: optional chaining (`?.`), different object types (JsObject, Map, List, JavaObject), numeric vs string indexing, and Java interop.
+
+**Swift Pattern:** Property access is simpler because it handles fewer object types.
+
+**Proposed:** Extract into a strategy pattern with typed accessors:
+
+```java
+public interface PropertyAccessor {
+    Object get(Object target, String key, boolean optional);
+    void set(Object target, String key, Object value);
+    boolean has(Object target, String key);
+}
+
+// Implementations
+class JsObjectAccessor implements PropertyAccessor { ... }
+class MapAccessor implements PropertyAccessor { ... }
+class ListAccessor implements PropertyAccessor { ... }
+class JavaBeanAccessor implements PropertyAccessor { ... }
+
+// Dispatch once at the start
+PropertyAccessor accessor = PropertyAccessor.forTarget(target);
+return accessor.get(target, key, isOptional);
+```
+
+**Benefits:**
+- Cleaner separation of concerns
+- Each accessor handles one object type
+- Easier to add new object types
+- Testable in isolation
+
+**Trade-offs:**
+- Slight dispatch overhead (mitigated by inlining hot paths)
+- More classes to maintain
+
+**Status:** TODO - good cleanup opportunity for future work.
+
+---
+
+### 4. JavaScript Stack Traces for Errors
+
+**Current:** Error messages are basic - no JavaScript call stack capture.
+
+**Swift Pattern:** Also has basic errors (no stack traces).
+
+**Proposed:** Capture and report a JavaScript call stack when exceptions occur:
+
+```java
+public class JsError extends JsObject {
+    private List<StackFrame> jsStack;
+
+    public record StackFrame(String functionName, String file, int line, int column) {}
+
+    public void captureStack(CoreContext context) {
+        this.jsStack = context.captureCallStack();
+    }
+
+    public String getStackTrace() {
+        // Format like:
+        // Error: Something went wrong
+        //     at myFunction (script.js:10:5)
+        //     at onClick (script.js:25:3)
+        //     at <anonymous> (script.js:1:1)
+    }
+}
+```
+
+**Implementation requirements:**
+- Track function entry/exit in `Interpreter.evalFnCall()`
+- Store function name, source location in a stack structure on `CoreContext`
+- Capture stack snapshot when `JsError` is created or thrown
+- Format stack trace matching JavaScript conventions
+
+**Benefits:**
+- Much better debugging experience for Karate users
+- Easier to diagnose script errors
+- Matches standard JavaScript error behavior
+
+---
+
+### 5. Async/Await Architecture Extensibility
+
+**Current:** The engine is purely synchronous. This is sufficient because async operations are handled at the Karate DSL level.
+
+**Future requirement:** Async/await support is planned.
+
+**Proposed:** Keep current architecture but note these extension points:
+
+1. **EvalResult pattern** - If adopting later, would enable natural async propagation
+2. **Context-based execution** - Could track pending promises per context
+3. **Event loop abstraction** - Would need to be pluggable (different for CLI vs server)
+
+**No immediate action required** - current design doesn't preclude async support. The context-based stateful return approach can be extended to track promise state.
+
+---
+
+### Summary
+
+| Area | Priority | Effort | Impact |
+|------|----------|--------|--------|
+| NodeType-based Evaluation | Medium | Medium | Code organization |
+| Sealed Interface for Values | Low | High | Type safety, refactoring confidence |
+| PropertyAccessor Strategy | Low | Medium | Code cleanliness |
+| Stack Traces for Errors | High | Medium | User experience |
+| Async Architecture | Future | N/A | Extensibility |
+
+The Java engine is well-suited to its requirements. The Swift engine's simplicity comes from implementing fewer features. These improvements would modernize the codebase using Java 21+ features without changing fundamental behavior.
