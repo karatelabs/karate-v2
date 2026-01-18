@@ -136,7 +136,8 @@ public class CdpClient {
                 CdpResponse response = new CdpResponse(map);
                 future.complete(response);
             } else {
-                logger.warn("received response for unknown request id: {}", id);
+                // Expected for fire-and-forget messages (sendWithoutWaiting)
+                logger.trace("received response for fire-and-forget request id: {}", id);
             }
         } else if (map.containsKey("method")) {
             // Event

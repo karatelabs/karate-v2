@@ -461,6 +461,14 @@ public interface Driver extends CoreDriver, SimpleObject {
      */
     void dialog(boolean accept, String input);
 
+    /**
+     * Get the current dialog if one is open.
+     * This is useful for detecting dialogs that appear after actions.
+     *
+     * @return the current Dialog, or null if no dialog is open
+     */
+    Dialog getDialog();
+
     // ========== Frame Switching ==========
 
     /**

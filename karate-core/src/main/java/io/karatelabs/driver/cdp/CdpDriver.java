@@ -23,6 +23,7 @@
  */
 package io.karatelabs.driver.cdp;
 
+import io.karatelabs.driver.Dialog;
 import io.karatelabs.driver.DialogHandler;
 import io.karatelabs.driver.Driver;
 import io.karatelabs.driver.DriverException;
@@ -88,6 +89,7 @@ public class CdpDriver implements Driver {
 
     // Dialog handling
     private volatile String currentDialogText;
+    private volatile CdpDialog currentDialog;
     private volatile DialogHandler dialogHandler;
 
     // Request interception
@@ -328,16 +330,20 @@ public class CdpDriver implements Driver {
             String type = event.get("type");
             String defaultPrompt = event.get("defaultPrompt");
             currentDialogText = message;
+            // Store the dialog for getDialog() - allows detection after actions
+            currentDialog = new CdpDialog(cdp, message, type, defaultPrompt);
             logger.debug("dialog opening: type={}, message={}", type, message);
 
             if (dialogHandler != null) {
-                CdpDialog dialog = new CdpDialog(cdp, message, type, defaultPrompt);
-                dialogHandler.handle(dialog);
+                dialogHandler.handle(currentDialog);
                 // If handler didn't resolve the dialog, auto-dismiss
-                if (!dialog.isHandled()) {
+                if (!currentDialog.isHandled()) {
                     logger.warn("dialog handler did not resolve dialog, auto-dismissing");
-                    dialog.dismiss();
+                    currentDialog.dismiss();
                 }
+                // Clear after handling
+                currentDialog = null;
+                currentDialogText = null;
             }
             // If no handler registered, dialog will block - user must call dialog() methods
         });
@@ -872,6 +878,18 @@ public class CdpDriver implements Driver {
     }
 
     /**
+     * Get the current dialog if one is open.
+     * This is useful for detecting dialogs that appear after actions (e.g., click).
+     * The dialog remains available until handled via dialog() or the Dialog methods.
+     *
+     * @return the current Dialog, or null if no dialog is open
+     */
+    @Override
+    public Dialog getDialog() {
+        return currentDialog;
+    }
+
+    /**
      * Accept or dismiss the current dialog.
      * This is used when no DialogHandler is registered.
      *
@@ -896,6 +914,7 @@ public class CdpDriver implements Driver {
         }
         message.send();
         currentDialogText = null;
+        currentDialog = null;
     }
 
     // ========== Frame Switching ==========

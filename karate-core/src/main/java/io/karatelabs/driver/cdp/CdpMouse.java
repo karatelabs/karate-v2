@@ -111,7 +111,7 @@ public class CdpMouse implements Mouse {
                 .param("y", y)
                 .param("deltaX", deltaX)
                 .param("deltaY", deltaY)
-                .send();
+                .sendWithoutWaiting();
         return this;
     }
 
@@ -195,7 +195,10 @@ public class CdpMouse implements Mouse {
         // Add any extra parameters
         extra.forEach(message::param);
 
-        message.send();
+        // Use fire-and-forget for mouse events - they don't need responses
+        // and blocking can cause issues when the click triggers a dialog
+        // (the dialog blocks Chrome from sending the CDP response)
+        message.sendWithoutWaiting();
     }
 
 }
