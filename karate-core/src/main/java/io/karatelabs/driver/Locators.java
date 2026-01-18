@@ -481,6 +481,31 @@ public class Locators {
     }
 
     /**
+     * Generate JS to find all matching elements and return their unique selectors.
+     * Returns an array of CSS selectors that can be used to re-locate each element.
+     */
+    public static String findAllJs(String locator) {
+        // For CSS selectors, generate nth-of-type selectors
+        if (!isXpath(locator) && !locator.startsWith("{")) {
+            String escaped = escapeForJs(locator);
+            String js = "var els = document.querySelectorAll(\"" + escaped + "\");" +
+                    " var result = [];" +
+                    " els.forEach(function(el, i) {" +
+                    "   result.push(\"" + escaped + ":nth-of-type(\" + (i+1) + \")\");" +
+                    " });" +
+                    " return result";
+            return wrapInFunctionInvoke(js);
+        }
+        // Wildcard - returns single element as array
+        if (locator.startsWith("{")) {
+            String resolverJs = expandWildcard(locator);
+            return wrapInFunctionInvoke("var e = " + resolverJs + "; return e ? ['" + escapeForJs(locator) + "'] : []");
+        }
+        // XPath - less common, return locator wrapped
+        return wrapInFunctionInvoke("return ['" + escapeForJs(locator) + "']");
+    }
+
+    /**
      * Generate JS to count matching elements.
      */
     public static String countJs(String locator) {

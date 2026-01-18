@@ -471,6 +471,30 @@ class LocatorsTest {
         assertTrue(result.contains("while(iter.iterateNext())"));
     }
 
+    // ========== findAllJs Tests ==========
+
+    @Test
+    void testFindAllJsCss() {
+        String result = Locators.findAllJs("li.item");
+        assertTrue(result.contains("querySelectorAll"));
+        assertTrue(result.contains("forEach"));
+        assertTrue(result.contains("nth-of-type"));
+        assertTrue(result.contains("return result"));
+    }
+
+    @Test
+    void testFindAllJsWildcard() {
+        String result = Locators.findAllJs("{button}Submit");
+        assertTrue(result.contains("window.__kjs.resolve"));
+        assertTrue(result.contains("return e ? ["));
+    }
+
+    @Test
+    void testFindAllJsXpath() {
+        String result = Locators.findAllJs("//li");
+        assertTrue(result.contains("return ["));
+    }
+
     // ========== JS String Escaping Tests ==========
 
     @Test
