@@ -105,6 +105,27 @@ public class CdpDriver implements Driver {
     // Keyboard state (reused to maintain modifier state across calls)
     private CdpKeys keysInstance;
 
+    // ========== CDP Event Listener API ==========
+
+    /**
+     * Add an external event listener that receives all CDP events.
+     * Used for traffic recording, debugging, etc.
+     *
+     * @param listener The listener to add
+     */
+    public void addCdpEventListener(CdpEventListener listener) {
+        cdp.addExternalListener(listener);
+    }
+
+    /**
+     * Remove an external event listener.
+     *
+     * @param listener The listener to remove
+     */
+    public void removeCdpEventListener(CdpEventListener listener) {
+        cdp.removeExternalListener(listener);
+    }
+
     /**
      * Internal representation of a frame.
      */

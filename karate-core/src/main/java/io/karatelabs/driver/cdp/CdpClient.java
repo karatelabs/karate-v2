@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
@@ -51,6 +52,7 @@ public class CdpClient {
     private final AtomicInteger idGenerator = new AtomicInteger();
     private final ConcurrentHashMap<Integer, CompletableFuture<CdpResponse>> pending = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, List<Consumer<CdpEvent>>> eventHandlers = new ConcurrentHashMap<>();
+    private final List<CdpEventListener> externalListeners = new CopyOnWriteArrayList<>();
     private final Duration defaultTimeout;
     private volatile String sessionId;
 
@@ -155,6 +157,17 @@ public class CdpClient {
                     handler.accept(event);
                 } catch (Exception e) {
                     logger.error("event handler error for {}: {}", method, e.getMessage());
+                }
+            }
+        }
+        // Forward to external listeners (for recording, debugging, etc.)
+        if (!externalListeners.isEmpty()) {
+            Map<String, Object> params = event.getParams();
+            for (CdpEventListener listener : externalListeners) {
+                try {
+                    listener.onEvent(method, params);
+                } catch (Exception e) {
+                    logger.error("external listener error for {}: {}", method, e.getMessage());
                 }
             }
         }
@@ -289,6 +302,23 @@ public class CdpClient {
      */
     public void offAll(String eventName) {
         eventHandlers.remove(eventName);
+    }
+
+    // External event listeners (for recording, debugging, etc.)
+
+    /**
+     * Add an external event listener that receives all CDP events.
+     * Used for traffic recording, debugging, etc.
+     */
+    public void addExternalListener(CdpEventListener listener) {
+        externalListeners.add(listener);
+    }
+
+    /**
+     * Remove an external event listener.
+     */
+    public void removeExternalListener(CdpEventListener listener) {
+        externalListeners.remove(listener);
     }
 
     // Lifecycle
