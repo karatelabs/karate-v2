@@ -17,7 +17,7 @@
 
     <properties>
         <gatling.version>3.14.9</gatling.version>
-        <scala.version>3.7.4</scala.version>
+        <scala.version>3.8.0</scala.version>
     </properties>
 
     <dependencies>
