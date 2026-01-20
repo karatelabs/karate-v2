@@ -77,16 +77,16 @@ public class ScenarioLockManager {
     /**
      * Acquire locks for a scenario based on its @lock tags.
      * Returns a handle that must be used to release the locks.
+     * <p>
+     * All scenarios acquire at least the global read lock to ensure @lock=*
+     * scenarios can truly run exclusively. The overhead is minimal (~100ns)
+     * for uncontended read locks.
      *
      * @param scenario the scenario to acquire locks for
-     * @return a LockHandle to release the locks, or null if no locks were needed
+     * @return a LockHandle to release the locks (never null)
      */
     public LockHandle acquire(Scenario scenario) {
         List<String> lockNames = getLockNames(scenario);
-        if (lockNames.isEmpty()) {
-            return null;
-        }
-
         String scenarioName = scenario.getName();
         boolean exclusive = lockNames.contains(EXCLUSIVE_LOCK);
 
@@ -97,8 +97,14 @@ public class ScenarioLockManager {
             logger.info("Acquired exclusive lock for scenario: {}", scenarioName);
             return new LockHandle(scenarioName, Collections.emptyList(), true);
         } else {
-            // Named locks - acquire read lock first, then named locks
+            // All non-exclusive scenarios acquire the global read lock
+            // This ensures @lock=* scenarios truly run exclusively
             globalLock.readLock().lock();
+
+            if (lockNames.isEmpty()) {
+                // No named locks, just the global read lock
+                return new LockHandle(scenarioName, Collections.emptyList(), false);
+            }
 
             // Sort lock names to prevent deadlocks when multiple locks are acquired
             List<String> sortedNames = new ArrayList<>(lockNames);
