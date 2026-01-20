@@ -150,6 +150,7 @@ public class CdpDriver implements Driver {
         this.launcher = launcher;
         this.options = options;
         this.cdp = CdpClient.connect(launcher.getWebSocketUrl(), options.getTimeoutDuration());
+        this.currentTargetId = extractTargetIdFromUrl(launcher.getWebSocketUrl());
         ACTIVE.add(this);
         initialize();
     }
@@ -158,8 +159,35 @@ public class CdpDriver implements Driver {
         this.launcher = null;
         this.options = options;
         this.cdp = CdpClient.connect(webSocketUrl, options.getTimeoutDuration());
+        this.currentTargetId = extractTargetIdFromUrl(webSocketUrl);
         ACTIVE.add(this);
         initialize();
+    }
+
+    /**
+     * Extract the targetId from a page-specific WebSocket URL.
+     * URL format: ws://host:port/devtools/page/<targetId>
+     *
+     * CRITICAL for parallel execution: When multiple CdpDriver instances connect to
+     * the same browser (e.g., via PooledDriverProvider), each gets its own tab via
+     * /json/new. We MUST extract our targetId from the URL we connected to, not from
+     * getPages() which returns ALL tabs browser-wide. Using getPages().get(0) caused
+     * flaky tests where parallel drivers would incorrectly close each other's tabs.
+     *
+     * @return the targetId, or null if URL doesn't match expected format
+     */
+    private static String extractTargetIdFromUrl(String webSocketUrl) {
+        if (webSocketUrl == null) {
+            return null;
+        }
+        // Format: ws://host:port/devtools/page/<targetId>
+        int pageIndex = webSocketUrl.indexOf("/devtools/page/");
+        if (pageIndex != -1) {
+            return webSocketUrl.substring(pageIndex + "/devtools/page/".length());
+        }
+        // Browser-level URL format: ws://host:port/devtools/browser/<browserId>
+        // In this case, we don't have a specific targetId
+        return null;
     }
 
     /**
@@ -215,10 +243,18 @@ public class CdpDriver implements Driver {
         logger.debug("main frame ID: {}", mainFrameId);
 
         // Track current target for close() support
-        List<String> pages = getPages();
-        if (!pages.isEmpty()) {
-            currentTargetId = pages.get(0);
-            logger.debug("current target ID: {}", currentTargetId);
+        // currentTargetId is set in constructor by extracting from WebSocket URL (preferred)
+        // Fallback: if URL extraction failed (e.g., browser-level URL), use getPages()
+        // Note: getPages() fallback is NOT safe for parallel execution - all drivers would
+        // get the same targetId. This is only for backwards compatibility with browser-level connections.
+        if (currentTargetId == null) {
+            List<String> pages = getPages();
+            if (!pages.isEmpty()) {
+                currentTargetId = pages.get(0);
+                logger.warn("currentTargetId fallback to getPages()[0]: {} - parallel execution may be unreliable", currentTargetId);
+            }
+        } else {
+            logger.debug("current target ID (from URL): {}", currentTargetId);
         }
 
         // Setup event handlers BEFORE enabling domains
@@ -939,6 +975,27 @@ public class CdpDriver implements Driver {
     }
 
     // ========== Frame Switching ==========
+    //
+    // FLAKY TEST HISTORY:
+    // A frame test "Click and result in frame" occasionally failed with:
+    //   waitForText('#frame-result', 'Frame button clicked!') timeout
+    //
+    // Root cause analysis and fixes applied:
+    // 1. [FIXED] Execution context not ready: After switchFrame(), ensureFrameContext()
+    //    now calls waitForFrameContextReady() which polls until JS execution succeeds
+    //    in the frame. Previously we only ensured the context existed, not that it was
+    //    ready for execution.
+    //
+    // Remaining theories (if issues persist):
+    // 2. Parallel scenario timing: Multiple frame scenarios running concurrently on
+    //    DIFFERENT tabs (via PooledDriverProvider) should be isolated, but if Chrome
+    //    has any shared state or resource contention, it could cause timing issues.
+    // 3. Click didn't register: The button click might have fired before the iframe's
+    //    JavaScript handler was fully attached.
+    //
+    // Mitigation options (if issues persist):
+    // - Add @lock=frames tag to serialize frame tests (like @lock=tabs for tab tests)
+    //
 
     /**
      * Switch to an iframe by index in the frame tree.
@@ -1096,23 +1153,59 @@ public class CdpDriver implements Driver {
 
     private void ensureFrameContext(String frameId) {
         // Check if we already have an execution context for this frame
-        if (frameContexts.containsKey(frameId)) {
-            return;
+        if (!frameContexts.containsKey(frameId)) {
+            // Create an isolated world for this frame
+            try {
+                CdpResponse response = cdp.method("Page.createIsolatedWorld")
+                        .param("frameId", frameId)
+                        .send();
+                Integer contextId = response.getResult("executionContextId");
+                if (contextId != null) {
+                    frameContexts.put(frameId, contextId);
+                    logger.debug("created isolated world for frame {}: contextId={}", frameId, contextId);
+                }
+            } catch (Exception e) {
+                logger.warn("failed to create isolated world for frame {}: {}", frameId, e.getMessage());
+            }
         }
 
-        // Create an isolated world for this frame
-        try {
-            CdpResponse response = cdp.method("Page.createIsolatedWorld")
-                    .param("frameId", frameId)
-                    .send();
-            Integer contextId = response.getResult("executionContextId");
+        // Verify the frame context is alive and ready for JS execution
+        // This is critical for flaky test prevention - the context may exist but
+        // the frame's document might not be ready yet (still loading)
+        waitForFrameContextReady(frameId);
+    }
+
+    /**
+     * Wait for a frame's execution context to be ready for JS execution.
+     * Similar to waitForMainFrameContext() but for iframe contexts.
+     */
+    private void waitForFrameContextReady(String frameId) {
+        int maxWaitMs = 1000;
+        int pollInterval = 50;
+        long deadline = System.currentTimeMillis() + maxWaitMs;
+
+        while (System.currentTimeMillis() < deadline) {
+            Integer contextId = frameContexts.get(frameId);
             if (contextId != null) {
-                frameContexts.put(frameId, contextId);
-                logger.debug("created isolated world for frame {}: contextId={}", frameId, contextId);
+                try {
+                    CdpResponse response = cdp.method("Runtime.evaluate")
+                            .param("expression", "typeof document !== 'undefined'")
+                            .param("returnByValue", true)
+                            .param("contextId", contextId)
+                            .send();
+                    if (!response.isError() && Boolean.TRUE.equals(response.getResult("result.value"))) {
+                        logger.trace("frame context ready: frameId={}, contextId={}", frameId, contextId);
+                        return;
+                    }
+                } catch (Exception e) {
+                    // Context not ready yet, will retry
+                    logger.trace("frame context not ready yet: {}", e.getMessage());
+                }
             }
-        } catch (Exception e) {
-            logger.warn("failed to create isolated world for frame {}: {}", frameId, e.getMessage());
+            sleep(pollInterval);
         }
+        // Timeout is not fatal - retry logic in script() will handle it
+        logger.warn("timeout waiting for frame context: frameId={} (will retry on first use)", frameId);
     }
 
     // ========== Lifecycle ==========
