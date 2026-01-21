@@ -4,15 +4,42 @@
 
 Karate v2 is a **complete ground-up rewrite** with significant improvements across the board. Here are the highlights:
 
-### Core Infrastructure
+### Performance & Scalability
 
 | Improvement | Description | Commit |
 |-------------|-------------|--------|
-| **Custom JS Engine** | Hand-rolled lexer/parser replacing JFlex, ES6+ support, 10x performance | [90d6e07](https://github.com/karatelabs/karate/commit/90d6e07) |
-| **Apache HttpClient 5.6** | Modern HTTP client with Brotli compression, connection pooling | [1a35bcd](https://github.com/karatelabs/karate/commit/1a35bcd) |
-| **Virtual Threads** | Java 21+ unlocks massive parallelism with virtual threads | - |
-| **@lock Tag** | Scenario-level mutual exclusion for parallel safety | [a08337b](https://github.com/karatelabs/karate/commit/a08337b) |
+| **Embedded JS Engine** | Fast hand-rolled lexer/parser with ES6+ support, focused on the Java interop use-case | [90d6e07](https://github.com/karatelabs/karate/commit/90d6e07) |
+| **Virtual Threads** | Java 21+ unlocks massive parallelism with minimal overhead | - |
+| **@lock Tag** | Scenario-level mutual exclusion for parallel safety (`@lock=name`) | [a08337b](https://github.com/karatelabs/karate/commit/a08337b) |
 | **@lock=\*** | Exclusive execution - scenario runs alone | [cd94b11](https://github.com/karatelabs/karate/commit/cd94b11) |
+
+### Assertions
+
+| Improvement | Description | Commit |
+|-------------|-------------|--------|
+| **match within** | Frequently requested - assert that a value falls within a range | [8535be0](https://github.com/karatelabs/karate/commit/8535be0) |
+| **karate.faker.\*** | Built-in test data generation: `firstName()`, `email()`, `randomInt()`, etc. | [245c540](https://github.com/karatelabs/karate/commit/245c540) |
+| **karate.expect()** | Chai-style BDD assertions - easier migration from Postman! | [ad2f475](https://github.com/karatelabs/karate/commit/ad2f475) |
+| **karate.uuid()** | Generate random UUIDs | [cb516d4](https://github.com/karatelabs/karate/commit/cb516d4) |
+
+### Modern HTTP Client
+
+| Improvement | Description | Commit |
+|-------------|-------------|--------|
+| **Apache HttpClient 5.6** | Modern HTTP client with Brotli compression support | [1a35bcd](https://github.com/karatelabs/karate/commit/1a35bcd) |
+| **Declarative Auth** | `configure auth` for Basic, Bearer, and OAuth2 with automatic token refresh | [1a06c64](https://github.com/karatelabs/karate/commit/1a06c64) |
+
+### HTTP Mocks
+
+| Improvement | Description | Commit |
+|-------------|-------------|--------|
+| **Mock Server Rewrite** | New JS engine and rewritten from scratch for performance - see [MOCKS.md](./MOCKS.md) | [d84c0e4](https://github.com/karatelabs/karate/commit/d84c0e4) |
+
+### Performance Testing
+
+| Improvement | Description | Commit |
+|-------------|-------------|--------|
+| **Gatling 3.14** | Re-implemented load testing with pure Java architecture | [32f8b00](https://github.com/karatelabs/karate/commit/32f8b00) |
 
 ### Browser Automation
 
@@ -22,41 +49,23 @@ Karate v2 is a **complete ground-up rewrite** with significant improvements acro
 | **PooledDriverProvider** | Automatic browser pooling for parallel UI automation | [b140436](https://github.com/karatelabs/karate/commit/b140436) |
 | **Auto-wait** | Automatic waiting before element operations reduces flaky tests | [67e4c2d](https://github.com/karatelabs/karate/commit/67e4c2d) |
 
-### Reporting
+### Developer Experience
 
 | Improvement | Description | Commit |
 |-------------|-------------|--------|
-| **JSONL Streaming** | Memory-efficient `karate-results.jsonl` format | [f4240a2](https://github.com/karatelabs/karate/commit/f4240a2) |
-| **Smaller HTML Reports** | Alpine.js client-side rendering, Bootstrap 5.3 | [3b965b6](https://github.com/karatelabs/karate/commit/3b965b6) |
-| **Dark Mode** | Native dark mode toggle in HTML reports | [3b965b6](https://github.com/karatelabs/karate/commit/3b965b6) |
-| **Tag Filtering** | Interactive tag filtering on summary page | [3b965b6](https://github.com/karatelabs/karate/commit/3b965b6) |
-| **Timeline View** | Consistent lane pool for thread names | [7f4c8c9](https://github.com/karatelabs/karate/commit/7f4c8c9) |
+| **Unified Event System** | Single `RunListener` API for observing and controlling test execution - see [EVENTS.md](./EVENTS.md) | [f4240a2](https://github.com/karatelabs/karate/commit/f4240a2) |
+| **JSONL Streaming** | Memory-efficient `karate-results.jsonl` format with real-time progress | [f4240a2](https://github.com/karatelabs/karate/commit/f4240a2) |
+| **Modern HTML Reports** | Bootstrap 5.3 with dark mode, interactive tag filtering | [3b965b6](https://github.com/karatelabs/karate/commit/3b965b6) |
+| **JUnit 6 Integration** | Streaming dynamic test generation via `@TestFactory` | [a794b02](https://github.com/karatelabs/karate/commit/a794b02) |
 
-### Test Framework Integration
-
-| Improvement | Description | Commit |
-|-------------|-------------|--------|
-| **JUnit 6** | Streaming dynamic test generation via `@TestFactory` | [a794b02](https://github.com/karatelabs/karate/commit/a794b02) |
-| **Gatling 3.14.9** | Re-implemented with pure Java + thin Scala bridge | [32f8b00](https://github.com/karatelabs/karate/commit/32f8b00) |
-
-### Event System & Logging
+### V1 Compatibility
 
 | Improvement | Description | Commit |
 |-------------|-------------|--------|
-| **Unified Event System** | Single `RunListener` API replaces `RuntimeHook` and `ResultListener` - see [EVENTS.md](./EVENTS.md) | [f4240a2](https://github.com/karatelabs/karate/commit/f4240a2) |
-| **HTTP Events** | `HTTP_ENTER`/`HTTP_EXIT` events for request interception and commercial extensions | [1333f92](https://github.com/karatelabs/karate/commit/1333f92) |
-| **Unified Namespaces** | `karate.runtime`, `karate.http`, `karate.mock`, `karate.scenario`, `karate.console` | [ef5d9bd](https://github.com/karatelabs/karate/commit/ef5d9bd) |
-| **Dual-Mode Logging** | Thread-local capture for reports + SLF4J cascade for real-time monitoring | [ef5d9bd](https://github.com/karatelabs/karate/commit/ef5d9bd) |
-| **Runtime Log Level** | `--runtime-log-level` CLI flag for dynamic control | [910eca4](https://github.com/karatelabs/karate/commit/910eca4) |
+| **Compatibility Shims** | `com.intuit.karate` package delegates to v2 | [fefb91f](https://github.com/karatelabs/karate/commit/fefb91f) |
+| **Drop-in Migration** | Most v1 code works with just dependency update | - |
 
-### New APIs
-
-| API | Description | Commit |
-|-----|-------------|--------|
-| **karate.faker.\*** | Test data generation: `firstName()`, `email()`, `randomInt()`, etc. | [245c540](https://github.com/karatelabs/karate/commit/245c540) |
-| **karate.expect()** | Chai-style BDD assertions - easier migration from Postman and JS testing frameworks | [ad2f475](https://github.com/karatelabs/karate/commit/ad2f475) |
-| **karate.uuid()** | Generate random UUIDs | [cb516d4](https://github.com/karatelabs/karate/commit/cb516d4) |
-| **configure auth** | Declarative HTTP authentication (Basic, Bearer, OAuth2) | [1a06c64](https://github.com/karatelabs/karate/commit/1a06c64) |
+---
 
 #### Configure Auth Details
 
@@ -90,13 +99,6 @@ karate.expect(response).to.have.property('email')
 karate.expect(response.tags).to.include('active')
 karate.expect(response.status).to.not.equal('deleted')
 ```
-
-### V1 Compatibility
-
-| Improvement | Description | Commit |
-|-------------|-------------|--------|
-| **Compatibility Shims** | `com.intuit.karate` package delegates to v2 | [fefb91f](https://github.com/karatelabs/karate/commit/fefb91f) |
-| **Drop-in Migration** | Most v1 code works with just dependency update | - |
 
 ---
 
