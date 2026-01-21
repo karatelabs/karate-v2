@@ -48,6 +48,7 @@ io.karatelabs.driver/
 | `Target` interface | Replaced by `DriverProvider` (simpler, more flexible) |
 | `@AutoDef`, Plugin | Removed |
 | `getDialogText()` polling | Replaced by `onDialog(handler)` callback |
+| `showDriverLog` | No effect (TODO: implement driver log forwarding) |
 
 **Gherkin Syntax (unchanged from v1):**
 ```gherkin
