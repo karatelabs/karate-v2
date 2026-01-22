@@ -22,7 +22,7 @@ We need a JavaScript engine we completely control, ensuring that engine changes 
 - **Minimal** - adds very little to the JAR size compared to e.g. Graal. SLF4J and JSON-smart are the only dependencies.
 - **Java Interop** - Optimized for bridging Java and JS code in the simplest way possible. Allows full control, behavior customization and introspection from Java.
 - **Simple** - Concise and understandable codebase, easy to maintain. Plenty of unit-tests.
-- **Fast** - The parser is written by hand and not generated like ANTLR based approaches. Conversions between Java and JS types are minimized. Early benchmarks suggest a 10x performance over other Java based engines
+- **Fast** - The lexer and parser are hand-rolled and not generated like in ANTLR based approaches. Conversions between Java and JS types are minimized. We have [benchmarked performance against Rhino and Graal](https://github.com/ptrthomas/karate-js-benchmark) and Karate is orders of magnitude faster for our use case.
 
 ## Architecture
 
