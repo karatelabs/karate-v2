@@ -6,12 +6,12 @@ Karate v2 is a **complete ground-up rewrite** with significant improvements acro
 
 ### Performance & Scalability
 
-| Improvement | Description | Commit |
-|-------------|-------------|--------|
-| **Embedded JS Engine** | Fast hand-rolled lexer/parser with ES6+ support, focused on the Java interop use-case | [90d6e07](https://github.com/karatelabs/karate/commit/90d6e07) |
-| **Virtual Threads** | Java 21+ unlocks massive parallelism with minimal overhead | - |
-| **@lock Tag** | Scenario-level mutual exclusion for parallel safety (`@lock=name`) | [a08337b](https://github.com/karatelabs/karate/commit/a08337b) |
-| **@lock=\*** | Exclusive execution - scenario runs alone | [cd94b11](https://github.com/karatelabs/karate/commit/cd94b11) |
+| Improvement | Description                                                                                              | Commit |
+|-------------|----------------------------------------------------------------------------------------------------------|--------|
+| **Embedded JS Engine** | Fast hand-rolled lexer/parser with ES6+ support, focused on the Java interop use-case, [see benchmark](https://github.com/ptrthomas/karate-js-benchmark) | [90d6e07](https://github.com/karatelabs/karate/commit/90d6e07) |
+| **Virtual Threads** | Java 21+ unlocks massive parallelism with minimal overhead                                               | - |
+| **@lock Tag** | Scenario-level mutual exclusion for parallel safety (`@lock=name`)                                       | [a08337b](https://github.com/karatelabs/karate/commit/a08337b) |
+| **@lock=\*** | Exclusive execution - scenario runs alone                                                                | [cd94b11](https://github.com/karatelabs/karate/commit/cd94b11) |
 
 ### Assertions
 
