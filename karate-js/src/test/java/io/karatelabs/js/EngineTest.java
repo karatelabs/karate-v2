@@ -505,4 +505,40 @@ class EngineTest {
         assertEquals(3, engine.eval("x"));
     }
 
+    @Test
+    void testNullValueInScopeChain() {
+        Engine engine = new Engine();
+        // Test 1: engine.put with null, then read from nested scope
+        engine.put("nullVar", null);
+        assertNull(engine.eval("nullVar"));
+        // Read null from within a function (child scope)
+        assertNull(engine.eval("(function() { return nullVar; })()"));
+
+        // Test 2: overwrite null with a value from child scope
+        engine.eval("(function() { nullVar = 'notNull'; })()");
+        assertEquals("notNull", engine.eval("nullVar"));
+
+        // Test 3: overwrite back to null from child scope
+        engine.eval("(function() { nullVar = null; })()");
+        assertNull(engine.eval("nullVar"));
+
+        // Test 4: local variable shadows parent null
+        engine.put("shadowMe", null);
+        Object result = engine.eval("(function() { var shadowMe = 'local'; return shadowMe; })()");
+        assertEquals("local", result);
+        // Parent still has null
+        assertNull(engine.eval("shadowMe"));
+
+        // Test 5: assign null in evalWith context
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("localNull", null);
+        assertNull(engine.evalWith("localNull", vars));
+        // Overwrite null in evalWith scope
+        engine.evalWith("localNull = 'changed'", vars);
+        assertEquals("changed", vars.get("localNull"));
+        // Set back to null
+        engine.evalWith("localNull = null", vars);
+        assertNull(vars.get("localNull"));
+    }
+
 }

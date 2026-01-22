@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -34,11 +35,28 @@ public class Node implements Iterable<Node> {
 
     static final Logger logger = LoggerFactory.getLogger(Node.class);
 
+    // Shared empty list for nodes without children (TOKEN nodes never have children)
+    private static final List<Node> EMPTY_CHILDREN = Collections.emptyList();
+
     public final NodeType type;
     public final Token token;
-    private final List<Node> children = new ArrayList<>();
+    // Lazy init: null until first child added, saves memory for TOKEN nodes
+    private List<Node> children;
 
     private Node parent;
+
+    // For read operations: return empty list if null
+    private List<Node> children() {
+        return children == null ? EMPTY_CHILDREN : children;
+    }
+
+    // For write operations: create list if null (capacity 4 for typical AST nodes)
+    private List<Node> ensureChildren() {
+        if (children == null) {
+            children = new ArrayList<>(4);
+        }
+        return children;
+    }
 
     public Node(NodeType type) {
         this.type = type;
@@ -66,20 +84,20 @@ public class Node implements Iterable<Node> {
         if (isToken()) {
             return token;
         }
-        if (children.isEmpty()) {
+        if (children().isEmpty()) {
             return Token.EMPTY;
         }
-        return children.getFirst().getFirstToken();
+        return children().getFirst().getFirstToken();
     }
 
     public Token getLastToken() {
         if (isToken()) {
             return token;
         }
-        if (children.isEmpty()) {
+        if (children().isEmpty()) {
             return Token.EMPTY;
         }
-        return children.getLast().getLastToken();
+        return children().getLast().getLastToken();
     }
 
     public String toStringError(String message) {
@@ -106,17 +124,18 @@ public class Node implements Iterable<Node> {
             return token.text;
         }
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < children.size(); i++) {
+        List<Node> c = children();
+        for (int i = 0; i < c.size(); i++) {
             if (i != 0) {
                 sb.append(' ');
             }
-            sb.append(children.get(i).toStringWithoutType());
+            sb.append(c.get(i).toStringWithoutType());
         }
         return sb.toString();
     }
 
     public Node findFirstChild(NodeType type) {
-        for (Node child : children) {
+        for (Node child : children()) {
             if (child.type == type) {
                 return child;
             }
@@ -135,7 +154,7 @@ public class Node implements Iterable<Node> {
     }
 
     private void findAll(NodeType type, List<Node> results) {
-        for (Node child : children) {
+        for (Node child : children()) {
             if (child.type == type) {
                 results.add(child);
             }
@@ -144,7 +163,7 @@ public class Node implements Iterable<Node> {
     }
 
     public Node findFirstChild(TokenType token) {
-        for (Node child : children) {
+        for (Node child : children()) {
             if (child.token.type == token) {
                 return child;
             }
@@ -166,7 +185,7 @@ public class Node implements Iterable<Node> {
 
     public List<Node> findImmediateChildren(NodeType type) {
         List<Node> results = new ArrayList<>();
-        for (Node child : children) {
+        for (Node child : children()) {
             if (child.type == type) {
                 results.add(child);
             }
@@ -181,7 +200,7 @@ public class Node implements Iterable<Node> {
     }
 
     private void findChildren(TokenType token, List<Node> results) {
-        for (Node child : children) {
+        for (Node child : children()) {
             if (!child.isToken()) {
                 child.findChildren(token, results);
             } else if (child.token.type == token) {
@@ -195,7 +214,7 @@ public class Node implements Iterable<Node> {
             return token.text;
         }
         StringBuilder sb = new StringBuilder();
-        for (Node child : children) {
+        for (Node child : children()) {
             sb.append(child.getText());
         }
         return sb.toString();
@@ -212,42 +231,42 @@ public class Node implements Iterable<Node> {
     }
 
     public Node removeFirst() {
-        return children.removeFirst();
+        return ensureChildren().removeFirst();
     }
 
     public void addFirst(Node child) {
         child.parent = this;
-        children.addFirst(child);
+        ensureChildren().addFirst(child);
     }
 
     public void add(Node child) {
         child.parent = this;
-        children.add(child);
+        ensureChildren().add(child);
     }
 
     public Node getFirst() {
-        return children.getFirst();
+        return children().getFirst();
     }
 
     public Node getLast() {
-        return children.getLast();
+        return children().getLast();
     }
 
     public Node get(int index) {
-        return children.get(index);
+        return children().get(index);
     }
 
     public int size() {
-        return children.size();
+        return children().size();
     }
 
     public boolean isEmpty() {
-        return children.isEmpty();
+        return children().isEmpty();
     }
 
     @Override
     public Iterator<Node> iterator() {
-        return children.iterator();
+        return children().iterator();
     }
 
 }

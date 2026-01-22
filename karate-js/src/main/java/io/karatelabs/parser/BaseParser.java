@@ -339,8 +339,10 @@ public abstract class BaseParser {
     }
 
     protected boolean peekAnyOf(TokenType... tokens) {
+        // Call peek() once and compare against all tokens (avoids repeated method calls)
+        TokenType current = peek();
         for (TokenType token : tokens) {
-            if (peekIf(token)) {
+            if (current == token) {
                 return true;
             }
         }

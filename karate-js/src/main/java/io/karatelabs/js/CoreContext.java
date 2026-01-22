@@ -138,16 +138,23 @@ class CoreContext implements Context {
         if ("this".equals(key)) {
             return thisObject;
         }
-        if (_bindings != null && _bindings.containsKey(key)) {
-            BindingInfo info = findConstOrLet(key);
-            if (info != null && !info.initialized) {
-                throw new RuntimeException("cannot access '" + key + "' before initialization");
-            }
+        if (_bindings != null) {
+            // Single lookup optimization: avoid containsKey() + get() double lookup
+            // get() returns null for BOTH missing keys AND null values (valid in JS)
+            // So: if get() returns non-null, we're done (common case, single lookup)
+            // If get() returns null, we must call containsKey() to distinguish
+            // "key exists with value null" from "key doesn't exist"
             Object result = _bindings.get(key);
-            if (result instanceof Supplier<?> supplier) {
-                return supplier.get();
+            if (result != null || _bindings.containsKey(key)) {
+                BindingInfo info = findConstOrLet(key);
+                if (info != null && !info.initialized) {
+                    throw new RuntimeException("cannot access '" + key + "' before initialization");
+                }
+                if (result instanceof Supplier<?> supplier) {
+                    return supplier.get();
+                }
+                return result;
             }
-            return result;
         }
         if (parent != null && parent.hasKey(key)) {
             return parent.get(key);
@@ -192,7 +199,9 @@ class CoreContext implements Context {
     }
 
     void update(String key, Object value) {
-        if (_bindings != null && _bindings.containsKey(key)) {
+        // Single lookup optimization: get() != null means key exists (common case)
+        // containsKey() fallback needed only when get() returns null, to detect null values
+        if (_bindings != null && (_bindings.get(key) != null || _bindings.containsKey(key))) {
             BindingInfo info = findConstOrLet(key);
             if (info != null) {
                 if (info.type == BindingType.CONST && info.initialized) {
@@ -237,7 +246,9 @@ class CoreContext implements Context {
         if ("this".equals(key)) {
             return true;
         }
-        if (_bindings != null && _bindings.containsKey(key)) {
+        // Single lookup optimization: get() != null means key exists (common case)
+        // containsKey() fallback needed only when get() returns null, to detect null values
+        if (_bindings != null && (_bindings.get(key) != null || _bindings.containsKey(key))) {
             return true;
         }
         if (parent != null && parent.hasKey(key)) {
