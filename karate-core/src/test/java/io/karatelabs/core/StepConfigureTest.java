@@ -361,4 +361,35 @@ class StepConfigureTest {
         assertPassed(sr);
     }
 
+    @Test
+    void testConfigureSslWithEmbeddedExpressions() {
+        // Test that embedded expressions like '#(varName)' work with ssl configure
+        // (previously only headers, cookies, and auth processed embedded expressions)
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def myAlgorithm = 'TLSv1.2'
+            * configure ssl = { algorithm: '#(myAlgorithm)' }
+            * def cfg = karate.config
+            * match cfg.sslEnabled == true
+            * match cfg.sslAlgorithm == 'TLSv1.2'
+            """);
+        assertPassed(sr);
+    }
+
+    @Test
+    void testConfigureProxyWithEmbeddedExpressions() {
+        // Test that embedded expressions work with proxy configure
+        ScenarioRuntime sr = run("""
+            Feature:
+            Scenario:
+            * def proxyHost = 'proxy.example.com'
+            * def proxyPort = '8080'
+            * configure proxy = { uri: '#(proxyHost + \":\" + proxyPort)' }
+            * def cfg = karate.config
+            * match cfg.proxyUri == 'proxy.example.com:8080'
+            """);
+        assertPassed(sr);
+    }
+
 }

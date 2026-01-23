@@ -2701,15 +2701,7 @@ public class StepExecutor {
         }
         String key = text.substring(0, eqIndex).trim();
         String expr = text.substring(eqIndex + 1).trim();
-        // For headers, cookies, and auth, use evalKarateExpression to process embedded expressions
-        // e.g., configure cookies = { time: '#(setup.time)' }
-        // e.g., configure auth = { type: 'bearer', token: '#(myToken)' }
-        Object value;
-        if ("headers".equals(key) || "cookies".equals(key) || "auth".equals(key)) {
-            value = evalKarateExpression(expr);
-        } else {
-            value = runtime.eval(expr);
-        }
+        Object value = evalKarateExpression(expr);
         runtime.configure(key, value);
     }
 
