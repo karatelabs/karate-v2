@@ -656,4 +656,36 @@ class GherkinParserTest {
         assertEquals("def[0].name", exprStep.getText());
     }
 
+    // ========== Empty File Handling Tests ==========
+
+    @Test
+    void testEmptyFile() {
+        // Empty file should return an empty feature, not throw an exception
+        feature("");
+        assertNotNull(feature);
+        assertNull(feature.getName());
+        assertTrue(feature.getSections().isEmpty());
+    }
+
+    @Test
+    void testWhitespaceOnlyFile() {
+        // File with only whitespace should be handled gracefully
+        feature("   \n\n   \n");
+        assertNotNull(feature);
+        assertNull(feature.getName());
+        assertTrue(feature.getSections().isEmpty());
+    }
+
+    @Test
+    void testCommentOnlyFile() {
+        // File with only comments should be handled gracefully
+        feature("""
+                # this is just a comment
+                # and another one
+                """);
+        assertNotNull(feature);
+        assertNull(feature.getName());
+        assertTrue(feature.getSections().isEmpty());
+    }
+
 }

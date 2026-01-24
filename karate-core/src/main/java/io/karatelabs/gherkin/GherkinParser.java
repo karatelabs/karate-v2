@@ -65,6 +65,12 @@ public class GherkinParser extends BaseParser {
 
     private Node parseAst() {
         enter(NodeType.G_FEATURE);
+        // Handle empty files gracefully - return empty feature
+        if (peek() == EOF) {
+            consume(EOF);
+            exit();
+            return markerNode().getFirst();
+        }
         tags();
         if (!consumeIf(G_FEATURE)) {
             error(G_FEATURE);
