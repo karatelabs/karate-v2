@@ -35,8 +35,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Main entry point for running Karate tests programmatically.
@@ -154,7 +156,7 @@ public final class Runner {
         private String tags;
         private String scenarioName;
         private String configDir;
-        private Path outputDir = Path.of("target/karate-reports");
+        private Path outputDir; // Default set in getOutputDir() using FileUtils.getBuildDir()
         private Path workingDir = FileUtils.WORKING_DIR.toPath();
         private boolean dryRun;
         private boolean outputHtmlReport = true;
@@ -169,6 +171,13 @@ public final class Runner {
         private io.karatelabs.http.HttpClientFactory httpClientFactory;
         private boolean skipTagFiltering;
         private int poolSize = -1; // -1 means auto-detect from parallel count
+
+        // Line filters: maps feature resource key to set of line numbers to run
+        // Resource key is the normalized path (e.g., "src/test/features/test.feature")
+        private final Map<String, Set<Integer>> lineFilters = new HashMap<>();
+
+        // Track resolved features separately to associate them with their original paths
+        private List<Feature> resolvedFeatures;
 
         Builder() {
         }
@@ -537,8 +546,6 @@ public final class Runner {
 
         // ========== Package-private accessors for Suite constructor ==========
 
-        private List<Feature> resolvedFeatures;
-
         List<Feature> getResolvedFeatures() {
             if (resolvedFeatures == null) {
                 resolvedFeatures = new ArrayList<>(features);
@@ -568,6 +575,7 @@ public final class Runner {
         io.karatelabs.driver.DriverProvider getDriverProvider() { return driverProvider; }
         io.karatelabs.http.HttpClientFactory getHttpClientFactory() { return httpClientFactory; }
         boolean isSkipTagFiltering() { return skipTagFiltering; }
+        Map<String, Set<Integer>> getLineFilters() { return lineFilters; }
 
         /**
          * Execute the tests with the specified thread count.
@@ -611,25 +619,83 @@ public final class Runner {
         }
 
         private void resolveFeatures(String path, List<Feature> target, Path root) {
-            File file = new File(path);
+            // Parse line number from path (e.g., "test.feature:10" or "test.feature:10:15")
+            String actualPath = path;
+            Set<Integer> lines = new HashSet<>();
+
+            // Check for line number suffix (path:line or path:line1:line2:...)
+            // Only parse line numbers for .feature files, not directories
+            if (path.contains(":") && !path.startsWith("classpath:")) {
+                int colonIndex = path.indexOf(':');
+                String potentialPath = path.substring(0, colonIndex);
+                String remainder = path.substring(colonIndex + 1);
+
+                // Check if what follows the colon looks like line numbers
+                if (remainder.matches("\\d+(:\\d+)*")) {
+                    actualPath = potentialPath;
+                    for (String lineStr : remainder.split(":")) {
+                        try {
+                            lines.add(Integer.parseInt(lineStr));
+                        } catch (NumberFormatException e) {
+                            // Not a valid line number, treat as original path
+                            actualPath = path;
+                            lines.clear();
+                            break;
+                        }
+                    }
+                }
+            } else if (path.startsWith("classpath:") && path.contains(":")) {
+                // Handle classpath:path/to/file.feature:10 format
+                int lastColonIndex = path.lastIndexOf(':');
+                String afterLastColon = path.substring(lastColonIndex + 1);
+                if (afterLastColon.matches("\\d+(:\\d+)*")) {
+                    // Find where the classpath path ends and line numbers begin
+                    String pathWithoutClasspath = path.substring("classpath:".length());
+                    int lineColonIndex = pathWithoutClasspath.lastIndexOf(':');
+                    if (lineColonIndex > 0) {
+                        String featurePath = pathWithoutClasspath.substring(0, lineColonIndex);
+                        String linesPart = pathWithoutClasspath.substring(lineColonIndex + 1);
+                        actualPath = "classpath:" + featurePath;
+                        for (String lineStr : linesPart.split(":")) {
+                            try {
+                                lines.add(Integer.parseInt(lineStr));
+                            } catch (NumberFormatException e) {
+                                actualPath = path;
+                                lines.clear();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            File file = new File(actualPath);
 
             if (file.isDirectory()) {
                 resolveDirectory(file, target, root);
             } else if (file.exists() && file.getName().endsWith(".feature")) {
                 Feature feature = Feature.read(Resource.from(file.toPath(), root));
                 target.add(feature);
-            } else if (path.startsWith("classpath:")) {
+                // Store line filter for this feature
+                if (!lines.isEmpty()) {
+                    lineFilters.put(feature.getResource().getUri().toString(), lines);
+                }
+            } else if (actualPath.startsWith("classpath:")) {
                 // Handle classpath resources
-                String classpathPath = path.substring("classpath:".length());
+                String classpathPath = actualPath.substring("classpath:".length());
                 if (classpathPath.startsWith("/")) {
                     classpathPath = classpathPath.substring(1);
                 }
 
                 if (classpathPath.endsWith(".feature")) {
                     // Single feature file
-                    Resource resource = Resource.path(path);
+                    Resource resource = Resource.path(actualPath);
                     Feature feature = Feature.read(resource);
                     target.add(feature);
+                    // Store line filter for this feature
+                    if (!lines.isEmpty()) {
+                        lineFilters.put(feature.getResource().getUri().toString(), lines);
+                    }
                 } else {
                     // Directory - scan for .feature files
                     List<Resource> resources = Resource.scanClasspath(classpathPath, "feature", null, root);

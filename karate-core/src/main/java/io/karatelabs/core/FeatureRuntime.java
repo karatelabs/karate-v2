@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -636,6 +637,22 @@ public class FeatureRuntime implements Callable<FeatureResult> {
         }
 
         private boolean shouldSelect(Scenario scenario) {
+            // Check line filter first (if specified)
+            // Line filter takes precedence for scenario selection
+            if (suite != null && !suite.lineFilters.isEmpty()) {
+                String featureUri = feature.getResource().getUri().toString();
+                Set<Integer> lines = suite.lineFilters.get(featureUri);
+                if (lines != null && !lines.isEmpty()) {
+                    // Line filter is specified for this feature
+                    if (!matchesLineFilter(scenario, lines)) {
+                        return false;
+                    }
+                    // Line filter matched - skip other filters (@ignore, @env, tags)
+                    // This allows running specific scenarios regardless of tags
+                    return true;
+                }
+            }
+
             // Apply call-level tag filter if specified (takes precedence)
             // This allows calling specific @ignore scenarios by tag
             if (callTagSelector != null) {
@@ -659,6 +676,47 @@ public class FeatureRuntime implements Callable<FeatureResult> {
             TagSelector selector = new TagSelector(tags);
             String karateEnv = suite != null ? suite.env : null;
             return selector.evaluate(suite != null ? suite.tagSelector : null, karateEnv);
+        }
+
+        /**
+         * Check if a scenario matches the line filter.
+         * For regular scenarios: line must match the scenario's line or be within its range.
+         * For outline examples: line must match the example row's line, the outline's line,
+         * or any line within the scenario's step range.
+         */
+        private boolean matchesLineFilter(Scenario scenario, Set<Integer> lines) {
+            int scenarioLine = scenario.getLine();
+
+            // Direct match on scenario line (for regular scenarios this is the Scenario: line,
+            // for outline examples this is the Examples: table line)
+            if (lines.contains(scenarioLine)) {
+                return true;
+            }
+
+            // For outline examples, also check the Scenario Outline declaration line
+            if (scenario.isOutlineExample() && scenario.getSection() != null
+                    && scenario.getSection().isOutline()) {
+                int outlineLine = scenario.getSection().getScenarioOutline().getLine();
+                if (lines.contains(outlineLine)) {
+                    return true;
+                }
+            }
+
+            // Check if any line is within the scenario's step range
+            // This handles clicking on a step within a scenario
+            if (scenario.getSteps() != null && !scenario.getSteps().isEmpty()) {
+                int firstStepLine = scenario.getSteps().get(0).getLine();
+                int lastStepLine = scenario.getSteps().get(scenario.getSteps().size() - 1).getLine();
+
+                for (int line : lines) {
+                    // Line is within the scenario (between scenario declaration and last step)
+                    if (line >= scenarioLine && line <= lastStepLine) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         /**

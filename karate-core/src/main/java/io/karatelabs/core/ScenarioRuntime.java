@@ -429,7 +429,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
      * 6. Return deep copy to prevent cross-thread mutation
      *
      * Disk caching (configure callSingleCache):
-     * - { minutes: 15 } - cache to disk for 15 minutes (default dir: target)
+     * - { minutes: 15 } - cache to disk for 15 minutes (default dir: karate-temp/cache)
      * - { minutes: 15, dir: 'some/folder' } - custom cache directory
      * - Only JSON-like results (Map/List) are persisted to disk
      *
@@ -448,7 +448,8 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         int cacheMinutes = config.getCallSingleCacheMinutes();
         String cacheDir = config.getCallSingleCacheDir();
         if (cacheDir == null || cacheDir.isEmpty()) {
-            cacheDir = "target";  // Default cache directory
+            // Default to <buildDir>/karate-temp/cache (cleaned by 'karate clean')
+            cacheDir = io.karatelabs.common.FileUtils.getBuildDir() + "/karate-temp/cache";
         }
 
         // Fast path: check if already in memory cache (no locking needed)
@@ -1067,7 +1068,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
 
         Map<String, Object> configMap = null;
         if (driverConfig instanceof Map) {
-            configMap = (Map<String, Object>) driverConfig;
+            configMap = new java.util.HashMap<>((Map<String, Object>) driverConfig);
         } else {
             configMap = new java.util.HashMap<>();
         }
@@ -1076,6 +1077,15 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         io.karatelabs.driver.DriverProvider provider = null;
         if (featureRuntime != null && featureRuntime.getSuite() != null) {
             provider = featureRuntime.getSuite().getDriverProvider();
+            // Default userDataDir to <buildDir>/karate-temp/chrome-<uuid> if not explicitly set
+            // Uses buildDir (target or build) as sibling to karate-reports, not inside it
+            if (!configMap.containsKey("userDataDir")) {
+                java.nio.file.Path tempDir = java.nio.file.Path.of(
+                        io.karatelabs.common.FileUtils.getBuildDir(),
+                        "karate-temp",
+                        "chrome-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+                configMap.put("userDataDir", tempDir.toAbsolutePath().toString());
+            }
         }
 
         // Parse options to get scope

@@ -106,6 +106,32 @@ karate run tests/setup.karate.js
 karate run tests/
 ```
 
+### Running Specific Scenarios by Line Number
+
+You can run specific scenarios by appending `:LINE` to the feature file path:
+
+```bash
+# Run scenario at line 10
+karate run tests/users.feature:10
+
+# Run multiple scenarios (lines 10 and 25)
+karate run tests/users.feature:10:25
+
+# Works with classpath resources too
+karate run classpath:features/users.feature:10
+```
+
+**Line number matching:**
+
+| Line Points To | What Runs |
+|----------------|-----------|
+| `Scenario:` declaration | That specific scenario |
+| Any step within a scenario | That scenario |
+| `Scenario Outline:` declaration | All examples from that outline |
+| `Examples:` table | All examples from that table |
+
+**Note:** Line number selection bypasses tag filters (`@ignore`, `@env`, etc.), allowing you to run specific scenarios regardless of their tags. This is useful for debugging or running individual tests from an IDE.
+
 ### Options
 
 | Option | Description |
@@ -250,6 +276,28 @@ The project file name is `karate-pom.json` (inspired by Maven's POM concept). Wh
 }
 ```
 
+### Path Resolution
+
+**Important:** `outputDir` and `workingDir` serve different purposes and are **independent**:
+
+| Setting | Purpose | Relative To |
+|---------|---------|-------------|
+| `workingDir` | Resolves feature paths, config files, and pom location | Process current directory |
+| `output.dir` | Where reports are written | Process current directory (NOT workingDir) |
+
+This means if you set `workingDir: "src/test/java"` and `output.dir: "target/karate-reports"`, reports go to `./target/karate-reports` (not `./src/test/java/target/karate-reports`).
+
+**Best practice:** When the process working directory may vary (CI/CD, IDE integrations), use **absolute paths** for `output.dir`:
+
+```json
+{
+  "workingDir": "/home/user/project/src/test/java",
+  "output": {
+    "dir": "/home/user/project/target/karate-reports"
+  }
+}
+```
+
 ### Precedence
 
 CLI arguments override pom file values:
@@ -339,15 +387,37 @@ public class RunCommand implements Callable<Integer> {
 public class CleanCommand implements Callable<Integer> {
 
     @Option(names = {"-o", "--output"}, description = "Output directory to clean")
-    String outputDir = "target/karate-reports";
+    String outputDir;
 
     @Override
     public Integer call() {
-        // Delete output directory
+        // Cleans:
+        // - karate-reports/
+        // - karate-reports_*/ (backup directories)
+        // - karate-temp/ (Chrome user data, callSingle cache, etc.)
         return 0;
     }
 }
 ```
+
+### Temp Directory Structure
+
+Karate uses a standardized temp directory for runtime artifacts:
+
+```
+target/                          (or build/ for Gradle)
+├── karate-reports/              # Test reports (HTML, JSON, etc.)
+├── karate-reports_20260125_*/   # Backup directories (when backupReportDir enabled)
+└── karate-temp/                 # Runtime temp files (cleaned by 'karate clean')
+    ├── chrome-abc12345/         # Chrome/browser user data directories
+    └── cache/                   # callSingle disk cache files
+```
+
+**Build directory detection:** Karate automatically detects Maven vs Gradle projects:
+- Checks for `build.gradle`, `build.gradle.kts`, `settings.gradle*` → uses `build/`
+- Checks for `pom.xml` → uses `target/`
+- Falls back to checking existing `build/` or `target/` directories
+- Override with system property: `-Dkarate.output.dir=custom/path`
 
 ---
 

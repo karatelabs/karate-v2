@@ -352,7 +352,8 @@ public class RunCommand implements Callable<Integer> {
         if (pom != null && pom.getOutput().getDir() != null) {
             return pom.getOutput().getDir();
         }
-        return "target/karate-reports";
+        // Default: detect build tool (Gradle uses "build", Maven uses "target")
+        return io.karatelabs.common.FileUtils.getBuildDir() + "/karate-reports";
     }
 
     private String resolveWorkingDir() {

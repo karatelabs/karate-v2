@@ -23,6 +23,7 @@
  */
 package io.karatelabs.cli;
 
+import io.karatelabs.common.FileUtils;
 import io.karatelabs.output.Console;
 import io.karatelabs.core.KaratePom;
 import picocli.CommandLine.Command;
@@ -58,8 +59,6 @@ import java.util.concurrent.Callable;
 )
 public class CleanCommand implements Callable<Integer> {
 
-    private static final String DEFAULT_OUTPUT_DIR = "target/karate-reports";
-
     @Option(
             names = {"-o", "--output"},
             description = "Output directory to clean (default: from karate-pom.json or target/karate-reports)"
@@ -94,30 +93,73 @@ public class CleanCommand implements Callable<Integer> {
             loadPom();
         }
 
-        String effectiveWorkingDir = resolveWorkingDir();
         String effectiveOutputDir = resolveOutputDir();
 
-        // Resolve output path relative to working directory
-        Path output;
-        if (effectiveWorkingDir != null) {
-            output = Path.of(effectiveWorkingDir).resolve(effectiveOutputDir);
-        } else {
-            output = Path.of(effectiveOutputDir);
+        // outputDir is NOT relative to workingDir (consistent with Suite behavior)
+        // workingDir is only for resolving feature paths and config files
+        Path output = Path.of(effectiveOutputDir);
+
+        int cleanedCount = 0;
+
+        // Clean main output directory
+        String outputDirName = output.getFileName().toString();
+        if (Files.exists(output)) {
+            try {
+                deleteDirectory(output.toFile());
+                Console.println(Console.info("Cleaned: " + outputDirName));
+                cleanedCount++;
+            } catch (Exception e) {
+                Console.println(Console.fail("Failed to clean: " + outputDirName + " - " + e.getMessage()));
+                return 1;
+            }
         }
 
-        if (!Files.exists(output)) {
-            Console.println(Console.info("Nothing to clean: " + output + " does not exist"));
-            return 0;
+        // Clean backup directories (e.g., karate-reports_20260125_135442)
+        // These are created by Suite.backupReportDirIfExists() with pattern: <outputDir>_<timestamp>
+        Path parent = output.getParent();
+        if (parent == null) {
+            parent = Path.of(".");
         }
+        String backupPrefix = outputDirName + "_";
 
         try {
-            deleteDirectory(output.toFile());
-            Console.println(Console.info("Cleaned: " + output));
-            return 0;
+            File parentDir = parent.toFile();
+            File[] backupDirs = parentDir.listFiles((dir, name) ->
+                    name.startsWith(backupPrefix) && new File(dir, name).isDirectory());
+
+            if (backupDirs != null) {
+                for (File backupDir : backupDirs) {
+                    try {
+                        deleteDirectory(backupDir);
+                        Console.println(Console.info("Cleaned: " + backupDir.getName()));
+                        cleanedCount++;
+                    } catch (Exception e) {
+                        Console.println(Console.warn("Failed to clean: " + backupDir.getName()));
+                    }
+                }
+            }
         } catch (Exception e) {
-            Console.println(Console.fail("Failed to clean output directory: " + e.getMessage()));
-            return 1;
+            // Ignore errors when scanning for backups
         }
+
+        // Clean karate-temp directory (Chrome user data, caches, etc.)
+        // Located at <buildDir>/karate-temp (sibling to karate-reports)
+        Path tempDir = parent.resolve("karate-temp");
+        if (Files.exists(tempDir) && Files.isDirectory(tempDir)) {
+            try {
+                deleteDirectory(tempDir.toFile());
+                Console.println(Console.info("Cleaned: karate-temp"));
+                cleanedCount++;
+            } catch (Exception e) {
+                Console.println(Console.warn("Failed to clean: karate-temp"));
+            }
+        }
+
+        if (cleanedCount == 0) {
+            Console.println(Console.info("Nothing to clean"));
+        }
+
+        return 0;
     }
 
     private void loadPom() {
@@ -160,7 +202,8 @@ public class CleanCommand implements Callable<Integer> {
                 return pomOutputDir;
             }
         }
-        return DEFAULT_OUTPUT_DIR;
+        // Default: detect build tool (Gradle uses "build", Maven uses "target")
+        return FileUtils.getBuildDir() + "/karate-reports";
     }
 
     private void deleteDirectory(File dir) {

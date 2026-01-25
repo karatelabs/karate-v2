@@ -84,6 +84,7 @@ public class Suite {
     public final DriverProvider driverProvider;
     public final io.karatelabs.http.HttpClientFactory httpClientFactory;
     public final boolean skipTagFiltering;
+    public final Map<String, Set<Integer>> lineFilters;
 
     // Config content (loaded in constructor, immutable)
     public final String baseContent;
@@ -139,7 +140,7 @@ public class Suite {
         this.configPath = resolveConfigPath(builder.getConfigDir());
         this.outputDir = builder.getOutputDir() != null
                 ? builder.getOutputDir()
-                : Path.of("target/karate-reports");
+                : Path.of(FileUtils.getBuildDir(), "karate-reports");
         this.workingDir = builder.getWorkingDir() != null
                 ? builder.getWorkingDir()
                 : FileUtils.WORKING_DIR.toPath();
@@ -166,6 +167,9 @@ public class Suite {
         }
         this.httpClientFactory = builder.getHttpClientFactory();
         this.skipTagFiltering = builder.isSkipTagFiltering();
+        this.lineFilters = builder.getLineFilters() != null
+                ? Collections.unmodifiableMap(new HashMap<>(builder.getLineFilters()))
+                : Collections.emptyMap();
 
         // Load config content (all inputs are now available)
         this.baseContent = tryLoadConfig(getBasePath(this.configPath), false);

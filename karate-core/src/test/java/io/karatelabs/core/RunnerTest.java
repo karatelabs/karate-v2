@@ -283,4 +283,156 @@ class RunnerTest {
         assertFalse(result.isPassed()); // Should fail gracefully, not throw
     }
 
+    @Test
+    void testRunnerWithLineNumberFilter() throws Exception {
+        // Create a feature with multiple scenarios
+        Path feature = tempDir.resolve("multi-scenario.feature");
+        Files.writeString(feature, """
+            Feature: Multiple scenarios
+
+            Scenario: First scenario
+            * def a = 1
+            * match a == 1
+
+            Scenario: Second scenario
+            * def b = 2
+            * match b == 2
+
+            Scenario: Third scenario
+            * def c = 3
+            * match c == 3
+            """);
+
+        // Run only the second scenario (line 8 is where "Scenario: Second scenario" is)
+        SuiteResult result = Runner.path(feature.toString() + ":8")
+                .workingDir(tempDir)
+                .outputDir(tempDir.resolve("reports"))
+                .outputConsoleSummary(false)
+                .parallel(1);
+
+        assertTrue(result.isPassed());
+        assertEquals(1, result.getFeatureCount());
+        // Only the second scenario should run
+        assertEquals(1, result.getScenarioPassedCount());
+    }
+
+    @Test
+    void testRunnerWithLineNumberFilterMultipleLines() throws Exception {
+        // Create a feature with multiple scenarios
+        Path feature = tempDir.resolve("multi-scenario2.feature");
+        Files.writeString(feature, """
+            Feature: Multiple scenarios
+
+            Scenario: First scenario
+            * def a = 1
+            * match a == 1
+
+            Scenario: Second scenario
+            * def b = 2
+            * match b == 2
+
+            Scenario: Third scenario
+            * def c = 3
+            * match c == 3
+            """);
+
+        // Run first and third scenarios (lines 3 and 12)
+        SuiteResult result = Runner.path(feature.toString() + ":3:12")
+                .workingDir(tempDir)
+                .outputDir(tempDir.resolve("reports"))
+                .outputConsoleSummary(false)
+                .parallel(1);
+
+        assertTrue(result.isPassed());
+        assertEquals(1, result.getFeatureCount());
+        // Two scenarios should run
+        assertEquals(2, result.getScenarioPassedCount());
+    }
+
+    @Test
+    void testRunnerWithLineNumberFilterIgnoresTags() throws Exception {
+        // Create a feature with @ignore tag
+        Path feature = tempDir.resolve("ignore-scenario.feature");
+        Files.writeString(feature, """
+            Feature: Ignore test
+
+            @ignore
+            Scenario: Ignored scenario
+            * def a = 1
+            * match a == 1
+            """);
+
+        // Run the @ignore scenario by line number - should bypass tag filter
+        SuiteResult result = Runner.path(feature.toString() + ":4")
+                .workingDir(tempDir)
+                .outputDir(tempDir.resolve("reports"))
+                .outputConsoleSummary(false)
+                .parallel(1);
+
+        assertTrue(result.isPassed());
+        assertEquals(1, result.getScenarioPassedCount());
+    }
+
+    @Test
+    void testRunnerWithLineNumberFilterScenarioOutline() throws Exception {
+        // Create a feature with Scenario Outline
+        Path feature = tempDir.resolve("outline.feature");
+        Files.writeString(feature, """
+            Feature: Outline test
+
+            Scenario Outline: Parameterized test
+            * def val = <value>
+            * match val == <expected>
+
+            Examples:
+            | value | expected |
+            | 1     | 1        |
+            | 2     | 2        |
+            | 3     | 3        |
+            """);
+
+        // Run targeting the Examples table line (line 7)
+        // This should run all examples in that table
+        SuiteResult result = Runner.path(feature.toString() + ":7")
+                .workingDir(tempDir)
+                .outputDir(tempDir.resolve("reports"))
+                .outputConsoleSummary(false)
+                .parallel(1);
+
+        assertTrue(result.isPassed());
+        // All 3 examples should run
+        assertEquals(3, result.getScenarioPassedCount());
+    }
+
+    @Test
+    void testRunnerWithLineNumberFilterScenarioOutlineDeclaration() throws Exception {
+        // Create a feature with Scenario Outline
+        Path feature = tempDir.resolve("outline2.feature");
+        Files.writeString(feature, """
+            Feature: Outline test
+
+            Scenario Outline: Parameterized test
+            * def val = <value>
+            * match val == <expected>
+
+            Examples:
+            | value | expected |
+            | 1     | 1        |
+            | 2     | 2        |
+            | 3     | 3        |
+            """);
+
+        // Run targeting the Scenario Outline declaration line (line 3)
+        // This should run all examples from that outline
+        SuiteResult result = Runner.path(feature.toString() + ":3")
+                .workingDir(tempDir)
+                .outputDir(tempDir.resolve("reports"))
+                .outputConsoleSummary(false)
+                .parallel(1);
+
+        assertTrue(result.isPassed());
+        // All 3 examples should run
+        assertEquals(3, result.getScenarioPassedCount());
+    }
+
 }

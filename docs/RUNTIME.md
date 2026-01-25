@@ -113,6 +113,27 @@ SuiteResult result = Runner.path("src/test/resources")
     .parallel(5);
 ```
 
+### Line Number Filtering
+
+Scenarios can be selected by line number using the `path:line` syntax:
+
+```java
+// Run specific scenario at line 10
+Runner.path("features/users.feature:10").parallel(1);
+
+// Run multiple scenarios (lines 10 and 25)
+Runner.path("features/users.feature:10:25").parallel(1);
+```
+
+**Implementation:** Line numbers are parsed in `Runner.Builder.resolveFeatures()` and stored in a `Map<String, Set<Integer>>` keyed by feature URI. The `FeatureRuntime.ScenarioIterator.shouldSelect()` method checks line filters before tag filters.
+
+**Matching logic (in `matchesLineFilter()`):**
+1. Direct match on scenario declaration line
+2. For Scenario Outlines: also matches the outline declaration line (runs all examples)
+3. Match any line within the scenario's step range (between declaration and last step)
+
+**Precedence:** Line number selection **bypasses all tag filters** (`@ignore`, `@env`, tag expressions). This allows running specific scenarios regardless of tags, which is essential for IDE integrations and debugging.
+
 ### Caching: callOnce vs callSingle
 
 | Method | Scope | Use Case |
@@ -143,6 +164,9 @@ Scenario: Test 2
 - Executes **once globally** for entire test suite
 - Uses suite-level cache (shared across all features)
 - Ideal for `karate-config.js` initialization
+- **Disk caching:** Configure `callSingleCache` to persist results across test runs
+  - Default cache location: `<buildDir>/karate-temp/cache/`
+  - Cleaned by `karate clean`
 
 ```javascript
 // karate-config.js
@@ -150,6 +174,14 @@ function fn() {
   var token = karate.callSingle('classpath:auth/get-token.feature');
   return { authToken: token.accessToken };
 }
+```
+
+```gherkin
+# Enable disk caching for 15 minutes
+* configure callSingleCache = { minutes: 15 }
+
+# Custom cache directory
+* configure callSingleCache = { minutes: 15, dir: 'custom/cache' }
 ```
 
 ### HttpClientFactory
@@ -176,8 +208,10 @@ KarateJs karate = new KarateJs(root, customFactory);
 |----------|-------------|
 | `karate.env` | Environment name |
 | `karate.config.dir` | Config directory |
-| `karate.output.dir` | Output directory |
+| `karate.output.dir` | Build directory override (bypasses Maven/Gradle detection) |
 | `karate.working.dir` | Working directory |
+
+**Build directory detection:** Karate auto-detects `target/` (Maven) or `build/` (Gradle) based on project files. Override with `-Dkarate.output.dir=custom`.
 
 ---
 

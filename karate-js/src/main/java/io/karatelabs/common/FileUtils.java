@@ -39,6 +39,78 @@ public class FileUtils {
 
     public static final File WORKING_DIR = new File("").getAbsoluteFile();
 
+    /**
+     * System property to explicitly set the build/output directory.
+     */
+    public static final String KARATE_OUTPUT_DIR = "karate.output.dir";
+
+    /**
+     * Detect the build directory based on the build tool being used.
+     * Returns "build" for Gradle projects, "target" for Maven projects.
+     * <p>
+     * Detection order (first match wins):
+     * <ol>
+     *   <li>System property {@code karate.output.dir} - explicit override</li>
+     *   <li>Build files: {@code build.gradle}, {@code build.gradle.kts} → "build"</li>
+     *   <li>Build files: {@code pom.xml} (without Gradle files) → "target"</li>
+     *   <li>Existing directories: {@code build/} (without target/) → "build"</li>
+     *   <li>JVM command line contains "org.gradle." → "build"</li>
+     *   <li>Gradle test worker system property → "build"</li>
+     *   <li>Default: "target" (Maven convention)</li>
+     * </ol>
+     *
+     * @return "build" for Gradle, "target" for Maven
+     */
+    public static String getBuildDir() {
+        // 1. Explicit override via system property
+        String explicit = System.getProperty(KARATE_OUTPUT_DIR);
+        if (explicit != null && !explicit.isEmpty()) {
+            return explicit;
+        }
+
+        // 2. Check for Gradle build files (most reliable)
+        File gradleFile = new File(WORKING_DIR, "build.gradle");
+        File gradleKtsFile = new File(WORKING_DIR, "build.gradle.kts");
+        File settingsGradle = new File(WORKING_DIR, "settings.gradle");
+        File settingsGradleKts = new File(WORKING_DIR, "settings.gradle.kts");
+        boolean hasGradleFiles = gradleFile.exists() || gradleKtsFile.exists()
+                || settingsGradle.exists() || settingsGradleKts.exists();
+
+        if (hasGradleFiles) {
+            return "build";
+        }
+
+        // 3. Check for Maven pom.xml (only if no Gradle files)
+        File pomFile = new File(WORKING_DIR, "pom.xml");
+        if (pomFile.exists()) {
+            return "target";
+        }
+
+        // 4. Check for existing build directories (handles multi-module projects)
+        File buildDir = new File(WORKING_DIR, "build");
+        File targetDir = new File(WORKING_DIR, "target");
+        if (buildDir.isDirectory() && !targetDir.isDirectory()) {
+            return "build";
+        }
+        if (targetDir.isDirectory() && !buildDir.isDirectory()) {
+            return "target";
+        }
+
+        // 5. Check JVM command line for Gradle (v1 approach)
+        String command = System.getProperty("sun.java.command", "");
+        if (command.contains("org.gradle.")) {
+            return "build";
+        }
+
+        // 6. Check for Gradle test worker (when running via Gradle test task)
+        if (System.getProperty("org.gradle.test.worker") != null) {
+            return "build";
+        }
+
+        // 7. Default to Maven convention
+        return "target";
+    }
+
     public static String toString(File file) {
         try {
             return Files.readString(file.toPath(), UTF_8);
