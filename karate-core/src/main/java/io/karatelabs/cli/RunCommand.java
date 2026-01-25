@@ -196,11 +196,6 @@ public class RunCommand implements Callable<Integer> {
             LogContext.setRuntimeLogLevel(runtimeLogLevel);
         }
 
-        // Print header
-        Console.println();
-        Console.println(Console.bold("Karate " + Globals.KARATE_VERSION));
-        Console.println();
-
         // Load pom file (unless --no-pom)
         if (!noPom) {
             loadPom();
@@ -333,7 +328,7 @@ public class RunCommand implements Callable<Integer> {
         if (Files.exists(pomPath)) {
             try {
                 pom = KaratePom.load(pomPath);
-                Console.println(Console.info("Loaded: " + pomPath));
+                Console.println(Console.info(pomPath.getFileName() + " loaded"));
             } catch (Exception e) {
                 Console.println(Console.warn("Failed to load pom: " + e.getMessage()));
             }

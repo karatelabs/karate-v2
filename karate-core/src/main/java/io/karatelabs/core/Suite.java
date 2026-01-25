@@ -170,17 +170,17 @@ public class Suite {
         // Load config content (all inputs are now available)
         this.baseContent = tryLoadConfig(getBasePath(this.configPath), false);
         if (this.baseContent != null) {
-            logger.info("Loaded karate-base.js from {}", getBasePath(this.configPath));
+            logger.info("{} processed", getBasePath(this.configPath));
         }
         this.configContent = tryLoadConfig(this.configPath, true);
         if (this.configContent != null) {
-            logger.info("Loaded karate-config.js from {}", this.configPath);
+            logger.info("{} processed", this.configPath);
         }
         if (this.env != null && !this.env.isEmpty()) {
             String envConfigPath = this.configPath.replace(".js", "-" + this.env + ".js");
             this.configEnvContent = tryLoadConfig(envConfigPath, false);
             if (this.configEnvContent != null) {
-                logger.info("Loaded {} config from {}", this.env, envConfigPath);
+                logger.info("{} processed", envConfigPath);
             }
         } else {
             this.configEnvContent = null;
@@ -492,7 +492,7 @@ public class Suite {
         }
         try {
             Files.move(outputDir, backupPath);
-            logger.info("Backed up existing '{}' to: {}", outputDir.getFileName(), backupPath);
+            logger.info("backed up existing output to: {}", backupPath);
         } catch (Exception e) {
             logger.warn("Failed to backup existing dir '{}': {}", outputDir, e.getMessage());
         }
