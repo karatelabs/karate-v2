@@ -279,6 +279,15 @@ public final class Runner {
         }
 
         /**
+         * Set the working directory for relative path resolution.
+         */
+        @Deprecated(since = "2.0", forRemoval = true)
+        public Builder workingDir(String dir) {
+            delegate.workingDir(dir);
+            return this;
+        }
+
+        /**
          * Enable/disable HTML report generation.
          */
         @Deprecated(since = "2.0", forRemoval = true)

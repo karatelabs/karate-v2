@@ -72,6 +72,7 @@ class V1CompatTest {
 
         // Use V1 API
         Results results = Runner.path(feature.toString())
+                .workingDir(tempDir.toString())
                 .reportDir(tempDir.resolve("reports").toString())
                 .parallel(1);
 
@@ -100,6 +101,7 @@ class V1CompatTest {
             """);
 
         Results results = Runner.path(feature.toString())
+                .workingDir(tempDir.toString())
                 .reportDir(tempDir.resolve("reports").toString())
                 .parallel(1);
 
@@ -120,6 +122,7 @@ class V1CompatTest {
             """);
 
         Results results = Runner.path(feature.toString())
+                .workingDir(tempDir.toString())
                 .outputHtmlReport(false)
                 .parallel(1);
 
@@ -136,6 +139,7 @@ class V1CompatTest {
             """);
 
         Results results = Runner.path(Arrays.asList(feature.toString()))
+                .workingDir(tempDir.toString())
                 .outputHtmlReport(false)
                 .parallel(1);
 
@@ -159,6 +163,7 @@ class V1CompatTest {
 
         // V1 had tags(List<String>) variant
         Results results = Runner.path(feature.toString())
+                .workingDir(tempDir.toString())
                 .tags(Arrays.asList("@smoke"))
                 .outputHtmlReport(false)
                 .parallel(1);
@@ -178,6 +183,7 @@ class V1CompatTest {
 
         // Test v1-named methods: reportDir, backupReportDir, clientFactory
         Results results = Runner.path(feature.toString())
+                .workingDir(tempDir.toString())
                 .reportDir(tempDir.resolve("reports").toString())  // v1 name
                 .backupReportDir(false)                            // v1 name
                 .outputHtmlReport(false)

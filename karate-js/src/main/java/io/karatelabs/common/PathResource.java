@@ -94,9 +94,9 @@ public class PathResource implements Resource {
                 return cwd.relativize(path).toString().replace('\\', '/');
             }
 
-            // Path is outside both root and cwd - use just the file name
-            Path fileName = path.getFileName();
-            return fileName != null ? fileName.toString() : path.toString().replace('\\', '/');
+            // Path is outside both root and cwd - use absolute path
+            // (file name alone would break path resolution for templates)
+            return path.toString().replace('\\', '/');
         } catch (Exception e) {
             // Fallback to absolute path
             return path.toString().replace('\\', '/');
