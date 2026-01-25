@@ -14,6 +14,8 @@
 
     <logger name="io.karatelabs" level="INFO"/>
     <logger name="karate.runtime" level="INFO"/>
+    <logger name="karate.http" level="DEBUG"/>
+    <logger name="karate.scenario" level="INFO"/>
 
     <!-- Suppress noisy logs -->
     <logger name="io.netty" level="WARN"/>

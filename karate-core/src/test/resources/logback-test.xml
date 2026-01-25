@@ -15,6 +15,8 @@
     </appender>    
    
     <logger name="io.karatelabs" level="INFO"/>
+    <logger name="karate.http" level="DEBUG"/>
+    <logger name="karate.scenario" level="INFO"/>
 
     <!-- Suppress verbose Testcontainers stack traces when trying Docker connection strategies -->
     <logger name="org.testcontainers.dockerclient.DockerClientProviderStrategy" level="ERROR"/>

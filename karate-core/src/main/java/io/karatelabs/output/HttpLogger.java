@@ -25,6 +25,7 @@ package io.karatelabs.output;
 
 import io.karatelabs.common.FileUtils;
 import io.karatelabs.common.ResourceType;
+import io.karatelabs.common.StringUtils;
 import io.karatelabs.http.HttpRequest;
 import io.karatelabs.http.HttpResponse;
 
@@ -43,7 +44,9 @@ public class HttpLogger {
         }
         headers.forEach((k, v) -> {
             for (String value : v) {
-                sb.append(num).append(prefix).append(k).append(": ");
+                sb.append(Console.DIM).append(num).append(prefix).append(Console.RESET);
+                sb.append(Console.CYAN).append(k).append(Console.RESET);
+                sb.append(": ");
                 sb.append(value);
                 sb.append('\n');
             }
@@ -54,7 +57,12 @@ public class HttpLogger {
         if (body == null) {
             return;
         }
-        sb.append(FileUtils.toString(body));
+        String text = FileUtils.toString(body);
+        if (rt == ResourceType.JSON && StringUtils.looksLikeJson(text)) {
+            sb.append(AnsiJson.colorize(text));
+        } else {
+            sb.append(text);
+        }
         sb.append('\n');
     }
 
@@ -71,8 +79,10 @@ public class HttpLogger {
         requestCount++;
         StringBuilder sb = new StringBuilder();
         String uri = request.getUrlAndPath();
-        sb.append("request:\n").append(requestCount).append(" > ")
-                .append(request.getMethod()).append(' ').append(uri).append("\n");
+        sb.append(Console.BOLD).append("request:").append(Console.RESET).append('\n');
+        sb.append(Console.DIM).append(requestCount).append(" > ").append(Console.RESET);
+        sb.append(Console.CYAN).append(Console.BOLD).append(request.getMethod()).append(Console.RESET);
+        sb.append(' ').append(uri).append('\n');
         logHeaders(sb, requestCount, " > ", request.getHeaders());
         ResourceType rt = ResourceType.fromContentType(request.getContentType());
         if (rt == null || rt.isBinary()) {
@@ -92,10 +102,12 @@ public class HttpLogger {
     public void logResponse(HttpResponse response) {
         HttpRequest request = response.getRequest();
         StringBuilder sb = new StringBuilder();
-        sb.append("response time in milliseconds: ").append(response.getResponseTime()).append('\n');
-        sb.append(requestCount).append(" < ").append(response.getStatus()).append(' ')
-                .append(request.getMethod()).append(' ').append(request.getPath())
-                .append('\n');
+        sb.append(Console.DIM).append("response time in milliseconds: ")
+                .append(response.getResponseTime()).append(Console.RESET).append('\n');
+        sb.append(Console.DIM).append(requestCount).append(" < ").append(Console.RESET);
+        sb.append(colorStatus(response.getStatus())).append(' ');
+        sb.append(Console.CYAN).append(request.getMethod()).append(Console.RESET);
+        sb.append(' ').append(request.getPath()).append('\n');
         logHeaders(sb, requestCount, " < ", response.getHeaders());
         ResourceType rt = response.getResourceType();
         if (rt == null || rt.isBinary()) {
@@ -104,6 +116,18 @@ public class HttpLogger {
             logBody(sb, response.getBodyBytes(), rt);
         }
         log.info(sb.toString());
+    }
+
+    private static String colorStatus(int status) {
+        String statusStr = String.valueOf(status);
+        if (status >= 200 && status < 300) {
+            return Console.GREEN + statusStr + Console.RESET;
+        } else if (status >= 300 && status < 400) {
+            return Console.YELLOW + statusStr + Console.RESET;
+        } else if (status >= 400) {
+            return Console.RED + Console.BOLD + statusStr + Console.RESET;
+        }
+        return statusStr;
     }
 
 }
