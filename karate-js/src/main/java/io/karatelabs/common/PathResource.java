@@ -83,8 +83,20 @@ public class PathResource implements Resource {
                 return path.toString().replace('\\', '/');
             }
 
-            // Relativize and normalize to forward slashes
-            return root.relativize(path).toString().replace('\\', '/');
+            // Check if path is under root - if so, relativize normally
+            if (path.startsWith(root)) {
+                return root.relativize(path).toString().replace('\\', '/');
+            }
+
+            // Path is outside root - try relativizing from current working directory
+            Path cwd = FileUtils.WORKING_DIR.toPath().toAbsolutePath().normalize();
+            if (path.startsWith(cwd)) {
+                return cwd.relativize(path).toString().replace('\\', '/');
+            }
+
+            // Path is outside both root and cwd - use just the file name
+            Path fileName = path.getFileName();
+            return fileName != null ? fileName.toString() : path.toString().replace('\\', '/');
         } catch (Exception e) {
             // Fallback to absolute path
             return path.toString().replace('\\', '/');
