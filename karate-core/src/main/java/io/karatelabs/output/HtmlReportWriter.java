@@ -114,7 +114,7 @@ public final class HtmlReportWriter {
             // Generate reports
             writeReports(data.suiteData, data.features, outputDir);
 
-            logger.info("HTML report written to: {}", outputDir.resolve("karate-summary.html"));
+            logger.debug("HTML report written to: {}", outputDir.resolve("karate-summary.html"));
 
         } catch (Exception e) {
             logger.warn("Failed to write HTML report from JSON Lines: {}", e.getMessage());
@@ -141,7 +141,7 @@ public final class HtmlReportWriter {
             // Generate reports
             writeReports(suiteData, features, outputDir);
 
-            logger.info("HTML report written to: {}", outputDir.resolve("karate-summary.html"));
+            logger.debug("HTML report written to: {}", outputDir.resolve("karate-summary.html"));
 
         } catch (Exception e) {
             logger.warn("Failed to write HTML report: {}", e.getMessage());

@@ -25,6 +25,7 @@ package io.karatelabs.core;
 
 import io.karatelabs.output.Console;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -36,6 +37,8 @@ public class SuiteResult {
     private final List<FeatureResult> featureResults = Collections.synchronizedList(new ArrayList<>());
     private long startTime;
     private long endTime;
+    private Path reportDir;
+    private boolean htmlReportEnabled;
 
     public SuiteResult() {
     }
@@ -54,6 +57,22 @@ public class SuiteResult {
 
     public long getEndTime() {
         return endTime;
+    }
+
+    public void setReportDir(Path reportDir) {
+        this.reportDir = reportDir;
+    }
+
+    public Path getReportDir() {
+        return reportDir;
+    }
+
+    public void setHtmlReportEnabled(boolean htmlReportEnabled) {
+        this.htmlReportEnabled = htmlReportEnabled;
+    }
+
+    public boolean isHtmlReportEnabled() {
+        return htmlReportEnabled;
     }
 
     public synchronized void addFeatureResult(FeatureResult fr) {
@@ -153,53 +172,15 @@ public class SuiteResult {
      * @param threadCount number of threads used
      */
     public void printSummary(String env, int threadCount) {
-        Console.println();
-        Console.println(Console.line());
-
-        // Header with version and env
-        String header = "Karate " + Globals.KARATE_VERSION;
-        if (env != null && !env.isEmpty()) {
-            header += " | env: " + Console.cyan(env);
+        // Determine URL for final line length
+        String reportUrl = null;
+        if (htmlReportEnabled && reportDir != null) {
+            Path reportFile = reportDir.resolve("karate-summary.html");
+            reportUrl = reportFile.toUri().toString();
         }
-        Console.println(header);
-        Console.println(Console.line());
+        int finalLineLength = Math.max(60, reportUrl != null ? reportUrl.length() : 0);
 
-        // Timing info
-        double elapsedSecs = getDurationMillis() / 1000.0;
-        double threadTimeSecs = getThreadTimeMillis() / 1000.0;
-        double efficiency = threadCount > 0 && elapsedSecs > 0
-                ? threadTimeSecs / (elapsedSecs * threadCount)
-                : 1.0;
-
-        Console.println(String.format("elapsed: %6.2fs | threads: %3d | efficiency: %.2f",
-                elapsedSecs, threadCount, efficiency));
-        Console.println();
-
-        // Feature stats
-        int featureTotal = getFeatureCount();
-        int featurePassed = getFeaturePassedCount();
-        int featureFailed = getFeatureFailedCount();
-        String featureStatus = featureFailed > 0
-                ? Console.fail(featureFailed + " failed")
-                : Console.pass("all passed");
-
-        Console.println(String.format("features: %4d | passed: %4d | %s",
-                featureTotal, featurePassed, featureStatus));
-
-        // Scenario stats
-        int scenarioTotal = getScenarioCount();
-        int scenarioPassed = getScenarioPassedCount();
-        int scenarioFailed = getScenarioFailedCount();
-        String scenarioStatus = scenarioFailed > 0
-                ? Console.fail(scenarioFailed + " failed")
-                : Console.pass("all passed");
-
-        Console.println(String.format("scenarios: %3d | passed: %4d | %s",
-                scenarioTotal, scenarioPassed, scenarioStatus));
-
-        Console.println(Console.line());
-
-        // List failed features
+        // List failed features first (before the summary block)
         List<FeatureResult> failedFeatures = getFailedFeatures();
         if (!failedFeatures.isEmpty()) {
             Console.println();
@@ -231,8 +212,61 @@ public class SuiteResult {
                     }
                 }
             }
-            Console.println();
         }
+
+        // Summary block
+        Console.println();
+        Console.println(Console.cyan(Console.line()));
+
+        // Timing info
+        double elapsedSecs = getDurationMillis() / 1000.0;
+        double threadTimeSecs = getThreadTimeMillis() / 1000.0;
+        double efficiency = threadCount > 0 && elapsedSecs > 0
+                ? threadTimeSecs / (elapsedSecs * threadCount)
+                : 1.0;
+
+        Console.println(String.format("elapsed: %6.2fs | threads: %3d | efficiency: %.2f",
+                elapsedSecs, threadCount, efficiency));
+
+        // Feature stats
+        int featureTotal = getFeatureCount();
+        int featurePassed = getFeaturePassedCount();
+        int featureFailed = getFeatureFailedCount();
+        String featureStatus = featureFailed > 0
+                ? Console.fail(featureFailed + " failed")
+                : Console.pass("all passed");
+
+        Console.println(String.format("features: %4d | passed: %4d | %s",
+                featureTotal, featurePassed, featureStatus));
+
+        // Scenario stats
+        int scenarioTotal = getScenarioCount();
+        int scenarioPassed = getScenarioPassedCount();
+        int scenarioFailed = getScenarioFailedCount();
+        String scenarioStatus = scenarioFailed > 0
+                ? Console.fail(scenarioFailed + " failed")
+                : Console.pass("all passed");
+
+        Console.println(String.format("scenarios: %3d | passed: %4d | %s",
+                scenarioTotal, scenarioPassed, scenarioStatus));
+
+        // Footer with version, env, and HTML report (URL last for easy clicking)
+        Console.println(Console.cyan("-".repeat(60)));
+        StringBuilder footer = new StringBuilder("Karate " + Globals.KARATE_VERSION);
+        if (env != null && !env.isEmpty()) {
+            footer.append(" | env: ").append(Console.cyan(env));
+        }
+        if (reportUrl != null) {
+            footer.append(" | HTML report:");
+            Console.println(footer.toString());
+            Console.println(reportUrl);
+        } else {
+            Console.println(footer.toString());
+        }
+
+        // Final line - colored based on result, matches URL length
+        String endLine = isFailed() ? Console.fail("=".repeat(finalLineLength)) : Console.pass("=".repeat(finalLineLength));
+        Console.println(endLine);
     }
 
     /**

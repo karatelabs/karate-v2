@@ -127,7 +127,7 @@ public class HtmlReportListener implements ResultListener {
             // Write timeline page using canonical feature maps
             HtmlReportWriter.writeTimelineHtml(featureMaps, result, outputDir, env, threadCount);
 
-            logger.info("HTML report written to: {}", outputDir.resolve("karate-summary.html"));
+            logger.debug("HTML report written to: {}", outputDir.resolve("karate-summary.html"));
 
         } catch (Exception e) {
             logger.warn("Failed to write HTML summary: {}", e.getMessage());

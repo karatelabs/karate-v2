@@ -290,18 +290,18 @@ public class FeatureResult {
         double secs = getDurationMillis() / 1000.0;
 
         String status = failed > 0
-                ? Console.fail(failed + " failed")
-                : Console.pass("passed");
+                ? Console.red(failed + " failed")
+                : Console.green("passed");
 
         String featureLine = failed > 0
                 ? Console.red(path)
                 : Console.green(path);
 
-        Console.println(Console.line(57));
+        Console.println(Console.grey("-".repeat(57)));
         Console.println("feature: " + featureLine);
         Console.println(String.format("scenarios: %2d | passed: %2d | %s | time: %.4f",
                 total, passed, status, secs));
-        Console.println(Console.line(57));
+        Console.println(Console.grey("=".repeat(57)));
     }
 
 }

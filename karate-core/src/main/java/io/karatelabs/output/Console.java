@@ -69,6 +69,10 @@ public final class Console {
     public static final String BRIGHT_YELLOW = "\u001B[93m";
     public static final String BRIGHT_CYAN = "\u001B[96m";
 
+    // Dim/muted
+    public static final String DIM = "\u001B[2m";
+    public static final String GREY = "\u001B[90m";
+
     private static boolean colorsEnabled = detectColorSupport();
     private static PrintStream out = System.out;
 
@@ -167,6 +171,14 @@ public final class Console {
 
     public static String brightYellow(String text) {
         return color(text, BRIGHT_YELLOW);
+    }
+
+    public static String grey(String text) {
+        return color(text, GREY);
+    }
+
+    public static String dim(String text) {
+        return color(text, DIM);
     }
 
     // ========== Semantic formatting ==========

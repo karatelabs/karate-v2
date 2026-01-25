@@ -244,6 +244,8 @@ public class Suite {
     public SuiteResult run() {
         result = new SuiteResult();
         result.setStartTime(System.currentTimeMillis());
+        result.setReportDir(outputDir);
+        result.setHtmlReportEnabled(outputHtmlReport);
 
         // Backup existing report directory if enabled
         if (backupReportDir) {

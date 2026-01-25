@@ -142,7 +142,7 @@ public class ScenarioLockManager {
             for (int i = locks.size() - 1; i >= 0; i--) {
                 locks.get(i).unlock();
             }
-            logger.info("Released lock(s) for scenario: {}", handle.scenarioName);
+            logger.debug("Released lock(s) for scenario: {}", handle.scenarioName);
 
             // Release global read lock
             globalLock.readLock().unlock();
