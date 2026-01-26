@@ -939,10 +939,15 @@ public class CdpDriver implements Driver {
      * This is useful for detecting dialogs that appear after actions (e.g., click).
      * The dialog remains available until handled via dialog() or the Dialog methods.
      *
-     * @return the current Dialog, or null if no dialog is open
+     * @return the current Dialog, or null if no dialog is open or already handled
      */
     @Override
     public Dialog getDialog() {
+        // Clear dialog reference if it was already handled
+        if (currentDialog != null && currentDialog.isHandled()) {
+            currentDialog = null;
+            currentDialogText = null;
+        }
         return currentDialog;
     }
 
