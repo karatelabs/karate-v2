@@ -71,7 +71,12 @@ public class CdpMouse implements Mouse {
         // First move to the position (like v1's batched actions)
         // This ensures the browser properly targets the element
         dispatchEvent("mouseMoved");
+        // Small delays between events ensure Chrome processes them in order.
+        // Without this, rapid-fire events can be dropped or processed incorrectly,
+        // causing flaky tests where click events don't register (0 DOM events captured).
+        sleep(5);
         down();
+        sleep(5);
         up();
         return this;
     }
@@ -79,7 +84,9 @@ public class CdpMouse implements Mouse {
     @Override
     public Mouse doubleClick() {
         click();
+        sleep(5);
         dispatchEvent("mousePressed", Map.of("clickCount", 2));
+        sleep(5);
         dispatchEvent("mouseReleased", Map.of("clickCount", 2));
         return this;
     }
@@ -87,6 +94,7 @@ public class CdpMouse implements Mouse {
     @Override
     public Mouse rightClick() {
         dispatchEvent("mousePressed", Map.of("button", "right"));
+        sleep(5);
         dispatchEvent("mouseReleased", Map.of("button", "right"));
         return this;
     }
@@ -138,7 +146,9 @@ public class CdpMouse implements Mouse {
     @Override
     public Mouse dragTo(double targetX, double targetY) {
         down();
+        sleep(5);
         move(targetX, targetY);
+        sleep(5);
         up();
         return this;
     }
@@ -199,6 +209,14 @@ public class CdpMouse implements Mouse {
         // and blocking can cause issues when the click triggers a dialog
         // (the dialog blocks Chrome from sending the CDP response)
         message.sendWithoutWaiting();
+    }
+
+    private static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
 }
