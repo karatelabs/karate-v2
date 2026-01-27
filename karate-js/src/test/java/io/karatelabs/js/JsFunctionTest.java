@@ -224,4 +224,75 @@ class JsFunctionTest extends EvalBase {
         assertEquals("hello world", result);
     }
 
+    @Test
+    void testEscapedQuotesInStringThenEval() {
+        // This test replicates the agent.eval() escaping issue:
+        // When JS code containing escaped double quotes is passed as a string,
+        // then that string is extracted and re-evaluated, the escaping can fail.
+
+        // Simulates: curl -d 'agent.eval("arr.filter(function(x) { return x.includes(\"foo\"); })")'
+        // The outer eval parses the string literal with \" escape sequences
+        // The resulting string value should be valid JS that can be re-evaluated
+
+        // First, parse a string containing escaped quotes
+        eval("var code = \"arr.filter(function(x) { return x.includes(\\\"foo\\\"); })\"");
+        String code = (String) get("code");
+
+        // The string value should have the escapes resolved
+        assertEquals("arr.filter(function(x) { return x.includes(\"foo\"); })", code);
+
+        // Now re-evaluate that string as JS code (simulating driver.script())
+        eval("var arr = ['foo', 'bar', 'foobar']");
+        Object result = eval("var arr = ['foo', 'bar', 'foobar']; " + code);
+
+        // Should return filtered array containing "foo"
+        assertEquals(List.of("foo", "foobar"), result);
+    }
+
+    @Test
+    void testEscapedQuotesVariousPatterns() {
+        // Test the specific pattern that reportedly fails: escaped quotes followed by })
+
+        // Pattern 1: escaped quote at end before closing braces
+        eval("var s1 = \"x.includes(\\\"foo\\\")\"");
+        assertEquals("x.includes(\"foo\")", get("s1"));
+
+        // Pattern 2: escaped quotes with }); ending (the reported problematic pattern)
+        eval("var s2 = \"return x.includes(\\\"foo\\\"); })\"");
+        assertEquals("return x.includes(\"foo\"); })", get("s2"));
+
+        // Pattern 3: full function with escaped quotes
+        eval("var s3 = \"function(x) { return x.includes(\\\"foo\\\"); }\"");
+        assertEquals("function(x) { return x.includes(\"foo\"); }", get("s3"));
+
+        // Pattern 4: nested escaping (what happens with JSON + JS layers)
+        // In JSON: \\\" becomes \"
+        // In JS: \" becomes "
+        eval("var s4 = \"arr.filter(function(x) { return x.includes(\\\"foo\\\"); })\"");
+        assertEquals("arr.filter(function(x) { return x.includes(\"foo\"); })", get("s4"));
+    }
+
+    @Test
+    void testDoubleEscapingLayerSimulation() {
+        // Simulates bash → curl → HTTP → JSON → JS escaping chain
+        // When sending via JSON POST, the escaping is: \\\" in JSON → \" after JSON parse → " in JS string
+
+        // This is what the AgentServer receives after JSON parsing:
+        // {"command":"eval","payload":"agent.eval(\"arr.filter(function(x) { return x.includes(\\\"foo\\\"); })\")"}
+
+        // After JSON.parse, payload becomes:
+        // agent.eval("arr.filter(function(x) { return x.includes(\"foo\"); })")
+
+        // Then the Karate engine parses this, extracting the string argument:
+        // arr.filter(function(x) { return x.includes("foo"); })
+
+        // Test that chain works correctly
+        String jsonPayload = "agent.eval(\"arr.filter(function(x) { return x.includes(\\\"foo\\\"); })\")";
+
+        // Parse the JS - this should extract the inner string
+        eval("var payload = \"" + jsonPayload.replace("\\", "\\\\").replace("\"", "\\\"") + "\"");
+        String extractedPayload = (String) get("payload");
+        assertEquals(jsonPayload, extractedPayload);
+    }
+
 }
