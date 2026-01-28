@@ -122,6 +122,31 @@ public class ScenarioResult implements Comparable<ScenarioResult> {
     }
 
     /**
+     * Get the failed step location for IDE navigation.
+     * Format: "path/to/feature.feature:LINE" (standard IDE clickable format)
+     * Uses absolute path when available for better IDE compatibility.
+     *
+     * @return location string "path:line", or null if no failure
+     */
+    public String getFailedStepLocation() {
+        StepResult failedStep = stepResults.stream()
+                .filter(StepResult::isFailed)
+                .findFirst()
+                .orElse(null);
+        if (failedStep == null) {
+            return null;
+        }
+        Step step = failedStep.getStep();
+        // Prefer absolute path for IDE click-to-navigate; fall back to relative
+        var resource = scenario.getFeature().getResource();
+        String featurePath = resource.getPath() != null
+                ? resource.getPath().toString()
+                : resource.getRelativePath();
+        // Gherkin line numbers are 1-indexed (human-readable)
+        return featurePath + ":" + step.getLine();
+    }
+
+    /**
      * Get the failure message with feature file path and line number for display.
      * Format: "path/to/feature.feature:LINE step text"
      *
@@ -136,8 +161,8 @@ public class ScenarioResult implements Comparable<ScenarioResult> {
             return null;
         }
         Step step = failedStep.getStep();
-        String featurePath = scenario.getFeature().getResource().getRelativePath();
-        return featurePath + ":" + step.getLine() + " " + step.getText();
+        String location = getFailedStepLocation();
+        return location != null ? location + " " + step.getText() : step.getText();
     }
 
     public Throwable getError() {

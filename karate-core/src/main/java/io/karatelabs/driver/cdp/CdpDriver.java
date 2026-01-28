@@ -404,7 +404,12 @@ public class CdpDriver implements Driver {
                 // Use local 'dialog' reference, not 'currentDialog' which may be null due to race
                 if (!dialog.isHandled()) {
                     logger.warn("dialog handler did not resolve dialog, auto-dismissing");
-                    dialog.dismiss();
+                    try {
+                        dialog.dismiss();
+                    } catch (Exception e) {
+                        // Dialog may already be gone due to race with another event handler
+                        logger.trace("auto-dismiss failed (dialog likely already handled): {}", e.getMessage());
+                    }
                 }
                 // Clear after handling
                 currentDialog = null;

@@ -194,7 +194,7 @@ public class SuiteResult {
                 }
                 Console.println("  " + Console.red(path));
 
-                // Show failed scenarios
+                // Show failed scenarios with line numbers for easy navigation
                 for (ScenarioResult sr : fr.getScenarioResults()) {
                     if (sr.isFailed()) {
                         String scenarioName = sr.getScenario().getName();
@@ -202,10 +202,16 @@ public class SuiteResult {
                             scenarioName = "line " + sr.getScenario().getLine();
                         }
                         Console.println("    - " + scenarioName);
+                        // Show feature:line for failed step (enables IDE click-to-navigate)
+                        String stepLocation = sr.getFailedStepLocation();
+                        if (stepLocation != null) {
+                            Console.println("      " + stepLocation);
+                        }
+                        // Show error message (truncate only very long messages)
                         if (sr.getFailureMessage() != null) {
                             String msg = sr.getFailureMessage();
-                            if (msg.length() > 80) {
-                                msg = msg.substring(0, 77) + "...";
+                            if (msg.length() > 200) {
+                                msg = msg.substring(0, 197) + "...";
                             }
                             Console.println("      " + Console.yellow(msg));
                         }

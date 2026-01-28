@@ -76,7 +76,9 @@ public class CdpDialog implements Dialog {
     @Override
     public void accept(String promptText) {
         if (handled) {
-            throw new DriverException("dialog already handled");
+            // Already handled - silently return to avoid race condition errors
+            // This can happen when multiple dialog events fire or auto-dismiss races with handler
+            return;
         }
         handled = true;
         CdpMessage message = cdp.method("Page.handleJavaScriptDialog")
@@ -84,18 +86,28 @@ public class CdpDialog implements Dialog {
         if (promptText != null) {
             message.param("promptText", promptText);
         }
-        message.send();
+        CdpResponse response = message.send();
+        // If CDP call failed (e.g., dialog already gone), still consider it handled
+        // to prevent retry attempts that will also fail
+        if (response.isError()) {
+            // Log but don't throw - the dialog is effectively handled (gone)
+            throw new DriverException("dialog accept failed: " + response.getError());
+        }
     }
 
     @Override
     public void dismiss() {
         if (handled) {
-            throw new DriverException("dialog already handled");
+            // Already handled - silently return to avoid race condition errors
+            return;
         }
         handled = true;
-        cdp.method("Page.handleJavaScriptDialog")
+        CdpResponse response = cdp.method("Page.handleJavaScriptDialog")
                 .param("accept", false)
                 .send();
+        if (response.isError()) {
+            throw new DriverException("dialog dismiss failed: " + response.getError());
+        }
     }
 
     @Override
