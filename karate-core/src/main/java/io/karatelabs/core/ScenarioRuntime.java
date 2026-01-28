@@ -88,6 +88,12 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
     // Cookie jar for auto-sending responseCookies on subsequent requests (V1 compatibility)
     private final Map<String, Map<String, Object>> cookieJar = new LinkedHashMap<>();
 
+    // Debug support - step navigation
+    private List<Step> steps;
+    private int stepIndex;
+    private io.karatelabs.js.RunInterceptor<?> interceptor;
+    private io.karatelabs.js.DebugPointFactory<?> pointFactory;
+
     public ScenarioRuntime(FeatureRuntime featureRuntime, Scenario scenario) {
         this.featureRuntime = featureRuntime;
         this.scenario = scenario;
@@ -773,17 +779,24 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
                 }
             }
 
-            List<Step> steps = skipBackground ? scenario.getSteps() : scenario.getStepsIncludingBackground();
-            for (Step step : steps) {
+            // Use index-based iteration for debug step navigation support
+            steps = skipBackground ? scenario.getSteps() : scenario.getStepsIncludingBackground();
+            int count = steps.size();
+            stepIndex = 0;
+            while (stepIndex < count) {
                 if (stopped || aborted) {
                     // Mark remaining steps as skipped
-                    StepResult sr = StepResult.skipped(step, System.currentTimeMillis());
-                    result.addStepResult(sr);
-                    continue;
+                    while (stepIndex < count) {
+                        StepResult sr = StepResult.skipped(steps.get(stepIndex), System.currentTimeMillis());
+                        result.addStepResult(sr);
+                        stepIndex++;
+                    }
+                    break;
                 }
 
-                currentStep = step;
-                StepResult sr = executor.execute(step);
+                currentStep = steps.get(stepIndex);
+                stepIndex++;
+                StepResult sr = executor.execute(currentStep);
                 result.addStepResult(sr);
 
                 if (sr.isFailed()) {
@@ -1030,6 +1043,66 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
 
     public void stop() {
         this.stopped = true;
+    }
+
+    // ========== Debug Step Navigation ==========
+
+    /**
+     * Move execution back one step (for debugging).
+     * After calling this, the previous step will be re-executed.
+     */
+    public void stepBack() {
+        stopped = false;
+        stepIndex -= 2;
+        if (stepIndex < 0) {
+            stepIndex = 0;
+        }
+    }
+
+    /**
+     * Reset to re-execute the current step (for debugging after hot reload).
+     */
+    public void stepReset() {
+        stopped = false;
+        stepIndex--;
+        if (stepIndex < 0) {
+            stepIndex = 0;
+        }
+    }
+
+    /**
+     * Continue execution from current position (after a pause).
+     */
+    public void stepProceed() {
+        stopped = false;
+    }
+
+    /**
+     * Get current step index for debugging.
+     */
+    public int getStepIndex() {
+        return stepIndex;
+    }
+
+    /**
+     * Get total number of steps.
+     */
+    public int getStepCount() {
+        return steps != null ? steps.size() : 0;
+    }
+
+    public <T> void setDebugSupport(io.karatelabs.js.RunInterceptor<T> interceptor, io.karatelabs.js.DebugPointFactory<T> factory) {
+        this.interceptor = interceptor;
+        this.pointFactory = factory;
+        karate.engine.setDebugSupport(interceptor, factory);
+    }
+
+    public io.karatelabs.js.RunInterceptor<?> getInterceptor() {
+        return interceptor;
+    }
+
+    public io.karatelabs.js.DebugPointFactory<?> getPointFactory() {
+        return pointFactory;
     }
 
     public void setSkipBackground(boolean skipBackground) {

@@ -790,6 +790,32 @@ class Interpreter {
             return null;
         }
         context.event(EventType.STATEMENT_ENTER, node);
+
+        // Check interceptor before execution
+        @SuppressWarnings("unchecked")
+        RunInterceptor<Object> interceptor = (RunInterceptor<Object>) context.root.interceptor;
+        DebugPointFactory<Object> pointFactory = null;
+        Object point = null;
+        if (interceptor != null && context.root.pointFactory != null) {
+            @SuppressWarnings("unchecked")
+            DebugPointFactory<Object> factory = (DebugPointFactory<Object>) context.root.pointFactory;
+            pointFactory = factory;
+            Token first = node.getFirstToken();
+            String sourcePath = first.resource != null ? first.resource.getRelativePath() : null;
+            point = factory.create(DebugPointFactory.JS_STATEMENT, first.line, sourcePath, node, context);
+            RunInterceptor.Action action = interceptor.beforeExecute(point);
+            if (action == RunInterceptor.Action.SKIP) {
+                context.event(EventType.STATEMENT_EXIT, node);
+                return Terms.UNDEFINED;
+            } else if (action == RunInterceptor.Action.WAIT) {
+                action = interceptor.waitForResume();
+                if (action == RunInterceptor.Action.SKIP) {
+                    context.event(EventType.STATEMENT_EXIT, node);
+                    return Terms.UNDEFINED;
+                }
+            }
+        }
+
         try {
             Object statementResult = eval(node, context);
             if (logger.isTraceEnabled() || Engine.DEBUG) {
@@ -802,9 +828,27 @@ class Interpreter {
                     }
                 }
             }
+            // Notify interceptor of successful execution
+            if (interceptor != null && pointFactory != null) {
+                if (point == null) {
+                    Token first = node.getFirstToken();
+                    String sourcePath = first.resource != null ? first.resource.getRelativePath() : null;
+                    point = pointFactory.create(DebugPointFactory.JS_STATEMENT, first.line, sourcePath, node, context);
+                }
+                interceptor.afterExecute(point, statementResult, null);
+            }
             context.event(EventType.STATEMENT_EXIT, node);
             return statementResult;
         } catch (Exception e) {
+            // Notify interceptor of failed execution
+            if (interceptor != null && pointFactory != null) {
+                if (point == null) {
+                    Token first = node.getFirstToken();
+                    String sourcePath = first.resource != null ? first.resource.getRelativePath() : null;
+                    point = pointFactory.create(DebugPointFactory.JS_STATEMENT, first.line, sourcePath, node, context);
+                }
+                interceptor.afterExecute(point, null, e);
+            }
             if (context.root.listener != null) {
                 Event event = new Event(EventType.STATEMENT_EXIT, context, node);
                 ExitResult exitResult = context.root.listener.onError(event, e);

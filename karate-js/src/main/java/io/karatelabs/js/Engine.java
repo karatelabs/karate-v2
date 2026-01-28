@@ -112,6 +112,19 @@ public class Engine {
         root.bridge = bridge;
     }
 
+    public <T> void setDebugSupport(RunInterceptor<T> interceptor, DebugPointFactory<T> factory) {
+        root.interceptor = interceptor;
+        root.pointFactory = factory;
+    }
+
+    public RunInterceptor<?> getInterceptor() {
+        return root.interceptor;
+    }
+
+    public DebugPointFactory<?> getPointFactory() {
+        return root.pointFactory;
+    }
+
     static Object toJava(Object value) {
         if (value instanceof JavaMirror) {
             return ((JavaMirror) value).getJavaValue();

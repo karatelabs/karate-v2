@@ -37,6 +37,8 @@ class ContextRoot extends CoreContext {
     Node currentNode;
     ContextListener listener;
     ExternalBridge bridge;
+    RunInterceptor<?> interceptor;
+    DebugPointFactory<?> pointFactory;
 
     ContextRoot(Engine engine) {
         super(null, null, -1, null, ContextScope.ROOT, null);

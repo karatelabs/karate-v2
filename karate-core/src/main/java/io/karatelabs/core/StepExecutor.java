@@ -101,6 +101,42 @@ public class StepExecutor {
             }
         }
 
+        // Check interceptor for debug support
+        @SuppressWarnings("unchecked")
+        io.karatelabs.js.RunInterceptor<Object> interceptor = (io.karatelabs.js.RunInterceptor<Object>) runtime.getInterceptor();
+        io.karatelabs.js.DebugPointFactory<Object> pointFactory = null;
+        Object point = null;
+        if (interceptor != null && runtime.getPointFactory() != null) {
+            @SuppressWarnings("unchecked")
+            io.karatelabs.js.DebugPointFactory<Object> factory = (io.karatelabs.js.DebugPointFactory<Object>) runtime.getPointFactory();
+            pointFactory = factory;
+            String sourcePath = step.getFeature().getResource().getRelativePath();
+            point = factory.create(io.karatelabs.js.DebugPointFactory.GHERKIN_STEP, step.getLine(), sourcePath, step, null);
+            io.karatelabs.js.RunInterceptor.Action action = interceptor.beforeExecute(point);
+            if (action == io.karatelabs.js.RunInterceptor.Action.SKIP) {
+                StepResult skipped = StepResult.skipped(step, startTime);
+                collectLogsAndEmbeds(skipped);
+                if (suite != null) {
+                    suite.fireEvent(StepRunEvent.exit(skipped, runtime));
+                }
+                return skipped;
+            } else if (action == io.karatelabs.js.RunInterceptor.Action.WAIT) {
+                action = interceptor.waitForResume();
+                if (action == io.karatelabs.js.RunInterceptor.Action.SKIP) {
+                    StepResult skipped = StepResult.skipped(step, startTime);
+                    collectLogsAndEmbeds(skipped);
+                    if (suite != null) {
+                        suite.fireEvent(StepRunEvent.exit(skipped, runtime));
+                    }
+                    return skipped;
+                }
+            }
+        }
+        // Keep these references for use in try/catch blocks
+        final io.karatelabs.js.RunInterceptor<Object> finalInterceptor = interceptor;
+        final io.karatelabs.js.DebugPointFactory<Object> finalPointFactory = pointFactory;
+        final Object finalPoint = point;
+
         try {
             String keyword = step.getKeyword();
 
@@ -190,6 +226,16 @@ public class StepExecutor {
             StepResult result = StepResult.passed(step, startTime, elapsedNanos);
             collectLogsAndEmbeds(result);
 
+            // Notify interceptor of successful step execution
+            if (finalInterceptor != null && finalPointFactory != null) {
+                Object afterPoint = finalPoint;
+                if (afterPoint == null) {
+                    String sourcePath = step.getFeature().getResource().getRelativePath();
+                    afterPoint = finalPointFactory.create(io.karatelabs.js.DebugPointFactory.GHERKIN_STEP, step.getLine(), sourcePath, step, null);
+                }
+                finalInterceptor.afterExecute(afterPoint, result, null);
+            }
+
             // Fire STEP_EXIT event
             if (suite != null) {
                 suite.fireEvent(StepRunEvent.exit(result, runtime));
@@ -201,6 +247,16 @@ public class StepExecutor {
             long elapsedNanos = System.nanoTime() - startNanos;
             StepResult result = StepResult.failed(step, startTime, elapsedNanos, e);
             collectLogsAndEmbeds(result);
+
+            // Notify interceptor of failed step execution
+            if (finalInterceptor != null && finalPointFactory != null) {
+                Object afterPoint = finalPoint;
+                if (afterPoint == null) {
+                    String sourcePath = step.getFeature().getResource().getRelativePath();
+                    afterPoint = finalPointFactory.create(io.karatelabs.js.DebugPointFactory.GHERKIN_STEP, step.getLine(), sourcePath, step, null);
+                }
+                finalInterceptor.afterExecute(afterPoint, result, e);
+            }
 
             // Fire STEP_EXIT event
             if (suite != null) {
