@@ -388,15 +388,23 @@ public class CdpDriver implements Driver {
             String defaultPrompt = event.get("defaultPrompt");
             currentDialogText = message;
             // Store the dialog for getDialog() - allows detection after actions
-            currentDialog = new CdpDialog(cdp, message, type, defaultPrompt);
+            // CRITICAL: Capture in local variable to prevent race condition with getDialog()
+            // which can null out currentDialog from another thread after handler.handle() returns
+            CdpDialog dialog = new CdpDialog(cdp, message, type, defaultPrompt);
+            currentDialog = dialog;
             logger.debug("dialog opening: type={}, message={}", type, message);
 
             if (dialogHandler != null) {
-                dialogHandler.handle(currentDialog);
+                try {
+                    dialogHandler.handle(dialog);
+                } catch (Exception e) {
+                    logger.error("dialog handler error: {}", e.getMessage());
+                }
                 // If handler didn't resolve the dialog, auto-dismiss
-                if (!currentDialog.isHandled()) {
+                // Use local 'dialog' reference, not 'currentDialog' which may be null due to race
+                if (!dialog.isHandled()) {
                     logger.warn("dialog handler did not resolve dialog, auto-dismissing");
-                    currentDialog.dismiss();
+                    dialog.dismiss();
                 }
                 // Clear after handling
                 currentDialog = null;
@@ -807,37 +815,27 @@ public class CdpDriver implements Driver {
         throw new RuntimeException("eval retry logic error for: " + expression);
     }
 
-    // Known CDP error messages for destroyed/invalid execution contexts
-    // These match Puppeteer's error detection: https://github.com/puppeteer/puppeteer/blob/main/packages/puppeteer-core/src/cdp/ExecutionContext.ts
-    private static final String[] CONTEXT_DESTROYED_MESSAGES = {
-            "Execution context was destroyed",          // Standard Chrome message
-            "Cannot find context with specified id",    // Context ID lookup failure
-            "Inspected target navigated or closed",     // Navigation during execution
-            "Execution context with given id not found" // Alternative Chrome message
-    };
-
     /**
      * Check if a CDP response indicates a transient execution context error
-     * that should be retried. Uses exact message matching based on known Chrome
-     * error messages (same approach as Puppeteer).
+     * that should be retried.
+     *
+     * DESIGN NOTES:
+     * - CDP error code -32000 is a generic "server error" used for ALL execution context issues
+     * - Chrome uses this code for: context destroyed, context not found, target navigated, etc.
+     * - Rather than matching specific messages (which may vary by Chrome version), we retry
+     *   all -32000 errors since they're all related to transient context state
+     * - This is more robust than Puppeteer's message-matching approach and handles edge cases
+     *   like container/remote Chrome environments that may have different error messages
      */
     private boolean isTransientContextError(CdpResponse response) {
         if (!response.isError()) {
             return false;
         }
-        // Context errors use generic server error code -32000
+        // All -32000 errors are execution context related and potentially transient
         Integer errorCode = response.getErrorCode();
-        if (errorCode == null || errorCode != -32000) {
-            return false;
-        }
-        String errorMessage = response.getErrorMessage();
-        if (errorMessage == null) {
-            return false;
-        }
-        for (String pattern : CONTEXT_DESTROYED_MESSAGES) {
-            if (errorMessage.contains(pattern)) {
-                return true;
-            }
+        if (errorCode != null && errorCode == -32000) {
+            logger.trace("transient context error detected: {}", response.getErrorMessage());
+            return true;
         }
         return false;
     }
@@ -1297,6 +1295,31 @@ public class CdpDriver implements Driver {
                 .param("targetId", targetToClose)
                 .send();
         logger.debug("close() - closed: {}", targetToClose);
+
+        // Wait for target to actually be removed from the page list
+        // Target.closeTarget returns before the target is fully removed, causing
+        // race conditions where getPages() still sees the old tab
+        waitForTargetRemoved(targetToClose);
+    }
+
+    /**
+     * Wait for a target to be removed from the page list after closing.
+     * This prevents race conditions where getPages() is called immediately after close().
+     */
+    private void waitForTargetRemoved(String targetId) {
+        int maxWaitMs = 1000;
+        int pollInterval = 50;
+        long deadline = System.currentTimeMillis() + maxWaitMs;
+
+        while (System.currentTimeMillis() < deadline) {
+            List<String> pages = getPages();
+            if (!pages.contains(targetId)) {
+                logger.trace("target removed from page list: {}", targetId);
+                return;
+            }
+            sleep(pollInterval);
+        }
+        logger.warn("timeout waiting for target to be removed: {}", targetId);
     }
 
     public boolean isTerminated() {
