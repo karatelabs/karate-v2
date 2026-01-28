@@ -65,6 +65,12 @@ Karate v2 is a **complete ground-up rewrite** with significant improvements acro
 | **Compatibility Shims** | `com.intuit.karate` package delegates to v2 | [fefb91f](https://github.com/karatelabs/karate/commit/fefb91f) |
 | **Drop-in Migration** | Most v1 code works with just dependency update | - |
 
+### More
+* ANSI colors in console, works even outside IDE
+* HTML report with tags filtering
+* Soft assertions
+* JSON validation works in "soft assertion mode by default"
+
 ---
 
 #### Configure Auth Details
