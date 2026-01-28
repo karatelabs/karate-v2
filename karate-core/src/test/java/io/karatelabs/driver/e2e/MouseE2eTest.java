@@ -154,6 +154,10 @@ class MouseE2eTest extends DriverTestBase {
         System.out.println("Mouse positioned at: (" + mouse.getX() + ", " + mouse.getY() + ")");
         mouse.click();
 
+        // Wait for DOM events to be processed (CDP uses fire-and-forget, so events may not
+        // be immediately available after click() returns)
+        driver.waitUntil("window.__mouseEvents && window.__mouseEvents.length >= 3");
+
         // Check what DOM events were generated
         @SuppressWarnings("unchecked")
         java.util.List<Map<String, Object>> events = (java.util.List<Map<String, Object>>)
