@@ -33,13 +33,10 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Date;
 
+/**
+ * JavaScript Date wrapper that provides Date prototype methods.
+ */
 class JsDate extends JsObject implements JavaMirror {
-
-    private static final DateTimeFormatter ISO_FORMATTER =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
-
-    private static final DateTimeFormatter UTC_STRING_FORMATTER =
-            DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss 'GMT'").withZone(ZoneOffset.UTC);
 
     // Browser-style toString format: "Fri Jan 01 2021 00:00:00 GMT+0000"
     private static final DateTimeFormatter TO_STRING_FORMATTER =
@@ -48,49 +45,60 @@ class JsDate extends JsObject implements JavaMirror {
     private long millis;
 
     JsDate() {
+        super(null, JsDatePrototype.INSTANCE);
         this.millis = System.currentTimeMillis();
     }
 
     JsDate(long timestamp) {
+        super(null, JsDatePrototype.INSTANCE);
         this.millis = timestamp;
     }
 
     JsDate(Date date) {
+        super(null, JsDatePrototype.INSTANCE);
         this.millis = date.getTime();
     }
 
     JsDate(int year, int month, int date) {
+        super(null, JsDatePrototype.INSTANCE);
         ZonedDateTime zdt = ZonedDateTime.of(year, month + 1, date, 0, 0, 0, 0, ZoneId.systemDefault());
         this.millis = zdt.toInstant().toEpochMilli();
     }
 
     JsDate(int year, int month, int date, int hours, int minutes, int seconds) {
+        super(null, JsDatePrototype.INSTANCE);
         ZonedDateTime zdt = ZonedDateTime.of(year, month + 1, date, hours, minutes, seconds, 0, ZoneId.systemDefault());
         this.millis = zdt.toInstant().toEpochMilli();
     }
 
     JsDate(int year, int month, int date, int hours, int minutes, int seconds, int ms) {
+        super(null, JsDatePrototype.INSTANCE);
         ZonedDateTime zdt = ZonedDateTime.of(year, month + 1, date, hours, minutes, seconds, ms * 1_000_000, ZoneId.systemDefault());
         this.millis = zdt.toInstant().toEpochMilli();
     }
 
     JsDate(Instant instant) {
+        super(null, JsDatePrototype.INSTANCE);
         this.millis = instant.toEpochMilli();
     }
 
     JsDate(LocalDateTime ldt) {
+        super(null, JsDatePrototype.INSTANCE);
         this.millis = ldt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
     }
 
     JsDate(LocalDate ld) {
+        super(null, JsDatePrototype.INSTANCE);
         this.millis = ld.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
     }
 
     JsDate(ZonedDateTime zdt) {
+        super(null, JsDatePrototype.INSTANCE);
         this.millis = zdt.toInstant().toEpochMilli();
     }
 
     JsDate(String text) {
+        super(null, JsDatePrototype.INSTANCE);
         this.millis = parseToMillis(text);
     }
 
@@ -100,6 +108,10 @@ class JsDate extends JsObject implements JavaMirror {
 
     long getTime() {
         return millis;
+    }
+
+    void setMillis(long millis) {
+        this.millis = millis;
     }
 
     private static long parseToMillis(String dateStr) {
@@ -148,196 +160,6 @@ class JsDate extends JsObject implements JavaMirror {
     @Override
     public Object getJsValue() {
         return millis;
-    }
-
-    @Override
-    Prototype initPrototype() {
-        Prototype wrapped = super.initPrototype();
-        return new Prototype(wrapped) {
-            @Override
-            public Object getProperty(String propName) {
-                return switch (propName) {
-                    case "now" -> (JsInvokable) args -> System.currentTimeMillis();
-                    case "parse" -> (JsInvokable) args -> {
-                        if (args.length == 0 || args[0] == null) {
-                            return Double.NaN;
-                        }
-                        try {
-                            String dateStr = args[0].toString();
-                            return parseToMillis(dateStr);
-                        } catch (Exception e) {
-                            return Double.NaN;
-                        }
-                    };
-                    case "getTime", "valueOf" -> (JsCallable) (context, args) -> fromThis(context).millis;
-                    case "toString" -> (JsCallable) (context, args) -> fromThis(context).toString();
-                    case "toISOString" -> (JsCallable) (context, args) ->
-                            ISO_FORMATTER.format(Instant.ofEpochMilli(fromThis(context).millis));
-                    case "toUTCString" -> (JsCallable) (context, args) ->
-                            UTC_STRING_FORMATTER.format(Instant.ofEpochMilli(fromThis(context).millis));
-                    case "getFullYear" -> (JsCallable) (context, args) ->
-                            fromThis(context).toZonedDateTime().getYear();
-                    case "getMonth" -> (JsCallable) (context, args) ->
-                            fromThis(context).toZonedDateTime().getMonthValue() - 1; // 0-indexed
-                    case "getDate" -> (JsCallable) (context, args) ->
-                            fromThis(context).toZonedDateTime().getDayOfMonth();
-                    case "getDay" -> (JsCallable) (context, args) ->
-                            fromThis(context).toZonedDateTime().getDayOfWeek().getValue() % 7; // Sun=0
-                    case "getHours" -> (JsCallable) (context, args) ->
-                            fromThis(context).toZonedDateTime().getHour();
-                    case "getMinutes" -> (JsCallable) (context, args) ->
-                            fromThis(context).toZonedDateTime().getMinute();
-                    case "getSeconds" -> (JsCallable) (context, args) ->
-                            fromThis(context).toZonedDateTime().getSecond();
-                    case "getMilliseconds" -> (JsCallable) (context, args) ->
-                            fromThis(context).toZonedDateTime().getNano() / 1_000_000;
-                    case "setDate" -> (JsCallable) (context, args) -> {
-                        if (args.length == 0 || !(args[0] instanceof Number)) {
-                            return Double.NaN;
-                        }
-                        int day = ((Number) args[0]).intValue();
-                        JsDate jsDate = fromThis(context);
-                        ZonedDateTime zdt = jsDate.toZonedDateTime();
-                        // Set to 1st of month, then add (day-1) to handle overflow
-                        zdt = zdt.withDayOfMonth(1).plusDays(day - 1);
-                        jsDate.millis = zdt.toInstant().toEpochMilli();
-                        return jsDate.millis;
-                    };
-                    case "setMonth" -> (JsCallable) (context, args) -> {
-                        if (args.length == 0 || !(args[0] instanceof Number)) {
-                            return Double.NaN;
-                        }
-                        int month = ((Number) args[0]).intValue();
-                        JsDate jsDate = fromThis(context);
-                        ZonedDateTime zdt = jsDate.toZonedDateTime();
-                        int originalDay = zdt.getDayOfMonth();
-                        // Set to Jan 1st of current year, add months, then restore day
-                        zdt = zdt.withMonth(1).withDayOfMonth(1).plusMonths(month);
-                        int maxDay = zdt.toLocalDate().lengthOfMonth();
-                        zdt = zdt.withDayOfMonth(Math.min(originalDay, maxDay));
-                        if (args.length > 1 && args[1] instanceof Number) {
-                            int day = ((Number) args[1]).intValue();
-                            zdt = zdt.withDayOfMonth(1).plusDays(day - 1);
-                        }
-                        jsDate.millis = zdt.toInstant().toEpochMilli();
-                        return jsDate.millis;
-                    };
-                    case "setFullYear" -> (JsCallable) (context, args) -> {
-                        if (args.length == 0 || !(args[0] instanceof Number)) {
-                            return Double.NaN;
-                        }
-                        int year = ((Number) args[0]).intValue();
-                        JsDate jsDate = fromThis(context);
-                        ZonedDateTime zdt = jsDate.toZonedDateTime();
-                        int originalDay = zdt.getDayOfMonth();
-                        zdt = zdt.withYear(year);
-                        // Handle Feb 29 -> Feb 28 for non-leap years
-                        int maxDay = zdt.toLocalDate().lengthOfMonth();
-                        if (originalDay > maxDay) {
-                            zdt = zdt.withDayOfMonth(maxDay);
-                        }
-                        if (args.length > 1 && args[1] instanceof Number) {
-                            int month = ((Number) args[1]).intValue();
-                            zdt = zdt.withMonth(1).withDayOfMonth(1).plusMonths(month);
-                            maxDay = zdt.toLocalDate().lengthOfMonth();
-                            zdt = zdt.withDayOfMonth(Math.min(originalDay, maxDay));
-                        }
-                        if (args.length > 2 && args[2] instanceof Number) {
-                            int day = ((Number) args[2]).intValue();
-                            zdt = zdt.withDayOfMonth(1).plusDays(day - 1);
-                        }
-                        jsDate.millis = zdt.toInstant().toEpochMilli();
-                        return jsDate.millis;
-                    };
-                    case "setHours" -> (JsCallable) (context, args) -> {
-                        if (args.length == 0 || !(args[0] instanceof Number)) {
-                            return Double.NaN;
-                        }
-                        int hours = ((Number) args[0]).intValue();
-                        JsDate jsDate = fromThis(context);
-                        ZonedDateTime zdt = jsDate.toZonedDateTime()
-                                .withHour(0).plusHours(hours);
-                        if (args.length > 1 && args[1] instanceof Number) {
-                            int minutes = ((Number) args[1]).intValue();
-                            zdt = zdt.withMinute(0).plusMinutes(minutes);
-                        }
-                        if (args.length > 2 && args[2] instanceof Number) {
-                            int seconds = ((Number) args[2]).intValue();
-                            zdt = zdt.withSecond(0).plusSeconds(seconds);
-                        }
-                        if (args.length > 3 && args[3] instanceof Number) {
-                            int ms = ((Number) args[3]).intValue();
-                            zdt = zdt.withNano(0).plusNanos(ms * 1_000_000L);
-                        }
-                        jsDate.millis = zdt.toInstant().toEpochMilli();
-                        return jsDate.millis;
-                    };
-                    case "setMinutes" -> (JsCallable) (context, args) -> {
-                        if (args.length == 0 || !(args[0] instanceof Number)) {
-                            return Double.NaN;
-                        }
-                        int minutes = ((Number) args[0]).intValue();
-                        JsDate jsDate = fromThis(context);
-                        ZonedDateTime zdt = jsDate.toZonedDateTime()
-                                .withMinute(0).plusMinutes(minutes);
-                        if (args.length > 1 && args[1] instanceof Number) {
-                            int seconds = ((Number) args[1]).intValue();
-                            zdt = zdt.withSecond(0).plusSeconds(seconds);
-                        }
-                        if (args.length > 2 && args[2] instanceof Number) {
-                            int ms = ((Number) args[2]).intValue();
-                            zdt = zdt.withNano(0).plusNanos(ms * 1_000_000L);
-                        }
-                        jsDate.millis = zdt.toInstant().toEpochMilli();
-                        return jsDate.millis;
-                    };
-                    case "setSeconds" -> (JsCallable) (context, args) -> {
-                        if (args.length == 0 || !(args[0] instanceof Number)) {
-                            return Double.NaN;
-                        }
-                        int seconds = ((Number) args[0]).intValue();
-                        JsDate jsDate = fromThis(context);
-                        ZonedDateTime zdt = jsDate.toZonedDateTime()
-                                .withSecond(0).plusSeconds(seconds);
-                        if (args.length > 1 && args[1] instanceof Number) {
-                            int ms = ((Number) args[1]).intValue();
-                            zdt = zdt.withNano(0).plusNanos(ms * 1_000_000L);
-                        }
-                        jsDate.millis = zdt.toInstant().toEpochMilli();
-                        return jsDate.millis;
-                    };
-                    case "setMilliseconds" -> (JsCallable) (context, args) -> {
-                        if (args.length == 0 || !(args[0] instanceof Number)) {
-                            return Double.NaN;
-                        }
-                        int ms = ((Number) args[0]).intValue();
-                        JsDate jsDate = fromThis(context);
-                        ZonedDateTime zdt = jsDate.toZonedDateTime()
-                                .withNano(0).plusNanos(ms * 1_000_000L);
-                        jsDate.millis = zdt.toInstant().toEpochMilli();
-                        return jsDate.millis;
-                    };
-                    case "setTime" -> (JsCallable) (context, args) -> {
-                        if (args.length == 0 || !(args[0] instanceof Number)) {
-                            return Double.NaN;
-                        }
-                        long timestamp = ((Number) args[0]).longValue();
-                        JsDate jsDate = fromThis(context);
-                        jsDate.millis = timestamp;
-                        return timestamp;
-                    };
-                    default -> null;
-                };
-            }
-        };
-    }
-
-    @Override
-    JsDate fromThis(Context context) {
-        if (context.getThisObject() instanceof JsDate date) {
-            return date;
-        }
-        return this;
     }
 
     @Override

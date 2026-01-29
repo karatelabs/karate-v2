@@ -35,4 +35,12 @@ public interface ObjectLike {
 
     Map<String, Object> toMap();
 
+    /**
+     * Returns the prototype (__proto__) for prototype chain walking.
+     * Default returns null (no prototype chain).
+     */
+    default ObjectLike getPrototype() {
+        return null;
+    }
+
 }

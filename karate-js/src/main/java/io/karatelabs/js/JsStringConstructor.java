@@ -23,63 +23,25 @@
  */
 package io.karatelabs.js;
 
-import java.util.Iterator;
-
 /**
- * JavaScript String wrapper that provides String prototype methods.
+ * JavaScript String constructor function.
+ * Provides static methods like String.fromCharCode, String.fromCodePoint, etc.
  */
-class JsString extends JsObject implements JsPrimitive {
+class JsStringConstructor extends JsFunction {
 
-    final String text;
+    static final JsStringConstructor INSTANCE = new JsStringConstructor();
 
-    JsString() {
-        this("");
-    }
-
-    JsString(String text) {
-        super(null, JsStringPrototype.INSTANCE);
-        this.text = text;
-    }
-
-    @Override
-    public String toString() {
-        return text;
-    }
-
-    @Override
-    public Object getJavaValue() {
-        return text;
+    private JsStringConstructor() {
+        this.name = "String";
     }
 
     @Override
     public Object getMember(String name) {
-        // Check own properties first
-        Object own = super.getMember(name);
-        if (own != null) {
-            return own;
-        }
-        // Special case: length property
-        if ("length".equals(name)) {
-            return text.length();
-        }
-        return null;
-    }
-
-    public Iterable<KeyValue> jsEntries() {
-        return () -> new Iterator<>() {
-            int index = 0;
-
-            @Override
-            public boolean hasNext() {
-                return index < text.length();
-            }
-
-            @Override
-            public KeyValue next() {
-                int i = index++;
-                String c = String.valueOf(text.charAt(i));
-                return new KeyValue(JsString.this, i, i + "", c);
-            }
+        return switch (name) {
+            case "fromCharCode" -> (JsInvokable) this::fromCharCode;
+            case "fromCodePoint" -> (JsInvokable) this::fromCodePoint;
+            case "prototype" -> JsStringPrototype.INSTANCE;
+            default -> super.getMember(name);
         };
     }
 
@@ -94,6 +56,32 @@ class JsString extends JsObject implements JsPrimitive {
             return new JsString(temp);
         }
         return temp;
+    }
+
+    // Static methods
+
+    private Object fromCharCode(Object... args) {
+        StringBuilder sb = new StringBuilder();
+        for (Object arg : args) {
+            if (arg instanceof Number num) {
+                sb.append((char) num.intValue());
+            }
+        }
+        return sb.toString();
+    }
+
+    private Object fromCodePoint(Object... args) {
+        StringBuilder sb = new StringBuilder();
+        for (Object arg : args) {
+            if (arg instanceof Number num) {
+                int n = num.intValue();
+                if (n < 0 || n > 0x10FFFF) {
+                    throw new RuntimeException("invalid code point: " + num);
+                }
+                sb.appendCodePoint(n);
+            }
+        }
+        return sb.toString();
     }
 
 }

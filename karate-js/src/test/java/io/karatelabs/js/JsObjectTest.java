@@ -523,4 +523,65 @@ class JsObjectTest extends EvalBase {
         assertEquals(1, eval("function Foo() { this.bar = 1; }; Foo.prototype.bar = 2; var f = new Foo(); f.bar"));
     }
 
+    @Test
+    void testPrototypeChainMultiLevelInheritance() {
+        // Multi-level prototype chain via Object.create
+        // Exercises JsFunction.getMember fix for prototype assignment
+        assertEquals("animal walks", eval(
+                "function Animal() {};"
+                        + "Animal.prototype.walk = function() { return 'animal walks'; };"
+                        + "function Dog() {};"
+                        + "Dog.prototype = Object.create(Animal.prototype);"
+                        + "Dog.prototype.bark = function() { return 'dog barks'; };"
+                        + "function Puppy() {};"
+                        + "Puppy.prototype = Object.create(Dog.prototype);"
+                        + "var p = new Puppy();"
+                        + "p.walk()"));
+
+        assertEquals("dog barks", eval(
+                "function Animal() {};"
+                        + "Animal.prototype.walk = function() { return 'animal walks'; };"
+                        + "function Dog() {};"
+                        + "Dog.prototype = Object.create(Animal.prototype);"
+                        + "Dog.prototype.bark = function() { return 'dog barks'; };"
+                        + "function Puppy() {};"
+                        + "Puppy.prototype = Object.create(Dog.prototype);"
+                        + "var p = new Puppy();"
+                        + "p.bark()"));
+    }
+
+    @Test
+    void testPrototypeChainAssignmentOverridesDefault() {
+        // Verify that prototype assignment properly overrides the default functionPrototype
+        // This tests the core fix in JsFunction.getMember
+        assertEquals(true, eval(
+                "function Base() {};"
+                        + "Base.prototype.isBase = true;"
+                        + "function Derived() {};"
+                        + "Derived.prototype = Object.create(Base.prototype);"
+                        + "var d = new Derived();"
+                        + "d.isBase"));
+
+        // The default functionPrototype should NOT be used after assignment
+        assertEquals(false, eval(
+                "function Base() {};"
+                        + "Base.prototype.isBase = true;"
+                        + "function Derived() {};"
+                        + "var defaultProto = Derived.prototype;"
+                        + "Derived.prototype = Object.create(Base.prototype);"
+                        + "Derived.prototype === defaultProto"));
+    }
+
+    @Test
+    void testPrototypeChainWithConstructorProperty() {
+        // Object.create should not affect constructor property unless explicitly set
+        assertEquals(true, eval(
+                "function Animal() {};"
+                        + "function Dog() {};"
+                        + "Dog.prototype = Object.create(Animal.prototype);"
+                        + "Dog.prototype.constructor = Dog;"
+                        + "var d = new Dog();"
+                        + "d.constructor === Dog"));
+    }
+
 }

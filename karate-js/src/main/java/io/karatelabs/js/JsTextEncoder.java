@@ -25,22 +25,26 @@ package io.karatelabs.js;
 
 import java.nio.charset.StandardCharsets;
 
+/**
+ * JavaScript TextEncoder for encoding strings to byte arrays.
+ */
 class JsTextEncoder extends JsObject {
 
     @Override
-    Prototype initPrototype() {
-        return new Prototype(super.initPrototype()) {
-            @Override
-            public Object getProperty(String propName) {
-                if ("encode".equals(propName)) {
-                    return (JsInvokable) args -> {
-                        String text = args[0].toString();
-                        return text.getBytes(StandardCharsets.UTF_8);
-                    };
-                }
-                return null;
-            }
-        };
+    public Object getMember(String name) {
+        // Check own properties first
+        Object own = super.getMember(name);
+        if (own != null) {
+            return own;
+        }
+        // TextEncoder built-in methods
+        if ("encode".equals(name)) {
+            return (JsInvokable) args -> {
+                String text = args[0].toString();
+                return text.getBytes(StandardCharsets.UTF_8);
+            };
+        }
+        return null;
     }
 
     @Override

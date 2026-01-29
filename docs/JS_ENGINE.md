@@ -94,6 +94,77 @@ public interface JavaInvokable extends JavaCallable {
 | Object | JsObject | Map | **Map\<String, Object\>** |
 | Uint8Array | JsUint8Array | byte[] | JavaMirror |
 
+### Prototype System Architecture
+
+The engine uses singleton prototype objects for method inheritance, matching JavaScript's prototype chain:
+
+```
+Singleton Prototypes (shared across all instances):
+    JsObjectPrototype.INSTANCE  ← null (root of chain)
+    JsArrayPrototype.INSTANCE   ← JsObjectPrototype.INSTANCE
+    JsStringPrototype.INSTANCE  ← JsObjectPrototype.INSTANCE
+    JsNumberPrototype.INSTANCE  ← JsObjectPrototype.INSTANCE
+    JsDatePrototype.INSTANCE    ← JsObjectPrototype.INSTANCE
+    JsFunctionPrototype.INSTANCE← JsObjectPrototype.INSTANCE
+    JsRegexPrototype.INSTANCE   ← JsObjectPrototype.INSTANCE
+    JsErrorPrototype.INSTANCE   ← JsObjectPrototype.INSTANCE
+
+Constructor Functions (for static methods like Array.isArray):
+    JsObjectConstructor.INSTANCE  → prototype: JsObjectPrototype.INSTANCE
+    JsArrayConstructor.INSTANCE   → prototype: JsArrayPrototype.INSTANCE
+    JsStringConstructor.INSTANCE  → prototype: JsStringPrototype.INSTANCE
+    JsNumberConstructor.INSTANCE  → prototype: JsNumberPrototype.INSTANCE
+    JsDateConstructor.INSTANCE    → prototype: JsDatePrototype.INSTANCE
+```
+
+**Property lookup order** (implemented in `Prototype.getMember()`):
+1. Own properties (`props` map)
+2. Built-in properties (`getBuiltinProperty()`)
+3. Delegate to `__proto__` chain
+
+```java
+// Base class for prototype objects
+abstract class Prototype implements ObjectLike {
+    private final Prototype __proto__;
+    private Map<String, Object> props;
+
+    public Object getMember(String name) {
+        if (props != null && props.containsKey(name)) return props.get(name);
+        Object builtin = getBuiltinProperty(name);
+        if (builtin != null) return builtin;
+        return __proto__ != null ? __proto__.getMember(name) : null;
+    }
+
+    protected abstract Object getBuiltinProperty(String name);
+}
+
+// Example: JsArrayPrototype provides array methods (package-private singleton)
+class JsArrayPrototype extends Prototype {
+    static final JsArrayPrototype INSTANCE = new JsArrayPrototype();
+
+    private JsArrayPrototype() {
+        super(JsObjectPrototype.INSTANCE);  // Arrays inherit from Object
+    }
+
+    @Override
+    protected Object getBuiltinProperty(String name) {
+        return switch (name) {
+            case "map" -> (JsCallable) this::map;
+            case "filter" -> (JsCallable) this::filter;
+            case "push" -> (JsCallable) this::push;
+            // ... other array methods
+            default -> null;  // Delegate to __proto__ (JsObjectPrototype)
+        };
+    }
+}
+```
+
+**Benefits:**
+- Single instance per type (memory efficient)
+- Clean separation of constructor vs prototype
+- Methods inherited via standard prototype chain
+- `ObjectLike.getPrototype()` enables uniform chain walking
+
 ### Boxed Primitives
 
 JS constructors behave differently with vs without `new`:
@@ -184,10 +255,11 @@ Collections have two access modes:
 | **JS internal** | `getElement(int)` / `getMember(String)` | Raw (undefined, JsDate) | JS engine internals |
 
 ```java
-// JsArray uses composition (has-a JsObject) to avoid method signature conflicts
+// JsArray implements List and uses singleton prototype
 class JsArray implements List<Object>, ObjectLike, JsCallable {
-    final List<Object> list;           // Internal storage
-    private final JsObject delegate;   // For named properties (arr.foo = "bar")
+    final List<Object> list;                              // Internal storage
+    private Map<String, Object> namedProps;               // For named properties (arr.foo = "bar")
+    private ObjectLike __proto__ = JsArrayPrototype.INSTANCE;  // Prototype chain
 
     // JS internal - raw values, ES6 semantics
     public Object getElement(int index) {
@@ -206,6 +278,8 @@ class JsArray implements List<Object>, ObjectLike, JsCallable {
 
 // JsObject implements Map<String, Object>
 class JsObject implements Map<String, Object>, ObjectLike {
+    private Map<String, Object> _map;
+    private ObjectLike __proto__ = JsObjectPrototype.INSTANCE;  // Prototype chain
 
     // JS internal - raw values, prototype chain
     public Object getMember(String name) {
@@ -213,7 +287,7 @@ class JsObject implements Map<String, Object>, ObjectLike {
         if (_map != null && _map.containsKey(name)) {
             return _map.get(name);
         }
-        return getPrototype().getMember(name);
+        return __proto__ != null ? __proto__.getMember(name) : null;
     }
 
     // Java interface - auto-unwrap, own properties only
@@ -695,6 +769,10 @@ runScript("const json = response.json(); pm.test('ok', () => {});");  // No conf
 | Terms | `karate-js/src/main/java/io/karatelabs/js/Terms.java` |
 | JsDate | `karate-js/src/main/java/io/karatelabs/js/JsDate.java` |
 | CallInfo | `karate-js/src/main/java/io/karatelabs/js/CallInfo.java` |
+| Prototype base | `karate-js/src/main/java/io/karatelabs/js/Prototype.java` |
+| ObjectLike | `karate-js/src/main/java/io/karatelabs/js/ObjectLike.java` |
+| Prototype singletons | `Js*Prototype.java` (JsObjectPrototype, JsArrayPrototype, etc.) |
+| Constructor singletons | `Js*Constructor.java` (JsObjectConstructor, JsArrayConstructor, etc.) |
 | Parser infrastructure | `karate-js/src/main/java/io/karatelabs/parser/` |
 | Gherkin parser | `karate-core/src/main/java/io/karatelabs/gherkin/` |
 | Tests | `karate-js/src/test/java/io/karatelabs/js/` |

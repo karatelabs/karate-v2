@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2025 Karate Labs Inc.
+ * Copyright 2024 Karate Labs Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,39 +23,24 @@
  */
 package io.karatelabs.js;
 
-import java.nio.charset.StandardCharsets;
-
 /**
- * JavaScript TextDecoder for decoding byte arrays to strings.
+ * Singleton prototype for Error instances.
+ * Contains instance property 'message'.
+ * Inherits from JsObjectPrototype.
  */
-class JsTextDecoder extends JsObject {
+class JsErrorPrototype extends Prototype {
 
-    @Override
-    public Object getMember(String name) {
-        // Check own properties first
-        Object own = super.getMember(name);
-        if (own != null) {
-            return own;
-        }
-        // TextDecoder built-in properties and methods
-        return switch (name) {
-            case "encoding" -> "utf-8";
-            case "decode" -> (JsInvokable) args -> {
-                if (args.length == 0) {
-                    return "";
-                }
-                if (args[0] instanceof byte[] bytes) {
-                    return new String(bytes, StandardCharsets.UTF_8);
-                }
-                return "";
-            };
-            default -> null;
-        };
+    static final JsErrorPrototype INSTANCE = new JsErrorPrototype();
+
+    private JsErrorPrototype() {
+        super(JsObjectPrototype.INSTANCE);
     }
 
     @Override
-    public Object call(Context context, Object... args) {
-        return this;
+    protected Object getBuiltinProperty(String name) {
+        // Error prototype doesn't have built-in properties itself
+        // The 'message' property is on instances, not the prototype
+        return null;
     }
 
 }

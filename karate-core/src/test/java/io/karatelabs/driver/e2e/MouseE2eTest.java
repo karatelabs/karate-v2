@@ -142,16 +142,13 @@ class MouseE2eTest extends DriverTestBase {
 
         // Get button position (now it should be in viewport)
         Map<String, Object> pos = driver.position("#submit-btn", true);
-        System.out.println("Button position after scroll: " + pos);
 
         // Calculate expected click position
         double expectedX = ((Number) pos.get("x")).doubleValue() + ((Number) pos.get("width")).doubleValue() / 2;
         double expectedY = ((Number) pos.get("y")).doubleValue() + ((Number) pos.get("height")).doubleValue() / 2;
-        System.out.println("Expected click at: (" + expectedX + ", " + expectedY + ")");
 
         // Click the button using CDP mouse
         Mouse mouse = driver.mouse("#submit-btn");
-        System.out.println("Mouse positioned at: (" + mouse.getX() + ", " + mouse.getY() + ")");
         mouse.click();
 
         // Wait for DOM events to be processed (CDP uses fire-and-forget, so events may not
@@ -162,8 +159,6 @@ class MouseE2eTest extends DriverTestBase {
         @SuppressWarnings("unchecked")
         java.util.List<Map<String, Object>> events = (java.util.List<Map<String, Object>>)
             driver.script("window.__mouseEvents");
-
-        System.out.println("Mouse events captured: " + events);
 
         // We should have mousedown, mouseup, click
         assertTrue(events.size() >= 3,

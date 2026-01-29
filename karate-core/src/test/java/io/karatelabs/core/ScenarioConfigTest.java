@@ -554,12 +554,6 @@ class ScenarioConfigTest {
 
         assertTrue(result.isPassed());
 
-        // Check that we captured debug points with proper source paths
-        System.out.println("Debug points captured:");
-        for (String dp : debugPoints) {
-            System.out.println("  " + dp);
-        }
-
         // Verify that at least one debug point has the config file path
         boolean foundConfigPath = debugPoints.stream()
                 .anyMatch(dp -> dp.contains("karate-config.js"));

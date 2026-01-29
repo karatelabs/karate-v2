@@ -243,8 +243,8 @@ class Interpreter {
             if (callable instanceof JsFunction jsFunc) {
                 newInstance = new JsObject();
                 Object proto = jsFunc.getMember("prototype");
-                if (proto instanceof JsObject protoObj) {
-                    newInstance.setPrototypeDelegate(protoObj);
+                if (proto instanceof ObjectLike protoObj) {
+                    newInstance.setPrototype(protoObj);
                 }
                 callContext.thisObject = newInstance;
             } else {
@@ -260,7 +260,7 @@ class Interpreter {
         context.updateFrom(callContext);
         if (newKeyword && newInstance != null) {
             // Return the new instance unless constructor explicitly returns an object
-            if (!(result instanceof JsObject)) {
+            if (!(result instanceof ObjectLike)) {
                 result = newInstance;
             }
         }

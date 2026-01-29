@@ -26,7 +26,6 @@ package io.karatelabs.js;
 import io.karatelabs.common.StringUtils;
 import io.karatelabs.common.Xml;
 import io.karatelabs.parser.Token;
-import io.karatelabs.parser.TokenType;
 import net.minidev.json.JSONValue;
 import org.w3c.dom.Node;
 
@@ -476,26 +475,19 @@ public class Terms {
                 return true;
             }
         }
-        if (lhs instanceof JsObject objectLhs && rhs instanceof JsObject objectRhs) {
-            if (lhs instanceof JavaMirror && rhs instanceof JavaMirror) {
-                return lhs.getClass().equals(rhs.getClass());
-            }
-            // Get the prototype property from the constructor (rhs)
+        // JavaMirror: same class means same type
+        if (lhs instanceof JavaMirror && rhs instanceof JavaMirror) {
+            return lhs.getClass().equals(rhs.getClass());
+        }
+        // Walk prototype chain for any ObjectLike (JsObject, JsArray, JsString, etc.)
+        if (lhs instanceof ObjectLike objectLhs && rhs instanceof ObjectLike objectRhs) {
             Object target = objectRhs.getMember("prototype");
-            // Walk the prototype delegate chain of lhs
-            JsObject current = objectLhs.getPrototypeDelegate();
+            ObjectLike current = objectLhs.getPrototype();
             while (current != null) {
                 if (current == target) {
                     return true;
                 }
-                current = current.getPrototypeDelegate();
-            }
-            // Also check if target is a Prototype and compare with lhs's built-in prototype
-            if (target instanceof Prototype targetProto) {
-                Prototype lhsProto = objectLhs.getPrototype();
-                if (lhsProto == targetProto) {
-                    return true;
-                }
+                current = current.getPrototype();
             }
         }
         return false;

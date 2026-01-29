@@ -25,155 +25,49 @@ package io.karatelabs.js;
 
 import java.util.*;
 
+/**
+ * JavaScript Object implementation with unified prototype chain.
+ * <p>
+ * Property lookup order:
+ * <ol>
+ *   <li>Own properties ({@code _map})</li>
+ *   <li>Prototype chain ({@code __proto__})</li>
+ * </ol>
+ */
 class JsObject implements ObjectLike, JsCallable, Map<String, Object> {
 
-    final JsObject _this = this;
-
     private Map<String, Object> _map;
-    private JsObject prototypeDelegate;
-
-    public JsObject getPrototypeDelegate() {
-        return prototypeDelegate;
-    }
-
-    public void setPrototypeDelegate(JsObject proto) {
-        this.prototypeDelegate = proto;
-    }
+    private ObjectLike __proto__;
 
     JsObject(Map<String, Object> map) {
         this._map = map;
+        this.__proto__ = JsObjectPrototype.INSTANCE;
     }
 
     JsObject() {
         this(null);
     }
 
-    private Prototype _prototype;
-
-    final Prototype getPrototype() {
-        if (_prototype == null) {
-            _prototype = initPrototype();
-        }
-        return _prototype;
+    /**
+     * Protected constructor for subclasses that need a different prototype.
+     */
+    protected JsObject(Map<String, Object> map, ObjectLike proto) {
+        this._map = map;
+        this.__proto__ = proto;
     }
 
-    Prototype initPrototype() {
-        return new Prototype(null) {
-            @SuppressWarnings("unchecked")
-            @Override
-            public Object getProperty(String propName) {
-                return switch (propName) {
-                    case "toString" -> (JsCallable) (context, args) -> Terms.TO_STRING(context.getThisObject());
-                    case "valueOf" -> (JsCallable) (context, args) -> context.getThisObject();
-                    case "hasOwnProperty" -> (JsCallable) (context, args) -> {
-                        if (args.length == 0 || args[0] == null) {
-                            return false;
-                        }
-                        String prop = args[0].toString();
-                        Map<String, Object> props = asMap(context);
-                        return props.containsKey(prop);
-                    };
-                    // static ==========================================================================================
-                    case "keys" -> (JsInvokable) args -> {
-                        List<Object> result = new ArrayList<>();
-                        for (KeyValue kv : Terms.toIterable(args[0])) {
-                            result.add(kv.key);
-                        }
-                        return result;
-                    };
-                    case "values" -> (JsInvokable) args -> {
-                        List<Object> result = new ArrayList<>();
-                        for (KeyValue kv : Terms.toIterable(args[0])) {
-                            result.add(kv.value);
-                        }
-                        return result;
-                    };
-                    case "entries" -> (JsInvokable) args -> {
-                        List<Object> result = new ArrayList<>();
-                        for (KeyValue kv : Terms.toIterable(args[0])) {
-                            List<Object> entry = new ArrayList<>();
-                            entry.add(kv.key);
-                            entry.add(kv.value);
-                            result.add(entry);
-                        }
-                        return result;
-                    };
-                    case "assign" -> (JsInvokable) args -> {
-                        if (args.length == 0) {
-                            return new LinkedHashMap<>();
-                        }
-                        if (args[0] == null || args[0] == Terms.UNDEFINED) {
-                            throw new RuntimeException("assign() requires valid first argument");
-                        }
-                        Map<String, Object> result = new LinkedHashMap<>();
-                        for (KeyValue kv : Terms.toIterable(args[0])) {
-                            result.put(kv.key, kv.value);
-                        }
-                        for (int i = 1; i < args.length; i++) {
-                            for (KeyValue kv : Terms.toIterable(args[i])) {
-                                result.put(kv.key, kv.value);
-                            }
-                        }
-                        return result;
-                    };
-                    case "fromEntries" -> (JsInvokable) args -> {
-                        if (args.length == 0 || args[0] == null || args[0] == Terms.UNDEFINED) {
-                            throw new RuntimeException("fromEntries() requires valid argument(s)");
-                        }
-                        Map<String, Object> result = new LinkedHashMap<>();
-                        for (KeyValue kv : Terms.toIterable(args[0])) {
-                            if (kv.value instanceof List) {
-                                List<Object> list = (List<Object>) kv.value;
-                                if (!list.isEmpty()) {
-                                    Object key = list.getFirst();
-                                    if (key != null) {
-                                        Object value = null;
-                                        if (list.size() > 1) {
-                                            value = list.get(1);
-                                        }
-                                        result.put(key.toString(), value);
-                                    }
-                                }
-                            }
-                        }
-                        return result;
-                    };
-                    case "is" -> (JsInvokable) args -> {
-                        if (args.length < 2) {
-                            return false;
-                        }
-                        return Terms.eq(args[0], args[1], true);
-                    };
-                    case "create" -> (JsInvokable) args -> {
-                        JsObject newObj = new JsObject();
-                        if (args.length > 0 && args[0] instanceof JsObject proto) {
-                            newObj.setPrototypeDelegate(proto);
-                        }
-                        return newObj;
-                    };
-                    case "getPrototypeOf" -> (JsInvokable) args -> {
-                        if (args.length > 0 && args[0] instanceof JsObject obj) {
-                            return obj.getPrototypeDelegate();
-                        }
-                        return null;
-                    };
-                    case "setPrototypeOf" -> (JsInvokable) args -> {
-                        if (args.length >= 2 && args[0] instanceof JsObject obj) {
-                            if (args[1] instanceof JsObject proto) {
-                                obj.setPrototypeDelegate(proto);
-                            } else if (args[1] == null) {
-                                obj.setPrototypeDelegate(null);
-                            }
-                            return args[0];
-                        }
-                        return args.length > 0 ? args[0] : null;
-                    };
-                    // instance property
-                    case "__proto__" -> _this.prototypeDelegate;
-                    default -> null;
-                };
-            }
-        };
+    /**
+     * Returns the prototype (__proto__) of this object.
+     */
+    public ObjectLike getPrototype() {
+        return __proto__;
+    }
+
+    /**
+     * Sets the prototype (__proto__) of this object.
+     */
+    public void setPrototype(ObjectLike proto) {
+        this.__proto__ = proto;
     }
 
     @Override
@@ -182,22 +76,27 @@ class JsObject implements ObjectLike, JsCallable, Map<String, Object> {
         if (_map != null && _map.containsKey(name)) {
             return _map.get(name);
         }
-        if ("prototype".equals(name)) {
-            return getPrototype();
+        // 2. Special case for __proto__ property access
+        if ("__proto__".equals(name)) {
+            return __proto__;
         }
-        // 2. Check prototype delegate chain (standard JS prototype inheritance)
-        if (prototypeDelegate != null) {
-            Object result = prototypeDelegate.getMember(name);
-            if (result != null) {
-                return result;
-            }
+        // 3. Delegate to prototype chain
+        if (__proto__ != null) {
+            return __proto__.getMember(name);
         }
-        // 3. Fall back to built-in Prototype methods
-        return getPrototype().getMember(name);
+        return null;
     }
 
     @Override
     public void putMember(String name, Object value) {
+        if ("__proto__".equals(name)) {
+            if (value instanceof ObjectLike proto) {
+                this.__proto__ = proto;
+            } else if (value == null) {
+                this.__proto__ = null;
+            }
+            return;
+        }
         if (_map == null) {
             _map = new LinkedHashMap<>();
         }
@@ -332,25 +231,9 @@ class JsObject implements ObjectLike, JsCallable, Map<String, Object> {
             @Override
             public KeyValue next() {
                 Map.Entry<String, Object> entry = entries.next();
-                return new KeyValue(_this, index++, entry.getKey(), entry.getValue());
+                return new KeyValue(JsObject.this, index++, entry.getKey(), entry.getValue());
             }
         };
-    }
-
-    @SuppressWarnings("unchecked")
-    JsObject fromThis(Context context) {
-        Object thisObject = context.getThisObject();
-        if (thisObject instanceof JsObject jo) {
-            return jo;
-        }
-        if (thisObject instanceof Map<?, ?> map) {
-            return new JsObject((Map<String, Object>) map);
-        }
-        return this;
-    }
-
-    Map<String, Object> asMap(Context context) {
-        return fromThis(context).toMap();
     }
 
     @Override

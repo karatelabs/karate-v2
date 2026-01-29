@@ -29,6 +29,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+/**
+ * JavaScript RegExp wrapper that provides RegExp prototype methods.
+ */
 public class JsRegex extends JsObject {
 
     public final String pattern;
@@ -43,6 +46,7 @@ public class JsRegex extends JsObject {
     }
 
     JsRegex(String literalText) {
+        super(null, JsRegexPrototype.INSTANCE);
         if (literalText.startsWith("/")) {
             int lastSlashIndex = literalText.lastIndexOf('/');
             if (lastSlashIndex <= 0) {
@@ -70,6 +74,7 @@ public class JsRegex extends JsObject {
     }
 
     JsRegex(String pattern, String flags) {
+        super(null, JsRegexPrototype.INSTANCE);
         this.pattern = pattern;
         this.flags = flags != null ? flags : "";
         this.global = this.flags.contains("g");
@@ -179,22 +184,11 @@ public class JsRegex extends JsObject {
             String group = matcher.group(i);
             matches.add(group != null ? group : ""); // js returns "" for undefined groups, not null
         }
-        return new JsArray(matches) {
-            @Override
-            Prototype initPrototype() {
-                Prototype wrapped = super.initPrototype();
-                return new Prototype(wrapped) {
-                    @Override
-                    public Object getProperty(String propName) {
-                        return switch (propName) {
-                            case "index" -> matcher.start();
-                            case "input" -> str;
-                            default -> null;
-                        };
-                    }
-                };
-            }
-        };
+        // Create array with index and input properties
+        JsArray result = new JsArray(matches);
+        result.putMember("index", matcher.start());
+        result.putMember("input", str);
+        return result;
     }
 
     @Override
@@ -203,43 +197,22 @@ public class JsRegex extends JsObject {
     }
 
     @Override
-    JsRegex fromThis(Context context) {
-        if (context.getThisObject() instanceof JsRegex jr) {
-            return jr;
+    public Object getMember(String name) {
+        // Check own properties first
+        Object own = super.getMember(name);
+        if (own != null) {
+            return own;
         }
-        return this;
-    }
-
-    @Override
-    Prototype initPrototype() {
-        Prototype wrapped = super.initPrototype();
-        return new Prototype(wrapped) {
-            @Override
-            public Object getProperty(String propName) {
-                return switch (propName) {
-                    case "test" -> (JsCallable) (context, args) -> {
-                        if (args.length == 0 || args[0] == null) {
-                            return false;
-                        }
-                        return fromThis(context).test(args[0].toString());
-                    };
-                    case "exec" -> (JsCallable) (context, args) -> {
-                        if (args.length == 0 || args[0] == null) {
-                            return null;
-                        }
-                        return fromThis(context).exec(args[0].toString());
-                    };
-                    case "source" -> pattern;
-                    case "flags" -> flags;
-                    case "lastIndex" -> lastIndex;
-                    case "global" -> global;
-                    case "ignoreCase" -> flags.contains("i");
-                    case "multiline" -> flags.contains("m");
-                    case "dotAll" -> flags.contains("s");
-                    case "toString" -> (JsInvokable) args -> JsRegex.this.toString();
-                    default -> null;
-                };
-            }
+        // Regex instance properties
+        return switch (name) {
+            case "source" -> pattern;
+            case "flags" -> flags;
+            case "lastIndex" -> lastIndex;
+            case "global" -> global;
+            case "ignoreCase" -> flags.contains("i");
+            case "multiline" -> flags.contains("m");
+            case "dotAll" -> flags.contains("s");
+            default -> null;
         };
     }
 

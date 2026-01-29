@@ -134,10 +134,6 @@ class HtmlReportWriterTest {
 
         // Verify JSON Lines file was created
         assertTrue(Files.exists(OUTPUT_DIR.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl")));
-
-        System.out.println("\n=== HTML Reports Generated ===");
-        System.out.println("Open: file://" + OUTPUT_DIR.toAbsolutePath().resolve("karate-summary.html"));
-        System.out.println("Or:   cd " + OUTPUT_DIR.toAbsolutePath() + " && python3 -m http.server 8000");
     }
 
     @Test
@@ -154,9 +150,6 @@ class HtmlReportWriterTest {
 
         assertTrue(Files.exists(outputDir.resolve("karate-summary.html")));
         assertTrue(Files.exists(outputDir.resolve(Suite.KARATE_JSON_SUBFOLDER).resolve("karate-events.jsonl")));
-
-        System.out.println("\n=== HTML Reports (with env) Generated ===");
-        System.out.println("Open: " + outputDir.toAbsolutePath().resolve("karate-summary.html"));
     }
 
     @Test

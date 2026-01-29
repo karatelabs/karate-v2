@@ -23,26 +23,30 @@
  */
 package io.karatelabs.js;
 
+/**
+ * JavaScript Error wrapper that provides Error prototype methods.
+ */
 class JsError extends JsObject {
 
     private final String message;
 
     public JsError(String message) {
+        super(null, JsErrorPrototype.INSTANCE);
         this.message = message;
     }
 
     @Override
-    Prototype initPrototype() {
-        Prototype wrapped = super.initPrototype();
-        return new Prototype(wrapped) {
-            @Override
-            public Object getProperty(String name) {
-                if (name.equals("message")) {
-                    return message;
-                }
-                return null;
-            }
-        };
+    public Object getMember(String name) {
+        // Check own properties first
+        Object own = super.getMember(name);
+        if (own != null) {
+            return own;
+        }
+        // Error instance property
+        if ("message".equals(name)) {
+            return message;
+        }
+        return null;
     }
 
     @Override

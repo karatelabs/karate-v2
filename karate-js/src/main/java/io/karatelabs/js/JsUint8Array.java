@@ -73,7 +73,7 @@ class JsUint8Array extends JsArray implements JavaMirror {
             @Override
             public KeyValue next() {
                 int i = index++;
-                return new KeyValue(_this, i, i + "", buffer[i] & 0xFF);
+                return new KeyValue(JsUint8Array.this, i, i + "", buffer[i] & 0xFF);
             }
         };
     }
@@ -289,33 +289,17 @@ class JsUint8Array extends JsArray implements JavaMirror {
     }
 
     // =================================================================================================
-    // Prototype and other overrides
+    // ObjectLike overrides
     // =================================================================================================
 
     @Override
-    JsUint8Array fromThis(Context context) {
-        Object thisObject = context.getThisObject();
-        if (thisObject instanceof JsUint8Array arr) {
-            return arr;
+    public Object getMember(String name) {
+        // Uint8Array specific: length from buffer (must check BEFORE super to avoid returning 0 from empty list)
+        if ("length".equals(name)) {
+            return buffer.length;
         }
-        if (thisObject instanceof byte[] bytes) {
-            return new JsUint8Array(bytes);
-        }
-        return this;
-    }
-
-    @Override
-    Prototype initPrototype() {
-        Prototype wrapped = super.initPrototype();
-        return new Prototype(wrapped) {
-            @Override
-            public Object getProperty(String propName) {
-                if ("length".equals(propName)) {
-                    return buffer.length;
-                }
-                return null; // delegate to wrapped prototype
-            }
-        };
+        // Delegate to parent for prototype chain (array methods)
+        return super.getMember(name);
     }
 
     @Override

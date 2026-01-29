@@ -23,11 +23,17 @@
  */
 package io.karatelabs.js;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
+/**
+ * Base class for JavaScript function objects.
+ */
 public abstract class JsFunction extends JsObject implements JavaCallable {
+
+    String name;
+    private JsObject functionPrototype;
+
+    protected JsFunction() {
+        super(null, JsFunctionPrototype.INSTANCE);
+    }
 
     @Override
     public boolean isExternal() {
@@ -42,9 +48,6 @@ public abstract class JsFunction extends JsObject implements JavaCallable {
     public String getSource() {
         return null;
     }
-
-    String name;
-    private JsObject functionPrototype;
 
     /**
      * Returns the function's prototype object (used for instance creation).
@@ -65,95 +68,24 @@ public abstract class JsFunction extends JsObject implements JavaCallable {
         // For functions, "prototype" returns the function's prototype object
         // Check _map first to allow "Foo.prototype = ..." assignments
         if ("prototype".equals(name)) {
-            Object fromMap = super.getMember(name);
-            if (fromMap != null && fromMap != getPrototype()) {
+            Object fromSuper = super.getMember(name);
+            // If explicitly set in _map (not inherited from prototype chain), use that value
+            // Note: Can't use `!(fromSuper instanceof JsCallable)` because JsObject implements JsCallable
+            if (fromSuper != null && !(fromSuper instanceof JsFunction)) {
                 // Prototype was explicitly set via assignment
-                return fromMap;
+                return fromSuper;
             }
             return getFunctionPrototype();
         }
-        return super.getMember(name);
-    }
-
-    @Override
-    Prototype initPrototype() {
-        Prototype wrapped = super.initPrototype();
-        return new Prototype(wrapped) {
-            @Override
-            public Object getProperty(String propName) {
-                return switch (propName) {
-                    case "call" -> callPrototype();
-                    case "apply" -> applyPrototype();
-                    // TODO bind
-                    case "constructor" -> _this;
-                    case "name" -> name;
-                    case "toString" -> (JsCallable) (context, args) -> {
-                        // ES6: Function.prototype.toString returns function source
-                        Object thisObj = context.getThisObject();
-                        if (thisObj instanceof JsFunctionNode fn) {
-                            // User-defined function: return actual source
-                            return fn.node.getTextIncludingWhitespace();
-                        } else if (thisObj instanceof JsFunction fn) {
-                            // Built-in function: return [native code]
-                            String fnName = fn.name != null ? fn.name : "";
-                            return "function " + fnName + "() { [native code] }";
-                        }
-                        return "[object Function]";
-                    };
-                    default -> null;
-                };
-            }
-        };
-    }
-
-    static class ThisArgs {
-
-        final Object thisObject;
-        final List<Object> args;
-
-        @SuppressWarnings("unchecked")
-        ThisArgs(Object[] args, boolean apply) {
-            List<Object> list = new ArrayList<>(Arrays.asList(args));
-            if (!list.isEmpty()) {
-                thisObject = list.removeFirst();
-            } else {
-                thisObject = Terms.UNDEFINED;
-            }
-            if (apply) {
-                if (list.isEmpty()) {
-                    this.args = list;
-                } else {
-                    Object first = list.getFirst();
-                    if (first instanceof List) {
-                        this.args = ((List<Object>) first);
-                    } else {
-                        this.args = new ArrayList<>();
-                    }
-                }
-            } else {
-                this.args = list;
-            }
+        // Special case: name property
+        if ("name".equals(name)) {
+            return this.name;
         }
-    }
-
-    private JsCallable callPrototype() {
-        return (context, args) -> {
-            ThisArgs thisArgs = new ThisArgs(args, false);
-            if (context instanceof CoreContext cc) {
-                cc.thisObject = thisArgs.thisObject;
-            }
-            return call(context, thisArgs.args.toArray());
-        };
-    }
-
-    private JsCallable applyPrototype() {
-        return (context, args) -> {
-            ThisArgs thisArgs = new ThisArgs(args, true);
-            if (context instanceof CoreContext cc) {
-                cc.thisObject = thisArgs.thisObject;
-            }
-            return call(context, thisArgs.args.toArray());
-        };
+        // Special case: constructor property
+        if ("constructor".equals(name)) {
+            return this;
+        }
+        return super.getMember(name);
     }
 
 }

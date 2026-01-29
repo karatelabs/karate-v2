@@ -254,4 +254,64 @@ class JsArrayTest extends EvalBase {
         match(eval("new Array(3)"), "[null, null, null]");
     }
 
+    @Test
+    void testJavaNativeArrayMethods() {
+        // Test that Java native arrays (String[], int[], etc.) work with JS array methods
+        // This exercises Terms.toJsArray() conversion in JsArrayPrototype
+        Engine engine = new Engine();
+
+        // String array
+        String[] strings = {"a", "b", "c"};
+        engine.put("items", strings);
+        assertEquals(3, engine.eval("items.length"));
+        assertEquals("a", engine.eval("items[0]"));
+        NodeUtils.match(engine.eval("items.map(x => x.toUpperCase())"), "['A', 'B', 'C']");
+        NodeUtils.match(engine.eval("items.filter(x => x !== 'b')"), "['a', 'c']");
+        assertEquals("a-b-c", engine.eval("items.join('-')"));
+
+        // int array
+        int[] numbers = {1, 2, 3, 4, 5};
+        engine.put("nums", numbers);
+        assertEquals(5, engine.eval("nums.length"));
+        assertEquals(1, engine.eval("nums[0]"));
+        assertEquals(15, engine.eval("nums.reduce((a, b) => a + b, 0)"));
+        NodeUtils.match(engine.eval("nums.map(x => x * 2)"), "[2, 4, 6, 8, 10]");
+        NodeUtils.match(engine.eval("nums.filter(x => x % 2 === 0)"), "[2, 4]");
+
+        // Object array with mixed types
+        Object[] mixed = {"hello", 42, true};
+        engine.put("mixed", mixed);
+        assertEquals(3, engine.eval("mixed.length"));
+        assertEquals("hello", engine.eval("mixed[0]"));
+        assertEquals(42, engine.eval("mixed[1]"));
+        assertEquals(true, engine.eval("mixed[2]"));
+        // forEach should work
+        engine.eval("var result = []; mixed.forEach(x => result.push(x))");
+        NodeUtils.match(engine.get("result"), "['hello', 42, true]");
+    }
+
+    @Test
+    void testUint8ArrayLength() {
+        // Test that byte[] converted to JsUint8Array reports correct length
+        // This exercises the fix in JsUint8Array.getMember()
+        Engine engine = new Engine();
+        engine.setExternalBridge(new ExternalBridge() {});
+
+        byte[] bytes = new byte[]{1, 2, 3, (byte) 255};
+        engine.put("bytes", bytes);
+
+        // Length should be correct
+        assertEquals(4, engine.eval("bytes.length"));
+
+        // Element access should work
+        assertEquals(1, engine.eval("bytes[0]"));
+        assertEquals(2, engine.eval("bytes[1]"));
+        assertEquals(3, engine.eval("bytes[2]"));
+        assertEquals(255, engine.eval("bytes[3]")); // unsigned byte
+
+        // Array methods should work on byte arrays
+        assertEquals(true, engine.eval("bytes.includes(255)"));
+        assertEquals(3, engine.eval("bytes.indexOf(255)"));
+    }
+
 }
