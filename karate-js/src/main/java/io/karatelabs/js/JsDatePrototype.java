@@ -76,7 +76,7 @@ class JsDatePrototype extends Prototype {
     }
 
     // Helper method to get JsDate from this context
-    private JsDate asDate(Context context) {
+    private static JsDate asDate(Context context) {
         Object thisObj = context.getThisObject();
         if (thisObj instanceof JsDate date) {
             return date;
@@ -84,7 +84,7 @@ class JsDatePrototype extends Prototype {
         return new JsDate();
     }
 
-    private ZonedDateTime toZonedDateTime(JsDate date) {
+    private static ZonedDateTime toZonedDateTime(JsDate date) {
         return ZonedDateTime.ofInstant(Instant.ofEpochMilli(date.getTime()), ZoneId.systemDefault());
     }
 

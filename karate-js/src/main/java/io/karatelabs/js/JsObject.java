@@ -205,8 +205,12 @@ class JsObject implements ObjectLike, JsCallable, Map<String, Object> {
     public Set<Entry<String, Object>> entrySet() {
         if (_map == null) return Collections.emptySet();
         // Return entries with unwrapped values
+        return getEntries(_map);
+    }
+
+    static Set<Entry<String, Object>> getEntries(Map<String, Object> map) {
         Set<Entry<String, Object>> unwrapped = new LinkedHashSet<>();
-        for (Entry<String, Object> entry : _map.entrySet()) {
+        for (Entry<String, Object> entry : map.entrySet()) {
             unwrapped.add(new AbstractMap.SimpleEntry<>(entry.getKey(), Engine.toJava(entry.getValue())));
         }
         return unwrapped;

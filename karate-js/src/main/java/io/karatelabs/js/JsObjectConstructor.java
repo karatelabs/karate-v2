@@ -57,11 +57,6 @@ class JsObjectConstructor extends JsFunction {
         };
     }
 
-    @Override
-    public Object call(Context context, Object... args) {
-        return new JsObject();
-    }
-
     // Static methods
 
     private Object keys(Object... args) {

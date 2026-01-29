@@ -44,25 +44,6 @@ public class Terms {
     // JsUndefined singleton for undefined - used for identity comparison
     public static final JsUndefined UNDEFINED = JsUndefined.INSTANCE;
 
-    /**
-     * Check if an object is a JS value wrapper type (JsValue).
-     * Used by code outside io.karatelabs.js that needs to detect JS wrapper types.
-     */
-    public static boolean isJsValue(Object o) {
-        return o instanceof JsValue;
-    }
-
-    /**
-     * Unwrap a JS value wrapper to its Java representation.
-     * Returns the input unchanged if not a JsValue.
-     */
-    public static Object unwrapJsValue(Object o) {
-        if (o instanceof JsValue jv) {
-            return jv.getJavaValue();
-        }
-        return o;
-    }
-
     static final Number POSITIVE_ZERO = 0;
     static final Number NEGATIVE_ZERO = -0.0;
 
@@ -414,13 +395,6 @@ public class Terms {
             return new JsString((String) o).jsEntries();
         }
         return new JsObject().jsEntries();
-    }
-
-    static JsCallable toCallable(Object o) {
-        if (o instanceof JsCallable callable) {
-            return callable;
-        }
-        return null;
     }
 
     public static boolean isTruthy(Object value) {

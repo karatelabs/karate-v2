@@ -203,68 +203,68 @@ class Interpreter {
         if (o == Terms.UNDEFINED) { // optional chaining
             return o;
         }
-        JsCallable callable = Terms.toCallable(o);
-        if (callable == null) {
+        if (o instanceof JsCallable callable) {
+            List<Object> argsList = new ArrayList<>();
+            int argsCount = fnArgsNode == null ? 0 : fnArgsNode.size();
+            for (int i = 0; i < argsCount; i++) {
+                Node fnArgNode = fnArgsNode.get(i);
+                Node argNode = fnArgNode.get(0);
+                if (argNode.isToken()) { // DOT_DOT_DOT
+                    Object arg = eval(fnArgNode.get(1), context);
+                    if (arg instanceof List<?> list) {
+                        argsList.addAll(list);
+                    }
+                } else {
+                    Object arg = eval(argNode, context);
+                    argsList.add(arg);
+                }
+            }
+            // Convert JS types to Java types if JS/Java boundary:
+            // - undefined → null
+            // - JsValue (JsDate, etc.) → unwrapped via getJavaValue()
+            if (callable.isExternal()) {
+                argsList.replaceAll(arg -> {
+                    if (arg == Terms.UNDEFINED) return null;
+                    // Unwrap JsValue (JsDate, JsUint8Array) but not JsPrimitive (Boolean/String/Number constructors)
+                    if (arg instanceof JsValue jv && !(arg instanceof JsPrimitive)) return jv.getJavaValue();
+                    return arg;
+                });
+            }
+            Object[] args = argsList.toArray();
+            CoreContext callContext = new CoreContext(context, node, ContextScope.FUNCTION);
+            JsObject newInstance = null;
+            if (newKeyword) {
+                callContext.callInfo = new CallInfo(true, callable);
+                // Only create new instance for user-defined functions (JsFunctionNode)
+                // Built-in constructors (JsArray, JsDate, etc.) handle their own construction
+                if (callable instanceof JsFunction jsFunc) {
+                    newInstance = new JsObject();
+                    Object proto = jsFunc.getMember("prototype");
+                    if (proto instanceof ObjectLike protoObj) {
+                        newInstance.setPrototype(protoObj);
+                    }
+                    callContext.thisObject = newInstance;
+                } else {
+                    callContext.thisObject = callable;
+                }
+            } else {
+                callContext.thisObject = prop.object == null ? callable : prop.object;
+            }
+            if (callContext.root.listener != null) {
+                callContext.root.listener.onFunctionCall(callContext, args);
+            }
+            Object result = callable.call(callContext, args);
+            context.updateFrom(callContext);
+            if (newKeyword && newInstance != null) {
+                // Return the new instance unless constructor explicitly returns an object
+                if (!(result instanceof ObjectLike)) {
+                    result = newInstance;
+                }
+            }
+            return result;
+        } else {
             throw new RuntimeException(node.toStringWithoutType() + " is not a function");
         }
-        List<Object> argsList = new ArrayList<>();
-        int argsCount = fnArgsNode == null ? 0 : fnArgsNode.size();
-        for (int i = 0; i < argsCount; i++) {
-            Node fnArgNode = fnArgsNode.get(i);
-            Node argNode = fnArgNode.get(0);
-            if (argNode.isToken()) { // DOT_DOT_DOT
-                Object arg = eval(fnArgNode.get(1), context);
-                if (arg instanceof List<?> list) {
-                    argsList.addAll(list);
-                }
-            } else {
-                Object arg = eval(argNode, context);
-                argsList.add(arg);
-            }
-        }
-        // Convert JS types to Java types if JS/Java boundary:
-        // - undefined → null
-        // - JsValue (JsDate, etc.) → unwrapped via getJavaValue()
-        if (callable.isExternal()) {
-            argsList.replaceAll(arg -> {
-                if (arg == Terms.UNDEFINED) return null;
-                // Unwrap JsValue (JsDate, JsUint8Array) but not JsPrimitive (Boolean/String/Number constructors)
-                if (arg instanceof JsValue jv && !(arg instanceof JsPrimitive)) return jv.getJavaValue();
-                return arg;
-            });
-        }
-        Object[] args = argsList.toArray();
-        CoreContext callContext = new CoreContext(context, node, ContextScope.FUNCTION);
-        JsObject newInstance = null;
-        if (newKeyword) {
-            callContext.callInfo = new CallInfo(true, callable);
-            // Only create new instance for user-defined functions (JsFunctionNode)
-            // Built-in constructors (JsArray, JsDate, etc.) handle their own construction
-            if (callable instanceof JsFunction jsFunc) {
-                newInstance = new JsObject();
-                Object proto = jsFunc.getMember("prototype");
-                if (proto instanceof ObjectLike protoObj) {
-                    newInstance.setPrototype(protoObj);
-                }
-                callContext.thisObject = newInstance;
-            } else {
-                callContext.thisObject = callable;
-            }
-        } else {
-            callContext.thisObject = prop.object == null ? callable : prop.object;
-        }
-        if (callContext.root.listener != null) {
-            callContext.root.listener.onFunctionCall(callContext, args);
-        }
-        Object result = callable.call(callContext, args);
-        context.updateFrom(callContext);
-        if (newKeyword && newInstance != null) {
-            // Return the new instance unless constructor explicitly returns an object
-            if (!(result instanceof ObjectLike)) {
-                result = newInstance;
-            }
-        }
-        return result;
     }
 
     private static Object evalFnExpr(Node node, CoreContext context) {

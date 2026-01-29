@@ -74,7 +74,7 @@ class JsStringPrototype extends Prototype {
     }
 
     // Helper method to get string from this context
-    private String asString(Context context) {
+    private static String asString(Context context) {
         Object thisObj = context.getThisObject();
         if (thisObj instanceof JsString js) {
             return js.text;

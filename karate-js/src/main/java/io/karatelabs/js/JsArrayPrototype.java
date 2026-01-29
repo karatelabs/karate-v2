@@ -82,7 +82,7 @@ class JsArrayPrototype extends Prototype {
     // Helper methods
 
     @SuppressWarnings("unchecked")
-    private List<Object> rawList(Context context) {
+    private static List<Object> rawList(Context context) {
         Object thisObj = context.getThisObject();
         if (thisObj instanceof JsArray arr) {
             // Use toList() instead of arr.list to support subclasses like JsUint8Array
@@ -101,7 +101,7 @@ class JsArrayPrototype extends Prototype {
         return new ArrayList<>();
     }
 
-    private Iterable<KeyValue> jsEntries(Context context) {
+    private static Iterable<KeyValue> jsEntries(Context context) {
         Object thisObj = context.getThisObject();
         if (thisObj instanceof JsArray arr) {
             return arr.jsEntries();

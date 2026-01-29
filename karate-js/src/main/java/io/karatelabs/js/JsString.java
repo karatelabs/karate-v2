@@ -85,6 +85,10 @@ non-sealed class JsString extends JsObject implements JsPrimitive {
 
     @Override
     public Object call(Context context, Object... args) {
+        return getObject(context, args);
+    }
+
+    static Object getObject(Context context, Object[] args) {
         String temp = "";
         if (args.length > 0 && args[0] != null) {
             temp = args[0].toString();

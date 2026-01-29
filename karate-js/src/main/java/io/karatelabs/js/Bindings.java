@@ -148,11 +148,7 @@ public class Bindings implements Map<String, Object> {
     @Override
     public Set<Entry<String, Object>> entrySet() {
         // Return entries with auto-unwrapped values
-        Set<Entry<String, Object>> unwrapped = new LinkedHashSet<>();
-        for (Entry<String, Object> entry : delegate.entrySet()) {
-            unwrapped.add(new AbstractMap.SimpleEntry<>(entry.getKey(), Engine.toJava(entry.getValue())));
-        }
-        return unwrapped;
+        return JsObject.getEntries(delegate);
     }
 
     // Use identity-based hashCode/equals to avoid infinite recursion

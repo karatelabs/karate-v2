@@ -53,7 +53,7 @@ class JsNumberPrototype extends Prototype {
     }
 
     // Helper method to get number from this context
-    private Number asNumber(Context context) {
+    private static Number asNumber(Context context) {
         Object thisObj = context.getThisObject();
         if (thisObj instanceof JsNumber jn) {
             return jn.value;

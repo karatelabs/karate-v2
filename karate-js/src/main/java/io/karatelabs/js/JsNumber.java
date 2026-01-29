@@ -51,6 +51,10 @@ non-sealed class JsNumber extends JsObject implements JsPrimitive {
 
     @Override
     public Object call(Context context, Object... args) {
+        return getObject(context, args);
+    }
+
+    static Object getObject(Context context, Object[] args) {
         Number temp = 0;
         if (args.length > 0) {
             temp = Terms.objectToNumber(args[0]);

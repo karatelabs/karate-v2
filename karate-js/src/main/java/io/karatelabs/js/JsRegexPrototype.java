@@ -47,7 +47,7 @@ class JsRegexPrototype extends Prototype {
     }
 
     // Helper to get JsRegex from this context
-    private JsRegex asRegex(Context context) {
+    private static JsRegex asRegex(Context context) {
         Object thisObj = context.getThisObject();
         if (thisObj instanceof JsRegex regex) {
             return regex;

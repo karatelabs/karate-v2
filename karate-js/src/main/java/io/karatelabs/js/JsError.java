@@ -31,7 +31,7 @@ class JsError extends JsObject {
     private final String message;
 
     public JsError(String message) {
-        super(null, JsErrorPrototype.INSTANCE);
+        super(null, JsObjectPrototype.INSTANCE);
         this.message = message;
     }
 

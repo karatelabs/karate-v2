@@ -136,7 +136,7 @@ public class JsJson implements SimpleObject {
     }
 
     JsInvokable parse() {
-        return args -> JSONValue.parse((String) args[0]);
+        return args -> JSONValue.parseKeepingOrder((String) args[0]);
     }
 
 }

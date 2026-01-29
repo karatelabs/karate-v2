@@ -24,7 +24,7 @@ karate-js is a lightweight JavaScript engine implemented in Java, designed for:
 4. **Java interop friendly** - `getJavaValue()` returns idiomatic Java types
 5. **Performance first** - Primitives stay as Java primitives in the common case
 6. **Flexible input, consistent output** - Accept multiple Java types as input, return one preferred type
-7. **Unwrap first pattern** - Use `getInternalValue()` to unwrap JavaMirror before switching on raw types
+7. **Unwrap first pattern** - Use `getJsValue()` to unwrap JsValue types before switching on raw types
 8. **Consistent "this" resolution** - Use `fromThis(Context)` pattern across all JsObject subclasses
 
 ---
@@ -34,18 +34,24 @@ karate-js is a lightweight JavaScript engine implemented in Java, designed for:
 ### Core Interfaces
 
 ```java
-// All JS wrapper types implement this
-interface JavaMirror {
+// Sealed hierarchy for JS wrapper types that need Java interop conversion
+public sealed interface JsValue permits JsUndefined, JsPrimitive, JsDateValue, JsBinaryValue {
     Object getJavaValue();              // For external use (e.g., JsDate → Date)
 
-    default Object getInternalValue() { // For internal operations (e.g., JsDate → Long millis)
+    default Object getJsValue() {       // For internal operations (e.g., JsDate → Long millis)
         return getJavaValue();
     }
 }
 
-// Marker for boxed primitives (JsNumber, JsString, JsBoolean)
-interface JsPrimitive extends JavaMirror {
-    // Enables single instanceof check instead of 3 separate checks
+// Sub-hierarchies (all sealed)
+sealed interface JsPrimitive extends JsValue permits JsNumber, JsString, JsBoolean {}
+sealed interface JsDateValue extends JsValue permits JsDate {}
+sealed interface JsBinaryValue extends JsValue permits JsUint8Array {}
+
+// Singleton for undefined
+public final class JsUndefined implements JsValue {
+    public static final JsUndefined INSTANCE = new JsUndefined();
+    public Object getJavaValue() { return null; }
 }
 
 // Internal interface - base for all callable objects
@@ -79,20 +85,21 @@ public interface JavaInvokable extends JavaCallable {
 **Boundary conversion:** When `callable.isExternal()` is true, arguments are converted:
 - `undefined` → `null`
 - `JsDate` → `java.util.Date`
-- Other `JavaMirror` types → unwrapped via `getJavaValue()`
+- Other `JsValue` types → unwrapped via `getJavaValue()`
 
 ### Type Mapping
 
 | JS Type | Java Wrapper | `getJavaValue()` | Implements |
 |---------|--------------|------------------|------------|
-| Number | JsNumber | Number | JsPrimitive |
-| String | JsString | String | JsPrimitive |
-| Boolean | JsBoolean | Boolean | JsPrimitive |
-| Date | JsDate | Date | JavaMirror |
-| RegExp | JsRegex | Pattern | JavaMirror |
+| undefined | JsUndefined | null | JsValue |
+| Number | JsNumber | Number | JsPrimitive → JsValue |
+| String | JsString | String | JsPrimitive → JsValue |
+| Boolean | JsBoolean | Boolean | JsPrimitive → JsValue |
+| Date | JsDate | Date | JsDateValue → JsValue |
+| RegExp | JsRegex | Pattern | - |
 | Array | JsArray | List | **List\<Object\>** |
 | Object | JsObject | Map | **Map\<String, Object\>** |
-| Uint8Array | JsUint8Array | byte[] | JavaMirror |
+| Uint8Array | JsUint8Array | byte[] | JsBinaryValue → JsValue |
 
 ### Prototype System Architecture
 
@@ -107,7 +114,7 @@ Singleton Prototypes (shared across all instances):
     JsDatePrototype.INSTANCE    ← JsObjectPrototype.INSTANCE
     JsFunctionPrototype.INSTANCE← JsObjectPrototype.INSTANCE
     JsRegexPrototype.INSTANCE   ← JsObjectPrototype.INSTANCE
-    JsErrorPrototype.INSTANCE   ← JsObjectPrototype.INSTANCE
+    (JsError uses JsObjectPrototype directly)
 
 Constructor Functions (for static methods like Array.isArray):
     JsObjectConstructor.INSTANCE  → prototype: JsObjectPrototype.INSTANCE
@@ -455,8 +462,9 @@ class JsDate extends JsObject implements JavaMirror {
 
 ```java
 static Number objectToNumber(Object o) {
-    if (o instanceof JavaMirror jm) {
-        o = jm.getInternalValue();  // Unwrap first
+    // Unwrap JsValue first using getJsValue()
+    if (o instanceof JsValue jv) {
+        o = jv.getJsValue();
     }
     return switch (o) {
         case Number n -> n;
@@ -464,6 +472,7 @@ static Number objectToNumber(Object o) {
         case Date d -> d.getTime();
         case String s -> toNumber(s.trim());
         case null -> 0;
+        // includes undefined
         default -> Double.NaN;
     };
 }
@@ -783,8 +792,10 @@ runScript("const json = response.json(); pm.test('ok', () => {});");  // No conf
 | Engine | `karate-js/src/main/java/io/karatelabs/js/Engine.java` |
 | CoreContext | `karate-js/src/main/java/io/karatelabs/js/CoreContext.java` |
 | SimpleObject | `karate-js/src/main/java/io/karatelabs/js/SimpleObject.java` |
-| JavaMirror | `karate-js/src/main/java/io/karatelabs/js/JavaMirror.java` |
+| JsValue | `karate-js/src/main/java/io/karatelabs/js/JsValue.java` |
+| JsUndefined | `karate-js/src/main/java/io/karatelabs/js/JsUndefined.java` |
 | JsPrimitive | `karate-js/src/main/java/io/karatelabs/js/JsPrimitive.java` |
+| Bindings | `karate-js/src/main/java/io/karatelabs/js/Bindings.java` |
 | JsCallable | `karate-js/src/main/java/io/karatelabs/js/JsCallable.java` |
 | JavaCallable | `karate-js/src/main/java/io/karatelabs/js/JavaCallable.java` |
 | Terms | `karate-js/src/main/java/io/karatelabs/js/Terms.java` |
@@ -806,48 +817,44 @@ This section documents potential improvements identified by comparing the Java e
 
 **Overall Assessment:** The Java engine is reasonably well-designed given its feature requirements. The areas below represent opportunities for modernization and cleanup rather than fundamental architectural issues.
 
-### 1. Sealed Interface for Value Types (Java 21+)
+### 1. ✅ Sealed Interface for Value Types (Java 21+) — COMPLETED
 
-**Current:** Value types use `instanceof` chains scattered throughout `Terms.java` and other classes. The compiler cannot verify exhaustive handling.
+**Status:** Implemented in commit `9103c26`.
 
-**Swift Pattern:** Uses `enum JsValue` with exhaustive switch expressions - the compiler ensures all cases are handled.
-
-**Proposed:** Introduce a sealed interface hierarchy for core JS values:
+**Implementation:** Introduced a sealed `JsValue` hierarchy for JS wrapper types that need Java interop conversion:
 
 ```java
-public sealed interface JsValue permits
-    JsUndefined, JsNull, JsBoolean, JsNumber, JsString,
-    JsArray, JsObject, JsFunction, JsNativeFunction {
-
-    // Common operations
-    boolean isTruthy();
-    String typeOf();
-    Object toJava();
+public sealed interface JsValue permits JsUndefined, JsPrimitive, JsDateValue, JsBinaryValue {
+    Object getJavaValue();              // For external use (e.g., JsDate → Date)
+    default Object getJsValue() {       // For internal operations
+        return getJavaValue();
+    }
 }
 
-// Pattern matching in Terms.java becomes exhaustive:
-static Number objectToNumber(JsValue value) {
-    return switch (value) {
-        case JsUndefined _ -> Double.NaN;
-        case JsNull _ -> 0;
-        case JsBoolean(var b) -> b ? 1 : 0;
-        case JsNumber(var n) -> n;
-        case JsString(var s) -> parseNumber(s);
-        case JsArray _, JsObject _, JsFunction _, JsNativeFunction _ -> Double.NaN;
-    };
+// Sub-hierarchies (all sealed)
+sealed interface JsPrimitive extends JsValue permits JsNumber, JsString, JsBoolean {}
+sealed interface JsDateValue extends JsValue permits JsDate {}
+sealed interface JsBinaryValue extends JsValue permits JsUint8Array {}
+
+// Singleton for undefined
+public final class JsUndefined implements JsValue {
+    public static final JsUndefined INSTANCE = new JsUndefined();
 }
 ```
 
-**Benefits:**
-- Compiler-enforced exhaustive handling
-- Cleaner type coercion in `Terms.java`
-- Safer refactoring (adding new value types forces updates)
-- Better IDE support for "find usages" of value types
+**Additional changes in this refactor:**
+- `Terms.UNDEFINED` now uses `JsUndefined.INSTANCE` (singleton for identity comparison)
+- `Bindings` wrapper class for auto-unwrapping Map access at Java boundaries
+- `JsFunctionWrapper` for auto-converting function return values
+- Removed `JsErrorPrototype` (JsError now uses JsObjectPrototype directly)
+- Made all prototype helper methods static (`asString`, `asNumber`, `asDate`, etc.)
+- Identity-based `equals/hashCode` on `JsObject`, `JsArray`, `Bindings` to prevent circular reference issues
 
-**Trade-offs:**
-- Significant refactor touching many files
-- Need to handle Java interop values that aren't JsValue (raw Maps, Lists, etc.)
-- May need adapter layer at boundaries
+**Benefits achieved:**
+- Cleaner type hierarchy with compiler-enforced exhaustive handling
+- Single `instanceof JsValue` check replaces scattered type checks
+- `getJsValue()` provides uniform unwrapping for internal operations
+- Thread-safe immutable prototypes shared across Engine instances
 
 ---
 
@@ -952,7 +959,7 @@ public class JsError extends JsObject {
 
 | Area | Priority | Effort | Impact |
 |------|----------|--------|--------|
-| Sealed Interface for Values | Low | High | Type safety, refactoring confidence |
+| ✅ Sealed Interface for Values | ~~Low~~ | ~~High~~ | Type safety, refactoring confidence |
 | PropertyAccessor Strategy | Low | Medium | Code cleanliness |
 | Stack Traces for Errors | High | Medium | User experience |
 | Async Architecture | Future | N/A | Extensibility |

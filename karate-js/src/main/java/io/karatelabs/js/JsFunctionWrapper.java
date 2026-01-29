@@ -30,7 +30,7 @@ package io.karatelabs.js;
  * this wrapper ensures the return value is converted (undefined → null,
  * JsDate → Date, etc.) so Java code never sees raw JS types.
  */
-public class JsFunctionWrapper extends JsFunction implements JavaCallable {
+public class JsFunctionWrapper extends JsFunction {
 
     private final JsFunction delegate;
 

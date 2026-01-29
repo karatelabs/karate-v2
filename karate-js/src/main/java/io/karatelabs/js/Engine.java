@@ -169,8 +169,7 @@ public class Engine {
             return jv.getJavaValue();
         }
         // Wrap JsFunction so Java code calling it gets converted results
-        // Only wrap actual functions, not JsObject/JsArray/etc. which also implement JsCallable
-        if (value instanceof JsFunction fn && !(value instanceof JsFunctionWrapper)) {
+        if (value instanceof JsFunction fn) {
             return new JsFunctionWrapper(fn);
         }
         return value;

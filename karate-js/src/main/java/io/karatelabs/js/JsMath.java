@@ -33,11 +33,6 @@ class JsMath extends JsObject {
 
     @Override
     public Object getMember(String name) {
-        // Check own properties first
-        Object own = super.getMember(name);
-        if (own != null) {
-            return own;
-        }
         // Math built-in properties and methods
         return switch (name) {
             case "E" -> Math.E;

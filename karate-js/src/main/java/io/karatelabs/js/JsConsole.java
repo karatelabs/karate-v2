@@ -41,15 +41,15 @@ class JsConsole implements SimpleObject {
                     if (i > 0) {
                         sb.append(' ');
                     }
-                    JsCallable callable = null;
+                    Object callable = null;
                     if (arg instanceof ObjectLike objectLike) {
-                        callable = Terms.toCallable(objectLike.getMember(SimpleObject.TO_STRING));
+                        callable = objectLike.getMember(SimpleObject.TO_STRING);
                     }
-                    if (callable != null) {
+                    if (callable instanceof JsCallable jsc) {
                         // ES6: call toString with 'this' set to the object being stringified
                         CoreContext callContext = new CoreContext((CoreContext) context, null, ContextScope.FUNCTION);
                         callContext.thisObject = arg;
-                        sb.append(callable.call(callContext));
+                        sb.append(jsc.call(callContext));
                     } else {
                         sb.append(Terms.TO_STRING(arg));
                     }

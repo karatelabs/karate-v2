@@ -52,7 +52,7 @@ class JsFunctionPrototype extends Prototype {
     }
 
     // Helper to get JsCallable from this context (accepts both JsFunction and JsCallable)
-    private JsCallable asCallable(Context context) {
+    private static JsCallable asCallable(Context context) {
         Object thisObj = context.getThisObject();
         if (thisObj instanceof JsCallable callable) {
             return callable;
