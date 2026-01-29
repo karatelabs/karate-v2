@@ -858,110 +858,15 @@ public final class JsUndefined implements JsValue {
 
 ---
 
-### 2. PropertyAccessor Strategy Pattern
+### 2. Future TODO Items
 
-**Current:** `JsProperty.java` is 330+ lines handling property access with many branches for: optional chaining (`?.`), different object types (JsObject, Map, List, JavaObject), numeric vs string indexing, and Java interop.
+**JavaScript Stack Traces for Errors**
+- Current error messages are basic with no JS call stack
+- Would require tracking function entry/exit in `Interpreter.evalFnCall()`
+- Store function name + source location in `CoreContext`, capture on throw
+- Priority: High (improves debugging experience)
 
-**Swift Pattern:** Property access is simpler because it handles fewer object types.
-
-**Proposed:** Extract into a strategy pattern with typed accessors:
-
-```java
-public interface PropertyAccessor {
-    Object get(Object target, String key, boolean optional);
-    void set(Object target, String key, Object value);
-    boolean has(Object target, String key);
-}
-
-// Implementations
-class JsObjectAccessor implements PropertyAccessor { ... }
-class MapAccessor implements PropertyAccessor { ... }
-class ListAccessor implements PropertyAccessor { ... }
-class JavaBeanAccessor implements PropertyAccessor { ... }
-
-// Dispatch once at the start
-PropertyAccessor accessor = PropertyAccessor.forTarget(target);
-return accessor.get(target, key, isOptional);
-```
-
-**Benefits:**
-- Cleaner separation of concerns
-- Each accessor handles one object type
-- Easier to add new object types
-- Testable in isolation
-
-**Trade-offs:**
-- Slight dispatch overhead (mitigated by inlining hot paths)
-- More classes to maintain
-
-**Status:** TODO - good cleanup opportunity for future work.
-
----
-
-### 3. JavaScript Stack Traces for Errors
-
-**Current:** Error messages are basic - no JavaScript call stack capture.
-
-**Swift Pattern:** Also has basic errors (no stack traces).
-
-**Proposed:** Capture and report a JavaScript call stack when exceptions occur:
-
-```java
-public class JsError extends JsObject {
-    private List<StackFrame> jsStack;
-
-    public record StackFrame(String functionName, String file, int line, int column) {}
-
-    public void captureStack(CoreContext context) {
-        this.jsStack = context.captureCallStack();
-    }
-
-    public String getStackTrace() {
-        // Format like:
-        // Error: Something went wrong
-        //     at myFunction (script.js:10:5)
-        //     at onClick (script.js:25:3)
-        //     at <anonymous> (script.js:1:1)
-    }
-}
-```
-
-**Implementation requirements:**
-- Track function entry/exit in `Interpreter.evalFnCall()`
-- Store function name, source location in a stack structure on `CoreContext`
-- Capture stack snapshot when `JsError` is created or thrown
-- Format stack trace matching JavaScript conventions
-
-**Benefits:**
-- Much better debugging experience for Karate users
-- Easier to diagnose script errors
-- Matches standard JavaScript error behavior
-
----
-
-### 4. Async/Await Architecture Extensibility
-
-**Current:** The engine is purely synchronous. This is sufficient because async operations are handled at the Karate DSL level.
-
-**Future requirement:** Async/await support is planned.
-
-**Proposed:** Keep current architecture but note these extension points:
-
-1. **EvalResult pattern** - If adopting later, would enable natural async propagation
-2. **Context-based execution** - Could track pending promises per context
-3. **Event loop abstraction** - Would need to be pluggable (different for CLI vs server)
-
-**No immediate action required** - current design doesn't preclude async support. The context-based stateful return approach can be extended to track promise state.
-
----
-
-### Summary
-
-| Area | Priority | Effort | Impact |
-|------|----------|--------|--------|
-| ✅ Sealed Interface for Values | ~~Low~~ | ~~High~~ | Type safety, refactoring confidence |
-| PropertyAccessor Strategy | Low | Medium | Code cleanliness |
-| Stack Traces for Errors | High | Medium | User experience |
-| Async Architecture | Future | N/A | Extensibility |
-
-The Java engine is well-suited to its requirements. The Swift engine's simplicity comes from implementing fewer features. These improvements would modernize the codebase using Java 21+ features without changing fundamental behavior.
+**Async/Await Support**
+- Engine is currently synchronous (async handled at Karate DSL level)
+- Current design doesn't preclude async - context-based execution can track promise state
+- Priority: Future (when needed)

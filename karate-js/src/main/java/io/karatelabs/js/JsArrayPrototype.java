@@ -151,7 +151,7 @@ class JsArrayPrototype extends Prototype {
         List<Object> results = new ArrayList<>();
         JsCallable callable = toCallable(args);
         for (KeyValue kv : Terms.toIterable(context.getThisObject())) {
-            Object result = callable.call(context, kv.value, kv.index);
+            Object result = callable.call(context, kv.value(), kv.index());
             results.add(result);
         }
         return results;
@@ -161,9 +161,9 @@ class JsArrayPrototype extends Prototype {
         List<Object> results = new ArrayList<>();
         JsCallable callable = toCallable(args);
         for (KeyValue kv : jsEntries(context)) {
-            Object result = callable.call(context, kv.value, kv.index);
+            Object result = callable.call(context, kv.value(), kv.index());
             if (Terms.isTruthy(result)) {
-                results.add(kv.value);
+                results.add(kv.value());
             }
         }
         return results;
@@ -176,7 +176,7 @@ class JsArrayPrototype extends Prototype {
             if (!sb.isEmpty()) {
                 sb.append(delimiter);
             }
-            sb.append(kv.value);
+            sb.append(kv.value());
         }
         return sb.toString();
     }
@@ -184,9 +184,9 @@ class JsArrayPrototype extends Prototype {
     private Object find(Context context, Object... args) {
         JsCallable callable = toCallable(args);
         for (KeyValue kv : jsEntries(context)) {
-            Object result = callable.call(context, kv.value, kv.index);
+            Object result = callable.call(context, kv.value(), kv.index());
             if (Terms.isTruthy(result)) {
-                return kv.value;
+                return kv.value();
             }
         }
         return Terms.UNDEFINED;
@@ -195,9 +195,9 @@ class JsArrayPrototype extends Prototype {
     private Object findIndex(Context context, Object... args) {
         JsCallable callable = toCallable(args);
         for (KeyValue kv : jsEntries(context)) {
-            Object result = callable.call(context, kv.value, kv.index);
+            Object result = callable.call(context, kv.value(), kv.index());
             if (Terms.isTruthy(result)) {
-                return kv.index;
+                return kv.index();
             }
         }
         return -1;
@@ -221,7 +221,7 @@ class JsArrayPrototype extends Prototype {
 
     private Object includes(Context context, Object... args) {
         for (KeyValue kv : jsEntries(context)) {
-            if (Terms.eq(kv.value, args[0], false)) {
+            if (Terms.eq(kv.value(), args[0], false)) {
                 return true;
             }
         }
@@ -283,9 +283,9 @@ class JsArrayPrototype extends Prototype {
         JsCallable callable = toCallable(args);
         for (KeyValue kv : jsEntries(context)) {
             if (context instanceof CoreContext cc) {
-                cc.iteration = kv.index;
+                cc.iteration = kv.index();
             }
-            callable.call(context, kv.value, kv.index, context.getThisObject());
+            callable.call(context, kv.value(), kv.index(), context.getThisObject());
         }
         return Terms.UNDEFINED;
     }
@@ -311,7 +311,7 @@ class JsArrayPrototype extends Prototype {
         }
         JsCallable callable = toCallable(args);
         for (KeyValue kv : jsEntries(context)) {
-            Object result = callable.call(context, kv.value, kv.index, thisArray);
+            Object result = callable.call(context, kv.value(), kv.index(), thisArray);
             if (!Terms.isTruthy(result)) {
                 return false;
             }
@@ -326,7 +326,7 @@ class JsArrayPrototype extends Prototype {
         }
         JsCallable callable = toCallable(args);
         for (KeyValue kv : jsEntries(context)) {
-            Object result = callable.call(context, kv.value, kv.index, thisArray);
+            Object result = callable.call(context, kv.value(), kv.index(), thisArray);
             if (Terms.isTruthy(result)) {
                 return true;
             }
@@ -753,12 +753,12 @@ class JsArrayPrototype extends Prototype {
         JsCallable callable = toCallable(args);
         Map<String, List<Object>> groups = new HashMap<>();
         for (KeyValue kv : jsEntries(context)) {
-            Object key = callable.call(context, kv.value, kv.index, thisArray);
+            Object key = callable.call(context, kv.value(), kv.index(), thisArray);
             String keyStr = key == null ? "null" : key.toString();
             if (!groups.containsKey(keyStr)) {
                 groups.put(keyStr, new ArrayList<>());
             }
-            groups.get(keyStr).add(kv.value);
+            groups.get(keyStr).add(kv.value());
         }
         JsObject result = new JsObject();
         for (Map.Entry<String, List<Object>> entry : groups.entrySet()) {

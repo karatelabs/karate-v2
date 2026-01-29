@@ -82,7 +82,7 @@ non-sealed class JsUint8Array extends JsArray implements JsBinaryValue {
     public List<Object> toList() {
         ArrayList<Object> list = new ArrayList<>(buffer.length);
         for (KeyValue kv : jsEntries()) {
-            list.add(kv.value);
+            list.add(kv.value());
         }
         return list;
     }

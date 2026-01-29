@@ -92,12 +92,12 @@ class Interpreter {
             if (lhs.type == NodeType.LIT_EXPR) {
                 evalAssign(lhs.getFirst(), context, BindingType.VAR, value, true);
             } else {
-                JsProperty prop = new JsProperty(lhs, context);
+                PropertyAccess prop = new PropertyAccess(lhs, context);
                 prop.set(value);
             }
             return value;
         }
-        JsProperty prop = new JsProperty(lhs, context);
+        PropertyAccess prop = new PropertyAccess(lhs, context);
         Object result = switch (operator) {
             case PLUS_EQ -> Terms.add(prop.get(), value);
             case MINUS_EQ -> terms(prop.get(), value).min();
@@ -142,12 +142,13 @@ class Interpreter {
 
     @SuppressWarnings("unchecked")
     private static Object evalDeleteStmt(Node node, CoreContext context) {
-        JsProperty prop = new JsProperty(node.get(1).getFirst(), context);
+        PropertyAccess prop = new PropertyAccess(node.get(1).getFirst(), context);
         String key = prop.name == null ? prop.index + "" : prop.name;
-        if (prop.object instanceof Map) {
-            ((Map<String, Object>) prop.object).remove(key);
-        } else if (prop.object instanceof ObjectLike) {
-            ((ObjectLike) prop.object).removeMember(key);
+        // Check ObjectLike BEFORE Map (JsObject implements both)
+        if (prop.object instanceof ObjectLike ol) {
+            ol.removeMember(key);
+        } else if (prop.object instanceof Map<?, ?> map) {
+            ((Map<String, Object>) map).remove(key);
         }
         return true;
     }
@@ -198,7 +199,7 @@ class Interpreter {
             fnArgsNode = node.get(2);
             node = node.getFirst();
         }
-        JsProperty prop = new JsProperty(node, context, true);
+        PropertyAccess prop = new PropertyAccess(node, context, true);
         Object o = prop.get();
         if (o == Terms.UNDEFINED) { // optional chaining
             return o;
@@ -359,7 +360,7 @@ class Interpreter {
             for (KeyValue kv : iterable) {
                 index++;
                 outer.iteration = index;
-                Object varValue = in ? kv.key : kv.value;
+                Object varValue = in ? kv.key() : kv.value();
                 evalAssign(bindings, outer, bindingType, varValue, true);
                 if (bindingType == BindingType.LET || bindingType == BindingType.CONST) {
                     inner = new CoreContext(outer, forBody, ContextScope.LOOP_BODY);
@@ -435,7 +436,7 @@ class Interpreter {
                     Object value = evalRefExpr(elem.get(1), context);
                     Iterable<KeyValue> iterable = Terms.toIterable(value);
                     for (KeyValue kv : iterable) {
-                        list.add(kv.value);
+                        list.add(kv.value());
                     }
                 }
             } else if (exprNode.token.type == COMMA) { // sparse
@@ -705,7 +706,7 @@ class Interpreter {
     }
 
     private static Object evalMathPostExpr(Node node, CoreContext context) {
-        JsProperty postProp = new JsProperty(node.get(0), context);
+        PropertyAccess postProp = new PropertyAccess(node.get(0), context);
         Object postValue = postProp.get();
         switch (node.get(1).token.type) {
             case PLUS_PLUS:
@@ -721,7 +722,7 @@ class Interpreter {
     }
 
     private static Object evalMathPreExpr(Node node, CoreContext context) {
-        JsProperty prop = new JsProperty(node.get(1).getFirst(), context);
+        PropertyAccess prop = new PropertyAccess(node.get(1).getFirst(), context);
         final Object value = prop.get();
         return switch (node.get(0).token.type) {
             case PLUS_PLUS -> {
@@ -1062,7 +1063,7 @@ class Interpreter {
             case PAREN_EXPR -> evalExpr(node.get(1), context);
             case PROGRAM -> evalProgram(node, context);
             case REF_EXPR -> evalRefExpr(node, context);
-            case REF_BRACKET_EXPR, REF_DOT_EXPR -> new JsProperty(node, context).get();
+            case REF_BRACKET_EXPR, REF_DOT_EXPR -> new PropertyAccess(node, context).get();
             case RETURN_STMT -> evalReturnStmt(node, context);
             case STATEMENT -> evalStatement(node, context);
             case SWITCH_STMT -> evalSwitchStmt(node, context);

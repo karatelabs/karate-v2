@@ -23,18 +23,8 @@
  */
 package io.karatelabs.js;
 
-class KeyValue {
-
-    final Object parent;
-    final int index;
-    final String key;
-    final Object value;
-
-    KeyValue(Object parent, int index, String key, Object value) {
-        this.parent = parent;
-        this.index = index;
-        this.key = key;
-        this.value = value;
-    }
-
+/**
+ * Represents a key-value pair for JS iteration (for-in/for-of).
+ */
+record KeyValue(Object parent, int index, String key, Object value) {
 }

@@ -33,9 +33,9 @@ import java.util.List;
 import java.util.Map;
 
 @SuppressWarnings("unchecked")
-class JsProperty {
+class PropertyAccess {
 
-    static final Logger logger = LoggerFactory.getLogger(JsProperty.class);
+    static final Logger logger = LoggerFactory.getLogger(PropertyAccess.class);
 
     final Node node;
     final Object object;
@@ -46,11 +46,11 @@ class JsProperty {
     String name;
     Object index;
 
-    JsProperty(Node node, CoreContext context) {
+    PropertyAccess(Node node, CoreContext context) {
         this(node, context, false);
     }
 
-    JsProperty(Node node, CoreContext context, boolean functionCall) {
+    PropertyAccess(Node node, CoreContext context, boolean functionCall) {
         this.node = node;
         this.context = context;
         this.functionCall = functionCall;
@@ -245,19 +245,19 @@ class JsProperty {
             }
             // Check prototype chain
             Object result = jsObj.getMember(name);
-            if (result != null && result != Terms.UNDEFINED) {
+            if (isFound(result)) {
                 return result;
             }
             return Terms.UNDEFINED;
         } else if (object instanceof JsArray jsArr) {
             Object result = jsArr.getMember(name);
-            if (result != null && result != Terms.UNDEFINED) {
+            if (isFound(result)) {
                 return result;
             }
             return Terms.UNDEFINED;
         } else if (object instanceof ObjectLike ol) {
             Object result = ol.getMember(name);
-            if (result != null && result != Terms.UNDEFINED) {
+            if (isFound(result)) {
                 return result;
             }
             // For other ObjectLike (JavaObject, SimpleObject), fall through to external bridge
@@ -277,7 +277,7 @@ class JsProperty {
             ObjectLike ol = Terms.toObjectLike(object);
             if (ol != null) {
                 Object result = ol.getMember(name);
-                if (result != null && result != Terms.UNDEFINED) {
+                if (isFound(result)) {
                     return result;
                 }
             }
@@ -287,7 +287,7 @@ class JsProperty {
             ObjectLike ol = Terms.toObjectLike(object);
             if (ol != null) {
                 Object result = ol.getMember(name);
-                if (result != null && result != Terms.UNDEFINED) {
+                if (isFound(result)) {
                     return result;
                 }
             }
@@ -304,28 +304,24 @@ class JsProperty {
                 }
             }.getMember(name);
         }
-        if (context.root.bridge != null) {
-            try {
-                if (functionCall) {
-                    if (object instanceof ExternalAccess ja) {
-                        return ja.getMethod(name);
-                    } else {
-                        ExternalAccess ja = context.root.bridge.forInstance(object);
-                        return ja.getMethod(name);
-                    }
-                } else {
-                    if (object instanceof ExternalAccess ja) {
-                        return ja.getProperty(name);
-                    } else {
-                        ExternalAccess ja = context.root.bridge.forInstance(object);
-                        return ja.getProperty(name);
-                    }
-                }
-            } catch (Exception e) {
-                // ignore java reflection failure
-            }
+        return accessViaBridge(name);
+    }
+
+    private static boolean isFound(Object result) {
+        return result != null && result != Terms.UNDEFINED;
+    }
+
+    private Object accessViaBridge(String name) {
+        if (context.root.bridge == null) {
+            return Terms.UNDEFINED;
         }
-        return Terms.UNDEFINED;
+        try {
+            ExternalAccess ja = object instanceof ExternalAccess ea
+                    ? ea : context.root.bridge.forInstance(object);
+            return functionCall ? ja.getMethod(name) : ja.getProperty(name);
+        } catch (Exception e) {
+            return Terms.UNDEFINED;
+        }
     }
 
 }

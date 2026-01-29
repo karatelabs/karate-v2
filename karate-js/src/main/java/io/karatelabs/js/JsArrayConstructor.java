@@ -53,16 +53,7 @@ class JsArrayConstructor extends JsFunction {
 
     @Override
     public Object call(Context context, Object... args) {
-        // ES6: Both Array() and new Array() return an Array object
-        if (args.length == 1 && args[0] instanceof Number n) {
-            int count = n.intValue();
-            List<Object> list = new ArrayList<>();
-            for (int i = 0; i < count; i++) {
-                list.add(null);
-            }
-            return new JsArray(list);
-        }
-        return new JsArray(new ArrayList<>(Arrays.asList(args)));
+        return JsArray.create(args);
     }
 
     // Static methods
@@ -77,15 +68,15 @@ class JsArrayConstructor extends JsFunction {
         JsArray array;
         if (args[0] instanceof Map) {
             array = JsArray.toArray((Map<String, Object>) args[0]);
+        } else if (args[0] instanceof JsArray ja) {
+            array = ja;
         } else if (args[0] instanceof List) {
             array = new JsArray((List<Object>) args[0]);
-        } else if (args[0] instanceof JsArray) {
-            array = (JsArray) args[0];
         } else {
             array = new JsArray();
         }
         for (KeyValue kv : array.jsEntries()) {
-            Object result = callable == null ? kv.value : callable.call(context, kv.value, kv.index);
+            Object result = callable == null ? kv.value() : callable.call(context, kv.value(), kv.index());
             results.add(result);
         }
         return results;

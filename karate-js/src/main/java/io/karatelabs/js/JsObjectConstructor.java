@@ -62,7 +62,7 @@ class JsObjectConstructor extends JsFunction {
     private Object keys(Object... args) {
         List<Object> result = new ArrayList<>();
         for (KeyValue kv : Terms.toIterable(args[0])) {
-            result.add(kv.key);
+            result.add(kv.key());
         }
         return result;
     }
@@ -70,7 +70,7 @@ class JsObjectConstructor extends JsFunction {
     private Object values(Object... args) {
         List<Object> result = new ArrayList<>();
         for (KeyValue kv : Terms.toIterable(args[0])) {
-            result.add(kv.value);
+            result.add(kv.value());
         }
         return result;
     }
@@ -79,8 +79,8 @@ class JsObjectConstructor extends JsFunction {
         List<Object> result = new ArrayList<>();
         for (KeyValue kv : Terms.toIterable(args[0])) {
             List<Object> entry = new ArrayList<>();
-            entry.add(kv.key);
-            entry.add(kv.value);
+            entry.add(kv.key());
+            entry.add(kv.value());
             result.add(entry);
         }
         return result;
@@ -95,11 +95,11 @@ class JsObjectConstructor extends JsFunction {
         }
         Map<String, Object> result = new LinkedHashMap<>();
         for (KeyValue kv : Terms.toIterable(args[0])) {
-            result.put(kv.key, kv.value);
+            result.put(kv.key(), kv.value());
         }
         for (int i = 1; i < args.length; i++) {
             for (KeyValue kv : Terms.toIterable(args[i])) {
-                result.put(kv.key, kv.value);
+                result.put(kv.key(), kv.value());
             }
         }
         return result;
@@ -112,8 +112,8 @@ class JsObjectConstructor extends JsFunction {
         }
         Map<String, Object> result = new LinkedHashMap<>();
         for (KeyValue kv : Terms.toIterable(args[0])) {
-            if (kv.value instanceof List) {
-                List<Object> list = (List<Object>) kv.value;
+            if (kv.value() instanceof List) {
+                List<Object> list = (List<Object>) kv.value();
                 if (!list.isEmpty()) {
                     Object key = list.getFirst();
                     if (key != null) {
