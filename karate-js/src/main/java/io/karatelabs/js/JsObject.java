@@ -241,4 +241,16 @@ class JsObject implements ObjectLike, JsCallable, Map<String, Object> {
         return new JsObject();
     }
 
+    // Use identity-based hashCode/equals to avoid infinite recursion
+    // when objects have circular references (e.g., constructor ↔ prototype)
+    @Override
+    public int hashCode() {
+        return System.identityHashCode(this);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return this == obj;
+    }
+
 }

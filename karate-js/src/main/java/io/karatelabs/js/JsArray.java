@@ -341,4 +341,16 @@ class JsArray implements ObjectLike, JsCallable, List<Object> {
         return new JsArray(new ArrayList<>(Arrays.asList(args)));
     }
 
+    // Use identity-based hashCode/equals to avoid infinite recursion
+    // when arrays contain objects with circular references
+    @Override
+    public int hashCode() {
+        return System.identityHashCode(this);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return this == obj;
+    }
+
 }

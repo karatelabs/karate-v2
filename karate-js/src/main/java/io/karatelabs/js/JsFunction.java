@@ -25,6 +25,9 @@ package io.karatelabs.js;
 
 /**
  * Base class for JavaScript function objects.
+ * <p>
+ * Implements JavaCallable so JS functions can be passed to Java code
+ * that expects a callable (e.g., predicate functions, callbacks).
  */
 public abstract class JsFunction extends JsObject implements JavaCallable {
 

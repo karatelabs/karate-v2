@@ -920,4 +920,99 @@ class ExternalBridgeTest extends EvalBase {
         assertEquals("java.lang.Long", engine.get("result"));
     }
 
+    // =================================================================================================================
+    // JS Function Passed to Java Code Tests
+    // These tests verify that JS functions can be received by Java code expecting JavaCallable
+    // =================================================================================================================
+
+    @Test
+    void testJsFunctionPassedToJavaMethodAsCallable() {
+        // Simulates: proc.waitForOutput(function(line) { return line.indexOf('ready') >= 0 })
+        // Java code checks: if (args[0] instanceof JavaCallable)
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        java.util.List<Object> capturedResults = new java.util.ArrayList<>();
+        SimpleObject utils = name -> {
+            if ("forEach".equals(name)) {
+                return (JavaCallable) (context, args) -> {
+                    if (args.length < 2 || !(args[1] instanceof JavaCallable)) {
+                        throw new RuntimeException("forEach requires a function argument");
+                    }
+                    List<?> list = (List<?>) args[0];
+                    JavaCallable fn = (JavaCallable) args[1];
+                    for (Object item : list) {
+                        Object result = fn.call(context, item);
+                        capturedResults.add(result);
+                    }
+                    return null;
+                };
+            }
+            return null;
+        };
+        engine.put("utils", utils);
+        engine.eval("""
+                var items = ['a', 'b', 'c'];
+                utils.forEach(items, function(x) { return x.toUpperCase() });
+                """);
+        assertEquals(List.of("A", "B", "C"), capturedResults);
+    }
+
+    @Test
+    void testJsArrowFunctionPassedToJavaMethodAsCallable() {
+        // Arrow function syntax
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        java.util.List<Object> capturedResults = new java.util.ArrayList<>();
+        SimpleObject utils = name -> {
+            if ("map".equals(name)) {
+                return (JavaCallable) (context, args) -> {
+                    if (args.length < 2 || !(args[1] instanceof JavaCallable)) {
+                        throw new RuntimeException("map requires a function argument");
+                    }
+                    List<?> list = (List<?>) args[0];
+                    JavaCallable fn = (JavaCallable) args[1];
+                    java.util.List<Object> result = new java.util.ArrayList<>();
+                    for (Object item : list) {
+                        result.add(fn.call(context, item));
+                    }
+                    return result;
+                };
+            }
+            return null;
+        };
+        engine.put("utils", utils);
+        Object result = engine.eval("""
+                var items = [1, 2, 3];
+                utils.map(items, x => x * 2);
+                """);
+        assertEquals(List.of(2, 4, 6), result);
+    }
+
+    @Test
+    void testJsFunctionFromVariablePassedToJavaMethod() {
+        // Function stored in variable, then passed
+        engine = new Engine();
+        engine.setExternalBridge(bridge);
+        final Object[] capturedFn = new Object[1];
+        SimpleObject utils = name -> {
+            if ("captureCallable".equals(name)) {
+                return (JavaCallable) (context, args) -> {
+                    capturedFn[0] = args[0];
+                    if (args[0] instanceof JavaCallable jc) {
+                        return jc.call(context, "test");
+                    }
+                    throw new RuntimeException("Not a JavaCallable: " + args[0].getClass().getName());
+                };
+            }
+            return null;
+        };
+        engine.put("utils", utils);
+        Object result = engine.eval("""
+                var fn = function(x) { return 'received: ' + x };
+                utils.captureCallable(fn);
+                """);
+        assertEquals("received: test", result);
+        assertInstanceOf(JavaCallable.class, capturedFn[0], "JS function should be instanceof JavaCallable");
+    }
+
 }

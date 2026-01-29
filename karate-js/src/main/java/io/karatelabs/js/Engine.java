@@ -39,7 +39,25 @@ public class Engine {
 
     private final ContextRoot root = new ContextRoot(this);
 
-    private final Map<String, Object> bindings = new HashMap<>();
+    private final Bindings bindings;
+
+    /**
+     * Creates an Engine with a new empty bindings map.
+     */
+    public Engine() {
+        this.bindings = new Bindings(new HashMap<>());
+    }
+
+    /**
+     * Creates an Engine backed by the given map.
+     * Changes to the external map will be visible to the engine,
+     * and changes by the engine will be visible to code holding the external map.
+     *
+     * @param externalBindings the external map to use for bindings
+     */
+    public Engine(Map<String, Object> externalBindings) {
+        this.bindings = new Bindings(externalBindings);
+    }
 
     public Object eval(Node program) {
         return evalInternal(program, null);
@@ -70,11 +88,11 @@ public class Engine {
     }
 
     public Object get(String name) {
-        return toJava(bindings.get(name));
+        return toJava(bindings.getRaw(name));
     }
 
     public void put(String name, Object value) {
-        bindings.put(name, value);
+        bindings.getRawMap().put(name, value);
     }
 
     public void putRootBinding(String name, Object value) {
@@ -82,24 +100,40 @@ public class Engine {
     }
 
     public void remove(String name) {
-        bindings.remove(name);
+        bindings.getRawMap().remove(name);
     }
 
     public void setOnConsoleLog(Consumer<String> onConsoleLog) {
         root.setOnConsoleLog(onConsoleLog);
     }
 
+    /**
+     * Returns the bindings as an auto-unwrapping Map.
+     * Values retrieved via get() are automatically converted (JsDate → Date, undefined → null, etc.).
+     * The returned map wraps the underlying raw map, so changes are visible both ways.
+     */
     public Map<String, Object> getBindings() {
         return bindings;
+    }
+
+    /**
+     * Returns the raw bindings map without auto-unwrapping.
+     * Use this for internal engine operations that need raw JS values.
+     */
+    public Map<String, Object> getRawBindings() {
+        return bindings.getRawMap();
     }
 
     public Context getRootContext() {
         return root;
     }
 
+    /**
+     * Returns the root context bindings as an auto-unwrapping Map.
+     */
     public Map<String, Object> getRootBindings() {
         if (root._bindings != null) {
-            return root._bindings;
+            return new Bindings(root._bindings);
         }
         return java.util.Collections.emptyMap();
     }
@@ -125,12 +159,19 @@ public class Engine {
         return root.pointFactory;
     }
 
+    /**
+     * Converts a JS value to its Java equivalent.
+     * - JsValue types (including JsUndefined) are unwrapped via getJavaValue()
+     * - JsFunction is wrapped to auto-convert return values
+     */
     static Object toJava(Object value) {
-        if (value instanceof JavaMirror) {
-            return ((JavaMirror) value).getJavaValue();
+        if (value instanceof JsValue jv) {
+            return jv.getJavaValue();
         }
-        if (value == Terms.UNDEFINED) {
-            return null;
+        // Wrap JsFunction so Java code calling it gets converted results
+        // Only wrap actual functions, not JsObject/JsArray/etc. which also implement JsCallable
+        if (value instanceof JsFunction fn && !(value instanceof JsFunctionWrapper)) {
+            return new JsFunctionWrapper(fn);
         }
         return value;
     }
@@ -139,7 +180,7 @@ public class Engine {
     protected Object evalRaw(String text) {
         JsParser parser = new JsParser(Resource.text(text));
         Node program = parser.parse();
-        CoreContext context = new CoreContext(root, root, 0, program, ContextScope.GLOBAL, bindings);
+        CoreContext context = new CoreContext(root, root, 0, program, ContextScope.GLOBAL, bindings.getRawMap());
         return Interpreter.eval(program, context);
     }
 
@@ -152,9 +193,9 @@ public class Engine {
         try {
             CoreContext context;
             if (localVars == null) {
-                context = new CoreContext(root, root, 0, program, ContextScope.GLOBAL, bindings);
+                context = new CoreContext(root, root, 0, program, ContextScope.GLOBAL, bindings.getRawMap());
             } else {
-                CoreContext parent = new CoreContext(root, null, -1, new Node(NodeType.ROOT), ContextScope.GLOBAL, bindings);
+                CoreContext parent = new CoreContext(root, null, -1, new Node(NodeType.ROOT), ContextScope.GLOBAL, bindings.getRawMap());
                 context = new CoreContext(root, parent, 0, program, ContextScope.GLOBAL, localVars);
             }
             context.event(EventType.CONTEXT_ENTER, program);

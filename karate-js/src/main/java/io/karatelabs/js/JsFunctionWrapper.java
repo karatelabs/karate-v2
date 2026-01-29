@@ -24,18 +24,39 @@
 package io.karatelabs.js;
 
 /**
- * Sealed interface for JS boxed primitives (Number, String, Boolean objects).
+ * Wrapper for JsFunction that auto-converts return values via Engine.toJava().
  * <p>
- * These are created via {@code new Number(5)}, {@code new String("x")}, {@code new Boolean(true)}.
- * Unlike primitive values, boxed primitives are objects and always truthy.
- * <p>
- * Permitted implementations:
- * <ul>
- *   <li>{@link JsNumber} - wraps a Number value</li>
- *   <li>{@link JsString} - wraps a String value</li>
- *   <li>{@link JsBoolean} - wraps a boolean value</li>
- * </ul>
+ * When Java code holds a reference to a JS function and invokes it directly,
+ * this wrapper ensures the return value is converted (undefined → null,
+ * JsDate → Date, etc.) so Java code never sees raw JS types.
  */
-sealed interface JsPrimitive extends JsValue permits JsNumber, JsString, JsBoolean {
+public class JsFunctionWrapper extends JsFunction implements JavaCallable {
+
+    private final JsFunction delegate;
+
+    public JsFunctionWrapper(JsFunction delegate) {
+        this.delegate = delegate;
+    }
+
+    @Override
+    public Object call(Context ctx, Object... args) {
+        Object result = delegate.call(ctx, args);
+        return Engine.toJava(result);
+    }
+
+    @Override
+    public String getSource() {
+        return delegate.getSource();
+    }
+
+    @Override
+    public Object getMember(String name) {
+        return delegate.getMember(name);
+    }
+
+    @Override
+    public void putMember(String name, Object value) {
+        delegate.putMember(name, value);
+    }
 
 }

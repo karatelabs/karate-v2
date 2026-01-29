@@ -23,7 +23,8 @@
  */
 package io.karatelabs.common;
 
-import io.karatelabs.js.JavaMirror;
+import io.karatelabs.js.JsFunction;
+import io.karatelabs.js.JsValue;
 import io.karatelabs.js.ObjectLike;
 import io.karatelabs.js.Terms;
 import net.minidev.json.JSONStyle;
@@ -496,7 +497,9 @@ public class StringUtils {
         }
         if (o instanceof List || o instanceof Map) {
             StringBuilder sb = new StringBuilder();
-            formatRecurse(o, pretty, lenient, sort, indent, sb, 0);
+            // Use IdentityHashMap for circular reference detection (identity, not equals)
+            Set<Object> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+            formatRecurse(o, pretty, lenient, sort, indent, sb, 0, visited);
             return sb.toString();
         } else {
             return o + "";
@@ -504,68 +507,102 @@ public class StringUtils {
     }
 
     @SuppressWarnings("unchecked")
-    private static void formatRecurse(Object o, boolean pretty, boolean lenient, boolean sort, String indent, StringBuilder sb, int depth) {
+    private static void formatRecurse(Object o, boolean pretty, boolean lenient, boolean sort,
+                                       String indent, StringBuilder sb, int depth, Set<Object> visited) {
         if (o == null) {
             sb.append("null");
-        } else if (o == Terms.UNDEFINED) {
-            // JSON has no undefined, convert to null
+        } else if (o instanceof JsFunction) {
+            // JS functions cannot be serialized to JSON
             sb.append("null");
-        } else if (o instanceof JavaMirror jm) {
+        } else if (o instanceof JsValue jv) {
+            // Handles JsUndefined (returns null), JsDate, JsNumber, JsString, JsBoolean, JsUint8Array
             // Unwrap JS wrapper types (JsDate, JsNumber, JsString, JsBoolean) - check BEFORE Map/List
             // because these types extend JsObject which implements Map
-            formatRecurse(jm.getJavaValue(), pretty, lenient, sort, indent, sb, depth);
+            formatRecurse(jv.getJavaValue(), pretty, lenient, sort, indent, sb, depth, visited);
         } else if (o instanceof List<?> list) {
-            sb.append('[');
-            if (pretty) {
-                sb.append('\n');
+            // Check for circular reference
+            if (visited.contains(o)) {
+                sb.append("\"[Circular]\"");
+                return;
             }
-            Iterator<?> iterator = list.iterator();
-            while (iterator.hasNext()) {
-                Object child = iterator.next();
-                if (pretty) {
-                    pad(sb, depth + 1, indent);
-                }
-                formatRecurse(child, pretty, lenient, sort, indent, sb, depth + 1);
-                if (iterator.hasNext()) {
-                    sb.append(',');
-                }
+            visited.add(o);
+            try {
+                sb.append('[');
                 if (pretty) {
                     sb.append('\n');
                 }
+                Iterator<?> iterator = list.iterator();
+                while (iterator.hasNext()) {
+                    Object child = iterator.next();
+                    if (pretty) {
+                        pad(sb, depth + 1, indent);
+                    }
+                    formatRecurse(child, pretty, lenient, sort, indent, sb, depth + 1, visited);
+                    if (iterator.hasNext()) {
+                        sb.append(',');
+                    }
+                    if (pretty) {
+                        sb.append('\n');
+                    }
+                }
+                if (pretty) {
+                    pad(sb, depth, indent);
+                }
+                sb.append(']');
+            } finally {
+                visited.remove(o);
             }
-            if (pretty) {
-                pad(sb, depth, indent);
-            }
-            sb.append(']');
         } else if (o instanceof ObjectLike ol) {
-            // Use toMap() to get raw entries (without auto-unwrap) for ObjectLike types
-            // This preserves Terms.UNDEFINED so we can filter it out
-            Map<Object, Object> map = (Map<Object, Object>) (Map<?, ?>) ol.toMap();
-            if (sort) {
-                map = new TreeMap<>(map);
+            // Check for circular reference
+            if (visited.contains(o)) {
+                sb.append("\"[Circular]\"");
+                return;
             }
-            // Filter out undefined values (JSON has no undefined, and in objects they should be omitted)
-            List<Map.Entry<Object, Object>> entries = new ArrayList<>();
-            for (Map.Entry<Object, Object> entry : map.entrySet()) {
-                if (entry.getValue() != Terms.UNDEFINED) {
-                    entries.add(entry);
+            visited.add(o);
+            try {
+                // Use toMap() to get raw entries (without auto-unwrap) for ObjectLike types
+                // This preserves Terms.UNDEFINED so we can filter it out
+                Map<Object, Object> map = (Map<Object, Object>) (Map<?, ?>) ol.toMap();
+                if (sort) {
+                    map = new TreeMap<>(map);
                 }
+                // Filter out undefined values and functions (JSON has no undefined/functions)
+                List<Map.Entry<Object, Object>> entries = new ArrayList<>();
+                for (Map.Entry<Object, Object> entry : map.entrySet()) {
+                    Object value = entry.getValue();
+                    if (!(value == Terms.UNDEFINED) && !(value instanceof JsFunction)) {
+                        entries.add(entry);
+                    }
+                }
+                formatMap(entries, pretty, lenient, sort, indent, sb, depth, visited);
+            } finally {
+                visited.remove(o);
             }
-            formatMap(entries, pretty, lenient, sort, indent, sb, depth);
         } else if (o instanceof Map) {
-            // found a rare case where key was a boolean (not string)
-            Map<Object, Object> map = (Map<Object, Object>) o;
-            if (sort) {
-                map = new TreeMap<>(map);
+            // Check for circular reference
+            if (visited.contains(o)) {
+                sb.append("\"[Circular]\"");
+                return;
             }
-            // Filter out undefined values (JSON has no undefined, and in objects they should be omitted)
-            List<Map.Entry<Object, Object>> entries = new ArrayList<>();
-            for (Map.Entry<Object, Object> entry : map.entrySet()) {
-                if (entry.getValue() != Terms.UNDEFINED) {
-                    entries.add(entry);
+            visited.add(o);
+            try {
+                // found a rare case where key was a boolean (not string)
+                Map<Object, Object> map = (Map<Object, Object>) o;
+                if (sort) {
+                    map = new TreeMap<>(map);
                 }
+                // Filter out undefined values and functions (JSON has no undefined/functions)
+                List<Map.Entry<Object, Object>> entries = new ArrayList<>();
+                for (Map.Entry<Object, Object> entry : map.entrySet()) {
+                    Object value = entry.getValue();
+                    if (!(value == Terms.UNDEFINED) && !(value instanceof JsFunction)) {
+                        entries.add(entry);
+                    }
+                }
+                formatMap(entries, pretty, lenient, sort, indent, sb, depth, visited);
+            } finally {
+                visited.remove(o);
             }
-            formatMap(entries, pretty, lenient, sort, indent, sb, depth);
         } else if (o instanceof java.util.Date date) {
             // Format Date as ISO 8601 string with milliseconds (matches JavaScript's Date.toISOString())
             java.time.Instant instant = date.toInstant();
@@ -587,7 +624,7 @@ public class StringUtils {
     }
 
     private static void formatMap(List<Map.Entry<Object, Object>> entries, boolean pretty, boolean lenient,
-                                   boolean sort, String indent, StringBuilder sb, int depth) {
+                                   boolean sort, String indent, StringBuilder sb, int depth, Set<Object> visited) {
         sb.append('{');
         if (pretty) {
             sb.append('\n');
@@ -613,7 +650,7 @@ public class StringUtils {
             if (pretty) {
                 sb.append(' ');
             }
-            formatRecurse(entry.getValue(), pretty, lenient, sort, indent, sb, depth + 1);
+            formatRecurse(entry.getValue(), pretty, lenient, sort, indent, sb, depth + 1, visited);
             if (iterator.hasNext()) {
                 sb.append(',');
             }

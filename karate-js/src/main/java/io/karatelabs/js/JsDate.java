@@ -36,7 +36,7 @@ import java.util.Date;
 /**
  * JavaScript Date wrapper that provides Date prototype methods.
  */
-class JsDate extends JsObject implements JavaMirror {
+non-sealed class JsDate extends JsObject implements JsDateValue {
 
     // Browser-style toString format: "Fri Jan 01 2021 00:00:00 GMT+0000"
     private static final DateTimeFormatter TO_STRING_FORMATTER =

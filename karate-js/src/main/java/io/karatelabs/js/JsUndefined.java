@@ -24,18 +24,34 @@
 package io.karatelabs.js;
 
 /**
- * Sealed interface for JS boxed primitives (Number, String, Boolean objects).
+ * Singleton representing JavaScript's undefined value.
  * <p>
- * These are created via {@code new Number(5)}, {@code new String("x")}, {@code new Boolean(true)}.
- * Unlike primitive values, boxed primitives are objects and always truthy.
- * <p>
- * Permitted implementations:
- * <ul>
- *   <li>{@link JsNumber} - wraps a Number value</li>
- *   <li>{@link JsString} - wraps a String value</li>
- *   <li>{@link JsBoolean} - wraps a boolean value</li>
- * </ul>
+ * Implements JsValue so it's handled uniformly with other JS types.
+ * {@link #getJavaValue()} returns null for Java interop.
  */
-sealed interface JsPrimitive extends JsValue permits JsNumber, JsString, JsBoolean {
+public final class JsUndefined implements JsValue {
+
+    public static final JsUndefined INSTANCE = new JsUndefined();
+
+    private JsUndefined() {
+        // singleton
+    }
+
+    @Override
+    public Object getJavaValue() {
+        return null;
+    }
+
+    @Override
+    public Object getJsValue() {
+        // Return self so JS operations can distinguish undefined from null
+        // e.g., undefined + 5 = NaN, but null + 5 = 5
+        return this;
+    }
+
+    @Override
+    public String toString() {
+        return "undefined";
+    }
 
 }

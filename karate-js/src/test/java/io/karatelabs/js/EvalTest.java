@@ -161,7 +161,7 @@ class EvalTest extends EvalBase {
     @Test
     void testVarStatement() {
         assertNull(eval("var a"));
-        assertEquals(Terms.UNDEFINED, get("a"));
+        assertNull(get("a")); // undefined is converted to null by toJava()
         assertEquals(1, eval("var a = 1"));
         assertEquals(1, get("a"));
         assertEquals(2, eval("var a, b = 2"));

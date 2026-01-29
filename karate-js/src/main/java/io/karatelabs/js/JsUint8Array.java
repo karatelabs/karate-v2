@@ -29,7 +29,7 @@ import java.util.*;
  * JavaScript Uint8Array implementation backed by a byte[].
  * Implements List<Object> for Java interop with auto-unwrapping.
  */
-class JsUint8Array extends JsArray implements JavaMirror {
+non-sealed class JsUint8Array extends JsArray implements JsBinaryValue {
 
     private final byte[] buffer;
 

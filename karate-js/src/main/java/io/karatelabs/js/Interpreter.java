@@ -224,12 +224,12 @@ class Interpreter {
         }
         // Convert JS types to Java types if JS/Java boundary:
         // - undefined → null
-        // - JavaMirror (JsDate, etc.) → unwrapped via getJavaValue()
+        // - JsValue (JsDate, etc.) → unwrapped via getJavaValue()
         if (callable.isExternal()) {
             argsList.replaceAll(arg -> {
                 if (arg == Terms.UNDEFINED) return null;
-                // Unwrap JavaMirror (JsDate, JsUint8Array) but not JsPrimitive (Boolean/String/Number constructors)
-                if (arg instanceof JavaMirror jm && !(arg instanceof JsPrimitive)) return jm.getJavaValue();
+                // Unwrap JsValue (JsDate, JsUint8Array) but not JsPrimitive (Boolean/String/Number constructors)
+                if (arg instanceof JsValue jv && !(arg instanceof JsPrimitive)) return jv.getJavaValue();
                 return arg;
             });
         }
@@ -263,9 +263,6 @@ class Interpreter {
             if (!(result instanceof ObjectLike)) {
                 result = newInstance;
             }
-        }
-        if (result instanceof JavaMirror jm) {
-            return newKeyword ? result : jm.getJavaValue();
         }
         return result;
     }

@@ -41,12 +41,27 @@ import java.util.Map;
 
 public class Terms {
 
-    public static final Object UNDEFINED = new Object() {
-        @Override
-        public String toString() {
-            return "undefined";
+    // JsUndefined singleton for undefined - used for identity comparison
+    public static final JsUndefined UNDEFINED = JsUndefined.INSTANCE;
+
+    /**
+     * Check if an object is a JS value wrapper type (JsValue).
+     * Used by code outside io.karatelabs.js that needs to detect JS wrapper types.
+     */
+    public static boolean isJsValue(Object o) {
+        return o instanceof JsValue;
+    }
+
+    /**
+     * Unwrap a JS value wrapper to its Java representation.
+     * Returns the input unchanged if not a JsValue.
+     */
+    public static Object unwrapJsValue(Object o) {
+        if (o instanceof JsValue jv) {
+            return jv.getJavaValue();
         }
-    };
+        return o;
+    }
 
     static final Number POSITIVE_ZERO = 0;
     static final Number NEGATIVE_ZERO = -0.0;
@@ -117,9 +132,9 @@ public class Terms {
     }
 
     static Number objectToNumber(Object o) {
-        // Unwrap JavaMirror first using getInternalValue()
-        if (o instanceof JavaMirror jm) {
-            o = jm.getJsValue();
+        // Unwrap JsValue first using getJsValue()
+        if (o instanceof JsValue jv) {
+            o = jv.getJsValue();
         }
         return switch (o) {
             case Number n -> n;
@@ -318,7 +333,7 @@ public class Terms {
         return d;
     }
 
-    static JavaMirror toJavaMirror(Object o) {
+    static JsValue toJsValue(Object o) {
         if (o == null) {
             return null;
         }
@@ -370,8 +385,8 @@ public class Terms {
                 return new JsObject((Map<String, Object>) map);
             }
         }
-        JavaMirror mirror = toJavaMirror(o);
-        return mirror instanceof ObjectLike ol ? ol : null;
+        JsValue jsValue = toJsValue(o);
+        return jsValue instanceof ObjectLike ol ? ol : null;
     }
 
     @SuppressWarnings("unchecked")
@@ -416,8 +431,8 @@ public class Terms {
         if (value instanceof JsPrimitive) {
             return true;
         }
-        if (value instanceof JavaMirror mirror) {
-            value = mirror.getJavaValue();
+        if (value instanceof JsValue jv) {
+            value = jv.getJavaValue();
         }
         return switch (value) {
             case Boolean b -> b;
@@ -475,8 +490,8 @@ public class Terms {
                 return true;
             }
         }
-        // JavaMirror: same class means same type
-        if (lhs instanceof JavaMirror && rhs instanceof JavaMirror) {
+        // JsValue: same class means same type
+        if (lhs instanceof JsValue && rhs instanceof JsValue) {
             return lhs.getClass().equals(rhs.getClass());
         }
         // Walk prototype chain for any ObjectLike (JsObject, JsArray, JsString, etc.)
@@ -497,7 +512,7 @@ public class Terms {
         if (o == null) {
             return "[object Null]";
         }
-        if (Terms.isPrimitive(o) || o instanceof JavaMirror) {
+        if (Terms.isPrimitive(o) || o instanceof JsValue) {
             return o.toString();
         }
         switch (o) {

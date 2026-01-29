@@ -147,8 +147,9 @@ class KarateScalaAction(
     // Execute using Java executor
     val result = executor.execute(gatlingVars, karateVars, statsReporter, session.scenario, session.groups)
 
-    // Update session and continue
-    val updatedKarate: Map[String, Any] = result.karateVars.asScala.toMap
+    // Update session - use mutable map view to avoid hashCode computation on JS objects
+    // (JS objects may have circular references that would cause StackOverflowError)
+    val updatedKarate: scala.collection.mutable.Map[String, Any] = result.karateVars.asScala
     val updatedSession = if (result.success) {
       session.set(KarateProtocol.KARATE_KEY, updatedKarate)
     } else {

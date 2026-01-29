@@ -23,7 +23,7 @@
  */
 package io.karatelabs.js;
 
-public class JsBoolean extends JsObject implements JsPrimitive {
+public non-sealed class JsBoolean extends JsObject implements JsPrimitive {
 
     final boolean value;
 

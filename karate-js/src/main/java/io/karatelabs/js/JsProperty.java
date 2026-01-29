@@ -96,9 +96,9 @@ class JsProperty {
                     }
                 }
                 if (functionCall) {
-                    Object tempMirror = Terms.toJavaMirror(tempObject);
-                    if (tempMirror != null) {
-                        tempObject = tempMirror;
+                    Object tempJsValue = Terms.toJsValue(tempObject);
+                    if (tempJsValue != null) {
+                        tempObject = tempJsValue;
                     }
                 }
                 object = tempObject;

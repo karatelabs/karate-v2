@@ -71,7 +71,7 @@ Karate v2 is a **complete ground-up rewrite** with significant improvements acro
 * Soft assertions
 * JSON validation works in "soft assertion mode by default"
 * Debugging of JavaScript is possible now
-
+* Large JSON operations such as "contains" will use disk when needed to avoid out-of-memory issues
 ---
 
 #### Configure Auth Details

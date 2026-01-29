@@ -24,18 +24,10 @@
 package io.karatelabs.js;
 
 /**
- * Sealed interface for JS boxed primitives (Number, String, Boolean objects).
+ * Sealed interface for JS binary data wrapper types.
  * <p>
- * These are created via {@code new Number(5)}, {@code new String("x")}, {@code new Boolean(true)}.
- * Unlike primitive values, boxed primitives are objects and always truthy.
- * <p>
- * Permitted implementations:
- * <ul>
- *   <li>{@link JsNumber} - wraps a Number value</li>
- *   <li>{@link JsString} - wraps a String value</li>
- *   <li>{@link JsBoolean} - wraps a boolean value</li>
- * </ul>
+ * JsUint8Array wraps byte array data and converts to {@code byte[]} for Java interop.
  */
-sealed interface JsPrimitive extends JsValue permits JsNumber, JsString, JsBoolean {
+sealed interface JsBinaryValue extends JsValue permits JsUint8Array {
 
 }

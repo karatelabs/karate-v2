@@ -24,18 +24,11 @@
 package io.karatelabs.js;
 
 /**
- * Sealed interface for JS boxed primitives (Number, String, Boolean objects).
+ * Sealed interface for JS Date wrapper type.
  * <p>
- * These are created via {@code new Number(5)}, {@code new String("x")}, {@code new Boolean(true)}.
- * Unlike primitive values, boxed primitives are objects and always truthy.
- * <p>
- * Permitted implementations:
- * <ul>
- *   <li>{@link JsNumber} - wraps a Number value</li>
- *   <li>{@link JsString} - wraps a String value</li>
- *   <li>{@link JsBoolean} - wraps a boolean value</li>
- * </ul>
+ * JsDate stores time as milliseconds internally ({@link #getJsValue()} returns Long),
+ * but converts to {@link java.util.Date} for Java interop ({@link #getJavaValue()}).
  */
-sealed interface JsPrimitive extends JsValue permits JsNumber, JsString, JsBoolean {
+sealed interface JsDateValue extends JsValue permits JsDate {
 
 }
