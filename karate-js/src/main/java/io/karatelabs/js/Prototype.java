@@ -24,7 +24,6 @@
 package io.karatelabs.js;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -42,11 +41,13 @@ import java.util.Map;
  *   <li>A value - to handle the property at this level</li>
  *   <li>{@code null} - to delegate lookup to the parent prototype (__proto__)</li>
  * </ul>
+ * <p>
+ * Built-in prototypes (Array.prototype, String.prototype, etc.) are immutable singletons.
+ * Attempting to modify them via putMember/removeMember will throw a TypeError.
  */
 abstract class Prototype implements ObjectLike {
 
     private final Prototype __proto__;
-    private Map<String, Object> props;
 
     Prototype(Prototype __proto__) {
         this.__proto__ = __proto__;
@@ -59,36 +60,27 @@ abstract class Prototype implements ObjectLike {
 
     @Override
     public void putMember(String name, Object value) {
-        if (props == null) {
-            props = new HashMap<>();
-        }
-        props.put(name, value);
+        throw new RuntimeException("TypeError: Cannot add property '" + name + "' to immutable built-in prototype");
     }
 
     @Override
     public void removeMember(String name) {
-        if (props != null) {
-            props.remove(name);
-        }
+        throw new RuntimeException("TypeError: Cannot delete property '" + name + "' from immutable built-in prototype");
     }
 
     @Override
     public Map<String, Object> toMap() {
-        return props == null ? Collections.emptyMap() : props;
+        return Collections.emptyMap();
     }
 
     @Override
     public final Object getMember(String name) {
-        // 1. Check own properties
-        if (props != null && props.containsKey(name)) {
-            return props.get(name);
-        }
-        // 2. Check built-in properties defined by this prototype
+        // 1. Check built-in properties defined by this prototype
         Object result = getBuiltinProperty(name);
         if (result != null) {
             return result;
         }
-        // 3. Delegate to __proto__ chain
+        // 2. Delegate to __proto__ chain
         if (__proto__ != null) {
             return __proto__.getMember(name);
         }

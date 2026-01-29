@@ -506,6 +506,43 @@ class EngineTest {
     }
 
     @Test
+    void testBuiltinPrototypeImmutability() {
+        Engine engine = new Engine();
+        // Built-in prototypes should be immutable
+        // Attempting to modify Array.prototype should throw TypeError
+        try {
+            engine.eval("Array.prototype.customMethod = function() { return 'custom'; }");
+            fail("expected TypeError for modifying built-in prototype");
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("TypeError"));
+            assertTrue(e.getMessage().contains("immutable built-in prototype"));
+        }
+        // Same for String.prototype
+        try {
+            engine.eval("String.prototype.customMethod = function() { return 'custom'; }");
+            fail("expected TypeError for modifying built-in prototype");
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("TypeError"));
+        }
+        // Same for Object.prototype
+        try {
+            engine.eval("Object.prototype.customMethod = function() { return 'custom'; }");
+            fail("expected TypeError for modifying built-in prototype");
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("TypeError"));
+        }
+        // User objects should still be fully mutable
+        engine.eval("var obj = {}; obj.foo = 'bar';");
+        assertEquals("bar", engine.eval("obj.foo"));
+        // User arrays should still be mutable
+        engine.eval("var arr = [1, 2, 3]; arr.push(4);");
+        assertEquals(4, engine.eval("arr.length"));
+        // User functions should still be mutable
+        engine.eval("function myFunc() { return 1; }; myFunc.customProp = 'hello';");
+        assertEquals("hello", engine.eval("myFunc.customProp"));
+    }
+
+    @Test
     void testNullValueInScopeChain() {
         Engine engine = new Engine();
         // Test 1: engine.put with null, then read from nested scope

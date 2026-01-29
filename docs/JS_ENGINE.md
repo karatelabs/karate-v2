@@ -117,22 +117,42 @@ Constructor Functions (for static methods like Array.isArray):
     JsDateConstructor.INSTANCE    → prototype: JsDatePrototype.INSTANCE
 ```
 
+**Built-in prototypes are immutable.** Unlike standard JavaScript, the engine does not allow modifying built-in prototypes:
+
+```javascript
+Array.prototype.customMethod = function() {};  // TypeError: Cannot add property to immutable built-in prototype
+String.prototype.foo = "bar";                  // TypeError
+```
+
+This design decision provides:
+- **Thread safety** - Singleton prototypes can be safely shared across Engine instances
+- **Security** - Prevents prototype pollution attacks
+- **Simplicity** - No need for per-engine prototype copies
+
+User-created objects, arrays, and functions remain fully mutable:
+```javascript
+var obj = {}; obj.foo = "bar";           // OK
+var arr = []; arr.customProp = 123;      // OK
+function f() {}; f.meta = "data";        // OK
+```
+
 **Property lookup order** (implemented in `Prototype.getMember()`):
-1. Own properties (`props` map)
-2. Built-in properties (`getBuiltinProperty()`)
-3. Delegate to `__proto__` chain
+1. Built-in properties (`getBuiltinProperty()`)
+2. Delegate to `__proto__` chain
 
 ```java
-// Base class for prototype objects
+// Base class for built-in prototype objects (immutable singletons)
 abstract class Prototype implements ObjectLike {
     private final Prototype __proto__;
-    private Map<String, Object> props;
 
     public Object getMember(String name) {
-        if (props != null && props.containsKey(name)) return props.get(name);
         Object builtin = getBuiltinProperty(name);
         if (builtin != null) return builtin;
         return __proto__ != null ? __proto__.getMember(name) : null;
+    }
+
+    public void putMember(String name, Object value) {
+        throw new RuntimeException("TypeError: Cannot add property to immutable built-in prototype");
     }
 
     protected abstract Object getBuiltinProperty(String name);
@@ -161,6 +181,7 @@ class JsArrayPrototype extends Prototype {
 
 **Benefits:**
 - Single instance per type (memory efficient)
+- Thread-safe sharing across Engine instances
 - Clean separation of constructor vs prototype
 - Methods inherited via standard prototype chain
 - `ObjectLike.getPrototype()` enables uniform chain walking
@@ -785,48 +806,7 @@ This section documents potential improvements identified by comparing the Java e
 
 **Overall Assessment:** The Java engine is reasonably well-designed given its feature requirements. The areas below represent opportunities for modernization and cleanup rather than fundamental architectural issues.
 
-### 1. NodeType-based Evaluation Dispatch
-
-**Current:** The `Interpreter.java` has a 1000+ line `eval()` method with a massive switch statement dispatching to 35+ separate eval methods.
-
-**Swift Pattern:** Uses pattern matching on AST node enum cases, which is more compact.
-
-**Proposed:** Move evaluation logic into the `NodeType` enum itself using Java 21+ features:
-
-```java
-public enum NodeType {
-    IF_STMT {
-        @Override
-        public Object evaluate(Node node, CoreContext ctx) {
-            // If statement evaluation logic
-        }
-    },
-    FOR_STMT {
-        @Override
-        public Object evaluate(Node node, CoreContext ctx) {
-            // For statement evaluation logic
-        }
-    },
-    // ...other node types
-    ;
-
-    public abstract Object evaluate(Node node, CoreContext ctx);
-}
-```
-
-**Benefits:**
-- Each node type owns its evaluation logic
-- Compiler enforces exhaustive handling when adding new node types
-- Cleaner code organization
-- Preserves AST node reusability (no methods added to `Node` class)
-
-**Trade-offs:**
-- Large enum file, but organized by node type
-- May need helper methods in a companion class for shared logic
-
----
-
-### 2. Sealed Interface for Value Types (Java 21+)
+### 1. Sealed Interface for Value Types (Java 21+)
 
 **Current:** Value types use `instanceof` chains scattered throughout `Terms.java` and other classes. The compiler cannot verify exhaustive handling.
 
@@ -871,7 +851,7 @@ static Number objectToNumber(JsValue value) {
 
 ---
 
-### 3. PropertyAccessor Strategy Pattern
+### 2. PropertyAccessor Strategy Pattern
 
 **Current:** `JsProperty.java` is 330+ lines handling property access with many branches for: optional chaining (`?.`), different object types (JsObject, Map, List, JavaObject), numeric vs string indexing, and Java interop.
 
@@ -911,7 +891,7 @@ return accessor.get(target, key, isOptional);
 
 ---
 
-### 4. JavaScript Stack Traces for Errors
+### 3. JavaScript Stack Traces for Errors
 
 **Current:** Error messages are basic - no JavaScript call stack capture.
 
@@ -952,7 +932,7 @@ public class JsError extends JsObject {
 
 ---
 
-### 5. Async/Await Architecture Extensibility
+### 4. Async/Await Architecture Extensibility
 
 **Current:** The engine is purely synchronous. This is sufficient because async operations are handled at the Karate DSL level.
 
@@ -972,7 +952,6 @@ public class JsError extends JsObject {
 
 | Area | Priority | Effort | Impact |
 |------|----------|--------|--------|
-| NodeType-based Evaluation | Medium | Medium | Code organization |
 | Sealed Interface for Values | Low | High | Type safety, refactoring confidence |
 | PropertyAccessor Strategy | Low | Medium | Code cleanliness |
 | Stack Traces for Errors | High | Medium | User experience |
