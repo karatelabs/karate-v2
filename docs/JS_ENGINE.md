@@ -796,6 +796,7 @@ runScript("const json = response.json(); pm.test('ok', () => {});");  // No conf
 | JsUndefined | `karate-js/src/main/java/io/karatelabs/js/JsUndefined.java` |
 | JsPrimitive | `karate-js/src/main/java/io/karatelabs/js/JsPrimitive.java` |
 | Bindings | `karate-js/src/main/java/io/karatelabs/js/Bindings.java` |
+| BindValue | `karate-js/src/main/java/io/karatelabs/js/BindValue.java` |
 | JsCallable | `karate-js/src/main/java/io/karatelabs/js/JsCallable.java` |
 | JavaCallable | `karate-js/src/main/java/io/karatelabs/js/JavaCallable.java` |
 | Terms | `karate-js/src/main/java/io/karatelabs/js/Terms.java` |
@@ -844,7 +845,8 @@ public final class JsUndefined implements JsValue {
 
 **Additional changes in this refactor:**
 - `Terms.UNDEFINED` now uses `JsUndefined.INSTANCE` (singleton for identity comparison)
-- `Bindings` wrapper class for auto-unwrapping Map access at Java boundaries
+- `Bindings` class using `Map<String, BindValue>` for scope storage with auto-unwrapping at Java boundaries
+- `BindValue` consolidates binding name, value, type (let/const/var), and initialization state
 - `JsFunctionWrapper` for auto-converting function return values
 - Removed `JsErrorPrototype` (JsError now uses JsObjectPrototype directly)
 - Made all prototype helper methods static (`asString`, `asNumber`, `asDate`, etc.)

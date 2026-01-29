@@ -29,7 +29,6 @@ import io.karatelabs.parser.Node;
 import io.karatelabs.parser.NodeType;
 
 import java.io.File;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -39,25 +38,7 @@ public class Engine {
 
     private final ContextRoot root = new ContextRoot(this);
 
-    private final Bindings bindings;
-
-    /**
-     * Creates an Engine with a new empty bindings map.
-     */
-    public Engine() {
-        this.bindings = new Bindings(new HashMap<>());
-    }
-
-    /**
-     * Creates an Engine backed by the given map.
-     * Changes to the external map will be visible to the engine,
-     * and changes by the engine will be visible to code holding the external map.
-     *
-     * @param externalBindings the external map to use for bindings
-     */
-    public Engine(Map<String, Object> externalBindings) {
-        this.bindings = new Bindings(externalBindings);
-    }
+    private final Bindings bindings = new Bindings();
 
     public Object eval(Node program) {
         return evalInternal(program, null);
@@ -92,7 +73,7 @@ public class Engine {
     }
 
     public void put(String name, Object value) {
-        bindings.getRawMap().put(name, value);
+        bindings.putMember(name, value);
     }
 
     public void putRootBinding(String name, Object value) {
@@ -100,7 +81,7 @@ public class Engine {
     }
 
     public void remove(String name) {
-        bindings.getRawMap().remove(name);
+        bindings.remove(name);
     }
 
     public void setOnConsoleLog(Consumer<String> onConsoleLog) {
@@ -110,7 +91,6 @@ public class Engine {
     /**
      * Returns the bindings as an auto-unwrapping Map.
      * Values retrieved via get() are automatically converted (JsDate → Date, undefined → null, etc.).
-     * The returned map wraps the underlying raw map, so changes are visible both ways.
      */
     public Map<String, Object> getBindings() {
         return bindings;
@@ -133,7 +113,7 @@ public class Engine {
      */
     public Map<String, Object> getRootBindings() {
         if (root._bindings != null) {
-            return new Bindings(root._bindings);
+            return root._bindings;
         }
         return java.util.Collections.emptyMap();
     }
@@ -168,7 +148,6 @@ public class Engine {
         if (value instanceof JsValue jv) {
             return jv.getJavaValue();
         }
-        // Wrap JsFunction so Java code calling it gets converted results
         if (value instanceof JsFunction fn) {
             return new JsFunctionWrapper(fn);
         }
@@ -179,7 +158,7 @@ public class Engine {
     protected Object evalRaw(String text) {
         JsParser parser = new JsParser(Resource.text(text));
         Node program = parser.parse();
-        CoreContext context = new CoreContext(root, root, 0, program, ContextScope.GLOBAL, bindings.getRawMap());
+        CoreContext context = new CoreContext(root, root, 0, program, ContextScope.GLOBAL, bindings);
         return Interpreter.eval(program, context);
     }
 
@@ -192,10 +171,10 @@ public class Engine {
         try {
             CoreContext context;
             if (localVars == null) {
-                context = new CoreContext(root, root, 0, program, ContextScope.GLOBAL, bindings.getRawMap());
+                context = new CoreContext(root, root, 0, program, ContextScope.GLOBAL, bindings);
             } else {
-                CoreContext parent = new CoreContext(root, null, -1, new Node(NodeType.ROOT), ContextScope.GLOBAL, bindings.getRawMap());
-                context = new CoreContext(root, parent, 0, program, ContextScope.GLOBAL, localVars);
+                CoreContext parent = new CoreContext(root, null, -1, new Node(NodeType.ROOT), ContextScope.GLOBAL, bindings);
+                context = new CoreContext(root, parent, 0, program, ContextScope.GLOBAL, new Bindings(localVars));
             }
             context.event(EventType.CONTEXT_ENTER, program);
             Object result = Interpreter.eval(program, context);

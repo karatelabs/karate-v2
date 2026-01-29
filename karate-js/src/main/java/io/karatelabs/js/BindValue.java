@@ -23,21 +23,42 @@
  */
 package io.karatelabs.js;
 
-class BindingInfo {
+/**
+ * Represents a binding entry with its value and optional let/const metadata.
+ */
+class BindValue {
 
     final String name;
-    final BindingType type;
-
+    Object value;
+    BindingType type;  // null for var, LET/CONST for let/const
     boolean initialized;
 
-    BindingInfo(String name, BindingType type) {
+    BindValue(String name, Object value) {
         this.name = name;
+        this.value = value;
+        this.initialized = true;
+    }
+
+    BindValue(String name, Object value, BindingType type, boolean initialized) {
+        this.name = name;
+        this.value = value;
         this.type = type;
+        this.initialized = initialized;
+    }
+
+    /**
+     * Copy constructor for loop iteration snapshots.
+     */
+    BindValue(BindValue other) {
+        this.name = other.name;
+        this.value = other.value;
+        this.type = other.type;
+        this.initialized = other.initialized;
     }
 
     @Override
     public String toString() {
-        return type + " " + name;
+        return name + "=" + value + (type != null ? " (" + type + ")" : "");
     }
 
 }

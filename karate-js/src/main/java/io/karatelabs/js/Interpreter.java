@@ -75,7 +75,7 @@ class Interpreter {
             List<Node> varNames = bindings.findChildren(IDENT);
             for (Node varName : varNames) {
                 String name = varName.getText();
-                context.declare(name, value, toInfo(name, bindingType, initialized));
+                context.declare(name, value, toType(bindingType), initialized);
                 if (context.root.listener != null) {
                     context.root.listener.onVariableWrite(context, bindingType, name, value);
                 }
@@ -317,8 +317,7 @@ class Interpreter {
                     if (Terms.isTruthy(forCondition)) {
                         if (isLetOrConst) {
                             inner = new CoreContext(outer, forBody, ContextScope.LOOP_BODY);
-                            inner._bindings = new HashMap<>(outer._bindings);
-                            inner._bindingInfos = new ArrayList<>(outer._bindingInfos);
+                            inner._bindings = new Bindings(outer._bindings);
                         }
                         forResult = eval(forBody, inner);
                         if (inner.isStopped()) {
@@ -364,8 +363,7 @@ class Interpreter {
                 evalAssign(bindings, outer, bindingType, varValue, true);
                 if (bindingType == BindingType.LET || bindingType == BindingType.CONST) {
                     inner = new CoreContext(outer, forBody, ContextScope.LOOP_BODY);
-                    inner._bindings = new HashMap<>(outer._bindings);
-                    inner._bindingInfos = new ArrayList<>(outer._bindingInfos);
+                    inner._bindings = new Bindings(outer._bindings);
                 }
                 forResult = eval(forBody, inner);
                 if (inner.isStopped()) {
@@ -400,14 +398,8 @@ class Interpreter {
         return Terms.instanceOf(eval(node.get(0), context), eval(node.get(2), context));
     }
 
-    private static BindingInfo toInfo(String varName, BindingType type, boolean initialized) {
-        if (type == BindingType.VAR) {
-            return null;
-        } else {
-            BindingInfo info = new BindingInfo(varName, type);
-            info.initialized = initialized;
-            return info;
-        }
+    private static BindingType toType(BindingType type) {
+        return type == BindingType.VAR ? null : type;
     }
 
     private static Object evalLitArray(Node node, CoreContext context, BindingType bindingType, List<Object> bindSource) {
@@ -431,7 +423,7 @@ class Interpreter {
                             restArray.list.add(elem_);
                         }
                     }
-                    context.declare(varName, restArray, toInfo(varName, bindingType, true));
+                    context.declare(varName, restArray, toType(bindingType), true);
                 } else {
                     Object value = evalRefExpr(elem.get(1), context);
                     Iterable<KeyValue> iterable = Terms.toIterable(value);
@@ -459,7 +451,7 @@ class Interpreter {
                             value = temp;
                         }
                     }
-                    context.declare(varName, value, toInfo(varName, bindingType, true));
+                    context.declare(varName, value, toType(bindingType), true);
                 } else {
                     Object value = evalExpr(exprNode, context);
                     list.add(value);
@@ -494,7 +486,7 @@ class Interpreter {
             if (token == DOT_DOT_DOT) {
                 if (bindingType != null) {
                     // previous keys were being removed from result
-                    context.declare(key, result, toInfo(key, bindingType, true));
+                    context.declare(key, result, toType(bindingType), true);
                 } else {
                     Object value = context.get(key);
                     if (value instanceof Map) {
@@ -508,7 +500,7 @@ class Interpreter {
                     if (bindSource != null && bindSource.containsKey(key)) {
                         value = bindSource.get(key);
                     }
-                    context.declare(key, value, toInfo(key, bindingType, true));
+                    context.declare(key, value, toType(bindingType), true);
                     result.remove(key);
                 } else {
                     Object value = context.get(key);
@@ -522,10 +514,10 @@ class Interpreter {
                     }
                     if (elem.get(1).getFirstToken().type == EQ) { // default value
                         value = evalExpr(elem.get(2), context);
-                        context.declare(key, value, toInfo(key, bindingType, true));
+                        context.declare(key, value, toType(bindingType), true);
                     } else {
                         String varName = elem.get(2).getText();
-                        context.declare(varName, value, toInfo(key, bindingType, true));
+                        context.declare(varName, value, toType(bindingType), true);
                     }
                     result.remove(key);
                 } else {

@@ -24,26 +24,18 @@
 package io.karatelabs.js;
 
 import io.karatelabs.parser.Node;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
 class CoreContext implements Context {
-
-    static final Logger logger = LoggerFactory.getLogger(CoreContext.class);
 
     final ContextRoot root;
 
     Object thisObject = Terms.UNDEFINED;
     CallInfo callInfo;
 
-    Map<String, Object> _bindings;
-    List<BindingInfo> _bindingInfos;
+    Bindings _bindings;
 
     CoreContext(ContextRoot root, CoreContext parent, int depth, Node node, ContextScope scope, Map<String, Object> bindings) {
         this.root = root;
@@ -51,7 +43,9 @@ class CoreContext implements Context {
         this.depth = depth;
         this.node = node;
         this.scope = scope;
-        this._bindings = bindings;
+        if (bindings != null) {
+            this._bindings = bindings instanceof Bindings b ? b : new Bindings(bindings);
+        }
         if (parent != null) {
             thisObject = parent.thisObject;
         }
@@ -139,15 +133,10 @@ class CoreContext implements Context {
             return thisObject;
         }
         if (_bindings != null) {
-            // Single lookup optimization: avoid containsKey() + get() double lookup
-            // get() returns null for BOTH missing keys AND null values (valid in JS)
-            // So: if get() returns non-null, we're done (common case, single lookup)
-            // If get() returns null, we must call containsKey() to distinguish
-            // "key exists with value null" from "key doesn't exist"
-            Object result = _bindings.get(key);
-            if (result != null || _bindings.containsKey(key)) {
-                BindingInfo info = findConstOrLet(key);
-                if (info != null && !info.initialized) {
+            Object result = _bindings.getMember(key);
+            if (result != null || _bindings.hasMember(key)) {
+                BindValue bv = findConstOrLet(key);
+                if (bv != null && !bv.initialized) {
                     throw new RuntimeException("cannot access '" + key + "' before initialization");
                 }
                 if (result instanceof Supplier<?> supplier) {
@@ -166,50 +155,47 @@ class CoreContext implements Context {
     }
 
     void put(String key, Object value) {
-        declare(key, value, null);
+        declare(key, value, null, true);
     }
 
-    void declare(String key, Object value, BindingInfo info) {
+    void declare(String key, Object value, BindingType type, boolean initialized) {
         if (value instanceof JsFunction) {
             ((JsFunction) value).name = key;
         }
-        if (info != null) { // if present, will always be let or const (micro optimization)
-            BindingInfo existing = findConstOrLet(key);
+        if (type != null) { // let or const
+            BindValue existing = findConstOrLet(key);
             if (existing != null) {
                 if (scope == ContextScope.LOOP_INIT) {
-                    // for-of/for-in loop iteration: re-declaration is valid, remove old binding info
-                    _bindingInfos.remove(existing);
+                    // for-of/for-in loop iteration: re-declaration is valid, clear binding type
+                    _bindings.clearBindingType(key);
                 } else {
                     throw new RuntimeException("identifier '" + key + "' has already been declared");
                 }
             }
-            putBinding(key, value, info); // current scope
-            // for top-level declarations, also store BindingInfo in root to persist across evals
-            // but only for regular eval (parent == root), not evalWith (which has isolated scope)
+            putBinding(key, value, type, initialized);
+            // for top-level declarations, also store in root to persist across evals
             if (depth == 0 && root != null && parent == root) {
-                root.addBindingInfo(info);
+                root.addBinding(key, type);
             }
         } else { // hoist var
             CoreContext targetContext = this;
             while (targetContext.depth > 0 && targetContext.scope != ContextScope.FUNCTION) {
                 targetContext = targetContext.parent;
             }
-            targetContext.putBinding(key, value, info);
+            targetContext.putBinding(key, value, null, true);
         }
     }
 
     void update(String key, Object value) {
-        // Single lookup optimization: get() != null means key exists (common case)
-        // containsKey() fallback needed only when get() returns null, to detect null values
-        if (_bindings != null && (_bindings.get(key) != null || _bindings.containsKey(key))) {
-            BindingInfo info = findConstOrLet(key);
-            if (info != null) {
-                if (info.type == BindingType.CONST && info.initialized) {
+        if (_bindings != null && _bindings.hasMember(key)) {
+            BindValue bv = findConstOrLet(key);
+            if (bv != null) {
+                if (bv.type == BindingType.CONST && bv.initialized) {
                     throw new RuntimeException("assignment to constant: " + key);
                 }
-                info.initialized = true;
+                bv.initialized = true;
             }
-            _bindings.put(key, value);
+            _bindings.putMember(key, value);
         } else if (parent != null && parent.hasKey(key)) {
             parent.update(key, value);
         } else {
@@ -218,37 +204,25 @@ class CoreContext implements Context {
             while (globalContext.depth > 0) {
                 globalContext = globalContext.parent;
             }
-            globalContext.putBinding(key, value, null);
+            globalContext.putBinding(key, value, null, true);
             if (root.listener != null) {
                 root.listener.onVariableWrite(this, BindingType.VAR, key, value);
             }
         }
     }
 
-    private void putBinding(String key, Object value, BindingInfo info) {
+    private void putBinding(String key, Object value, BindingType type, boolean initialized) {
         if (_bindings == null) {
-            _bindings = new HashMap<>();
+            _bindings = new Bindings();
         }
-        _bindings.put(key, value);
-        if (info != null) {
-            addBindingInfo(info);
-        }
-    }
-
-    void addBindingInfo(BindingInfo info) {
-        if (_bindingInfos == null) {
-            _bindingInfos = new ArrayList<>();
-        }
-        _bindingInfos.add(info);
+        _bindings.putMember(key, value, type, initialized);
     }
 
     boolean hasKey(String key) {
         if ("this".equals(key)) {
             return true;
         }
-        // Single lookup optimization: get() != null means key exists (common case)
-        // containsKey() fallback needed only when get() returns null, to detect null values
-        if (_bindings != null && (_bindings.get(key) != null || _bindings.containsKey(key))) {
+        if (_bindings != null && _bindings.hasMember(key)) {
             return true;
         }
         if (parent != null && parent.hasKey(key)) {
@@ -257,22 +231,16 @@ class CoreContext implements Context {
         return root.hasKey(key);
     }
 
-    private BindingInfo findConstOrLet(String key) {
-        if (_bindingInfos != null) {
-            for (BindingInfo info : _bindingInfos) {
-                if (info.name.equals(key)) {
-                    return info;
-                }
+    private BindValue findConstOrLet(String key) {
+        if (_bindings != null) {
+            BindValue bv = _bindings.getBindValue(key);
+            if (bv != null && bv.type != null) {
+                return bv;
             }
         }
         // check root for top-level const/let declarations from previous evals (only at depth 0)
-        // but only for regular eval (parent == root), not evalWith (which has isolated scope)
-        if (depth == 0 && root != null && parent == root && root._bindingInfos != null) {
-            for (BindingInfo info : root._bindingInfos) {
-                if (info.name.equals(key)) {
-                    return info;
-                }
-            }
+        if (depth == 0 && root != null && parent == root) {
+            return root.getBindValue(key);
         }
         return null;
     }

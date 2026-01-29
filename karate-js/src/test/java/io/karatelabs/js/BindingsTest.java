@@ -50,38 +50,28 @@ class BindingsTest {
     }
 
     @Test
-    void testExternalMapBackedEngine() {
-        Map<String, Object> externalMap = new HashMap<>();
-        externalMap.put("x", 10);
+    void testEvalWithSeesInitialValues() {
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("x", 10);
 
-        Engine engine = new Engine(externalMap);
+        Engine engine = new Engine();
 
-        // Engine sees external map value
-        assertEquals(10, engine.eval("x"));
-
-        // Engine modifications visible in external map
-        engine.eval("var y = 20");
-        assertEquals(20, externalMap.get("y"));
-
-        // External map modifications visible to engine
-        externalMap.put("z", 30);
-        assertEquals(30, engine.eval("z"));
+        // evalWith sees initial values from map
+        Object result = engine.evalWith("x + 5", vars);
+        assertEquals(15, result);
     }
 
     @Test
-    void testExternalMapSeesJsValues() {
-        Map<String, Object> externalMap = new HashMap<>();
-        Engine engine = new Engine(externalMap);
+    void testEvalWithIsolatedFromEngineBindings() {
+        Engine engine = new Engine();
+        engine.eval("var a = 100");
 
-        engine.eval("var d = new Date(0)");
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("b", 5);
 
-        // External map sees raw JsDate
-        Object raw = externalMap.get("d");
-        assertInstanceOf(JsDate.class, raw);
-
-        // But engine.get() returns unwrapped Date
-        Object unwrapped = engine.get("d");
-        assertInstanceOf(Date.class, unwrapped);
+        // evalWith can see engine bindings via parent chain
+        Object result = engine.evalWith("a + b", vars);
+        assertEquals(105, result);
     }
 
     @Test
@@ -183,6 +173,187 @@ class BindingsTest {
         Map<String, Object> raw = engine.getRawBindings();
         // Note: Engine bindings and root bindings are different
         // getRawBindings() returns root context bindings
+    }
+
+    //=== Tests for array-based storage and BindValue integration ===
+
+    @Test
+    void testSmallMapModeBasicOperations() {
+        Bindings bindings = new Bindings();
+
+        // Put and get
+        bindings.putMember("x", 1);
+        bindings.putMember("y", 2);
+        bindings.putMember("z", 3);
+
+        assertEquals(1, bindings.getMember("x"));
+        assertEquals(2, bindings.getMember("y"));
+        assertEquals(3, bindings.getMember("z"));
+
+        // hasMember
+        assertTrue(bindings.hasMember("x"));
+        assertFalse(bindings.hasMember("w"));
+
+        // size
+        assertEquals(3, bindings.size());
+    }
+
+    @Test
+    void testSmallMapModeWithNullValues() {
+        Bindings bindings = new Bindings();
+
+        bindings.putMember("x", null);
+
+        // Should be able to distinguish null from missing
+        assertTrue(bindings.hasMember("x"));
+        assertNull(bindings.getMember("x"));
+        assertFalse(bindings.hasMember("y"));
+    }
+
+    @Test
+    void testSmallMapModeGrowsArrays() {
+        Bindings bindings = new Bindings();
+
+        // Add more than initial capacity (4)
+        for (int i = 0; i < 6; i++) {
+            bindings.putMember("key" + i, i);
+        }
+
+        assertEquals(6, bindings.size());
+        for (int i = 0; i < 6; i++) {
+            assertEquals(i, bindings.getMember("key" + i));
+        }
+    }
+
+    @Test
+    void testManyBindings() {
+        Bindings bindings = new Bindings();
+
+        // Add many bindings
+        for (int i = 0; i < 20; i++) {
+            bindings.putMember("key" + i, i);
+        }
+
+        assertEquals(20, bindings.size());
+        for (int i = 0; i < 20; i++) {
+            assertEquals(i, bindings.getMember("key" + i));
+        }
+    }
+
+    @Test
+    void testBindValueStorage() {
+        Bindings bindings = new Bindings();
+
+        // const binding
+        bindings.putMember("x", 42, BindingType.CONST, true);
+
+        // let binding
+        bindings.putMember("y", "hello", BindingType.LET, true);
+
+        // var binding (no type)
+        bindings.putMember("z", 100);
+
+        // Get BindValue
+        assertEquals(BindingType.CONST, bindings.getBindValue("x").type);
+        assertEquals(BindingType.LET, bindings.getBindValue("y").type);
+        assertNull(bindings.getBindValue("z").type);  // var has no binding type
+    }
+
+    @Test
+    void testClearBindingType() {
+        Bindings bindings = new Bindings();
+
+        bindings.putMember("x", 1, BindingType.LET, true);
+
+        assertNotNull(bindings.getBindValue("x").type);
+
+        bindings.clearBindingType("x");
+
+        assertNull(bindings.getBindValue("x").type);
+        assertEquals(1, bindings.getMember("x"));  // value still there
+    }
+
+    @Test
+    void testCopyConstructorCopiesValuesAndBindValues() {
+        Bindings original = new Bindings();
+
+        original.putMember("x", 1, BindingType.LET, true);
+        original.putMember("y", 2);
+
+        Bindings copy = new Bindings(original);
+
+        // Values copied
+        assertEquals(1, copy.getMember("x"));
+        assertEquals(2, copy.getMember("y"));
+
+        // BindValue copied
+        assertNotNull(copy.getBindValue("x"));
+        assertEquals(BindingType.LET, copy.getBindValue("x").type);
+
+        // Changes to copy don't affect original
+        copy.putMember("x", 100);
+        assertEquals(1, original.getMember("x"));
+    }
+
+    @Test
+    void testMapInterfaceRemove() {
+        Bindings bindings = new Bindings();
+        bindings.putMember("x", 1);
+        bindings.putMember("y", 2);
+        bindings.putMember("z", 3);
+
+        bindings.remove("y");
+
+        assertEquals(2, bindings.size());
+        assertFalse(bindings.hasMember("y"));
+        assertTrue(bindings.hasMember("x"));
+        assertTrue(bindings.hasMember("z"));
+    }
+
+    @Test
+    void testMapInterfaceClear() {
+        Bindings bindings = new Bindings();
+        bindings.putMember("x", 1);
+        bindings.putMember("y", 2);
+
+        bindings.clear();
+
+        assertEquals(0, bindings.size());
+        assertTrue(bindings.isEmpty());
+    }
+
+    @Test
+    void testMapInterfaceKeySet() {
+        Bindings bindings = new Bindings();
+        bindings.putMember("x", 1);
+        bindings.putMember("y", 2);
+
+        assertEquals(2, bindings.keySet().size());
+        assertTrue(bindings.keySet().contains("x"));
+        assertTrue(bindings.keySet().contains("y"));
+    }
+
+    @Test
+    void testUpdateExistingKey() {
+        Bindings bindings = new Bindings();
+        bindings.putMember("x", 1);
+        assertEquals(1, bindings.getMember("x"));
+
+        bindings.putMember("x", 2);
+        assertEquals(2, bindings.getMember("x"));
+        assertEquals(1, bindings.size());  // still one entry
+    }
+
+    @Test
+    void testUpdateExistingKeyWithBindingType() {
+        Bindings bindings = new Bindings();
+        bindings.putMember("x", 1);
+
+        bindings.putMember("x", 2, BindingType.CONST, true);
+
+        assertEquals(2, bindings.getMember("x"));
+        assertNotNull(bindings.getBindValue("x").type);
+        assertEquals(BindingType.CONST, bindings.getBindValue("x").type);
     }
 
 }

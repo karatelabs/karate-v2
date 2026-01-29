@@ -25,6 +25,8 @@ package io.karatelabs.js;
 
 import io.karatelabs.parser.Node;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -39,6 +41,9 @@ class ContextRoot extends CoreContext {
     ExternalBridge bridge;
     RunInterceptor<?> interceptor;
     DebugPointFactory<?> pointFactory;
+
+    // Stores top-level const/let bindings for cross-eval persistence
+    private List<BindValue> _topLevelBindings;
 
     ContextRoot(Engine engine) {
         super(null, null, -1, null, ContextScope.ROOT, null);
@@ -66,8 +71,8 @@ class ContextRoot extends CoreContext {
 
     @Override
     Object get(String key) {
-        if (_bindings != null && _bindings.containsKey(key)) {
-            Object result = _bindings.get(key);
+        if (_bindings != null && _bindings.hasMember(key)) {
+            Object result = _bindings.getMember(key);
             if (result instanceof Supplier<?> supplier) {
                 return supplier.get();
             }
@@ -83,7 +88,7 @@ class ContextRoot extends CoreContext {
 
     @Override
     boolean hasKey(String key) {
-        if (_bindings != null && _bindings.containsKey(key)) {
+        if (_bindings != null && _bindings.hasMember(key)) {
             return true;
         }
         return switch (key) {
@@ -92,6 +97,24 @@ class ContextRoot extends CoreContext {
                  "TextEncoder", "TextDecoder", "Uint8Array" -> true;
             default -> false;
         };
+    }
+
+    void addBinding(String name, BindingType type) {
+        if (_topLevelBindings == null) {
+            _topLevelBindings = new ArrayList<>();
+        }
+        _topLevelBindings.add(new BindValue(name, null, type, true));
+    }
+
+    BindValue getBindValue(String key) {
+        if (_topLevelBindings != null) {
+            for (BindValue bv : _topLevelBindings) {
+                if (bv.name.equals(key)) {
+                    return bv;
+                }
+            }
+        }
+        return null;
     }
 
     private Object initGlobal(String key) {

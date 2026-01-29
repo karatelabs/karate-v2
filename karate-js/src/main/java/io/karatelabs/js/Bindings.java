@@ -26,69 +26,144 @@ package io.karatelabs.js;
 import java.util.*;
 
 /**
- * Auto-unwrapping Map wrapper for JS engine bindings.
+ * Map for JS engine bindings with integrated let/const metadata.
  * <p>
- * This wrapper ensures that Java code accessing bindings always gets
- * idiomatic Java types (Date instead of JsDate, null instead of undefined, etc.)
- * while the underlying map stores raw JS values for engine use.
- * <p>
- * Key behaviors:
- * <ul>
- *   <li>{@link #get(Object)} - Auto-unwraps JS types via {@link Engine#toJava(Object)}</li>
- *   <li>{@link #values()} - Returns auto-unwrapped values</li>
- *   <li>{@link #entrySet()} - Returns entries with auto-unwrapped values</li>
- *   <li>{@link #put(String, Object)} - Stores values directly (no conversion)</li>
- *   <li>Changes to the underlying map are visible through this wrapper</li>
- *   <li>Changes via this wrapper are visible to code holding the underlying map</li>
- * </ul>
+ * Uses {@link BindValue} entries to store both values and binding type info.
+ * Implements Map interface with auto-unwrapping for Java consumers.
  */
 public class Bindings implements Map<String, Object> {
 
-    private final Map<String, Object> delegate;
+    private final Map<String, BindValue> map;
 
     /**
-     * Creates a Bindings wrapper around the given map.
-     * Changes to the underlying map will be visible through this wrapper.
-     */
-    public Bindings(Map<String, Object> map) {
-        this.delegate = map != null ? map : new HashMap<>();
-    }
-
-    /**
-     * Creates a Bindings wrapper with a new empty HashMap.
+     * Creates empty Bindings.
      */
     public Bindings() {
-        this(new HashMap<>());
+        this.map = new HashMap<>();
     }
 
     /**
-     * Returns the underlying raw map (for internal engine use).
+     * Creates Bindings by copying entries from the given map.
+     */
+    public Bindings(Map<String, Object> source) {
+        this.map = new HashMap<>();
+        if (source != null) {
+            for (Entry<String, Object> e : source.entrySet()) {
+                map.put(e.getKey(), new BindValue(e.getKey(), e.getValue()));
+            }
+        }
+    }
+
+    /**
+     * Copy constructor - creates a deep copy of BindValues.
+     * Used for loop iterations to capture closure state.
+     */
+    public Bindings(Bindings other) {
+        this.map = new HashMap<>();
+        for (Entry<String, BindValue> e : other.map.entrySet()) {
+            map.put(e.getKey(), new BindValue(e.getValue()));
+        }
+    }
+
+    //=== JS-native internal methods (no auto-unwrapping) ===
+
+    /**
+     * Raw get - returns JS value without unwrapping.
+     */
+    public Object getMember(String key) {
+        BindValue bv = map.get(key);
+        return bv != null ? bv.value : null;
+    }
+
+    /**
+     * Raw existence check.
+     */
+    public boolean hasMember(String key) {
+        return map.containsKey(key);
+    }
+
+    /**
+     * Returns the raw (non-unwrapped) value for a key.
+     */
+    public Object getRaw(String key) {
+        return getMember(key);
+    }
+
+    /**
+     * Raw put with optional binding type (for let/const declarations).
+     */
+    public void putMember(String key, Object value, BindingType type, boolean initialized) {
+        BindValue existing = map.get(key);
+        if (existing != null) {
+            existing.value = value;
+            if (type != null) {
+                existing.type = type;
+                existing.initialized = initialized;
+            }
+        } else if (type != null) {
+            map.put(key, new BindValue(key, value, type, initialized));
+        } else {
+            map.put(key, new BindValue(key, value));
+        }
+    }
+
+    /**
+     * Raw put without binding type (for var declarations).
+     */
+    public void putMember(String key, Object value) {
+        putMember(key, value, null, true);
+    }
+
+    /**
+     * Get BindValue for a key (for TDZ checks).
+     */
+    public BindValue getBindValue(String key) {
+        return map.get(key);
+    }
+
+    /**
+     * Clear binding type for a key (for loop re-declaration).
+     */
+    public void clearBindingType(String key) {
+        BindValue bv = map.get(key);
+        if (bv != null) {
+            bv.type = null;
+            bv.initialized = true;
+        }
+    }
+
+    /**
+     * Returns a raw Map view of the bindings without auto-unwrapping.
      */
     public Map<String, Object> getRawMap() {
-        return delegate;
+        Map<String, Object> result = new HashMap<>(map.size());
+        for (Entry<String, BindValue> e : map.entrySet()) {
+            result.put(e.getKey(), e.getValue().value);
+        }
+        return result;
     }
+
+    //=== Map interface (auto-unwrapping for Java consumers) ===
 
     @Override
     public int size() {
-        return delegate.size();
+        return map.size();
     }
 
     @Override
     public boolean isEmpty() {
-        return delegate.isEmpty();
+        return map.isEmpty();
     }
 
     @Override
     public boolean containsKey(Object key) {
-        return delegate.containsKey(key);
+        return map.containsKey(key);
     }
 
     @Override
     public boolean containsValue(Object value) {
-        // Check for unwrapped equivalence
-        for (Object v : delegate.values()) {
-            Object unwrapped = Engine.toJava(v);
-            if (Objects.equals(unwrapped, value)) {
+        for (BindValue bv : map.values()) {
+            if (Objects.equals(Engine.toJava(bv.value), value)) {
                 return true;
             }
         }
@@ -97,62 +172,63 @@ public class Bindings implements Map<String, Object> {
 
     @Override
     public Object get(Object key) {
-        // Auto-unwrap JS types for Java consumers
-        return Engine.toJava(delegate.get(key));
-    }
-
-    /**
-     * Returns the raw (non-unwrapped) value for internal engine use.
-     */
-    public Object getRaw(String key) {
-        return delegate.get(key);
+        if (key instanceof String s) {
+            return Engine.toJava(getMember(s));
+        }
+        return null;
     }
 
     @Override
     public Object put(String key, Object value) {
-        Object previous = delegate.put(key, value);
+        Object previous = getMember(key);
+        putMember(key, value);
         return Engine.toJava(previous);
     }
 
     @Override
     public Object remove(Object key) {
-        Object previous = delegate.remove(key);
-        return Engine.toJava(previous);
+        if (key instanceof String s) {
+            BindValue removed = map.remove(s);
+            return removed != null ? Engine.toJava(removed.value) : null;
+        }
+        return null;
     }
 
     @Override
     public void putAll(Map<? extends String, ?> m) {
-        delegate.putAll(m);
+        for (Entry<? extends String, ?> entry : m.entrySet()) {
+            putMember(entry.getKey(), entry.getValue());
+        }
     }
 
     @Override
     public void clear() {
-        delegate.clear();
+        map.clear();
     }
 
     @Override
     public Set<String> keySet() {
-        return delegate.keySet();
+        return map.keySet();
     }
 
     @Override
     public Collection<Object> values() {
-        // Return auto-unwrapped values
-        List<Object> unwrapped = new ArrayList<>(delegate.size());
-        for (Object v : delegate.values()) {
-            unwrapped.add(Engine.toJava(v));
+        List<Object> list = new ArrayList<>(map.size());
+        for (BindValue bv : map.values()) {
+            list.add(Engine.toJava(bv.value));
         }
-        return unwrapped;
+        return list;
     }
 
     @Override
     public Set<Entry<String, Object>> entrySet() {
-        // Return entries with auto-unwrapped values
-        return JsObject.getEntries(delegate);
+        Map<String, Object> result = new LinkedHashMap<>(map.size());
+        for (Entry<String, BindValue> e : map.entrySet()) {
+            result.put(e.getKey(), e.getValue().value);
+        }
+        return JsObject.getEntries(result);
     }
 
-    // Use identity-based hashCode/equals to avoid infinite recursion
-    // when bindings contain objects with circular references
     @Override
     public boolean equals(Object o) {
         return this == o;
@@ -165,7 +241,14 @@ public class Bindings implements Map<String, Object> {
 
     @Override
     public String toString() {
-        return delegate.toString();
+        StringBuilder sb = new StringBuilder("{");
+        boolean first = true;
+        for (BindValue bv : map.values()) {
+            if (!first) sb.append(", ");
+            first = false;
+            sb.append(bv.name).append("=").append(bv.value);
+        }
+        return sb.append("}").toString();
     }
 
 }
