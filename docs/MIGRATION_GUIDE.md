@@ -70,6 +70,7 @@ Karate v2 is a **complete ground-up rewrite** with significant improvements acro
 * HTML report with tags filtering
 * Soft assertions
 * JSON validation works in "soft assertion mode by default"
+* Debugging of JavaScript is possible now
 
 ---
 

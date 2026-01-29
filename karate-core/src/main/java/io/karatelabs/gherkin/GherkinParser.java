@@ -467,7 +467,10 @@ public class GherkinParser extends BaseParser {
                         step.setText(text);
                         lastToken = child.getLast().token;
                     }
-                    case G_DOC_STRING -> step.setDocString(extractDocString(child));
+                    case G_DOC_STRING -> {
+                        step.setDocString(extractDocString(child));
+                        step.setDocStringLine(extractDocStringContentLine(child));
+                    }
                     case G_TABLE -> step.setTable(transformTable(child));
                 }
             }
@@ -545,6 +548,34 @@ public class GherkinParser extends BaseParser {
             }
         }
         return sb.toString().trim();
+    }
+
+    /**
+     * Returns the 0-indexed line number in the source where the first non-empty
+     * line of docstring content starts (the line after the opening triple-quote).
+     */
+    private int extractDocStringContentLine(Node docStringNode) {
+        Token openQuote = null;
+        for (Node child : docStringNode) {
+            if (child.isToken() && child.token.type == G_TRIPLE_QUOTE) {
+                openQuote = child.token;
+                break;
+            }
+        }
+        if (openQuote == null) {
+            return -1;
+        }
+        // rawLines[0] is the remainder of the """ line, rawLines[1] is the next line, etc.
+        int start = (int) openQuote.pos + openQuote.text.length();
+        String afterQuote = resource.getText().substring(start);
+        String[] rawLines = afterQuote.split("\n", -1);
+        for (int i = 0; i < rawLines.length; i++) {
+            String rawLine = rawLines[i].replace("\r", "").trim();
+            if (!rawLine.isEmpty()) {
+                return openQuote.line + i;
+            }
+        }
+        return openQuote.line + 1;
     }
 
     private static int indexOfFirstText(String s) {

@@ -149,7 +149,7 @@ public class StepExecutor {
                 if (step.getDocString() != null) {
                     fullExpr = fullExpr + step.getDocString();
                 }
-                runtime.eval(fullExpr);
+                runtime.eval(fullExpr, step);
             } else if (keyword == null) {
                 // Plain expression (e.g., "* print foo" or "* foo.bar()")
                 executeExpression(step);
@@ -214,7 +214,7 @@ public class StepExecutor {
                         // We only do this check here (not earlier) because valid keywords like "eval"
                         // could have text starting with ( like "eval (1 + 2)"
                         if (text != null && text.trim().startsWith("(")) {
-                            runtime.eval(keyword + text);
+                            runtime.eval(keyword + text, step);
                         } else {
                             throw new RuntimeException("unknown keyword: " + keyword);
                         }
@@ -285,7 +285,7 @@ public class StepExecutor {
     // ========== Expression Execution ==========
 
     private void executeExpression(Step step) {
-        runtime.eval(step.getText());
+        runtime.eval(step.getText(), step);
     }
 
     // ========== Variable Assignment ==========
@@ -2721,10 +2721,12 @@ public class StepExecutor {
 
     private void executeEval(Step step) {
         String expr = step.getDocString();
-        if (expr == null) {
+        if (expr != null) {
+            runtime.evalDocString(expr, step);
+        } else {
             expr = step.getText();
+            runtime.eval(expr, step);
         }
-        runtime.eval(expr);
     }
 
     @SuppressWarnings("unchecked")

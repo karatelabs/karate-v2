@@ -40,6 +40,7 @@ public class Step {
     private String keyword;
     private String text;
     private String docString;
+    private int docStringLine = -1; // 0-indexed line in feature where docstring content starts
     private Table table;
 
     public String getDebugInfo() {
@@ -186,6 +187,18 @@ public class Step {
 
     public void setDocString(String docString) {
         this.docString = docString;
+    }
+
+    /**
+     * Returns the 0-indexed line in the feature file where the docstring content starts.
+     * Returns -1 if not set (e.g., when deserialized from JSON without this info).
+     */
+    public int getDocStringLine() {
+        return docStringLine;
+    }
+
+    public void setDocStringLine(int docStringLine) {
+        this.docStringLine = docStringLine;
     }
 
     public Table getTable() {

@@ -175,6 +175,15 @@ public interface Resource {
 
     String getLine(int index);
 
+    /**
+     * Returns the line offset for embedded code (e.g., JS inside a feature file).
+     * The lexer uses this as the starting line number so tokens get absolute line numbers.
+     * Default is 0 (no offset).
+     */
+    default int getLineOffset() {
+        return 0;
+    }
+
     default long getLastModified() {
         if (isFile()) {
             try {
@@ -570,6 +579,27 @@ public interface Resource {
      */
     static Resource text(String text, Path root) {
         return new MemoryResource(text, root);
+    }
+
+    /**
+     * Creates an in-memory Resource for code embedded within another source file.
+     * The lineOffset shifts the lexer's starting line so tokens get absolute line numbers
+     * relative to the host file. Use lineOffset=0 when the content starts at the
+     * beginning of the parent file (e.g., wrapping karate-config.js in parentheses).
+     *
+     * @param text       the embedded code text
+     * @param parent     the host file Resource (for source path)
+     * @param lineOffset 0-indexed line number where the embedded code starts in the host file
+     */
+    static Resource embedded(String text, Resource parent, int lineOffset) {
+        if (parent == null) {
+            return new MemoryResource(text);
+        }
+        String relativePath = parent.getRelativePath();
+        if (relativePath == null || relativePath.isEmpty()) {
+            relativePath = parent.getPrefixedPath();
+        }
+        return new MemoryResource(text, relativePath, lineOffset);
     }
 
     /**

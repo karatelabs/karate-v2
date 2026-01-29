@@ -86,10 +86,14 @@ public class Suite {
     public final boolean skipTagFiltering;
     public final Map<String, Set<Integer>> lineFilters;
 
-    // Config content (loaded in constructor, immutable)
-    public final String baseContent;
-    public final String configContent;
-    public final String configEnvContent;
+    // Debug support (for IDE debugging)
+    public final io.karatelabs.js.RunInterceptor<?> debugInterceptor;
+    public final io.karatelabs.js.DebugPointFactory<?> debugPointFactory;
+
+    // Config resources (loaded in constructor, immutable)
+    public final Resource baseResource;
+    public final Resource configResource;
+    public final Resource configEnvResource;
 
     // ========== Runtime State (mutable, private) ==========
 
@@ -170,24 +174,26 @@ public class Suite {
         this.lineFilters = builder.getLineFilters() != null
                 ? Collections.unmodifiableMap(new HashMap<>(builder.getLineFilters()))
                 : Collections.emptyMap();
+        this.debugInterceptor = builder.getDebugInterceptor();
+        this.debugPointFactory = builder.getDebugPointFactory();
 
-        // Load config content (all inputs are now available)
-        this.baseContent = tryLoadConfig(getBasePath(this.configPath), false);
-        if (this.baseContent != null) {
+        // Load config resources (all inputs are now available)
+        this.baseResource = tryLoadConfigResource(getBasePath(this.configPath), false);
+        if (this.baseResource != null) {
             logger.info("{} processed", getBasePath(this.configPath));
         }
-        this.configContent = tryLoadConfig(this.configPath, true);
-        if (this.configContent != null) {
+        this.configResource = tryLoadConfigResource(this.configPath, true);
+        if (this.configResource != null) {
             logger.info("{} processed", this.configPath);
         }
         if (this.env != null && !this.env.isEmpty()) {
             String envConfigPath = this.configPath.replace(".js", "-" + this.env + ".js");
-            this.configEnvContent = tryLoadConfig(envConfigPath, false);
-            if (this.configEnvContent != null) {
+            this.configEnvResource = tryLoadConfigResource(envConfigPath, false);
+            if (this.configEnvResource != null) {
                 logger.info("{} processed", envConfigPath);
             }
         } else {
-            this.configEnvContent = null;
+            this.configEnvResource = null;
         }
     }
 
@@ -205,14 +211,14 @@ public class Suite {
     }
 
     /**
-     * Try to load a config file.
+     * Try to load a config file and return the Resource (for debugging support).
      */
-    private String tryLoadConfig(String path, boolean warnIfMissing) {
+    private Resource tryLoadConfigResource(String path, boolean warnIfMissing) {
         // Try the explicit path first
         try {
             Resource resource = Resource.path(path);
             if (resource.exists()) {
-                return resource.getText();
+                return resource;
             }
         } catch (ResourceNotFoundException e) {
             // Not found at explicit path - continue to fallbacks
@@ -230,7 +236,7 @@ public class Suite {
             try {
                 Path workingDirConfig = workingDir.resolve(fileName);
                 if (Files.exists(workingDirConfig)) {
-                    return Files.readString(workingDirConfig);
+                    return Resource.from(workingDirConfig);
                 }
             } catch (Exception e) {
                 logger.debug("Could not load config from working dir: {}", e.getMessage());

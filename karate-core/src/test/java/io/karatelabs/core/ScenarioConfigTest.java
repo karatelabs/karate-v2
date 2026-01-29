@@ -498,4 +498,72 @@ class ScenarioConfigTest {
         assertTrue(result.isPassed(), "karate.configure() should work from JavaScript eval block");
     }
 
+    // ========== Debug Support Tests ==========
+
+    @Test
+    void testConfigResourcePathForDebugging() throws Exception {
+        // Test that config JS resources preserve their path for debugging
+        Path configFile = tempDir.resolve("karate-config.js");
+        Files.writeString(configFile, """
+            function fn() {
+              return { foo: 'bar' };
+            }
+            """);
+
+        Path featureFile = tempDir.resolve("test.feature");
+        Files.writeString(featureFile, """
+            Feature: Debug Path Test
+            Scenario: Simple test
+            * match foo == 'bar'
+            """);
+
+        // Collect debug points
+        var debugPoints = new java.util.ArrayList<String>();
+
+        // Create a mock interceptor to capture debug point source paths
+        io.karatelabs.js.RunInterceptor<Object> interceptor = new io.karatelabs.js.RunInterceptor<>() {
+            @Override
+            public Action beforeExecute(Object point) {
+                return Action.PROCEED;
+            }
+
+            @Override
+            public void afterExecute(Object point, Object result, Throwable error) {
+            }
+
+            @Override
+            public Action waitForResume() {
+                return Action.PROCEED;
+            }
+        };
+
+        io.karatelabs.js.DebugPointFactory<Object> factory = (type, line, sourcePath, source, jsContext) -> {
+            debugPoints.add("type=" + type + ", line=" + line + ", sourcePath=" + sourcePath);
+            return new Object(); // dummy point
+        };
+
+        // Run with debug support
+        SuiteResult result = Runner.builder()
+                .path(featureFile.toString())
+                .workingDir(tempDir)
+                .debugSupport(interceptor, factory)
+                .outputConsoleSummary(false)
+                .outputHtmlReport(false)
+                .backupOutputDir(false)
+                .parallel(1);
+
+        assertTrue(result.isPassed());
+
+        // Check that we captured debug points with proper source paths
+        System.out.println("Debug points captured:");
+        for (String dp : debugPoints) {
+            System.out.println("  " + dp);
+        }
+
+        // Verify that at least one debug point has the config file path
+        boolean foundConfigPath = debugPoints.stream()
+                .anyMatch(dp -> dp.contains("karate-config.js"));
+        assertTrue(foundConfigPath, "Debug points should include karate-config.js source path. Points: " + debugPoints);
+    }
+
 }

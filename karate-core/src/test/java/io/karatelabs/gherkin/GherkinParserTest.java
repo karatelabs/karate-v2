@@ -656,6 +656,61 @@ class GherkinParserTest {
         assertEquals("def[0].name", exprStep.getText());
     }
 
+    // ========== DocString Line Offset Tests ==========
+
+    @Test
+    void testDocStringLineOffset() {
+        // Line numbers are 1-indexed for step.getLine()
+        // docStringLine is 0-indexed (for the lexer)
+        feature("""
+                Feature: test
+                Scenario: eval docstring
+                  * eval
+                    \"\"\"
+                    var x = 1;
+                    var y = 2;
+                    \"\"\"
+                """);
+        Step step = scenario.getSteps().getFirst();
+        assertEquals("eval", step.getKeyword());
+        assertNotNull(step.getDocString());
+        assertTrue(step.getDocString().contains("var x = 1"));
+        // step is on line 3 (1-indexed), """ is on line 4, content starts on line 5
+        // docStringLine is 0-indexed, so line 5 → index 4
+        assertTrue(step.getDocStringLine() >= 0, "docStringLine should be set");
+        assertEquals(4, step.getDocStringLine());
+    }
+
+    @Test
+    void testDocStringLineOffsetWithDef() {
+        feature("""
+                Feature: test
+                Scenario: def docstring
+                  * def foo =
+                    \"\"\"
+                    function() { return 1 }
+                    \"\"\"
+                """);
+        Step step = scenario.getSteps().getFirst();
+        assertEquals("def", step.getKeyword());
+        assertNotNull(step.getDocString());
+        assertTrue(step.getDocStringLine() >= 0);
+        // """ is on line 4 (1-indexed → 0-indexed = 3), content on line 5 (0-indexed = 4)
+        assertEquals(4, step.getDocStringLine());
+    }
+
+    @Test
+    void testDocStringLineNotSetWithoutDocString() {
+        feature("""
+                Feature: test
+                Scenario: no docstring
+                  * eval 1 + 2
+                """);
+        Step step = scenario.getSteps().getFirst();
+        assertNull(step.getDocString());
+        assertEquals(-1, step.getDocStringLine());
+    }
+
     // ========== Empty File Handling Tests ==========
 
     @Test

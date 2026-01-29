@@ -227,7 +227,7 @@ public class KarateJs extends KarateJsBase implements PerfContext {
             }
             return switch (resource.getExtension()) {
                 case "json" -> Json.of(resource.getText()).value();
-                case "js" -> engine.eval(resource.getText());
+                case "js" -> engine.eval(resource);
                 case "feature" -> {
                     Feature feature = Feature.read(resource);
                     yield tagSelector != null ? new FeatureCall(feature, tagSelector) : feature;

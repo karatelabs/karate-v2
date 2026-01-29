@@ -52,7 +52,7 @@ public abstract class BaseLexer {
         this.source = resource.getText();
         this.length = source.length();
         this.pos = 0;
-        this.line = 0;
+        this.line = resource.getLineOffset();
         this.col = 0;
     }
 

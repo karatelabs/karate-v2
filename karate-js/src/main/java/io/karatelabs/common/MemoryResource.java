@@ -36,6 +36,7 @@ public class MemoryResource implements Resource {
     private final Path root;
     private final byte[] bytes;
     private final String relativePath;
+    private final int lineOffset;
 
     private String[] lines;
 
@@ -55,6 +56,7 @@ public class MemoryResource implements Resource {
         this.root = root != null ? root : SYSTEM_TEMP;
         this.bytes = bytes;
         this.relativePath = "";
+        this.lineOffset = 0;
     }
 
     /**
@@ -68,6 +70,22 @@ public class MemoryResource implements Resource {
         this.root = SYSTEM_TEMP;
         this.bytes = FileUtils.toBytes(text);
         this.relativePath = relativePath != null ? relativePath : "";
+        this.lineOffset = 0;
+    }
+
+    /**
+     * Creates an in-memory resource with a relative path and line offset.
+     * Used for code embedded within another source file (e.g., JS inside a feature file).
+     *
+     * @param text         the embedded code text
+     * @param relativePath the host file's relative path
+     * @param lineOffset   0-indexed line in the host file where this code starts
+     */
+    MemoryResource(String text, String relativePath, int lineOffset) {
+        this.root = SYSTEM_TEMP;
+        this.bytes = FileUtils.toBytes(text);
+        this.relativePath = relativePath != null ? relativePath : "";
+        this.lineOffset = lineOffset;
     }
 
     @Override
@@ -79,7 +97,16 @@ public class MemoryResource implements Resource {
         if (lines == null) {
             lines = getText().split("\\r?\\n");
         }
-        return lines[index];
+        int adjusted = index - lineOffset;
+        if (adjusted < 0 || adjusted >= lines.length) {
+            return "";
+        }
+        return lines[adjusted];
+    }
+
+    @Override
+    public int getLineOffset() {
+        return lineOffset;
     }
 
     @Override

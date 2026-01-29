@@ -171,6 +171,8 @@ public final class Runner {
         private io.karatelabs.http.HttpClientFactory httpClientFactory;
         private boolean skipTagFiltering;
         private int poolSize = -1; // -1 means auto-detect from parallel count
+        private io.karatelabs.js.RunInterceptor<?> debugInterceptor;
+        private io.karatelabs.js.DebugPointFactory<?> debugPointFactory;
 
         // Line filters: maps feature resource key to set of line numbers to run
         // Resource key is the normalized path (e.g., "src/test/features/test.feature")
@@ -544,6 +546,16 @@ public final class Runner {
             return this;
         }
 
+        /**
+         * Set debug support with interceptor and factory.
+         * Used for IDE debugging integration.
+         */
+        public <T> Builder debugSupport(io.karatelabs.js.RunInterceptor<T> interceptor, io.karatelabs.js.DebugPointFactory<T> factory) {
+            this.debugInterceptor = interceptor;
+            this.debugPointFactory = factory;
+            return this;
+        }
+
         // ========== Package-private accessors for Suite constructor ==========
 
         List<Feature> getResolvedFeatures() {
@@ -576,6 +588,8 @@ public final class Runner {
         io.karatelabs.http.HttpClientFactory getHttpClientFactory() { return httpClientFactory; }
         boolean isSkipTagFiltering() { return skipTagFiltering; }
         Map<String, Set<Integer>> getLineFilters() { return lineFilters; }
+        io.karatelabs.js.RunInterceptor<?> getDebugInterceptor() { return debugInterceptor; }
+        io.karatelabs.js.DebugPointFactory<?> getDebugPointFactory() { return debugPointFactory; }
 
         /**
          * Execute the tests with the specified thread count.

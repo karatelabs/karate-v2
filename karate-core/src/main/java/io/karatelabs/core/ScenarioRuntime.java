@@ -114,6 +114,15 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
             karate.http.charset(config.getCharset().name());
         }
 
+        // Set up debug support from Suite if configured (needed for config evaluation)
+        if (suite != null && suite.debugInterceptor != null && suite.debugPointFactory != null) {
+            @SuppressWarnings("unchecked")
+            io.karatelabs.js.RunInterceptor<Object> debugIntcptr = (io.karatelabs.js.RunInterceptor<Object>) suite.debugInterceptor;
+            @SuppressWarnings("unchecked")
+            io.karatelabs.js.DebugPointFactory<Object> debugFactory = (io.karatelabs.js.DebugPointFactory<Object>) suite.debugPointFactory;
+            setDebugSupport(debugIntcptr, debugFactory);
+        }
+
         initEngine();
     }
 
@@ -194,22 +203,18 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
         Suite suite = featureRuntime.getSuite();
 
         // Evaluate karate-base.js first (shared functions available to configs)
-        String baseContent = suite.baseContent;
-        if (baseContent != null) {
-            evalConfigJs(baseContent, "karate-base.js");
+        if (suite.baseResource != null) {
+            evalConfigJs(suite.baseResource);
         }
 
         // Evaluate main config
-        String configContent = suite.configContent;
-        if (configContent != null) {
-            evalConfigJs(configContent, "karate-config.js");
+        if (suite.configResource != null) {
+            evalConfigJs(suite.configResource);
         }
 
         // Evaluate env-specific config
-        String configEnvContent = suite.configEnvContent;
-        if (configEnvContent != null) {
-            String envName = suite.env;
-            evalConfigJs(configEnvContent, "karate-config-" + envName + ".js");
+        if (suite.configEnvResource != null) {
+            evalConfigJs(suite.configEnvResource);
         }
     }
 
@@ -221,13 +226,21 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
      * 3. Object literal: ({ key: value }) - already an object
      */
     @SuppressWarnings("unchecked")
-    private void evalConfigJs(String js, String displayName) {
+    private void evalConfigJs(io.karatelabs.common.Resource resource) {
+        String displayName = resource.getRelativePath();
+        if (displayName == null) {
+            displayName = resource.getPrefixedPath();
+        }
+        String js = resource.getText();
         try {
             Object result;
 
             // Try wrapping in parentheses first (handles function definitions)
+            // We need to wrap the content but preserve the resource path for debugging
             try {
-                Object fn = karate.engine.eval("(" + js + ")");
+                // Create a wrapped resource that adds parentheses but preserves the path
+                io.karatelabs.common.Resource wrappedResource = io.karatelabs.common.Resource.embedded("(" + js + ")", resource, 0);
+                Object fn = karate.engine.eval(wrappedResource);
                 if (fn instanceof JavaCallable) {
                     // It's a function - invoke it
                     result = ((JavaCallable) fn).call(null);
@@ -237,7 +250,7 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
                 }
             } catch (Exception e) {
                 // If parentheses failed, try evaluating directly (self-invoking pattern)
-                result = karate.engine.eval(js);
+                result = karate.engine.eval(resource);
             }
 
             // Apply config variables to engine
@@ -887,6 +900,37 @@ public class ScenarioRuntime implements Callable<ScenarioResult>, KarateJsContex
 
     public Object eval(String expression) {
         return karate.engine.eval(expression);
+    }
+
+    /**
+     * Evaluate a JS expression with debug source information from a Gherkin step.
+     * Creates an embedded Resource so the JS engine's debug points carry the
+     * feature file path and correct line numbers.
+     *
+     * @param expression the JS expression text
+     * @param step       the Gherkin step that contains this expression
+     */
+    public Object eval(String expression, io.karatelabs.gherkin.Step step) {
+        io.karatelabs.common.Resource featureResource = step.getFeature().getResource();
+        // step.getLine() is 1-indexed, convert to 0-indexed for the Resource lineOffset
+        int lineOffset = step.getLine() - 1;
+        io.karatelabs.common.Resource embedded = io.karatelabs.common.Resource.embedded(expression, featureResource, lineOffset);
+        return karate.engine.eval(embedded);
+    }
+
+    /**
+     * Evaluate a JS docstring expression with debug source information.
+     * Uses the docstring's actual content start line for precise line mapping.
+     */
+    public Object evalDocString(String expression, io.karatelabs.gherkin.Step step) {
+        io.karatelabs.common.Resource featureResource = step.getFeature().getResource();
+        int lineOffset = step.getDocStringLine();
+        if (lineOffset < 0) {
+            // fallback: estimate as 2 lines after the step keyword (step line + """)
+            lineOffset = step.getLine(); // 1-indexed, but +1 for """ line makes it 0-indexed equivalent
+        }
+        io.karatelabs.common.Resource embedded = io.karatelabs.common.Resource.embedded(expression, featureResource, lineOffset);
+        return karate.engine.eval(embedded);
     }
 
     public void setVariable(String name, Object value) {
