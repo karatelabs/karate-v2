@@ -30,7 +30,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 class JsFunctionNode extends JsFunction {
@@ -62,23 +61,7 @@ class JsFunctionNode extends JsFunction {
             parentContext = declaredContext;
         }
         // Interpreter.evalFnCall() will always spawn function scope
-        CoreContext functionContext = new CoreContext(parentContext, node, ContextScope.BLOCK) {
-            @Override
-            public Object get(String key) {
-                if ("arguments".equals(key)) {
-                    return Arrays.asList(args);
-                }
-                if (super.hasKey(key)) { // typically callerContext
-                    return super.get(key);
-                }
-                return declaredContext.get(key);
-            }
-
-            @Override
-            boolean hasKey(String key) {
-                return "arguments".equals(key) || super.hasKey(key) || declaredContext.hasKey(key);
-            }
-        };
+        CoreContext functionContext = new CoreContext(parentContext, node, args, declaredContext);
         int actualArgCount = Math.min(args.length, argCount);
         for (int i = 0; i < actualArgCount; i++) {
             Node argNode = argNodes.get(i);

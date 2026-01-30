@@ -25,6 +25,7 @@ package io.karatelabs.js;
 
 import io.karatelabs.parser.Node;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -37,12 +38,18 @@ class CoreContext implements Context {
 
     Bindings _bindings;
 
+    // Function context fields (non-null indicates this is a function context)
+    final Object[] functionArgs;
+    final CoreContext closureContext;
+
     CoreContext(ContextRoot root, CoreContext parent, int depth, Node node, ContextScope scope, Map<String, Object> bindings) {
         this.root = root;
         this.parent = parent;
         this.depth = depth;
         this.node = node;
         this.scope = scope;
+        this.functionArgs = null;
+        this.closureContext = null;
         if (bindings != null) {
             this._bindings = bindings instanceof Bindings b ? b : new Bindings(bindings);
         }
@@ -53,6 +60,17 @@ class CoreContext implements Context {
 
     CoreContext(CoreContext parent, Node node, ContextScope scope) {
         this(parent.root, parent, parent.depth + 1, node, scope, null);
+    }
+
+    CoreContext(CoreContext parent, Node node, Object[] functionArgs, CoreContext closureContext) {
+        this.root = parent.root;
+        this.parent = parent;
+        this.depth = parent.depth + 1;
+        this.node = node;
+        this.scope = ContextScope.BLOCK;
+        this.functionArgs = functionArgs;
+        this.closureContext = closureContext;
+        thisObject = parent.thisObject;
     }
 
     void event(EventType type, Node node) {
@@ -132,6 +150,10 @@ class CoreContext implements Context {
         if ("this".equals(key)) {
             return thisObject;
         }
+        // Function context: handle "arguments" keyword
+        if (functionArgs != null && "arguments".equals(key)) {
+            return Arrays.asList(functionArgs);
+        }
         if (_bindings != null) {
             Object result = _bindings.getMember(key);
             if (result != null || _bindings.hasMember(key)) {
@@ -147,6 +169,10 @@ class CoreContext implements Context {
         }
         if (parent != null && parent.hasKey(key)) {
             return parent.get(key);
+        }
+        // Function context: fall back to closure context for lexical scoping
+        if (closureContext != null && closureContext.hasKey(key)) {
+            return closureContext.get(key);
         }
         if (root.hasKey(key)) {
             return root.get(key);
@@ -222,10 +248,18 @@ class CoreContext implements Context {
         if ("this".equals(key)) {
             return true;
         }
+        // Function context: handle "arguments" keyword
+        if (functionArgs != null && "arguments".equals(key)) {
+            return true;
+        }
         if (_bindings != null && _bindings.hasMember(key)) {
             return true;
         }
         if (parent != null && parent.hasKey(key)) {
+            return true;
+        }
+        // Function context: check closure context
+        if (closureContext != null && closureContext.hasKey(key)) {
             return true;
         }
         return root.hasKey(key);
