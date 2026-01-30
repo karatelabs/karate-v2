@@ -27,37 +27,36 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 public class Node implements Iterable<Node> {
 
     static final Logger logger = LoggerFactory.getLogger(Node.class);
 
-    // Shared empty list for nodes without children (TOKEN nodes never have children)
-    private static final List<Node> EMPTY_CHILDREN = Collections.emptyList();
+    private static final int INITIAL_CAPACITY = 4;
+    private static final Node[] EMPTY_ARRAY = new Node[0];
 
     public final NodeType type;
     public final Token token;
-    // Lazy init: null until first child added, saves memory for TOKEN nodes
-    private List<Node> children;
+    // Raw array storage - null for TOKEN nodes, allocated on first child
+    private Node[] children;
+    private int childCount;
     // Cached text for getText() - avoids repeated StringBuilder operations
     private String cachedText;
 
     private Node parent;
 
-    // For read operations: return empty list if null
-    private List<Node> children() {
-        return children == null ? EMPTY_CHILDREN : children;
-    }
-
-    // For write operations: create list if null (capacity 4 for typical AST nodes)
-    private List<Node> ensureChildren() {
+    // Ensure capacity for adding children
+    private void ensureCapacity(int minCapacity) {
         if (children == null) {
-            children = new ArrayList<>(4);
+            children = new Node[Math.max(INITIAL_CAPACITY, minCapacity)];
+        } else if (minCapacity > children.length) {
+            int newCapacity = Math.max(children.length * 2, minCapacity);
+            children = Arrays.copyOf(children, newCapacity);
         }
-        return children;
     }
 
     public Node(NodeType type) {
@@ -86,20 +85,20 @@ public class Node implements Iterable<Node> {
         if (isToken()) {
             return token;
         }
-        if (children().isEmpty()) {
+        if (childCount == 0) {
             return Token.EMPTY;
         }
-        return children().getFirst().getFirstToken();
+        return children[0].getFirstToken();
     }
 
     public Token getLastToken() {
         if (isToken()) {
             return token;
         }
-        if (children().isEmpty()) {
+        if (childCount == 0) {
             return Token.EMPTY;
         }
-        return children().getLast().getLastToken();
+        return children[childCount - 1].getLastToken();
     }
 
     public String toStringError(String message) {
@@ -126,18 +125,18 @@ public class Node implements Iterable<Node> {
             return token.getText();
         }
         StringBuilder sb = new StringBuilder();
-        List<Node> c = children();
-        for (int i = 0; i < c.size(); i++) {
+        for (int i = 0; i < childCount; i++) {
             if (i != 0) {
                 sb.append(' ');
             }
-            sb.append(c.get(i).toStringWithoutType());
+            sb.append(children[i].toStringWithoutType());
         }
         return sb.toString();
     }
 
     public Node findFirstChild(NodeType type) {
-        for (Node child : children()) {
+        for (int i = 0; i < childCount; i++) {
+            Node child = children[i];
             if (child.type == type) {
                 return child;
             }
@@ -156,7 +155,8 @@ public class Node implements Iterable<Node> {
     }
 
     private void findAll(NodeType type, List<Node> results) {
-        for (Node child : children()) {
+        for (int i = 0; i < childCount; i++) {
+            Node child = children[i];
             if (child.type == type) {
                 results.add(child);
             }
@@ -165,7 +165,8 @@ public class Node implements Iterable<Node> {
     }
 
     public Node findFirstChild(TokenType token) {
-        for (Node child : children()) {
+        for (int i = 0; i < childCount; i++) {
+            Node child = children[i];
             if (child.token.type == token) {
                 return child;
             }
@@ -187,7 +188,8 @@ public class Node implements Iterable<Node> {
 
     public List<Node> findImmediateChildren(NodeType type) {
         List<Node> results = new ArrayList<>();
-        for (Node child : children()) {
+        for (int i = 0; i < childCount; i++) {
+            Node child = children[i];
             if (child.type == type) {
                 results.add(child);
             }
@@ -202,7 +204,8 @@ public class Node implements Iterable<Node> {
     }
 
     private void findChildren(TokenType token, List<Node> results) {
-        for (Node child : children()) {
+        for (int i = 0; i < childCount; i++) {
+            Node child = children[i];
             if (!child.isToken()) {
                 child.findChildren(token, results);
             } else if (child.token.type == token) {
@@ -220,8 +223,8 @@ public class Node implements Iterable<Node> {
             return cachedText;
         }
         StringBuilder sb = new StringBuilder();
-        for (Node child : children()) {
-            sb.append(child.getText());
+        for (int i = 0; i < childCount; i++) {
+            sb.append(children[i].getText());
         }
         cachedText = sb.toString();
         return cachedText;
@@ -238,42 +241,76 @@ public class Node implements Iterable<Node> {
     }
 
     public Node removeFirst() {
-        return ensureChildren().removeFirst();
+        if (childCount == 0) {
+            throw new NoSuchElementException();
+        }
+        Node first = children[0];
+        System.arraycopy(children, 1, children, 0, childCount - 1);
+        children[--childCount] = null; // help GC
+        return first;
     }
 
     public void addFirst(Node child) {
         child.parent = this;
-        ensureChildren().addFirst(child);
+        ensureCapacity(childCount + 1);
+        System.arraycopy(children, 0, children, 1, childCount);
+        children[0] = child;
+        childCount++;
     }
 
     public void add(Node child) {
         child.parent = this;
-        ensureChildren().add(child);
+        ensureCapacity(childCount + 1);
+        children[childCount++] = child;
     }
 
     public Node getFirst() {
-        return children().getFirst();
+        if (childCount == 0) {
+            throw new NoSuchElementException();
+        }
+        return children[0];
     }
 
     public Node getLast() {
-        return children().getLast();
+        if (childCount == 0) {
+            throw new NoSuchElementException();
+        }
+        return children[childCount - 1];
     }
 
     public Node get(int index) {
-        return children().get(index);
+        if (index < 0 || index >= childCount) {
+            throw new IndexOutOfBoundsException(index);
+        }
+        return children[index];
     }
 
     public int size() {
-        return children().size();
+        return childCount;
     }
 
     public boolean isEmpty() {
-        return children().isEmpty();
+        return childCount == 0;
     }
 
     @Override
     public Iterator<Node> iterator() {
-        return children().iterator();
+        return new Iterator<>() {
+            private int index = 0;
+
+            @Override
+            public boolean hasNext() {
+                return index < childCount;
+            }
+
+            @Override
+            public Node next() {
+                if (index >= childCount) {
+                    throw new NoSuchElementException();
+                }
+                return children[index++];
+            }
+        };
     }
 
 }
