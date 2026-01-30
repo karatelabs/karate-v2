@@ -414,7 +414,7 @@ class EngineTest {
         assertTrue(node.getFirstToken().getComments().isEmpty());
         Node secondStatement = node.get(1);
         Token thenFirst = secondStatement.getFirstToken();
-        assertEquals("// hello world", thenFirst.getComments().getFirst().text);
+        assertEquals("// hello world", thenFirst.getComments().getFirst().getText());
     }
 
     @Test
@@ -469,7 +469,7 @@ class EngineTest {
         Resource resource = Resource.text(js);
         JsParser parser = new JsParser(resource);
         Node node = parser.parse();
-        String comment = node.getFirstToken().getComments().getFirst().text;
+        String comment = node.getFirstToken().getComments().getFirst().getText();
         assertTrue(comment.startsWith("/**"));
     }
 

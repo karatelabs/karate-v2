@@ -142,8 +142,11 @@ public class Terms {
 
     public static Object literalValue(Token token) {
         return switch (token.type) {
-            case S_STRING, D_STRING -> token.text.substring(1, token.text.length() - 1);
-            case NUMBER -> toNumber(token.text);
+            case S_STRING, D_STRING -> {
+                String text = token.getText();
+                yield text.substring(1, text.length() - 1);
+            }
+            case NUMBER -> toNumber(token.getText());
             case TRUE -> true;
             case FALSE -> false;
             default -> null; // includes NULL

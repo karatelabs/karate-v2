@@ -50,7 +50,7 @@ class JsLexerTest {
     }
 
     private static List<String> texts(String text) {
-        return tokenize(text).stream().map(t -> t.text).toList();
+        return tokenize(text).stream().map(Token::getText).toList();
     }
 
     // ========== Operator Tests ==========
@@ -221,26 +221,26 @@ class JsLexerTest {
     void testRegexWithFlags() {
         List<Token> tokens = tokenize("return /test/gi");
         assertEquals(REGEX, tokens.get(2).type);
-        assertEquals("/test/gi", tokens.get(2).text);
+        assertEquals("/test/gi", tokens.get(2).getText());
     }
 
     @Test
     void testRegexWithEscapes() {
         List<Token> tokens = tokenize("return /a\\/b/");
         assertEquals(REGEX, tokens.get(2).type);
-        assertEquals("/a\\/b/", tokens.get(2).text);
+        assertEquals("/a\\/b/", tokens.get(2).getText());
     }
 
     @Test
     void testRegexWithCharacterClass() {
         List<Token> tokens = tokenize("return /[a-z]/");
         assertEquals(REGEX, tokens.get(2).type);
-        assertEquals("/[a-z]/", tokens.get(2).text);
+        assertEquals("/[a-z]/", tokens.get(2).getText());
 
         // Slash inside character class shouldn't end regex
         tokens = tokenize("return /[/]/");
         assertEquals(REGEX, tokens.get(2).type);
-        assertEquals("/[/]/", tokens.get(2).text);
+        assertEquals("/[/]/", tokens.get(2).getText());
     }
 
     // ========== Template Literal Tests ==========

@@ -60,8 +60,8 @@ public class GherkinLexer extends BaseLexer {
         tokenLine = line;
         tokenCol = col;
         TokenType type = scanToken();
-        String text = source.substring(tokenStart, pos);
-        return new Token(resource, type, tokenStart, tokenLine, tokenCol, text);
+        int length = pos - tokenStart;
+        return new Token(resource, type, tokenStart, tokenLine, tokenCol, length);
     }
 
     @Override

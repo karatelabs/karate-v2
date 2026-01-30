@@ -302,7 +302,7 @@ public class GherkinParser extends BaseParser {
         List<Tag> tags = new ArrayList<>();
         for (Node child : tagsNode) {
             if (child.isToken() && child.token.type == G_TAG) {
-                tags.add(new Tag(child.token.line + 1, child.token.text));
+                tags.add(new Tag(child.token.line + 1, child.token.getText()));
             }
         }
         return tags;
@@ -314,7 +314,7 @@ public class GherkinParser extends BaseParser {
         boolean first = true;
         for (Node child : node) {
             if (child.isToken() && child.token.type == G_DESC) {
-                String text = StringUtils.trimToNull(child.token.text);
+                String text = StringUtils.trimToNull(child.token.getText());
                 if (first) {
                     name = text;
                     first = false;
@@ -322,7 +322,7 @@ public class GherkinParser extends BaseParser {
                     if (!desc.isEmpty()) {
                         desc.append('\n');
                     }
-                    desc.append(child.token.text);
+                    desc.append(child.token.getText());
                 }
             }
         }
@@ -449,19 +449,19 @@ public class GherkinParser extends BaseParser {
                 lastToken = child.token;
                 switch (child.token.type) {
                     case G_PREFIX -> {
-                        step.setPrefix(child.token.text.trim());
+                        step.setPrefix(child.token.getText().trim());
                         step.setLine(child.token.line + 1);
                         // Extract comments from preceding lines (for assertion labels)
                         List<Token> tokenComments = child.token.getComments();
                         if (!tokenComments.isEmpty()) {
                             List<String> comments = new ArrayList<>();
                             for (Token t : tokenComments) {
-                                comments.add(t.text.trim());
+                                comments.add(t.getText().trim());
                             }
                             step.setComments(comments);
                         }
                     }
-                    case G_KEYWORD -> step.setKeyword(child.token.text);
+                    case G_KEYWORD -> step.setKeyword(child.token.getText());
                 }
             } else {
                 switch (child.type) {
@@ -496,7 +496,7 @@ public class GherkinParser extends BaseParser {
         Token first = stepLineNode.getFirst().token;
         Token last = stepLineNode.getLast().token;
         int start = (int) first.pos;
-        int end = (int) last.pos + last.text.length();
+        int end = (int) last.pos + last.getLength();
         return resource.getText().substring(start, end);
     }
 
@@ -517,7 +517,7 @@ public class GherkinParser extends BaseParser {
             return null;
         }
         // Extract raw text between the quotes (positions in source)
-        int start = (int) openQuote.pos + openQuote.text.length();
+        int start = (int) openQuote.pos + openQuote.getLength();
         int end = (int) closeQuote.pos;
         String rawContent = resource.getText().substring(start, end).replace("\r", "");
         // Split into lines
@@ -569,7 +569,7 @@ public class GherkinParser extends BaseParser {
             return -1;
         }
         // rawLines[0] is the remainder of the """ line, rawLines[1] is the next line, etc.
-        int start = (int) openQuote.pos + openQuote.text.length();
+        int start = (int) openQuote.pos + openQuote.getLength();
         String afterQuote = resource.getText().substring(start);
         String[] rawLines = afterQuote.split("\n", -1);
         for (int i = 0; i < rawLines.length; i++) {
@@ -614,7 +614,7 @@ public class GherkinParser extends BaseParser {
                             }
                             expectingCell = true;
                         } else if (cellNode.token.type == G_TABLE_CELL) {
-                            cells.add(cellNode.token.text.trim());
+                            cells.add(cellNode.token.getText().trim());
                             expectingCell = false;
                         }
                     }
@@ -666,25 +666,25 @@ public class GherkinParser extends BaseParser {
             }
 
             // Handle "match" keyword (skip it)
-            if (token.type == G_KEYWORD && "match".equals(token.text)) {
+            if (token.type == G_KEYWORD && "match".equals(token.getText())) {
                 continue;
             }
 
             // Handle "each" modifier
-            if (token.type == G_KEYWORD && "each".equals(token.text)) {
+            if (token.type == G_KEYWORD && "each".equals(token.getText())) {
                 each = true;
                 continue;
             }
 
             // Handle match operators
-            if (token.type == G_KEYWORD && isMatchOperator(token.text)) {
-                operator = token.text;
+            if (token.type == G_KEYWORD && isMatchOperator(token.getText())) {
+                operator = token.getText();
                 continue;
             }
 
             // Track positions for actual/expected expressions
             int tokenStart = (int) token.pos;
-            int tokenEnd = tokenStart + token.text.length();
+            int tokenEnd = tokenStart + token.getLength();
 
             if (operator == null) {
                 // Before operator - this is part of the actual expression

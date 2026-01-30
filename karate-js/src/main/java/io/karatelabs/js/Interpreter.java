@@ -437,7 +437,7 @@ class Interpreter {
             } else {
                 if (bindingType != null) {
                     Object value = Terms.UNDEFINED;
-                    String varName = exprNode.getFirstToken().text;
+                    String varName = exprNode.getFirstToken().getText();
                     if (exprNode.getFirst().type == NodeType.ASSIGN_EXPR) { // default value
                         value = evalExpr(exprNode.getFirst().getLast(), context);
                     }
@@ -533,7 +533,7 @@ class Interpreter {
         StringBuilder sb = new StringBuilder();
         for (Node child : node) {
             if (child.token.type == T_STRING) {
-                sb.append(child.token.text);
+                sb.append(child.token.getText());
             } else if (child.type == NodeType.EXPR) {
                 Object value = eval(child, context);
                 if (value == Terms.UNDEFINED) {
@@ -605,7 +605,7 @@ class Interpreter {
             case NodeType.LIT_ARRAY -> evalLitArray(node, context, null, null);
             case NodeType.LIT_OBJECT -> evalLitObject(node, context, null, null);
             case NodeType.LIT_TEMPLATE -> evalLitTemplate(node, context);
-            case NodeType.LIT_REGEX -> new JsRegex(node.getFirstToken().text);
+            case NodeType.LIT_REGEX -> new JsRegex(node.getFirstToken().getText());
             default -> throw new RuntimeException("unexpected lit expr: " + node);
         };
     }

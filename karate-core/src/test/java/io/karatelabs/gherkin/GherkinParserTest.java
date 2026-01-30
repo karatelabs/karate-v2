@@ -361,7 +361,7 @@ class GherkinParserTest {
         boolean foundContainsDeep = false;
         do {
             token = lexer.nextToken();
-            if (token.type == TokenType.G_KEYWORD && "contains deep".equals(token.text)) {
+            if (token.type == TokenType.G_KEYWORD && "contains deep".equals(token.getText())) {
                 foundContainsDeep = true;
             }
         } while (token.type != TokenType.EOF);

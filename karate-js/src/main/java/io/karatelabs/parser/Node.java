@@ -42,6 +42,8 @@ public class Node implements Iterable<Node> {
     public final Token token;
     // Lazy init: null until first child added, saves memory for TOKEN nodes
     private List<Node> children;
+    // Cached text for getText() - avoids repeated StringBuilder operations
+    private String cachedText;
 
     private Node parent;
 
@@ -114,14 +116,14 @@ public class Node implements Iterable<Node> {
     @Override
     public String toString() {
         if (isToken()) {
-            return token.text;
+            return token.getText();
         }
         return "[" + type + "] " + getTextIncludingWhitespace();
     }
 
     public String toStringWithoutType() {
         if (isToken()) {
-            return token.text;
+            return token.getText();
         }
         StringBuilder sb = new StringBuilder();
         List<Node> c = children();
@@ -210,23 +212,28 @@ public class Node implements Iterable<Node> {
     }
 
     public String getText() {
+        if (cachedText != null) {
+            return cachedText;
+        }
         if (isToken()) {
-            return token.text;
+            cachedText = token.getText();
+            return cachedText;
         }
         StringBuilder sb = new StringBuilder();
         for (Node child : children()) {
             sb.append(child.getText());
         }
-        return sb.toString();
+        cachedText = sb.toString();
+        return cachedText;
     }
 
     public String getTextIncludingWhitespace() {
         if (isToken()) {
-            return token.text;
+            return token.getText();
         }
         int start = (int) getFirstToken().pos;
         Token last = getLastToken();
-        int end = ((int) last.pos) + last.text.length();
+        int end = ((int) last.pos) + last.getLength();
         return last.resource.getText().substring(start, end);
     }
 

@@ -44,6 +44,7 @@ public class UrlResource implements Resource {
     private final Path root;
     private final byte[] bytes;
 
+    private String text;
     private String[] lines;
 
     UrlResource(URL url, byte[] bytes) {
@@ -74,7 +75,10 @@ public class UrlResource implements Resource {
 
     @Override
     public String getText() {
-        return FileUtils.toString(bytes);
+        if (text == null) {
+            text = FileUtils.toString(bytes);
+        }
+        return text;
     }
 
     @Override

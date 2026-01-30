@@ -30,26 +30,35 @@ import java.util.List;
 
 public class Token {
 
-    public static final Token EMPTY = new Token(Resource.text(""), TokenType.EOF, 0, 0, 0, "");
+    public static final Token EMPTY = new Token(Resource.text(""), TokenType.EOF, 0, 0, 0, 0);
 
     public final Resource resource;
     public final long pos;
     public final int line;
     public final int col;
     public final TokenType type;
-    public final String text;
+    final short length;
 
     List<Token> comments;
     Token prev;
     Token next;
 
-    public Token(Resource resource, TokenType type, long pos, int line, int col, String text) {
+    public Token(Resource resource, TokenType type, long pos, int line, int col, int length) {
         this.resource = resource;
         this.type = type;
         this.pos = pos;
         this.line = line;
         this.col = col;
-        this.text = text;
+        this.length = (short) length;
+    }
+
+    public String getText() {
+        int start = (int) pos;
+        return resource.getText().substring(start, start + length);
+    }
+
+    public int getLength() {
+        return length;
     }
 
     public Token getNextPrimary() {
@@ -80,7 +89,7 @@ public class Token {
             case WS -> "_";
             case WS_LF -> "_\\n_";
             case EOF -> "_EOF_";
-            default -> text;
+            default -> getText();
         };
     }
 

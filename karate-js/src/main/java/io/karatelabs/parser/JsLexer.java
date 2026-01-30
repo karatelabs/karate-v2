@@ -60,11 +60,11 @@ public class JsLexer extends BaseLexer {
         tokenLine = line;
         tokenCol = col;
         TokenType type = scanToken();
-        String text = source.substring(tokenStart, pos);
+        int length = pos - tokenStart;
         if (type.regexAllowed != null) {
             regexAllowed = type.regexAllowed;
         }
-        return new Token(resource, type, tokenStart, tokenLine, tokenCol, text);
+        return new Token(resource, type, tokenStart, tokenLine, tokenCol, length);
     }
 
     // ========== State Management ==========

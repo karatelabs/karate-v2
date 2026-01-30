@@ -38,6 +38,7 @@ public class MemoryResource implements Resource {
     private final String relativePath;
     private final int lineOffset;
 
+    private String text;
     private String[] lines;
 
     MemoryResource(String text) {
@@ -49,7 +50,11 @@ public class MemoryResource implements Resource {
     }
 
     MemoryResource(String text, Path root) {
-        this(FileUtils.toBytes(text), root);
+        this.root = root != null ? root : SYSTEM_TEMP;
+        this.text = text;
+        this.bytes = FileUtils.toBytes(text);
+        this.relativePath = "";
+        this.lineOffset = 0;
     }
 
     MemoryResource(byte[] bytes, Path root) {
@@ -68,6 +73,7 @@ public class MemoryResource implements Resource {
      */
     MemoryResource(String text, String relativePath) {
         this.root = SYSTEM_TEMP;
+        this.text = text;
         this.bytes = FileUtils.toBytes(text);
         this.relativePath = relativePath != null ? relativePath : "";
         this.lineOffset = 0;
@@ -83,6 +89,7 @@ public class MemoryResource implements Resource {
      */
     MemoryResource(String text, String relativePath, int lineOffset) {
         this.root = SYSTEM_TEMP;
+        this.text = text;
         this.bytes = FileUtils.toBytes(text);
         this.relativePath = relativePath != null ? relativePath : "";
         this.lineOffset = lineOffset;
@@ -90,7 +97,10 @@ public class MemoryResource implements Resource {
 
     @Override
     public String getText() {
-        return FileUtils.toString(bytes);
+        if (text == null) {
+            text = FileUtils.toString(bytes);
+        }
+        return text;
     }
 
     public String getLine(int index) {

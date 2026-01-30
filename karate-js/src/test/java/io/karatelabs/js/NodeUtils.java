@@ -121,7 +121,7 @@ public class NodeUtils {
                     case EOF:
                         return "EOF";
                     case IDENT:
-                        return "$" + node.token.text;
+                        return "$" + node.token.getText();
                     case S_STRING:
                     case D_STRING:
                     case NUMBER:
@@ -130,7 +130,7 @@ public class NodeUtils {
                     case FALSE:
                         return Terms.literalValue(node.token);
                     default:
-                        return node.token.text;
+                        return node.token.getText();
                 }
             default:
                 if (node.size() == 1) {
