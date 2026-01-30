@@ -45,6 +45,18 @@ public class JsParser extends BaseParser {
     private static final TokenType[] T_LIT_EXPR = {S_STRING, D_STRING, NUMBER, TRUE, FALSE, NULL};
     private static final TokenType[] T_FOR_IN_OF = {IN, OF};
 
+    // Lookahead sets - tokens that can start each construct (avoids creating nodes that will be discarded)
+    private static final TokenType[] T_EXPR_START = {
+            IDENT, S_STRING, D_STRING, NUMBER, TRUE, FALSE, NULL,  // literals & ref
+            L_CURLY, L_BRACKET, BACKTICK, REGEX,                   // compound literals
+            FUNCTION, L_PAREN, NEW, TYPEOF,                        // keywords & grouping
+            NOT, TILDE, PLUS_PLUS, MINUS_MINUS, MINUS, PLUS        // unary operators
+    };
+    private static final TokenType[] T_LIT_EXPR_START = {
+            S_STRING, D_STRING, NUMBER, TRUE, FALSE, NULL,         // simple literals
+            L_CURLY, L_BRACKET, BACKTICK, REGEX                    // compound literals
+    };
+
     private Node ast;
 
     public JsParser(Resource resource) {
@@ -131,6 +143,10 @@ public class JsParser extends BaseParser {
     }
 
     private boolean expr_list() {
+        // Fast lookahead: skip if current token can't start an expression
+        if (!peekAnyOf(T_EXPR_START)) {
+            return false;
+        }
         enter(NodeType.EXPR_LIST);
         boolean atLeastOne = false;
         while (true) {
@@ -409,6 +425,10 @@ public class JsParser extends BaseParser {
     //==================================================================================================================
     //
     private boolean expr(int priority, boolean mandatory) {
+        // Fast lookahead: skip if current token can't start an expression
+        if (!mandatory && !peekAnyOf(T_EXPR_START)) {
+            return false;
+        }
         enter(NodeType.EXPR);
         boolean result = ref_expr() // also handles single-arg arrow functions without parentheses
                 || lit_expr()
@@ -523,6 +543,11 @@ public class JsParser extends BaseParser {
     }
 
     private boolean fn_arrow_expr() {
+        // Fast lookahead: skip if this can't be an arrow function
+        // Avoids creating nodes that will be discarded on backtrack
+        if (!looksLikeArrowFunction()) {
+            return false;
+        }
         enter(NodeType.FN_ARROW_EXPR);
         // what started out looking like arrow function args may not be
         // e.g: "(function(){})", so fn_decl_args() will re-wind
@@ -536,6 +561,30 @@ public class JsParser extends BaseParser {
             }
         }
         return exit(false, false);
+    }
+
+    // Lookahead to detect arrow function: (...) =>
+    private boolean looksLikeArrowFunction() {
+        if (peek() != L_PAREN) {
+            return false;
+        }
+        int depth = 0;
+        int size = tokens.size();
+        for (int i = getPosition(); i < size; i++) {
+            TokenType t = tokens.get(i).type;
+            if (t == L_PAREN) {
+                depth++;
+            } else if (t == R_PAREN) {
+                if (--depth == 0) {
+                    // Check if next token is =>
+                    return i + 1 < size && tokens.get(i + 1).type == EQ_GT;
+                }
+            } else if (t == L_CURLY || t == SEMI || t == EOF) {
+                // Can't be arrow function args - bail early
+                return false;
+            }
+        }
+        return false;
     }
 
     private boolean fn_expr() {
@@ -646,6 +695,10 @@ public class JsParser extends BaseParser {
     }
 
     private boolean lit_expr() {
+        // Fast lookahead: skip if current token can't start a literal
+        if (!peekAnyOf(T_LIT_EXPR_START)) {
+            return false;
+        }
         enter(NodeType.LIT_EXPR);
         boolean result = anyOf(T_LIT_EXPR)
                 || lit_object()

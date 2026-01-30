@@ -358,6 +358,10 @@ public abstract class BaseParser {
         return nodeStack[stackPointer - 1].getLast().token.type;
     }
 
+    protected int getPosition() {
+        return position;
+    }
+
     protected void consumeNext() {
         nodeStack[stackPointer - 1].add(new Node(next()));
     }
