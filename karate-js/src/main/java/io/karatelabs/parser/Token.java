@@ -28,47 +28,71 @@ import io.karatelabs.common.Resource;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Lightweight token using flyweight pattern. Core fields (pos, line, col, type, length)
+ * are stored directly for performance. Resource and rarely-used data (comments, prev/next)
+ * are accessed via TokenBuffer.
+ */
 public class Token {
 
-    public static final Token EMPTY = new Token(Resource.text(""), TokenType.EOF, 0, 0, 0, 0);
+    private static final TokenBuffer EMPTY_BUFFER = new TokenBuffer(Resource.text(""));
+    public static final Token EMPTY = new Token(EMPTY_BUFFER, TokenType.EOF, 0, (short) 0, (short) 0, (short) 0);
 
-    public final Resource resource;
-    public final long pos;
-    public final int line;
-    public final int col;
+    // Reference to shared buffer (holds Resource, Token[], and comments)
+    final TokenBuffer buffer;
+    // Index of this token in the buffer
+    final int index;
+
+    // Core fields kept as public final for direct access performance
+    public final int pos;
+    public final short line;
+    public final short col;
     public final TokenType type;
     public final short length;
 
-    List<Token> comments;
-    Token prev;
-    Token next;
-
-    public Token(Resource resource, TokenType type, long pos, int line, int col, int length) {
-        this.resource = resource;
+    public Token(TokenBuffer buffer, TokenType type, int pos, short line, short col, short length) {
+        this.buffer = buffer;
         this.type = type;
         this.pos = pos;
         this.line = line;
         this.col = col;
-        this.length = (short) length;
+        this.length = length;
+        this.index = buffer.addToken(this);
+    }
+
+    // Convenience constructor for creating tokens with int line/col (auto-cast to short)
+    public Token(TokenBuffer buffer, TokenType type, int pos, int line, int col, int length) {
+        this(buffer, type, pos, (short) line, (short) col, (short) length);
+    }
+
+    public Resource getResource() {
+        return buffer.resource;
     }
 
     public String getText() {
-        int start = (int) pos;
-        return resource.getText().substring(start, start + length);
+        return buffer.resource.getText().substring(pos, pos + length);
     }
 
     public Token getNextPrimary() {
         Token temp = this;
         do {
-            temp = temp.next;
-        } while (!temp.type.primary);
+            temp = buffer.getNext(temp.index);
+        } while (temp != null && !temp.type.primary);
         // this will never be null, because the last token is always EOF
         // and EOF is considered "primary" unlike white-space or comments
         return temp;
     }
 
+    public Token getPrev() {
+        return buffer.getPrev(index);
+    }
+
+    public Token getNext() {
+        return buffer.getNext(index);
+    }
+
     public String getLineText() {
-        return resource.getLine(line);
+        return buffer.resource.getLine(line);
     }
 
     public String getPositionDisplay() {
@@ -76,7 +100,8 @@ public class Token {
     }
 
     public List<Token> getComments() {
-        return comments == null ? Collections.emptyList() : comments;
+        List<Token> c = buffer.getComments(index);
+        return c == null ? Collections.emptyList() : c;
     }
 
     @Override

@@ -37,6 +37,7 @@ import static io.karatelabs.parser.TokenType.*;
 public abstract class BaseLexer {
 
     protected final Resource resource;
+    protected final TokenBuffer buffer;
     protected final String source;
     protected final int length;
 
@@ -49,6 +50,7 @@ public abstract class BaseLexer {
 
     protected BaseLexer(Resource resource) {
         this.resource = resource;
+        this.buffer = new TokenBuffer(resource);
         this.source = resource.getText();
         this.length = source.length();
         this.pos = 0;
@@ -65,27 +67,23 @@ public abstract class BaseLexer {
     // ========== Tokenization Utilities ==========
 
     /**
-     * Tokenizes the source into a list of tokens, linking prev/next references
-     * and collecting comments for primary tokens.
+     * Tokenizes the source into a list of tokens. Tokens are stored in the
+     * lexer's buffer with prev/next navigation. Comments are collected for
+     * primary tokens.
      */
     public static List<Token> tokenize(BaseLexer lexer) {
         List<Token> list = new ArrayList<>();
         List<Token> comments = new ArrayList<>();
-        Token prev = null;
         Token token;
 
         do {
             token = lexer.nextToken();
-            token.prev = prev;
-            if (prev != null) {
-                prev.next = token;
-            }
-            prev = token;
+            // prev/next navigation now handled by TokenBuffer via index
 
             if (token.type.primary) {
                 list.add(token);
                 if (!comments.isEmpty()) {
-                    token.comments = comments;
+                    lexer.buffer.setComments(token.index, comments);
                     comments = new ArrayList<>();
                 }
             } else if (token.type == L_COMMENT || token.type == G_COMMENT || token.type == B_COMMENT) {

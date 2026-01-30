@@ -126,7 +126,8 @@ public class JsParser extends BaseParser {
         if (next.type == R_CURLY || next.type == EOF) {
             return true;
         }
-        return next.prev.type == WS_LF;
+        Token prev = next.getPrev();
+        return prev != null && prev.type == WS_LF;
     }
 
     private boolean expr_list() {

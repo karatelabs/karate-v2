@@ -61,7 +61,7 @@ public class GherkinLexer extends BaseLexer {
         tokenCol = col;
         TokenType type = scanToken();
         int length = pos - tokenStart;
-        return new Token(resource, type, tokenStart, tokenLine, tokenCol, length);
+        return new Token(buffer, type, tokenStart, tokenLine, tokenCol, length);
     }
 
     @Override

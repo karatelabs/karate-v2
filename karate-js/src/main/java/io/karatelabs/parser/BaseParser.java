@@ -116,8 +116,8 @@ public abstract class BaseParser {
             errors.add(new SyntaxError(token, message));
             return;
         }
-        if (token.resource.isFile()) {
-            System.err.println("file://" + token.resource.getUri().getPath() + ":" + token.getPositionDisplay() + " " + message);
+        if (token.getResource().isFile()) {
+            System.err.println("file://" + token.getResource().getUri().getPath() + ":" + token.getPositionDisplay() + " " + message);
         }
         throw new ParserException(message + "\n"
                 + token.getPositionDisplay()

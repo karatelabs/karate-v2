@@ -103,8 +103,8 @@ public class Node implements Iterable<Node> {
 
     public String toStringError(String message) {
         Token first = getFirstToken();
-        if (first.resource.isFile()) {
-            return first.getPositionDisplay() + " " + type + "\n" + first.resource.getRelativePath() + "\n" + message;
+        if (first.getResource().isFile()) {
+            return first.getPositionDisplay() + " " + type + "\n" + first.getResource().getRelativePath() + "\n" + message;
         } else if (first.line == 0) {
             return message;
         } else {
@@ -234,10 +234,10 @@ public class Node implements Iterable<Node> {
         if (isToken()) {
             return token.getText();
         }
-        int start = (int) getFirstToken().pos;
+        int start = getFirstToken().pos;
         Token last = getLastToken();
-        int end = ((int) last.pos) + last.length;
-        return last.resource.getText().substring(start, end);
+        int end = last.pos + last.length;
+        return last.getResource().getText().substring(start, end);
     }
 
     public Node removeFirst() {

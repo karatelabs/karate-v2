@@ -791,7 +791,7 @@ class Interpreter {
             DebugPointFactory<Object> factory = (DebugPointFactory<Object>) context.root.pointFactory;
             pointFactory = factory;
             Token first = node.getFirstToken();
-            String sourcePath = first.resource != null ? first.resource.getRelativePath() : null;
+            String sourcePath = first.getResource() != null ? first.getResource().getRelativePath() : null;
             point = factory.create(DebugPointFactory.JS_STATEMENT, first.line, sourcePath, node, context);
             RunInterceptor.Action action = interceptor.beforeExecute(point);
             if (action == RunInterceptor.Action.SKIP) {
@@ -812,9 +812,9 @@ class Interpreter {
                 NodeType nodeType = node.type;
                 if (nodeType != NodeType.EXPR && nodeType != NodeType.BLOCK) {
                     Token first = node.getFirstToken();
-                    logger.trace("{}{} {} | {}", first.resource, first.getPositionDisplay(), statementResult, node);
+                    logger.trace("{}{} {} | {}", first.getResource(), first.getPositionDisplay(), statementResult, node);
                     if (Engine.DEBUG) {
-                        System.out.println(first.resource + first.getPositionDisplay() + " " + statementResult + " | " + node);
+                        System.out.println(first.getResource() + first.getPositionDisplay() + " " + statementResult + " | " + node);
                     }
                 }
             }
@@ -822,7 +822,7 @@ class Interpreter {
             if (interceptor != null && pointFactory != null) {
                 if (point == null) {
                     Token first = node.getFirstToken();
-                    String sourcePath = first.resource != null ? first.resource.getRelativePath() : null;
+                    String sourcePath = first.getResource() != null ? first.getResource().getRelativePath() : null;
                     point = pointFactory.create(DebugPointFactory.JS_STATEMENT, first.line, sourcePath, node, context);
                 }
                 interceptor.afterExecute(point, statementResult, null);
@@ -834,7 +834,7 @@ class Interpreter {
             if (interceptor != null && pointFactory != null) {
                 if (point == null) {
                     Token first = node.getFirstToken();
-                    String sourcePath = first.resource != null ? first.resource.getRelativePath() : null;
+                    String sourcePath = first.getResource() != null ? first.getResource().getRelativePath() : null;
                     point = pointFactory.create(DebugPointFactory.JS_STATEMENT, first.line, sourcePath, node, context);
                 }
                 interceptor.afterExecute(point, null, e);
@@ -854,8 +854,8 @@ class Interpreter {
             StringBuilder sb = new StringBuilder();
             sb.append("js failed:\n");
             sb.append("==========\n");
-            if (first.resource.isFile()) {
-                sb.append("  File: ").append(first.resource).append("\n");
+            if (first.getResource().isFile()) {
+                sb.append("  File: ").append(first.getResource()).append("\n");
             }
             if (first.line != 0) {
                 sb.append("  Line: ").append(first.line).append(", Col: ").append(first.col).append("\n");
@@ -863,8 +863,8 @@ class Interpreter {
             sb.append("  Code: ").append(first.getLineText().trim()).append("\n");
             sb.append("  Error: ").append(e.getMessage()).append("\n");
             sb.append("==========");
-            if (first.resource.isFile()) {
-                System.err.println("file://" + first.resource.getUri().getPath() + ":" + first.getPositionDisplay() + " " + e);
+            if (first.getResource().isFile()) {
+                System.err.println("file://" + first.getResource().getUri().getPath() + ":" + first.getPositionDisplay() + " " + e);
             }
             throw new EngineException(sb.toString(), e);
         }

@@ -185,7 +185,7 @@ public class Engine {
             if (message == null) {
                 message = e + "";
             }
-            Resource resource = program.getFirstToken().resource;
+            Resource resource = program.getFirstToken().getResource();
             if (resource.isFile()) {
                 message = message + "\n" + resource.getRelativePath();
             }

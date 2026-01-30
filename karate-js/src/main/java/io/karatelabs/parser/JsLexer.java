@@ -64,7 +64,7 @@ public class JsLexer extends BaseLexer {
         if (type.regexAllowed != null) {
             regexAllowed = type.regexAllowed;
         }
-        return new Token(resource, type, tokenStart, tokenLine, tokenCol, length);
+        return new Token(buffer, type, tokenStart, tokenLine, tokenCol, length);
     }
 
     // ========== State Management ==========
