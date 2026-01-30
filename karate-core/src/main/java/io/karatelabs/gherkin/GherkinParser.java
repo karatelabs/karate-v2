@@ -496,7 +496,7 @@ public class GherkinParser extends BaseParser {
         Token first = stepLineNode.getFirst().token;
         Token last = stepLineNode.getLast().token;
         int start = (int) first.pos;
-        int end = (int) last.pos + last.getLength();
+        int end = (int) last.pos + last.length;
         return resource.getText().substring(start, end);
     }
 
@@ -517,7 +517,7 @@ public class GherkinParser extends BaseParser {
             return null;
         }
         // Extract raw text between the quotes (positions in source)
-        int start = (int) openQuote.pos + openQuote.getLength();
+        int start = (int) openQuote.pos + openQuote.length;
         int end = (int) closeQuote.pos;
         String rawContent = resource.getText().substring(start, end).replace("\r", "");
         // Split into lines
@@ -569,7 +569,7 @@ public class GherkinParser extends BaseParser {
             return -1;
         }
         // rawLines[0] is the remainder of the """ line, rawLines[1] is the next line, etc.
-        int start = (int) openQuote.pos + openQuote.getLength();
+        int start = (int) openQuote.pos + openQuote.length;
         String afterQuote = resource.getText().substring(start);
         String[] rawLines = afterQuote.split("\n", -1);
         for (int i = 0; i < rawLines.length; i++) {
@@ -684,7 +684,7 @@ public class GherkinParser extends BaseParser {
 
             // Track positions for actual/expected expressions
             int tokenStart = (int) token.pos;
-            int tokenEnd = tokenStart + token.getLength();
+            int tokenEnd = tokenStart + token.length;
 
             if (operator == null) {
                 // Before operator - this is part of the actual expression

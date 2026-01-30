@@ -37,7 +37,7 @@ public class Token {
     public final int line;
     public final int col;
     public final TokenType type;
-    final short length;
+    public final short length;
 
     List<Token> comments;
     Token prev;
@@ -55,10 +55,6 @@ public class Token {
     public String getText() {
         int start = (int) pos;
         return resource.getText().substring(start, start + length);
-    }
-
-    public int getLength() {
-        return length;
     }
 
     public Token getNextPrimary() {

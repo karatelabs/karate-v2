@@ -236,7 +236,7 @@ public class Node implements Iterable<Node> {
         }
         int start = (int) getFirstToken().pos;
         Token last = getLastToken();
-        int end = ((int) last.pos) + last.getLength();
+        int end = ((int) last.pos) + last.length;
         return last.resource.getText().substring(start, end);
     }
 
