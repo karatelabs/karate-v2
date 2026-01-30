@@ -59,7 +59,7 @@ class JsArrayConstructor extends JsFunction {
     // Static methods
 
     @SuppressWarnings("unchecked")
-    private Object from(Context context, Object... args) {
+    private Object from(Context context, Object[] args) {
         List<Object> results = new ArrayList<>();
         JsCallable callable = null;
         if (args.length > 1 && args[1] instanceof JsCallable) {
@@ -76,17 +76,17 @@ class JsArrayConstructor extends JsFunction {
             array = new JsArray();
         }
         for (KeyValue kv : array.jsEntries()) {
-            Object result = callable == null ? kv.value() : callable.call(context, kv.value(), kv.index());
+            Object result = callable == null ? kv.value() : callable.call(context, new Object[]{kv.value(), kv.index()});
             results.add(result);
         }
         return results;
     }
 
-    private Object isArray(Object... args) {
+    private Object isArray(Object[] args) {
         return args.length > 0 && args[0] instanceof List;
     }
 
-    private Object of(Object... args) {
+    private Object of(Object[] args) {
         return Arrays.asList(args);
     }
 

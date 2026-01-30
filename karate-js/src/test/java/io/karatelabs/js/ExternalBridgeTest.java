@@ -359,7 +359,7 @@ class ExternalBridgeTest extends EvalBase {
 
         // Now call the function with an argument
         JsCallable callable = (JsCallable) fn;
-        Object result = callable.call(null, List.of("a", "b", "c"));
+        Object result = callable.call(null, new Object[]{List.of("a", "b", "c")});
         assertEquals(3, result);
     }
 

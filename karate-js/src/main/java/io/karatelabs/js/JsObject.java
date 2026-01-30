@@ -241,7 +241,7 @@ class JsObject implements ObjectLike, JsCallable, Map<String, Object> {
     }
 
     @Override
-    public Object call(Context context, Object... args) {
+    public Object call(Context context, Object[] args) {
         return new JsObject();
     }
 

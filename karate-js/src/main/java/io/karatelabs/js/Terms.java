@@ -503,7 +503,7 @@ public class Terms {
             }
             case SimpleObject so -> {
                 JsCallable callable = so.jsToString();
-                return (String) callable.call(null);
+                return (String) callable.call(null, new Object[0]);
             }
             case ObjectLike objectLike -> {
                 Map<String, Object> map = objectLike.toMap();

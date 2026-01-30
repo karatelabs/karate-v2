@@ -89,7 +89,7 @@ class JsFunctionPrototype extends Prototype {
         }
     }
 
-    private Object callMethod(Context context, Object... args) {
+    private Object callMethod(Context context, Object[] args) {
         JsCallable callable = asCallable(context);
         if (callable == null) {
             throw new RuntimeException("call() requires a function");
@@ -98,10 +98,10 @@ class JsFunctionPrototype extends Prototype {
         if (context instanceof CoreContext cc) {
             cc.thisObject = thisArgs.thisObject;
         }
-        return callable.call(context, thisArgs.args.toArray());
+        return callable.call(context, thisArgs.args.toArray(new Object[0]));
     }
 
-    private Object applyMethod(Context context, Object... args) {
+    private Object applyMethod(Context context, Object[] args) {
         JsCallable callable = asCallable(context);
         if (callable == null) {
             throw new RuntimeException("apply() requires a function");
@@ -110,10 +110,10 @@ class JsFunctionPrototype extends Prototype {
         if (context instanceof CoreContext cc) {
             cc.thisObject = thisArgs.thisObject;
         }
-        return callable.call(context, thisArgs.args.toArray());
+        return callable.call(context, thisArgs.args.toArray(new Object[0]));
     }
 
-    private Object toStringMethod(Context context, Object... args) {
+    private Object toStringMethod(Context context, Object[] args) {
         Object thisObj = context.getThisObject();
         if (thisObj instanceof JsFunctionNode fn) {
             // User-defined function: return actual source

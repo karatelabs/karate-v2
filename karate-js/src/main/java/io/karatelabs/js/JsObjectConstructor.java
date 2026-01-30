@@ -59,7 +59,7 @@ class JsObjectConstructor extends JsFunction {
 
     // Static methods
 
-    private Object keys(Object... args) {
+    private Object keys(Object[] args) {
         List<Object> result = new ArrayList<>();
         for (KeyValue kv : Terms.toIterable(args[0])) {
             result.add(kv.key());
@@ -67,7 +67,7 @@ class JsObjectConstructor extends JsFunction {
         return result;
     }
 
-    private Object values(Object... args) {
+    private Object values(Object[] args) {
         List<Object> result = new ArrayList<>();
         for (KeyValue kv : Terms.toIterable(args[0])) {
             result.add(kv.value());
@@ -75,7 +75,7 @@ class JsObjectConstructor extends JsFunction {
         return result;
     }
 
-    private Object entries(Object... args) {
+    private Object entries(Object[] args) {
         List<Object> result = new ArrayList<>();
         for (KeyValue kv : Terms.toIterable(args[0])) {
             List<Object> entry = new ArrayList<>();
@@ -86,7 +86,7 @@ class JsObjectConstructor extends JsFunction {
         return result;
     }
 
-    private Object assign(Object... args) {
+    private Object assign(Object[] args) {
         if (args.length == 0) {
             return new LinkedHashMap<>();
         }
@@ -106,7 +106,7 @@ class JsObjectConstructor extends JsFunction {
     }
 
     @SuppressWarnings("unchecked")
-    private Object fromEntries(Object... args) {
+    private Object fromEntries(Object[] args) {
         if (args.length == 0 || args[0] == null || args[0] == Terms.UNDEFINED) {
             throw new RuntimeException("fromEntries() requires valid argument(s)");
         }
@@ -129,14 +129,14 @@ class JsObjectConstructor extends JsFunction {
         return result;
     }
 
-    private Object is(Object... args) {
+    private Object is(Object[] args) {
         if (args.length < 2) {
             return false;
         }
         return Terms.eq(args[0], args[1], true);
     }
 
-    private Object create(Object... args) {
+    private Object create(Object[] args) {
         JsObject newObj = new JsObject();
         if (args.length > 0 && args[0] instanceof ObjectLike proto) {
             newObj.setPrototype(proto);
@@ -144,7 +144,7 @@ class JsObjectConstructor extends JsFunction {
         return newObj;
     }
 
-    private Object getPrototypeOf(Object... args) {
+    private Object getPrototypeOf(Object[] args) {
         if (args.length > 0) {
             if (args[0] instanceof JsObject obj) {
                 return obj.getPrototype();
@@ -156,7 +156,7 @@ class JsObjectConstructor extends JsFunction {
         return null;
     }
 
-    private Object setPrototypeOf(Object... args) {
+    private Object setPrototypeOf(Object[] args) {
         if (args.length >= 2) {
             ObjectLike proto = null;
             if (args[1] instanceof ObjectLike p) {

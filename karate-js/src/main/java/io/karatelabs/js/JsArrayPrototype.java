@@ -127,6 +127,8 @@ class JsArrayPrototype extends Prototype {
         };
     }
 
+    private static final Object[] EMPTY_ARGS = new Object[0];
+
     private static JsCallable toCallable(Object[] args) {
         if (args.length > 0 && args[0] instanceof JsCallable callable) {
             return callable;
@@ -147,21 +149,21 @@ class JsArrayPrototype extends Prototype {
 
     // Instance methods
 
-    private Object map(Context context, Object... args) {
+    private Object map(Context context, Object[] args) {
         List<Object> results = new ArrayList<>();
         JsCallable callable = toCallable(args);
         for (KeyValue kv : Terms.toIterable(context.getThisObject())) {
-            Object result = callable.call(context, kv.value(), kv.index());
+            Object result = callable.call(context, new Object[]{kv.value(), kv.index()});
             results.add(result);
         }
         return results;
     }
 
-    private Object filter(Context context, Object... args) {
+    private Object filter(Context context, Object[] args) {
         List<Object> results = new ArrayList<>();
         JsCallable callable = toCallable(args);
         for (KeyValue kv : jsEntries(context)) {
-            Object result = callable.call(context, kv.value(), kv.index());
+            Object result = callable.call(context, new Object[]{kv.value(), kv.index()});
             if (Terms.isTruthy(result)) {
                 results.add(kv.value());
             }
@@ -169,7 +171,7 @@ class JsArrayPrototype extends Prototype {
         return results;
     }
 
-    private Object join(Context context, Object... args) {
+    private Object join(Context context, Object[] args) {
         StringBuilder sb = new StringBuilder();
         String delimiter = (args.length > 0 && args[0] != null) ? args[0].toString() : ",";
         for (KeyValue kv : jsEntries(context)) {
@@ -181,10 +183,10 @@ class JsArrayPrototype extends Prototype {
         return sb.toString();
     }
 
-    private Object find(Context context, Object... args) {
+    private Object find(Context context, Object[] args) {
         JsCallable callable = toCallable(args);
         for (KeyValue kv : jsEntries(context)) {
-            Object result = callable.call(context, kv.value(), kv.index());
+            Object result = callable.call(context, new Object[]{kv.value(), kv.index()});
             if (Terms.isTruthy(result)) {
                 return kv.value();
             }
@@ -192,10 +194,10 @@ class JsArrayPrototype extends Prototype {
         return Terms.UNDEFINED;
     }
 
-    private Object findIndex(Context context, Object... args) {
+    private Object findIndex(Context context, Object[] args) {
         JsCallable callable = toCallable(args);
         for (KeyValue kv : jsEntries(context)) {
-            Object result = callable.call(context, kv.value(), kv.index());
+            Object result = callable.call(context, new Object[]{kv.value(), kv.index()});
             if (Terms.isTruthy(result)) {
                 return kv.index();
             }
@@ -203,13 +205,13 @@ class JsArrayPrototype extends Prototype {
         return -1;
     }
 
-    private Object push(Context context, Object... args) {
+    private Object push(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         thisArray.addAll(Arrays.asList(args));
         return thisArray.size();
     }
 
-    private Object reverse(Context context, Object... args) {
+    private Object reverse(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         int size = thisArray.size();
         List<Object> result = new ArrayList<>();
@@ -219,7 +221,7 @@ class JsArrayPrototype extends Prototype {
         return result;
     }
 
-    private Object includes(Context context, Object... args) {
+    private Object includes(Context context, Object[] args) {
         for (KeyValue kv : jsEntries(context)) {
             if (Terms.eq(kv.value(), args[0], false)) {
                 return true;
@@ -228,7 +230,7 @@ class JsArrayPrototype extends Prototype {
         return false;
     }
 
-    private Object indexOf(Context context, Object... args) {
+    private Object indexOf(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         int size = thisArray.size();
         if (size == 0 || args.length == 0) {
@@ -253,7 +255,7 @@ class JsArrayPrototype extends Prototype {
         return -1;
     }
 
-    private Object slice(Context context, Object... args) {
+    private Object slice(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         int size = thisArray.size();
         int start = 0;
@@ -279,19 +281,19 @@ class JsArrayPrototype extends Prototype {
         return result;
     }
 
-    private Object forEach(Context context, Object... args) {
+    private Object forEach(Context context, Object[] args) {
         JsCallable callable = toCallable(args);
         for (KeyValue kv : jsEntries(context)) {
             if (context instanceof CoreContext cc) {
                 cc.iteration = kv.index();
             }
-            callable.call(context, kv.value(), kv.index(), context.getThisObject());
+            callable.call(context, new Object[]{kv.value(), kv.index(), context.getThisObject()});
         }
         return Terms.UNDEFINED;
     }
 
     @SuppressWarnings("unchecked")
-    private Object concat(Context context, Object... args) {
+    private Object concat(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         List<Object> result = new ArrayList<>(thisArray);
         for (Object arg : args) {
@@ -304,14 +306,14 @@ class JsArrayPrototype extends Prototype {
         return result;
     }
 
-    private Object every(Context context, Object... args) {
+    private Object every(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         if (thisArray.isEmpty()) {
             return true;
         }
         JsCallable callable = toCallable(args);
         for (KeyValue kv : jsEntries(context)) {
-            Object result = callable.call(context, kv.value(), kv.index(), thisArray);
+            Object result = callable.call(context, new Object[]{kv.value(), kv.index(), thisArray});
             if (!Terms.isTruthy(result)) {
                 return false;
             }
@@ -319,14 +321,14 @@ class JsArrayPrototype extends Prototype {
         return true;
     }
 
-    private Object some(Context context, Object... args) {
+    private Object some(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         if (thisArray.isEmpty()) {
             return false;
         }
         JsCallable callable = toCallable(args);
         for (KeyValue kv : jsEntries(context)) {
-            Object result = callable.call(context, kv.value(), kv.index(), thisArray);
+            Object result = callable.call(context, new Object[]{kv.value(), kv.index(), thisArray});
             if (Terms.isTruthy(result)) {
                 return true;
             }
@@ -334,7 +336,7 @@ class JsArrayPrototype extends Prototype {
         return false;
     }
 
-    private Object reduce(Context context, Object... args) {
+    private Object reduce(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         JsCallable callable = toCallable(args);
         if (thisArray.isEmpty() && args.length < 2) {
@@ -350,12 +352,12 @@ class JsArrayPrototype extends Prototype {
         }
         for (int i = startIndex; i < thisArray.size(); i++) {
             Object currentValue = thisArray.get(i);
-            accumulator = callable.call(context, accumulator, currentValue, i, thisArray);
+            accumulator = callable.call(context, new Object[]{accumulator, currentValue, i, thisArray});
         }
         return accumulator;
     }
 
-    private Object reduceRight(Context context, Object... args) {
+    private Object reduceRight(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         JsCallable callable = toCallable(args);
         if (thisArray.isEmpty() && args.length < 2) {
@@ -371,12 +373,12 @@ class JsArrayPrototype extends Prototype {
         }
         for (int i = startIndex; i >= 0; i--) {
             Object currentValue = thisArray.get(i);
-            accumulator = callable.call(context, accumulator, currentValue, i, thisArray);
+            accumulator = callable.call(context, new Object[]{accumulator, currentValue, i, thisArray});
         }
         return accumulator;
     }
 
-    private Object flat(Context context, Object... args) {
+    private Object flat(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         int depth = 1;
         if (args.length > 0 && args[0] != null) {
@@ -391,13 +393,13 @@ class JsArrayPrototype extends Prototype {
     }
 
     @SuppressWarnings("unchecked")
-    private Object flatMap(Context context, Object... args) {
+    private Object flatMap(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         JsCallable callable = toCallable(args);
         List<Object> mappedResult = new ArrayList<>();
         int index = 0;
         for (Object item : thisArray) {
-            Object mapped = callable.call(context, item, index, thisArray);
+            Object mapped = callable.call(context, new Object[]{item, index, thisArray});
             if (mapped instanceof List<?> list) {
                 mappedResult.addAll((List<Object>) list);
             } else {
@@ -408,7 +410,7 @@ class JsArrayPrototype extends Prototype {
         return mappedResult;
     }
 
-    private Object sort(Context context, Object... args) {
+    private Object sort(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         List<Object> list = new ArrayList<>(thisArray);
         if (list.isEmpty()) {
@@ -417,7 +419,7 @@ class JsArrayPrototype extends Prototype {
         if (args.length > 0 && args[0] instanceof JsCallable) {
             JsCallable callable = toCallable(args);
             list.sort((a, b) -> {
-                Object result = callable.call(context, a, b);
+                Object result = callable.call(context, new Object[]{a, b});
                 if (result instanceof Number) {
                     return ((Number) result).intValue();
                 }
@@ -441,7 +443,7 @@ class JsArrayPrototype extends Prototype {
         return thisArray;
     }
 
-    private Object fill(Context context, Object... args) {
+    private Object fill(Context context, Object[] args) {
         if (args.length == 0) {
             return context.getThisObject();
         }
@@ -473,7 +475,7 @@ class JsArrayPrototype extends Prototype {
         return thisArray;
     }
 
-    private Object splice(Context context, Object... args) {
+    private Object splice(Context context, Object[] args) {
         if (args.length == 0) {
             return new ArrayList<>();
         }
@@ -520,7 +522,7 @@ class JsArrayPrototype extends Prototype {
         return removedElements;
     }
 
-    private Object shift(Context context, Object... args) {
+    private Object shift(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         int size = thisArray.size();
         if (size == 0) {
@@ -537,7 +539,7 @@ class JsArrayPrototype extends Prototype {
         return firstElement;
     }
 
-    private Object unshift(Context context, Object... args) {
+    private Object unshift(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         if (args.length == 0) {
             return thisArray.size();
@@ -551,7 +553,7 @@ class JsArrayPrototype extends Prototype {
         return thisArray.size();
     }
 
-    private Object lastIndexOf(Context context, Object... args) {
+    private Object lastIndexOf(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         int size = thisArray.size();
         if (size == 0 || args.length == 0) {
@@ -583,7 +585,7 @@ class JsArrayPrototype extends Prototype {
         return -1;
     }
 
-    private Object pop(Context context, Object... args) {
+    private Object pop(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         int size = thisArray.size();
         if (size == 0) {
@@ -600,7 +602,7 @@ class JsArrayPrototype extends Prototype {
         return lastElement;
     }
 
-    private Object at(Context context, Object... args) {
+    private Object at(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         int size = thisArray.size();
         if (size == 0 || args.length == 0 || args[0] == null) {
@@ -616,7 +618,7 @@ class JsArrayPrototype extends Prototype {
         return thisArray.get(index);
     }
 
-    private Object copyWithin(Context context, Object... args) {
+    private Object copyWithin(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         int size = thisArray.size();
         if (size == 0 || args.length == 0) {
@@ -663,7 +665,7 @@ class JsArrayPrototype extends Prototype {
         return thisArray;
     }
 
-    private Object keys(Context context, Object... args) {
+    private Object keys(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         List<Object> result = new ArrayList<>();
         int size = thisArray.size();
@@ -673,11 +675,11 @@ class JsArrayPrototype extends Prototype {
         return result;
     }
 
-    private Object values(Context context, Object... args) {
+    private Object values(Context context, Object[] args) {
         return rawList(context);
     }
 
-    private Object entries(Context context, Object... args) {
+    private Object entries(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         List<Object> result = new ArrayList<>();
         int size = thisArray.size();
@@ -690,7 +692,7 @@ class JsArrayPrototype extends Prototype {
         return result;
     }
 
-    private Object findLast(Context context, Object... args) {
+    private Object findLast(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         int size = thisArray.size();
         if (size == 0 || args.length == 0) {
@@ -699,7 +701,7 @@ class JsArrayPrototype extends Prototype {
         JsCallable callable = toCallable(args);
         for (int i = size - 1; i >= 0; i--) {
             Object value = thisArray.get(i);
-            Object result = callable.call(context, value, i, thisArray);
+            Object result = callable.call(context, new Object[]{value, i, thisArray});
             if (Terms.isTruthy(result)) {
                 return value;
             }
@@ -707,7 +709,7 @@ class JsArrayPrototype extends Prototype {
         return Terms.UNDEFINED;
     }
 
-    private Object findLastIndex(Context context, Object... args) {
+    private Object findLastIndex(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         int size = thisArray.size();
         if (size == 0 || args.length == 0) {
@@ -716,7 +718,7 @@ class JsArrayPrototype extends Prototype {
         JsCallable callable = toCallable(args);
         for (int i = size - 1; i >= 0; i--) {
             Object value = thisArray.get(i);
-            Object result = callable.call(context, value, i, thisArray);
+            Object result = callable.call(context, new Object[]{value, i, thisArray});
             if (Terms.isTruthy(result)) {
                 return i;
             }
@@ -724,7 +726,7 @@ class JsArrayPrototype extends Prototype {
         return -1;
     }
 
-    private Object withMethod(Context context, Object... args) {
+    private Object withMethod(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         int size = thisArray.size();
         if (size == 0 || args.length < 2) {
@@ -745,7 +747,7 @@ class JsArrayPrototype extends Prototype {
         return result;
     }
 
-    private Object group(Context context, Object... args) {
+    private Object group(Context context, Object[] args) {
         List<Object> thisArray = rawList(context);
         if (args.length == 0) {
             return new JsObject();
@@ -753,7 +755,7 @@ class JsArrayPrototype extends Prototype {
         JsCallable callable = toCallable(args);
         Map<String, List<Object>> groups = new HashMap<>();
         for (KeyValue kv : jsEntries(context)) {
-            Object key = callable.call(context, kv.value(), kv.index(), thisArray);
+            Object key = callable.call(context, new Object[]{kv.value(), kv.index(), thisArray});
             String keyStr = key == null ? "null" : key.toString();
             if (!groups.containsKey(keyStr)) {
                 groups.put(keyStr, new ArrayList<>());

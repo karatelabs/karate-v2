@@ -99,7 +99,7 @@ public class JsJson implements SimpleObject {
         // First, call the replacer function for this key-value pair
         Object transformed;
         try {
-            transformed = replacerFunc.call(null, key, value);
+            transformed = replacerFunc.call(null, new Object[]{key, value});
         } catch (Exception e) {
             throw new RuntimeException("Error in replacer function: " + e.getMessage(), e);
         }

@@ -48,7 +48,7 @@ class JsObjectPrototype extends Prototype {
         };
     }
 
-    private Object hasOwnProperty(Context context, Object... args) {
+    private Object hasOwnProperty(Context context, Object[] args) {
         if (args.length == 0 || args[0] == null) {
             return false;
         }

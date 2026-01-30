@@ -25,6 +25,13 @@ package io.karatelabs.js;
 
 public interface JavaCallable extends JsCallable {
 
+    /**
+     * Override with varargs for external Java client convenience.
+     * Callers can use: callable.call(ctx, arg1, arg2)
+     */
+    @Override
+    Object call(Context context, Object... args);
+
     @Override
     default boolean isExternal() {
         return true;

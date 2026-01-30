@@ -220,7 +220,7 @@ class JsFunctionTest extends EvalBase {
     void testGetReferenceAndInvoke() {
         eval("var a = function(name){ return 'hello ' + name }");
         JsCallable fn = (JsCallable) get("a");
-        Object result = fn.call(null, "world");
+        Object result = fn.call(null, new Object[]{"world"});
         assertEquals("hello world", result);
     }
 

@@ -49,7 +49,7 @@ class JsConsole implements SimpleObject {
                         // ES6: call toString with 'this' set to the object being stringified
                         CoreContext callContext = new CoreContext((CoreContext) context, null, ContextScope.FUNCTION);
                         callContext.thisObject = arg;
-                        sb.append(jsc.call(callContext));
+                        sb.append(jsc.call(callContext, new Object[0]));
                     } else {
                         sb.append(Terms.TO_STRING(arg));
                     }
