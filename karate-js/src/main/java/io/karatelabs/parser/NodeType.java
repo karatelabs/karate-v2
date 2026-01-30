@@ -96,6 +96,32 @@ public enum NodeType {
     G_STEP_LINE,
     G_DOC_STRING,
     G_TABLE,
-    G_TABLE_ROW
+    G_TABLE_ROW;
+
+    public final int expectedChildren;
+
+    NodeType() {
+        this.expectedChildren = expectedChildrenFor(this);
+    }
+
+    private static int expectedChildrenFor(NodeType type) {
+        return switch (type) {
+            // Leaf node - never has children
+            case TOKEN -> 0;
+            // Small nodes: 1-2 children typical
+            case LIT_EXPR, LIT_REGEX, EOS, BREAK_STMT, CONTINUE_STMT,
+                 PLACEHOLDER, FN_DECL_ARG, FN_CALL_ARG, ARRAY_ELEM -> 2;
+            // Container nodes: variable, often many children
+            case ROOT, PROGRAM -> 16;
+            // Gherkin table rows: pipe + cell alternating, 5-col table = 11 tokens
+            case G_TABLE_ROW -> 12;
+            case BLOCK, FN_CALL_ARGS, FN_DECL_ARGS, LIT_ARRAY, LIT_OBJECT,
+                 EXPR_LIST, CASE_BLOCK, DEFAULT_BLOCK, LIT_TEMPLATE,
+                 G_FEATURE, G_SCENARIO, G_SCENARIO_OUTLINE, G_BACKGROUND,
+                 G_TABLE, G_STEP, G_STEP_LINE, G_DOC_STRING, G_EXAMPLES -> 8;
+            // Default: binary expressions and most statements (3-4 children typical)
+            default -> 4;
+        };
+    }
 
 }

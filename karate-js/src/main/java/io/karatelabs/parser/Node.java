@@ -61,7 +61,10 @@ public class Node implements Iterable<Node> {
 
     public Node(NodeType type) {
         this.type = type;
-        token = Token.EMPTY;
+        this.token = Token.EMPTY;
+        if (type.expectedChildren > 0) {
+            this.children = new Node[type.expectedChildren];
+        }
     }
 
     public Node(Token token) {
