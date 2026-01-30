@@ -38,43 +38,18 @@ public abstract class BaseParser {
 
     static final Logger logger = LoggerFactory.getLogger(BaseParser.class);
 
-    static class Marker {
-
-        final int position;
-        final Marker caller;
-        final Node node;
-        final int depth;
-
-        public Marker(int position, Marker caller, Node node, int depth) {
-            this.position = position;
-            this.caller = caller;
-            this.node = node;
-            this.depth = depth;
-        }
-
-        @Override
-        public String toString() {
-            StringBuilder sb = new StringBuilder();
-            if (caller != null) {
-                if (caller.caller != null) {
-                    sb.append(caller.caller.node.type).append(" >> ");
-                }
-                sb.append(caller.node.type).append(" >> ");
-            }
-            sb.append('[');
-            sb.append(node.type);
-            sb.append(']');
-            return sb.toString();
-        }
-
-    }
+    private static final int MAX_DEPTH = 128;
 
     protected final Resource resource;
     protected final List<Token> tokens;
     private final int size;
 
     private int position = 0;
-    private Marker marker;
+
+    // Stack-based marker state (replaces linked Marker objects)
+    private int stackPointer = 0;
+    private final int[] positionStack = new int[MAX_DEPTH];
+    private final Node[] nodeStack = new Node[MAX_DEPTH];
 
     // Error recovery infrastructure
     protected final boolean errorRecoveryEnabled;
@@ -82,11 +57,11 @@ public abstract class BaseParser {
     private int lastRecoveryPosition = -1;
 
     protected Node markerNode() {
-        return marker.node;
+        return nodeStack[stackPointer - 1];
     }
 
     protected boolean isCallerType(NodeType type) {
-        return marker.caller != null && marker.caller.node.type == type;
+        return stackPointer >= 2 && nodeStack[stackPointer - 2].type == type;
     }
 
     protected enum Shift {
@@ -98,7 +73,10 @@ public abstract class BaseParser {
         this.errorRecoveryEnabled = errorRecovery;
         this.tokens = tokens;
         size = tokens.size();
-        marker = new Marker(position, null, new Node(NodeType.ROOT), -1);
+        // Initialize root node on stack
+        positionStack[0] = position;
+        nodeStack[0] = new Node(NodeType.ROOT);
+        stackPointer = 1;
     }
 
     @Override
@@ -121,7 +99,14 @@ public abstract class BaseParser {
         }
         sb.append("|");
         sb.append("\ncurrent node: ");
-        sb.append(marker);
+        // Format stack trace for debugging
+        if (stackPointer >= 3) {
+            sb.append(nodeStack[stackPointer - 3].type).append(" >> ");
+        }
+        if (stackPointer >= 2) {
+            sb.append(nodeStack[stackPointer - 2].type).append(" >> ");
+        }
+        sb.append('[').append(nodeStack[stackPointer - 1].type).append(']');
         return sb.toString();
     }
 
@@ -228,10 +213,12 @@ public abstract class BaseParser {
         if (peek() != token) {
             return false;
         }
-        marker = new Marker(position, marker, new Node(type), marker.depth + 1);
-        if (marker.depth > 100) {
+        if (stackPointer >= MAX_DEPTH) {
             throw new ParserException("too much recursion");
         }
+        positionStack[stackPointer] = position;
+        nodeStack[stackPointer] = new Node(type);
+        stackPointer++;
         consumeNext();
         return true;
     }
@@ -247,11 +234,12 @@ public abstract class BaseParser {
                 return false;
             }
         }
-        // new marker has reference to caller marker set
-        marker = new Marker(position, marker, new Node(type), marker.depth + 1);
-        if (marker.depth > 100) {
+        if (stackPointer >= MAX_DEPTH) {
             throw new ParserException("too much recursion");
         }
+        positionStack[stackPointer] = position;
+        nodeStack[stackPointer] = new Node(type);
+        stackPointer++;
         if (tokens != null) {
             consumeNext();
         }
@@ -271,12 +259,12 @@ public abstract class BaseParser {
     }
 
     private boolean exit(boolean result, boolean mandatory, Shift shift) {
+        Node node = nodeStack[stackPointer - 1];
         if (mandatory && !result) {
-            error(marker.node.type);
+            error(node.type);
         }
         if (result) {
-            Node parent = marker.caller.node;
-            Node node = marker.node;
+            Node parent = nodeStack[stackPointer - 2];
             switch (shift) {
                 case LEFT:
                     Node prev = parent.removeFirst(); // remove previous sibling
@@ -304,9 +292,11 @@ public abstract class BaseParser {
                     }
             }
         } else {
-            position = marker.position;
+            position = positionStack[stackPointer - 1];
         }
-        marker = marker.caller;
+        // Pop the stack (clear reference to help GC)
+        stackPointer--;
+        nodeStack[stackPointer] = null;
         return result;
     }
 
@@ -365,11 +355,11 @@ public abstract class BaseParser {
     }
 
     protected TokenType lastConsumed() {
-        return marker.node.getLast().token.type;
+        return nodeStack[stackPointer - 1].getLast().token.type;
     }
 
     protected void consumeNext() {
-        marker.node.add(new Node(next()));
+        nodeStack[stackPointer - 1].add(new Node(next()));
     }
 
     protected Token next() {
