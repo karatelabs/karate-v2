@@ -35,6 +35,9 @@ import static io.karatelabs.parser.TokenType.*;
 
 public class GherkinParser extends BaseParser {
 
+    // Pre-allocated token array for stepLine loop
+    private static final TokenType[] T_STEP_LINE = {G_KEYWORD, EQ, IDENT, DOT, G_EXPR};
+
     private Node ast;
 
     public GherkinParser(Resource resource) {
@@ -192,11 +195,11 @@ public class GherkinParser extends BaseParser {
 
     private boolean stepLine() {
         // Step line can contain: G_KEYWORD (match operators), EQ, IDENT, DOT, G_EXPR (expression content)
-        if (!peekAnyOf(G_KEYWORD, EQ, IDENT, DOT, G_EXPR)) {
+        if (!peekAnyOf(T_STEP_LINE)) {
             return false;
         }
         enter(NodeType.G_STEP_LINE);
-        while (peekAnyOf(G_KEYWORD, EQ, IDENT, DOT, G_EXPR)) {
+        while (peekAnyOf(T_STEP_LINE)) {
             consumeNext();
         }
         return exit();

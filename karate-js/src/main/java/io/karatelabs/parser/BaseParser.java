@@ -223,7 +223,21 @@ public abstract class BaseParser {
         enterIf(type, null);
     }
 
-    protected boolean enter(NodeType type, TokenType... tokens) {
+    // Single-token overload - avoids array allocation
+    protected boolean enter(NodeType type, TokenType token) {
+        if (peek() != token) {
+            return false;
+        }
+        marker = new Marker(position, marker, new Node(type), marker.depth + 1);
+        if (marker.depth > 100) {
+            throw new ParserException("too much recursion");
+        }
+        consumeNext();
+        return true;
+    }
+
+    // Array overload - use with pre-allocated static arrays
+    protected boolean enter(NodeType type, TokenType[] tokens) {
         return enterIf(type, tokens);
     }
 
@@ -317,7 +331,8 @@ public abstract class BaseParser {
         }
     }
 
-    protected boolean anyOf(TokenType... tokens) {
+    // Array overload - use with pre-allocated static arrays to avoid allocation
+    protected boolean anyOf(TokenType[] tokens) {
         for (TokenType token : tokens) {
             if (consumeIf(token)) {
                 return true;
@@ -338,8 +353,8 @@ public abstract class BaseParser {
         return peek() == token;
     }
 
-    protected boolean peekAnyOf(TokenType... tokens) {
-        // Call peek() once and compare against all tokens (avoids repeated method calls)
+    // Array overload - use with pre-allocated static arrays to avoid allocation
+    protected boolean peekAnyOf(TokenType[] tokens) {
         TokenType current = peek();
         for (TokenType token : tokens) {
             if (current == token) {

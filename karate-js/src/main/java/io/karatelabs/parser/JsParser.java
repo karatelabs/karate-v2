@@ -29,6 +29,22 @@ import static io.karatelabs.parser.TokenType.*;
 
 public class JsParser extends BaseParser {
 
+    // Pre-allocated token arrays to avoid varargs allocation in hot paths
+    private static final TokenType[] T_VAR_STMT = {VAR, CONST, LET};
+    private static final TokenType[] T_ASSIGN_EXPR = {EQ, PLUS_EQ, MINUS_EQ, STAR_EQ, SLASH_EQ, PERCENT_EQ, STAR_STAR_EQ, GT_GT_EQ, LT_LT_EQ, GT_GT_GT_EQ};
+    private static final TokenType[] T_LOGIC_EQ_EXPR = {EQ_EQ_EQ, NOT_EQ_EQ, EQ_EQ, NOT_EQ};
+    private static final TokenType[] T_LOGIC_CMP_EXPR = {LT, GT, LT_EQ, GT_EQ};
+    private static final TokenType[] T_LOGIC_SHIFT_EXPR = {GT_GT, LT_LT, GT_GT_GT};
+    private static final TokenType[] T_MATH_ADD_EXPR = {PLUS, MINUS};
+    private static final TokenType[] T_MATH_MUL_EXPR = {STAR, SLASH, PERCENT};
+    private static final TokenType[] T_REF_DOT_EXPR = {DOT, QUES_DOT};
+    private static final TokenType[] T_MATH_POST_EXPR = {PLUS_PLUS, MINUS_MINUS};
+    private static final TokenType[] T_UNARY_EXPR = {NOT, TILDE};
+    private static final TokenType[] T_MATH_PRE_EXPR = {PLUS_PLUS, MINUS_MINUS, MINUS, PLUS};
+    private static final TokenType[] T_OBJECT_ELEM = {IDENT, S_STRING, D_STRING, NUMBER, DOT_DOT_DOT};
+    private static final TokenType[] T_LIT_EXPR = {S_STRING, D_STRING, NUMBER, TRUE, FALSE, NULL};
+    private static final TokenType[] T_FOR_IN_OF = {IN, OF};
+
     private Node ast;
 
     public JsParser(Resource resource) {
@@ -144,7 +160,7 @@ public class JsParser extends BaseParser {
     }
 
     private boolean var_stmt(boolean forLoop) {
-        if (!enter(NodeType.VAR_STMT, VAR, CONST, LET)) {
+        if (!enter(NodeType.VAR_STMT, T_VAR_STMT)) {
             return false;
         }
         TokenType varType = lastConsumed();
@@ -226,7 +242,7 @@ public class JsParser extends BaseParser {
             } else {
                 error(NodeType.EXPR);
             }
-        } else if (anyOf(IN, OF)) {
+        } else if (anyOf(T_FOR_IN_OF)) {
             expr(-1, true);
         } else {
             error(SEMI, IN, OF);
@@ -417,10 +433,7 @@ public class JsParser extends BaseParser {
 
     private void expr_rhs(int priority) {
         while (true) {
-            if (priority < 0 && enter(NodeType.ASSIGN_EXPR,
-                    EQ, PLUS_EQ, MINUS_EQ,
-                    STAR_EQ, SLASH_EQ, PERCENT_EQ, STAR_STAR_EQ,
-                    GT_GT_EQ, LT_LT_EQ, GT_GT_GT_EQ)) {
+            if (priority < 0 && enter(NodeType.ASSIGN_EXPR, T_ASSIGN_EXPR)) {
                 expr(-1, true);
                 exit(Shift.RIGHT);
             } else if (priority < 1 && enter(NodeType.LOGIC_TERN_EXPR, QUES)) {
@@ -446,22 +459,19 @@ public class JsParser extends BaseParser {
             } else if (priority < 6 && enter(NodeType.LOGIC_BIT_EXPR, AMP)) {
                 expr(6, true);
                 exit(Shift.LEFT);
-            } else if (priority < 7 && enter(NodeType.LOGIC_EXPR,
-                    EQ_EQ_EQ, NOT_EQ_EQ, EQ_EQ, NOT_EQ)) {
+            } else if (priority < 7 && enter(NodeType.LOGIC_EXPR, T_LOGIC_EQ_EXPR)) {
                 expr(7, true);
                 exit(Shift.LEFT);
-            } else if (priority < 8 && enter(NodeType.LOGIC_EXPR,
-                    LT, GT, LT_EQ, GT_EQ)) {
+            } else if (priority < 8 && enter(NodeType.LOGIC_EXPR, T_LOGIC_CMP_EXPR)) {
                 expr(8, true);
                 exit(Shift.LEFT);
-            } else if (priority < 9 && enter(NodeType.LOGIC_BIT_EXPR,
-                    GT_GT, LT_LT, GT_GT_GT)) {
+            } else if (priority < 9 && enter(NodeType.LOGIC_BIT_EXPR, T_LOGIC_SHIFT_EXPR)) {
                 expr(9, true);
                 exit(Shift.LEFT);
-            } else if (priority < 10 && enter(NodeType.MATH_ADD_EXPR, PLUS, MINUS)) {
+            } else if (priority < 10 && enter(NodeType.MATH_ADD_EXPR, T_MATH_ADD_EXPR)) {
                 expr(10, true);
                 exit(Shift.LEFT);
-            } else if (priority < 11 && enter(NodeType.MATH_MUL_EXPR, STAR, SLASH, PERCENT)) {
+            } else if (priority < 11 && enter(NodeType.MATH_MUL_EXPR, T_MATH_MUL_EXPR)) {
                 expr(11, true);
                 exit(Shift.LEFT);
             } else if (priority < 12 && peekIf(STAR_STAR)) {
@@ -480,7 +490,7 @@ public class JsParser extends BaseParser {
                 if (isCallerType(NodeType.NEW_EXPR)) {
                     break;
                 }
-            } else if (enter(NodeType.REF_DOT_EXPR, DOT, QUES_DOT)) {
+            } else if (enter(NodeType.REF_DOT_EXPR, T_REF_DOT_EXPR)) {
                 TokenType dotType = lastConsumed();
                 // allow reserved words as property accessors
                 TokenType dotNext = peek();
@@ -500,7 +510,7 @@ public class JsParser extends BaseParser {
                 expr(-1, true);
                 consumeSoft(R_BRACKET);
                 exit(Shift.LEFT);
-            } else if (enter(NodeType.MATH_POST_EXPR, PLUS_PLUS, MINUS_MINUS)) {
+            } else if (enter(NodeType.MATH_POST_EXPR, T_MATH_POST_EXPR)) {
                 exit(Shift.LEFT);
             } else if (priority < 8 && enter(NodeType.INSTANCEOF_EXPR, INSTANCEOF)) {
                 expr(8, true);
@@ -636,7 +646,7 @@ public class JsParser extends BaseParser {
 
     private boolean lit_expr() {
         enter(NodeType.LIT_EXPR);
-        boolean result = anyOf(S_STRING, D_STRING, NUMBER, TRUE, FALSE, NULL)
+        boolean result = anyOf(T_LIT_EXPR)
                 || lit_object()
                 || lit_array()
                 || lit_template()
@@ -667,7 +677,7 @@ public class JsParser extends BaseParser {
     }
 
     private boolean unary_expr() {
-        if (!enter(NodeType.UNARY_EXPR, NOT, TILDE)) {
+        if (!enter(NodeType.UNARY_EXPR, T_UNARY_EXPR)) {
             return false;
         }
         expr(13, true);
@@ -675,7 +685,7 @@ public class JsParser extends BaseParser {
     }
 
     private boolean math_pre_expr() {
-        if (!enter(NodeType.MATH_PRE_EXPR, PLUS_PLUS, MINUS_MINUS, MINUS, PLUS)) {
+        if (!enter(NodeType.MATH_PRE_EXPR, T_MATH_PRE_EXPR)) {
             return false;
         }
         if (!(expr(13, false) || consumeIf(NUMBER))) {
@@ -710,7 +720,7 @@ public class JsParser extends BaseParser {
     }
 
     private boolean object_elem() {
-        if (!enter(NodeType.OBJECT_ELEM, IDENT, S_STRING, D_STRING, NUMBER, DOT_DOT_DOT)) {
+        if (!enter(NodeType.OBJECT_ELEM, T_OBJECT_ELEM)) {
             return false;
         }
         if (consumeIf(EQ)) { // var / assigment destructuring
