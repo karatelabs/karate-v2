@@ -29,6 +29,8 @@ import io.karatelabs.core.SuiteResult;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -36,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * SSL/TLS tests for Karate HTTP client.
  * Tests both trustStore and keyStore (mTLS) configurations.
  */
+@DisabledOnOs(value = OS.WINDOWS, disabledReason = "Self-signed certificate generation not supported on Windows")
 class SslTest {
 
     static MockServer mockServer;

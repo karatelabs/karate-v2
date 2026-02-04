@@ -27,6 +27,8 @@ import com.intuit.karate.core.MockServer;
 import io.karatelabs.output.Console;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
@@ -232,6 +234,7 @@ class V1CompatTest {
     }
 
     @Test
+    @DisabledOnOs(value = OS.WINDOWS, disabledReason = "Self-signed certificate generation not supported on Windows")
     void testMockServerV1Https() {
         MockServer server = MockServer.featureString("""
             Feature: Mock
