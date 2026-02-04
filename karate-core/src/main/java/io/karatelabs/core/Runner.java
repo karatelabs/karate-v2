@@ -639,8 +639,10 @@ public final class Runner {
 
             // Check for line number suffix (path:line or path:line1:line2:...)
             // Only parse line numbers for .feature files, not directories
-            if (path.contains(":") && !path.startsWith("classpath:")) {
-                int colonIndex = path.indexOf(':');
+            // Look for ".feature:" to find where line numbers start (handles Windows drive letters like C:\)
+            if (path.contains(".feature:") && !path.startsWith("classpath:")) {
+                int featureExtIndex = path.indexOf(".feature:");
+                int colonIndex = featureExtIndex + ".feature".length();
                 String potentialPath = path.substring(0, colonIndex);
                 String remainder = path.substring(colonIndex + 1);
 
@@ -658,26 +660,23 @@ public final class Runner {
                         }
                     }
                 }
-            } else if (path.startsWith("classpath:") && path.contains(":")) {
+            } else if (path.startsWith("classpath:") && path.contains(".feature:")) {
                 // Handle classpath:path/to/file.feature:10 format
-                int lastColonIndex = path.lastIndexOf(':');
-                String afterLastColon = path.substring(lastColonIndex + 1);
-                if (afterLastColon.matches("\\d+(:\\d+)*")) {
-                    // Find where the classpath path ends and line numbers begin
-                    String pathWithoutClasspath = path.substring("classpath:".length());
-                    int lineColonIndex = pathWithoutClasspath.lastIndexOf(':');
-                    if (lineColonIndex > 0) {
-                        String featurePath = pathWithoutClasspath.substring(0, lineColonIndex);
-                        String linesPart = pathWithoutClasspath.substring(lineColonIndex + 1);
-                        actualPath = "classpath:" + featurePath;
-                        for (String lineStr : linesPart.split(":")) {
-                            try {
-                                lines.add(Integer.parseInt(lineStr));
-                            } catch (NumberFormatException e) {
-                                actualPath = path;
-                                lines.clear();
-                                break;
-                            }
+                int featureExtIndex = path.indexOf(".feature:");
+                int colonIndex = featureExtIndex + ".feature".length();
+                String potentialPath = path.substring(0, colonIndex);
+                String remainder = path.substring(colonIndex + 1);
+
+                // Check if what follows the colon looks like line numbers
+                if (remainder.matches("\\d+(:\\d+)*")) {
+                    actualPath = potentialPath;
+                    for (String lineStr : remainder.split(":")) {
+                        try {
+                            lines.add(Integer.parseInt(lineStr));
+                        } catch (NumberFormatException e) {
+                            actualPath = path;
+                            lines.clear();
+                            break;
                         }
                     }
                 }
