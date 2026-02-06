@@ -111,11 +111,15 @@ public enum NodeType {
             // Small nodes: 1-2 children typical
             case LIT_EXPR, LIT_REGEX, EOS, BREAK_STMT, CONTINUE_STMT,
                  PLACEHOLDER, FN_DECL_ARG, FN_CALL_ARG, ARRAY_ELEM -> 2;
+            // Ternary: condition ? true_expr : false_expr = 5 children
+            case LOGIC_TERN_EXPR -> 5;
             // Container nodes: variable, often many children
             case ROOT, PROGRAM -> 16;
             // Gherkin table rows: pipe + cell alternating, 5-col table = 11 tokens
             case G_TABLE_ROW -> 12;
-            case BLOCK, FN_CALL_ARGS, FN_DECL_ARGS, LIT_ARRAY, LIT_OBJECT,
+            // Literals can have many elements: {a:1,b:2,...} or [1,2,3,...]
+            case LIT_ARRAY, LIT_OBJECT -> 16;
+            case BLOCK, FN_CALL_ARGS, FN_DECL_ARGS,
                  EXPR_LIST, CASE_BLOCK, DEFAULT_BLOCK, LIT_TEMPLATE,
                  G_FEATURE, G_SCENARIO, G_SCENARIO_OUTLINE, G_BACKGROUND,
                  G_TABLE, G_STEP, G_STEP_LINE, G_DOC_STRING, G_EXAMPLES -> 8;

@@ -25,37 +25,39 @@ package io.karatelabs.parser;
 
 import io.karatelabs.common.Resource;
 
+import java.util.EnumSet;
+
 import static io.karatelabs.parser.TokenType.*;
 
 public class JsParser extends BaseParser {
 
-    // Pre-allocated token arrays to avoid varargs allocation in hot paths
-    private static final TokenType[] T_VAR_STMT = {VAR, CONST, LET};
-    private static final TokenType[] T_ASSIGN_EXPR = {EQ, PLUS_EQ, MINUS_EQ, STAR_EQ, SLASH_EQ, PERCENT_EQ, STAR_STAR_EQ, GT_GT_EQ, LT_LT_EQ, GT_GT_GT_EQ};
-    private static final TokenType[] T_LOGIC_EQ_EXPR = {EQ_EQ_EQ, NOT_EQ_EQ, EQ_EQ, NOT_EQ};
-    private static final TokenType[] T_LOGIC_CMP_EXPR = {LT, GT, LT_EQ, GT_EQ};
-    private static final TokenType[] T_LOGIC_SHIFT_EXPR = {GT_GT, LT_LT, GT_GT_GT};
-    private static final TokenType[] T_MATH_ADD_EXPR = {PLUS, MINUS};
-    private static final TokenType[] T_MATH_MUL_EXPR = {STAR, SLASH, PERCENT};
-    private static final TokenType[] T_REF_DOT_EXPR = {DOT, QUES_DOT};
-    private static final TokenType[] T_MATH_POST_EXPR = {PLUS_PLUS, MINUS_MINUS};
-    private static final TokenType[] T_UNARY_EXPR = {NOT, TILDE};
-    private static final TokenType[] T_MATH_PRE_EXPR = {PLUS_PLUS, MINUS_MINUS, MINUS, PLUS};
-    private static final TokenType[] T_OBJECT_ELEM = {IDENT, S_STRING, D_STRING, NUMBER, DOT_DOT_DOT};
-    private static final TokenType[] T_LIT_EXPR = {S_STRING, D_STRING, NUMBER, TRUE, FALSE, NULL};
-    private static final TokenType[] T_FOR_IN_OF = {IN, OF};
+    // EnumSet token sets for O(1) lookup in hot paths
+    private static final EnumSet<TokenType> T_VAR_STMT = EnumSet.of(VAR, CONST, LET);
+    private static final EnumSet<TokenType> T_ASSIGN_EXPR = EnumSet.of(EQ, PLUS_EQ, MINUS_EQ, STAR_EQ, SLASH_EQ, PERCENT_EQ, STAR_STAR_EQ, GT_GT_EQ, LT_LT_EQ, GT_GT_GT_EQ);
+    private static final EnumSet<TokenType> T_LOGIC_EQ_EXPR = EnumSet.of(EQ_EQ_EQ, NOT_EQ_EQ, EQ_EQ, NOT_EQ);
+    private static final EnumSet<TokenType> T_LOGIC_CMP_EXPR = EnumSet.of(LT, GT, LT_EQ, GT_EQ);
+    private static final EnumSet<TokenType> T_LOGIC_SHIFT_EXPR = EnumSet.of(GT_GT, LT_LT, GT_GT_GT);
+    private static final EnumSet<TokenType> T_MATH_ADD_EXPR = EnumSet.of(PLUS, MINUS);
+    private static final EnumSet<TokenType> T_MATH_MUL_EXPR = EnumSet.of(STAR, SLASH, PERCENT);
+    private static final EnumSet<TokenType> T_REF_DOT_EXPR = EnumSet.of(DOT, QUES_DOT);
+    private static final EnumSet<TokenType> T_MATH_POST_EXPR = EnumSet.of(PLUS_PLUS, MINUS_MINUS);
+    private static final EnumSet<TokenType> T_UNARY_EXPR = EnumSet.of(NOT, TILDE);
+    private static final EnumSet<TokenType> T_MATH_PRE_EXPR = EnumSet.of(PLUS_PLUS, MINUS_MINUS, MINUS, PLUS);
+    private static final EnumSet<TokenType> T_OBJECT_ELEM = EnumSet.of(IDENT, S_STRING, D_STRING, NUMBER, DOT_DOT_DOT);
+    private static final EnumSet<TokenType> T_LIT_EXPR = EnumSet.of(S_STRING, D_STRING, NUMBER, TRUE, FALSE, NULL);
+    private static final EnumSet<TokenType> T_FOR_IN_OF = EnumSet.of(IN, OF);
 
-    // Lookahead sets - tokens that can start each construct (avoids creating nodes that will be discarded)
-    private static final TokenType[] T_EXPR_START = {
+    // Lookahead sets - EnumSet for O(1) contains() via bitmask
+    private static final EnumSet<TokenType> T_EXPR_START = EnumSet.of(
             IDENT, S_STRING, D_STRING, NUMBER, TRUE, FALSE, NULL,  // literals & ref
             L_CURLY, L_BRACKET, BACKTICK, REGEX,                   // compound literals
             FUNCTION, L_PAREN, NEW, TYPEOF,                        // keywords & grouping
             NOT, TILDE, PLUS_PLUS, MINUS_MINUS, MINUS, PLUS        // unary operators
-    };
-    private static final TokenType[] T_LIT_EXPR_START = {
+    );
+    private static final EnumSet<TokenType> T_LIT_EXPR_START = EnumSet.of(
             S_STRING, D_STRING, NUMBER, TRUE, FALSE, NULL,         // simple literals
             L_CURLY, L_BRACKET, BACKTICK, REGEX                    // compound literals
-    };
+    );
 
     private Node ast;
 

@@ -205,7 +205,7 @@ public abstract class BaseParser {
     // ========== End Error Recovery Methods ==========
 
     protected void enter(NodeType type) {
-        enterIf(type, null);
+        enterIf(type, (TokenType[]) null);
     }
 
     // Single-token overload - avoids array allocation
@@ -243,6 +243,25 @@ public abstract class BaseParser {
         if (tokens != null) {
             consumeNext();
         }
+        return true;
+    }
+
+    // EnumSet overload - O(1) lookup via bitmask
+    protected boolean enter(NodeType type, java.util.EnumSet<TokenType> tokens) {
+        return enterIf(type, tokens);
+    }
+
+    protected boolean enterIf(NodeType type, java.util.EnumSet<TokenType> tokens) {
+        if (!peekAnyOf(tokens)) {
+            return false;
+        }
+        if (stackPointer >= MAX_DEPTH) {
+            throw new ParserException("too much recursion");
+        }
+        positionStack[stackPointer] = position;
+        nodeStack[stackPointer] = new Node(type);
+        stackPointer++;
+        consumeNext();
         return true;
     }
 
@@ -331,6 +350,15 @@ public abstract class BaseParser {
         return false;
     }
 
+    // EnumSet overload - O(1) check then consume
+    protected boolean anyOf(java.util.EnumSet<TokenType> tokens) {
+        if (tokens.contains(peek())) {
+            consumeNext();
+            return true;
+        }
+        return false;
+    }
+
     protected boolean consumeIf(TokenType token) {
         if (peekIf(token)) {
             consumeNext();
@@ -352,6 +380,11 @@ public abstract class BaseParser {
             }
         }
         return false;
+    }
+
+    // EnumSet overload - O(1) lookup via bitmask
+    protected boolean peekAnyOf(java.util.EnumSet<TokenType> tokens) {
+        return tokens.contains(peek());
     }
 
     protected TokenType lastConsumed() {
