@@ -39,12 +39,12 @@ public class JavaObject implements ExternalAccess, ObjectLike {
     }
 
     @Override
-    public Object construct(Object... args) {
+    public Object construct(Object[] args) {
         return JavaUtils.construct(object.getClass(), args);
     }
 
     @Override
-    public Object invokeMethod(String name, Object... args) {
+    public Object invokeMethod(String name, Object[] args) {
         return JavaUtils.convertIfArray(JavaUtils.invoke(object, name, args));
     }
 

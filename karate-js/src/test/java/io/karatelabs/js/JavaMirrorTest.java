@@ -2,7 +2,6 @@ package io.karatelabs.js;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -11,19 +10,20 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for JS/Java interop.
- *
+ * <p>
  * Design principles:
  * 1. JsArray implements List, JsObject implements Map - seamless Java interop
  * 2. ES6 semantics preserved within JS (undefined, prototype chain, etc.)
  * 3. Lazy auto-unwrap at Java interface boundary:
- *    - List.get(int) / Map.get(Object) → unwrapped values (null, Date, etc.)
- *    - JsArray.getElement(int) / JsObject.getMember(String) → raw JS values
+ * - List.get(int) / Map.get(Object) → unwrapped values (null, Date, etc.)
+ * - JsArray.getElement(int) / JsObject.getMember(String) → raw JS values
  * 4. Conversion at boundaries: Engine.eval() top-level, SimpleObject args
- *
+ * <p>
  * Access patterns:
  * - Java user: casts to List/Map, gets unwrapped values automatically
  * - JS internal: uses getElement()/getMember(), sees raw JS values
  */
+@SuppressWarnings("unchecked")
 class JavaMirrorTest {
 
     // =================================================================================================================
@@ -76,7 +76,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testJsArrayListOperations() {
         Engine engine = new Engine();
         List<Object> list = (List<Object>) engine.eval("[1, 2, 3]");
@@ -88,7 +87,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testJsArrayListIteration() {
         Engine engine = new Engine();
         List<Object> list = (List<Object>) engine.eval("['a', 'b', 'c']");
@@ -125,7 +123,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testObjectValuesReturnsUsableList() {
         Engine engine = new Engine();
         Object result = engine.eval("Object.values({a: 1, b: 2, c: 3})");
@@ -139,7 +136,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testArrayMapReturnsUsableList() {
         Engine engine = new Engine();
         Object result = engine.eval("[1, 2, 3].map(function(x) { return x * 2; })");
@@ -153,7 +149,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testArrayFilterReturnsUsableList() {
         Engine engine = new Engine();
         Object result = engine.eval("[1, 2, 3, 4, 5].filter(function(x) { return x > 2; })");
@@ -167,7 +162,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testArraySliceReturnsUsableList() {
         Engine engine = new Engine();
         Object result = engine.eval("['a', 'b', 'c', 'd'].slice(1, 3)");
@@ -192,7 +186,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testJsObjectMapOperations() {
         Engine engine = new Engine();
         Map<String, Object> map = (Map<String, Object>) engine.eval("({name: 'John', age: 30})");
@@ -206,7 +199,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testJsObjectMapIteration() {
         Engine engine = new Engine();
         Map<String, Object> map = (Map<String, Object>) engine.eval("({a: 1, b: 2})");
@@ -219,7 +211,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testJsObjectContainsRawValues() {
         // Values inside JsObject are stored as raw JS values
         // Use getMember() for raw access, Map.get() auto-unwraps
@@ -241,7 +232,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testObjectAssignReturnsUsableMap() {
         Engine engine = new Engine();
         Object result = engine.eval("Object.assign({}, {a: 1}, {b: 2})");
@@ -254,7 +244,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testObjectFromEntriesReturnsUsableMap() {
         Engine engine = new Engine();
         Object result = engine.eval("Object.fromEntries([['a', 1], ['b', 2]])");
@@ -293,7 +282,6 @@ class JavaMirrorTest {
     // =================================================================================================================
 
     @Test
-    @SuppressWarnings("unchecked")
     void testNestedArraysUsableAsList() {
         Engine engine = new Engine();
         Object result = engine.eval("[[1, 2], [3, 4]]");
@@ -310,7 +298,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testNestedObjectsUsableAsMap() {
         Engine engine = new Engine();
         Object result = engine.eval("({outer: {inner: 'value'}})");
@@ -324,7 +311,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testMixedNestedStructures() {
         Engine engine = new Engine();
         Object result = engine.eval("({items: [1, 2, 3], meta: {count: 3}})");
@@ -404,7 +390,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testMapNullVsUndefinedBothBecomeNull() {
         // Both null and undefined become null when accessed via Map.get()
         Engine engine = new Engine();
@@ -422,7 +407,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testListNullVsUndefinedBothBecomeNull() {
         // Both null and undefined become null when accessed via List.get()
         Engine engine = new Engine();
@@ -438,7 +422,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testMixedTypesUnwrappedViaListInterface() {
         // Test that JS wrapper types are unwrapped when accessed via List interface
         Engine engine = new Engine();
@@ -456,7 +439,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testMixedTypesUnwrappedViaMapInterface() {
         // Test that JS wrapper types are unwrapped when accessed via Map interface
         Engine engine = new Engine();
@@ -480,7 +462,6 @@ class JavaMirrorTest {
     // =================================================================================================================
 
     @Test
-    @SuppressWarnings("unchecked")
     void testArrayMapReturningUndefined() {
         // map() callback explicitly returns undefined
         Engine engine = new Engine();
@@ -494,7 +475,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testArrayMapReturningNothing() {
         // map() callback returns nothing (implicit undefined)
         // NOTE: Current behavior converts implicit return to null (potential bug)
@@ -511,7 +491,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testArrayMapOnUndefinedElements() {
         // map() over array containing undefined - callback receives undefined
         Engine engine = new Engine();
@@ -525,7 +504,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testArrayMapPartialUndefined() {
         // map() returning undefined for some elements (implicit return)
         // NOTE: Current behavior converts implicit return to null
@@ -542,7 +520,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testArrayFilterOnUndefinedElements() {
         // filter() on array with undefined - undefined is falsy so filtered out
         Engine engine = new Engine();
@@ -556,7 +533,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testArrayFlatMapWithUndefined() {
         // flatMap() returning arrays with undefined
         Engine engine = new Engine();
@@ -571,7 +547,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testArrayFromWithUndefined() {
         // Array.from() with undefined elements
         Engine engine = new Engine();
@@ -586,7 +561,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testObjectValuesWithUndefined() {
         // Object.values() on object with undefined values
         Engine engine = new Engine();
@@ -602,7 +576,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testObjectEntriesWithUndefined() {
         // Object.entries() on object with undefined values
         Engine engine = new Engine();
@@ -616,7 +589,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testSpreadWithUndefined() {
         // Spread operator preserves undefined in array
         // List.get() auto-unwraps undefined to null
@@ -635,7 +607,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testArrayConcatWithUndefined() {
         // concat() preserves undefined
         Engine engine = new Engine();
@@ -653,7 +624,6 @@ class JavaMirrorTest {
     // =================================================================================================================
 
     @Test
-    @SuppressWarnings("unchecked")
     void testFunctionCallReturningUndefined() {
         // Function returning undefined via call()
         Engine engine = new Engine();
@@ -665,7 +635,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testFunctionCallInArrayContext() {
         // Using call() within map to produce undefined in array
         // NOTE: Current behavior converts implicit return to null
@@ -682,7 +651,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testFunctionApplyInArrayContext() {
         // Using apply() within map to produce undefined in array
         // NOTE: Current behavior converts implicit return to null
@@ -699,7 +667,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testArrayMapWithCallOnPrototype() {
         // Array.prototype.map.call() on array-like object
         Engine engine = new Engine();
@@ -713,7 +680,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testArraySliceWithUndefined() {
         // slice() preserves undefined elements
         Engine engine = new Engine();
@@ -727,7 +693,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testArraySpliceReturnsUndefined() {
         // splice() return value contains undefined
         Engine engine = new Engine();
@@ -743,7 +708,6 @@ class JavaMirrorTest {
     // =================================================================================================================
 
     @Test
-    @SuppressWarnings("unchecked")
     void testListWithJsWrapperTypes() {
         // List containing JS wrapper types: new Boolean(), new Number(), new String()
         // List.get() auto-unwraps for Java consumers, getElement() returns raw values
@@ -767,7 +731,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testMapWithJsWrapperTypes() {
         // Map containing JS wrapper types
         // Map.get() auto-unwraps for Java consumers, getMember() returns raw values
@@ -787,7 +750,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testMixedPrimitivesAndWrappers() {
         // Mix of primitives and wrapper objects
         Engine engine = new Engine();
@@ -803,7 +765,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testArrayMapProducingWrappers() {
         // map() producing wrapper objects
         Engine engine = new Engine();
@@ -818,7 +779,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testMixedWrapperAndUndefined() {
         // Mix of wrapper types and undefined
         // List.get() auto-unwraps for Java consumers
@@ -843,7 +803,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testObjectValuesWithWrapperTypes() {
         // Object.values() on object with wrapper type values
         Engine engine = new Engine();
@@ -857,7 +816,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testNestedStructureWithWrappers() {
         // Nested arrays/objects containing wrapper types
         // Both Map.get() and List.get() auto-unwrap for Java consumers
@@ -881,7 +839,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testArrayConcatWithWrappers() {
         // concat() with wrapper types
         Engine engine = new Engine();
@@ -910,7 +867,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testFilterWithWrappers() {
         // filter() preserving wrapper types
         Engine engine = new Engine();
@@ -923,7 +879,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testComplexMixedTypes() {
         // Complex scenario with all types mixed
         // List.get() auto-unwraps for Java consumers
@@ -980,7 +935,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testEmptyArrayAndObject() {
         Engine engine = new Engine();
 
@@ -994,7 +948,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testJsUint8ArrayConvertsToByteArray() {
         // Uint8Array is a JavaMirror, should be converted at boundary
         Engine engine = new Engine();
@@ -1006,7 +959,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testMapNullValueVsMissingKey() {
         // Within JS, null value and missing key are different
         // At boundary, both become null but containsKey differs
@@ -1021,7 +973,6 @@ class JavaMirrorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testListNullElementVsOutOfBounds() {
         Engine engine = new Engine();
         List<Object> list = (List<Object>) engine.eval("[null, 'exists']");

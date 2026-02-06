@@ -54,7 +54,7 @@ class JsTextDecoder extends JsObject {
     }
 
     @Override
-    public Object call(Context context, Object... args) {
+    public Object call(Context context, Object[] args) {
         return this;
     }
 

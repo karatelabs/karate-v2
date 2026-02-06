@@ -46,13 +46,13 @@ class JsStringConstructor extends JsFunction {
     }
 
     @Override
-    public Object call(Context context, Object... args) {
+    public Object call(Context context, Object[] args) {
         return JsString.getObject(context, args);
     }
 
     // Static methods
 
-    private Object fromCharCode(Object... args) {
+    private Object fromCharCode(Object[] args) {
         StringBuilder sb = new StringBuilder();
         for (Object arg : args) {
             if (arg instanceof Number num) {
@@ -62,7 +62,7 @@ class JsStringConstructor extends JsFunction {
         return sb.toString();
     }
 
-    private Object fromCodePoint(Object... args) {
+    private Object fromCodePoint(Object[] args) {
         StringBuilder sb = new StringBuilder();
         for (Object arg : args) {
             if (arg instanceof Number num) {

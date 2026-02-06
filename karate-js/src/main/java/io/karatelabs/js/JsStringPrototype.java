@@ -87,7 +87,7 @@ class JsStringPrototype extends Prototype {
 
     // Instance methods
 
-    private Object indexOf(Context context, Object... args) {
+    private Object indexOf(Context context, Object[] args) {
         String s = asString(context);
         if (args.length > 1) {
             return s.indexOf((String) args[0], ((Number) args[1]).intValue());
@@ -95,7 +95,7 @@ class JsStringPrototype extends Prototype {
         return s.indexOf((String) args[0]);
     }
 
-    private Object startsWith(Context context, Object... args) {
+    private Object startsWith(Context context, Object[] args) {
         String s = asString(context);
         if (args.length > 1) {
             return s.startsWith((String) args[0], ((Number) args[1]).intValue());
@@ -103,17 +103,17 @@ class JsStringPrototype extends Prototype {
         return s.startsWith((String) args[0]);
     }
 
-    private Object getBytes(Context context, Object... args) {
+    private Object getBytes(Context context, Object[] args) {
         String s = asString(context);
         return s.getBytes(StandardCharsets.UTF_8);
     }
 
-    private Object split(Context context, Object... args) {
+    private Object split(Context context, Object[] args) {
         String s = asString(context);
         return Arrays.asList(s.split((String) args[0]));
     }
 
-    private Object charAt(Context context, Object... args) {
+    private Object charAt(Context context, Object[] args) {
         String s = asString(context);
         int index = ((Number) args[0]).intValue();
         if (index < 0 || index >= s.length()) {
@@ -122,7 +122,7 @@ class JsStringPrototype extends Prototype {
         return String.valueOf(s.charAt(index));
     }
 
-    private Object charCodeAt(Context context, Object... args) {
+    private Object charCodeAt(Context context, Object[] args) {
         String s = asString(context);
         int index = ((Number) args[0]).intValue();
         if (index < 0 || index >= s.length()) {
@@ -131,7 +131,7 @@ class JsStringPrototype extends Prototype {
         return (int) s.charAt(index);
     }
 
-    private Object codePointAt(Context context, Object... args) {
+    private Object codePointAt(Context context, Object[] args) {
         String s = asString(context);
         int index = ((Number) args[0]).intValue();
         if (index < 0 || index >= s.length()) {
@@ -140,7 +140,7 @@ class JsStringPrototype extends Prototype {
         return s.codePointAt(index);
     }
 
-    private Object concat(Context context, Object... args) {
+    private Object concat(Context context, Object[] args) {
         String s = asString(context);
         StringBuilder sb = new StringBuilder(s);
         for (Object arg : args) {
@@ -149,7 +149,7 @@ class JsStringPrototype extends Prototype {
         return sb.toString();
     }
 
-    private Object endsWith(Context context, Object... args) {
+    private Object endsWith(Context context, Object[] args) {
         String s = asString(context);
         if (args.length > 1) {
             int endPosition = ((Number) args[1]).intValue();
@@ -158,7 +158,7 @@ class JsStringPrototype extends Prototype {
         return s.endsWith((String) args[0]);
     }
 
-    private Object includes(Context context, Object... args) {
+    private Object includes(Context context, Object[] args) {
         String s = asString(context);
         String searchString = (String) args[0];
         if (args.length > 1) {
@@ -168,7 +168,7 @@ class JsStringPrototype extends Prototype {
         return s.contains(searchString);
     }
 
-    private Object lastIndexOf(Context context, Object... args) {
+    private Object lastIndexOf(Context context, Object[] args) {
         String s = asString(context);
         if (args.length > 1) {
             return s.lastIndexOf((String) args[0], ((Number) args[1]).intValue());
@@ -176,7 +176,7 @@ class JsStringPrototype extends Prototype {
         return s.lastIndexOf((String) args[0]);
     }
 
-    private Object padEnd(Context context, Object... args) {
+    private Object padEnd(Context context, Object[] args) {
         String s = asString(context);
         int targetLength = ((Number) args[0]).intValue();
         String padString = args.length > 1 ? (String) args[1] : " ";
@@ -194,7 +194,7 @@ class JsStringPrototype extends Prototype {
         return sb.toString();
     }
 
-    private Object padStart(Context context, Object... args) {
+    private Object padStart(Context context, Object[] args) {
         String s = asString(context);
         int targetLength = ((Number) args[0]).intValue();
         String padString = args.length > 1 ? (String) args[1] : " ";
@@ -213,7 +213,7 @@ class JsStringPrototype extends Prototype {
         return sb.toString();
     }
 
-    private Object repeat(Context context, Object... args) {
+    private Object repeat(Context context, Object[] args) {
         String s = asString(context);
         int count = ((Number) args[0]).intValue();
         if (count < 0) {
@@ -222,7 +222,7 @@ class JsStringPrototype extends Prototype {
         return s.repeat(count);
     }
 
-    private Object slice(Context context, Object... args) {
+    private Object slice(Context context, Object[] args) {
         String s = asString(context);
         int beginIndex = ((Number) args[0]).intValue();
         int endIndex = args.length > 1 ? ((Number) args[1]).intValue() : s.length();
@@ -236,7 +236,7 @@ class JsStringPrototype extends Prototype {
         return s.substring(beginIndex, endIndex);
     }
 
-    private Object substring(Context context, Object... args) {
+    private Object substring(Context context, Object[] args) {
         String s = asString(context);
         int beginIndex = ((Number) args[0]).intValue();
         int endIndex = args.length > 1 ? ((Number) args[1]).intValue() : s.length();
@@ -252,27 +252,27 @@ class JsStringPrototype extends Prototype {
         return s.substring(beginIndex, endIndex);
     }
 
-    private Object toLowerCase(Context context, Object... args) {
+    private Object toLowerCase(Context context, Object[] args) {
         return asString(context).toLowerCase();
     }
 
-    private Object toUpperCase(Context context, Object... args) {
+    private Object toUpperCase(Context context, Object[] args) {
         return asString(context).toUpperCase();
     }
 
-    private Object trim(Context context, Object... args) {
+    private Object trim(Context context, Object[] args) {
         return asString(context).trim();
     }
 
-    private Object trimStart(Context context, Object... args) {
+    private Object trimStart(Context context, Object[] args) {
         return asString(context).replaceAll("^\\s+", "");
     }
 
-    private Object trimEnd(Context context, Object... args) {
+    private Object trimEnd(Context context, Object[] args) {
         return asString(context).replaceAll("\\s+$", "");
     }
 
-    private Object replace(Context context, Object... args) {
+    private Object replace(Context context, Object[] args) {
         String s = asString(context);
         if (args[0] instanceof JsRegex regex) {
             return regex.replace(s, (String) args[1]);
@@ -280,7 +280,7 @@ class JsStringPrototype extends Prototype {
         return s.replace((String) args[0], (String) args[1]);
     }
 
-    private Object replaceAll(Context context, Object... args) {
+    private Object replaceAll(Context context, Object[] args) {
         String s = asString(context);
         if (args[0] instanceof JsRegex regex) {
             if (!regex.global) {
@@ -291,7 +291,7 @@ class JsStringPrototype extends Prototype {
         return s.replaceAll((String) args[0], (String) args[1]);
     }
 
-    private Object match(Context context, Object... args) {
+    private Object match(Context context, Object[] args) {
         String s = asString(context);
         if (args.length == 0) {
             return List.of("");
@@ -305,7 +305,7 @@ class JsStringPrototype extends Prototype {
         return regex.match(s);
     }
 
-    private Object search(Context context, Object... args) {
+    private Object search(Context context, Object[] args) {
         String s = asString(context);
         if (args.length == 0) {
             return 0;
@@ -319,7 +319,7 @@ class JsStringPrototype extends Prototype {
         return regex.search(s);
     }
 
-    private Object valueOf(Context context, Object... args) {
+    private Object valueOf(Context context, Object[] args) {
         return asString(context);
     }
 

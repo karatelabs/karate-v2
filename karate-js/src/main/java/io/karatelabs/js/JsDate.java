@@ -163,7 +163,7 @@ non-sealed class JsDate extends JsObject implements JsDateValue {
     }
 
     @Override
-    public Object call(Context context, Object... args) {
+    public Object call(Context context, Object[] args) {
         // Check if called with 'new' keyword
         CallInfo callInfo = context.getCallInfo();
         boolean isNew = callInfo != null && callInfo.constructor;

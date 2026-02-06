@@ -60,20 +60,20 @@ class JsNumberConstructor extends JsFunction {
     }
 
     @Override
-    public Object call(Context context, Object... args) {
+    public Object call(Context context, Object[] args) {
         return JsNumber.getObject(context, args);
     }
 
     // Static methods
 
-    private Object isFinite(Object... args) {
+    private Object isFinite(Object[] args) {
         if (args.length > 0 && args[0] instanceof Number n) {
             return Double.isFinite(n.doubleValue());
         }
         return false;
     }
 
-    private Object isInteger(Object... args) {
+    private Object isInteger(Object[] args) {
         if (args.length > 0 && args[0] instanceof Number n) {
             double d = n.doubleValue();
             return Double.isFinite(d) && Math.floor(d) == d;
@@ -81,14 +81,14 @@ class JsNumberConstructor extends JsFunction {
         return false;
     }
 
-    private Object isNaN(Object... args) {
+    private Object isNaN(Object[] args) {
         if (args.length > 0 && args[0] instanceof Number n) {
             return Double.isNaN(n.doubleValue());
         }
         return false;
     }
 
-    private Object isSafeInteger(Object... args) {
+    private Object isSafeInteger(Object[] args) {
         if (args.length > 0 && args[0] instanceof Number n) {
             double d = n.doubleValue();
             if (!Double.isFinite(d)) {

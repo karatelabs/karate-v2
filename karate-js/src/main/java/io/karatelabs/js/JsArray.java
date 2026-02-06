@@ -336,7 +336,7 @@ class JsArray implements ObjectLike, JsCallable, List<Object> {
      * ES6: Both Array() and new Array() return an Array object.
      * Array(n) creates array with n empty slots, Array(a,b,c) creates [a,b,c].
      */
-    static JsArray create(Object... args) {
+    static JsArray create(Object[] args) {
         if (args.length == 1 && args[0] instanceof Number n) {
             int count = n.intValue();
             List<Object> list = new ArrayList<>();

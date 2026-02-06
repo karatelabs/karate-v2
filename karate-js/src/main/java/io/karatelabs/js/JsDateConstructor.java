@@ -48,7 +48,7 @@ class JsDateConstructor extends JsFunction {
     }
 
     @Override
-    public Object call(Context context, Object... args) {
+    public Object call(Context context, Object[] args) {
         // Check if called with 'new' keyword
         CallInfo callInfo = context.getCallInfo();
         boolean isNew = callInfo != null && callInfo.constructor;
@@ -98,11 +98,11 @@ class JsDateConstructor extends JsFunction {
 
     // Static methods
 
-    private Object now(Object... args) {
+    private Object now(Object[] args) {
         return System.currentTimeMillis();
     }
 
-    private Object parse(Object... args) {
+    private Object parse(Object[] args) {
         if (args.length == 0 || args[0] == null) {
             return Double.NaN;
         }

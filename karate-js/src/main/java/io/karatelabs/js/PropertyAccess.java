@@ -396,7 +396,7 @@ class PropertyAccess {
         if (object instanceof JsCallable callable) {
             return new JsFunction() {
                 @Override
-                public Object call(Context context, Object... args) {
+                public Object call(Context context, Object[] args) {
                     return callable.call(context, args);
                 }
             }.getMember(name);

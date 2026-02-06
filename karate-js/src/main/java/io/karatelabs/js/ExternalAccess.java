@@ -28,13 +28,13 @@ package io.karatelabs.js;
  */
 public interface ExternalAccess {
 
-    Object construct(Object... args);
+    Object construct(Object[] args);
 
     Object getProperty(String name);
 
     void setProperty(String name, Object value);
 
-    Object invokeMethod(String name, Object... args);
+    Object invokeMethod(String name, Object[] args);
 
     default JavaInvokable getMethod(String name) {
         return args -> invokeMethod(name, args);

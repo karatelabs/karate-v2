@@ -57,21 +57,21 @@ class JsRegexPrototype extends Prototype {
 
     // Instance methods
 
-    private Object test(Context context, Object... args) {
+    private Object test(Context context, Object[] args) {
         if (args.length == 0 || args[0] == null) {
             return false;
         }
         return asRegex(context).test(args[0].toString());
     }
 
-    private Object exec(Context context, Object... args) {
+    private Object exec(Context context, Object[] args) {
         if (args.length == 0 || args[0] == null) {
             return null;
         }
         return asRegex(context).exec(args[0].toString());
     }
 
-    private Object toStringMethod(Context context, Object... args) {
+    private Object toStringMethod(Context context, Object[] args) {
         return asRegex(context).toString();
     }
 

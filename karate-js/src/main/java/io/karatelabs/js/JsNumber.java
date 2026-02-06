@@ -50,7 +50,7 @@ non-sealed class JsNumber extends JsObject implements JsPrimitive {
     }
 
     @Override
-    public Object call(Context context, Object... args) {
+    public Object call(Context context, Object[] args) {
         return getObject(context, args);
     }
 

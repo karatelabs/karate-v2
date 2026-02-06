@@ -52,7 +52,7 @@ class JsArrayConstructor extends JsFunction {
     }
 
     @Override
-    public Object call(Context context, Object... args) {
+    public Object call(Context context, Object[] args) {
         return JsArray.create(args);
     }
 

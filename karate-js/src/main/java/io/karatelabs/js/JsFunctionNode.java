@@ -75,7 +75,7 @@ class JsFunctionNode extends JsFunction {
     }
 
     @Override
-    public Object call(Context callerContext, Object... args) {
+    public Object call(Context callerContext, Object[] args) {
         final CoreContext parentContext;
         if (callerContext instanceof CoreContext cc) {
             parentContext = cc;

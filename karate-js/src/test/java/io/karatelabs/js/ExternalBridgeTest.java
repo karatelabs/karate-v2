@@ -79,12 +79,12 @@ class ExternalBridgeTest extends EvalBase {
     @Test
     void testConstructAndCall() {
         ExternalAccess type = bridge.forType("java.util.Properties");
-        Object o = type.construct();
+        Object o = type.construct(new Object[]{});
         assertEquals("java.util.Properties", o.getClass().getName());
         ExternalAccess instance = bridge.forInstance(o);
         assertEquals(0, instance.invokeMethod("size", JavaUtils.EMPTY));
-        instance.invokeMethod("put", "foo", 5);
-        assertEquals(5, instance.invokeMethod("get", "foo"));
+        instance.invokeMethod("put", new Object[]{"foo", 5});
+        assertEquals(5, instance.invokeMethod("get", new Object[]{"foo"}));
     }
 
     @Test
@@ -128,8 +128,8 @@ class ExternalBridgeTest extends EvalBase {
         DemoPojo dp = new DemoPojo();
         ExternalAccess instance = bridge.forInstance(dp);
         JavaInvokable method = instance.getMethod("varArgs");
-        assertEquals("foo", method.invoke(null, "foo"));
-        assertEquals("bar", method.invoke(null, "foo", "bar"));
+        assertEquals("foo", method.invoke(new Object[]{null, "foo"}));
+        assertEquals("bar", method.invoke(new Object[]{null, "foo", "bar"}));
     }
 
     @Test
@@ -137,9 +137,9 @@ class ExternalBridgeTest extends EvalBase {
         DemoPojo dp = new DemoPojo();
         ExternalAccess instance = bridge.forInstance(dp);
         JavaInvokable method = instance.getMethod("doWork");
-        assertEquals("hello", method.invoke());
-        assertEquals("hellofoo", method.invoke("foo"));
-        assertEquals("hellofootrue", method.invoke("foo", true));
+        assertEquals("hello", method.invoke(new Object[]{}));
+        assertEquals("hellofoo", method.invoke(new Object[]{"foo"}));
+        assertEquals("hellofootrue", method.invoke(new Object[]{"foo", true}));
     }
 
     @Test
@@ -941,7 +941,7 @@ class ExternalBridgeTest extends EvalBase {
                     List<?> list = (List<?>) args[0];
                     JavaCallable fn = (JavaCallable) args[1];
                     for (Object item : list) {
-                        Object result = fn.call(context, item);
+                        Object result = fn.call(context, new Object[]{item});
                         capturedResults.add(result);
                     }
                     return null;
@@ -973,7 +973,7 @@ class ExternalBridgeTest extends EvalBase {
                     JavaCallable fn = (JavaCallable) args[1];
                     java.util.List<Object> result = new java.util.ArrayList<>();
                     for (Object item : list) {
-                        result.add(fn.call(context, item));
+                        result.add(fn.call(context, new Object[]{item}));
                     }
                     return result;
                 };
@@ -999,7 +999,7 @@ class ExternalBridgeTest extends EvalBase {
                 return (JavaCallable) (context, args) -> {
                     capturedFn[0] = args[0];
                     if (args[0] instanceof JavaCallable jc) {
-                        return jc.call(context, "test");
+                        return jc.call(context, new Object[]{"test"});
                     }
                     throw new RuntimeException("Not a JavaCallable: " + args[0].getClass().getName());
                 };

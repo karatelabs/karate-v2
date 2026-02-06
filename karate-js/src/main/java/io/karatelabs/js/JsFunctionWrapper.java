@@ -39,7 +39,7 @@ public class JsFunctionWrapper extends JsFunction {
     }
 
     @Override
-    public Object call(Context ctx, Object... args) {
+    public Object call(Context ctx, Object[] args) {
         Object result = delegate.call(ctx, args);
         return Engine.toJava(result);
     }

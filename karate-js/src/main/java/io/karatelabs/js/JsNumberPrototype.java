@@ -66,7 +66,7 @@ class JsNumberPrototype extends Prototype {
 
     // Instance methods
 
-    private Object toFixed(Context context, Object... args) {
+    private Object toFixed(Context context, Object[] args) {
         int digits = 0;
         if (args.length > 0) {
             digits = Terms.objectToNumber(args[0]).intValue();
@@ -83,7 +83,7 @@ class JsNumberPrototype extends Prototype {
         return df.format(bd.doubleValue());
     }
 
-    private Object toPrecision(Context context, Object... args) {
+    private Object toPrecision(Context context, Object[] args) {
         double d = asNumber(context).doubleValue();
         if (args.length == 0) {
             // same as toString()
@@ -116,7 +116,7 @@ class JsNumberPrototype extends Prototype {
         return String.format("%." + (precision - 1) + "e", value);
     }
 
-    private Object toLocaleString(Context context, Object... args) {
+    private Object toLocaleString(Context context, Object[] args) {
         double d = asNumber(context).doubleValue();
         DecimalFormat df = (DecimalFormat) DecimalFormat.getInstance();
         int optionsIndex = args.length > 1 ? 1 : 0;
@@ -133,7 +133,7 @@ class JsNumberPrototype extends Prototype {
         return df.format(d);
     }
 
-    private Object valueOf(Context context, Object... args) {
+    private Object valueOf(Context context, Object[] args) {
         return asNumber(context);
     }
 

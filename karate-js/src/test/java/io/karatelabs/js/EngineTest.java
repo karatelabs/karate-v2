@@ -336,7 +336,7 @@ class EngineTest {
         StringBuilder sb = new StringBuilder();
         ContextListener listener = new ContextListener() {
             @Override
-            public void onFunctionCall(Context context, Object... args) {
+            public void onFunctionCall(Context context, Object[] args) {
                 if (context.getNode().type == NodeType.REF_DOT_EXPR && "b.push".equals(context.getNode().getText())) {
                     sb.append(context.getParent().getParent().getIteration()).append(":").append(args[0]).append("|");
                 }
@@ -367,7 +367,7 @@ class EngineTest {
         StringBuilder sb = new StringBuilder();
         ContextListener listener = new ContextListener() {
             @Override
-            public void onFunctionCall(Context context, Object... args) {
+            public void onFunctionCall(Context context, Object[] args) {
                 if (context.getNode().type == NodeType.REF_DOT_EXPR && "b.push".equals(context.getNode().getText())) {
                     sb.append(context.getParent().getIteration()).append(":").append(args[0]).append("|");
                 }

@@ -45,7 +45,7 @@ public class JavaType implements ExternalAccess {
     }
 
     @Override
-    public Object construct(Object... args) {
+    public Object construct(Object[] args) {
         return JavaUtils.construct(clazz, args);
     }
 

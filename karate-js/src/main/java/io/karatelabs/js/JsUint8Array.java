@@ -309,7 +309,7 @@ non-sealed class JsUint8Array extends JsArray implements JsBinaryValue {
 
     @SuppressWarnings("unchecked")
     @Override
-    public Object call(Context context, Object... args) {
+    public Object call(Context context, Object[] args) {
         if (args.length == 0) {
             return new byte[0];
         }

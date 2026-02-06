@@ -90,55 +90,55 @@ class JsDatePrototype extends Prototype {
 
     // Instance methods
 
-    private Object getTime(Context context, Object... args) {
+    private Object getTime(Context context, Object[] args) {
         return asDate(context).getTime();
     }
 
-    private Object toStringMethod(Context context, Object... args) {
+    private Object toStringMethod(Context context, Object[] args) {
         return asDate(context).toString();
     }
 
-    private Object toISOString(Context context, Object... args) {
+    private Object toISOString(Context context, Object[] args) {
         return ISO_FORMATTER.format(Instant.ofEpochMilli(asDate(context).getTime()));
     }
 
-    private Object toUTCString(Context context, Object... args) {
+    private Object toUTCString(Context context, Object[] args) {
         return UTC_STRING_FORMATTER.format(Instant.ofEpochMilli(asDate(context).getTime()));
     }
 
-    private Object getFullYear(Context context, Object... args) {
+    private Object getFullYear(Context context, Object[] args) {
         return toZonedDateTime(asDate(context)).getYear();
     }
 
-    private Object getMonth(Context context, Object... args) {
+    private Object getMonth(Context context, Object[] args) {
         return toZonedDateTime(asDate(context)).getMonthValue() - 1; // 0-indexed
     }
 
-    private Object getDate(Context context, Object... args) {
+    private Object getDate(Context context, Object[] args) {
         return toZonedDateTime(asDate(context)).getDayOfMonth();
     }
 
-    private Object getDay(Context context, Object... args) {
+    private Object getDay(Context context, Object[] args) {
         return toZonedDateTime(asDate(context)).getDayOfWeek().getValue() % 7; // Sun=0
     }
 
-    private Object getHours(Context context, Object... args) {
+    private Object getHours(Context context, Object[] args) {
         return toZonedDateTime(asDate(context)).getHour();
     }
 
-    private Object getMinutes(Context context, Object... args) {
+    private Object getMinutes(Context context, Object[] args) {
         return toZonedDateTime(asDate(context)).getMinute();
     }
 
-    private Object getSeconds(Context context, Object... args) {
+    private Object getSeconds(Context context, Object[] args) {
         return toZonedDateTime(asDate(context)).getSecond();
     }
 
-    private Object getMilliseconds(Context context, Object... args) {
+    private Object getMilliseconds(Context context, Object[] args) {
         return toZonedDateTime(asDate(context)).getNano() / 1_000_000;
     }
 
-    private Object setDate(Context context, Object... args) {
+    private Object setDate(Context context, Object[] args) {
         if (args.length == 0 || !(args[0] instanceof Number)) {
             return Double.NaN;
         }
@@ -151,7 +151,7 @@ class JsDatePrototype extends Prototype {
         return jsDate.getTime();
     }
 
-    private Object setMonth(Context context, Object... args) {
+    private Object setMonth(Context context, Object[] args) {
         if (args.length == 0 || !(args[0] instanceof Number)) {
             return Double.NaN;
         }
@@ -171,7 +171,7 @@ class JsDatePrototype extends Prototype {
         return jsDate.getTime();
     }
 
-    private Object setFullYear(Context context, Object... args) {
+    private Object setFullYear(Context context, Object[] args) {
         if (args.length == 0 || !(args[0] instanceof Number)) {
             return Double.NaN;
         }
@@ -199,7 +199,7 @@ class JsDatePrototype extends Prototype {
         return jsDate.getTime();
     }
 
-    private Object setHours(Context context, Object... args) {
+    private Object setHours(Context context, Object[] args) {
         if (args.length == 0 || !(args[0] instanceof Number)) {
             return Double.NaN;
         }
@@ -223,7 +223,7 @@ class JsDatePrototype extends Prototype {
         return jsDate.getTime();
     }
 
-    private Object setMinutes(Context context, Object... args) {
+    private Object setMinutes(Context context, Object[] args) {
         if (args.length == 0 || !(args[0] instanceof Number)) {
             return Double.NaN;
         }
@@ -243,7 +243,7 @@ class JsDatePrototype extends Prototype {
         return jsDate.getTime();
     }
 
-    private Object setSeconds(Context context, Object... args) {
+    private Object setSeconds(Context context, Object[] args) {
         if (args.length == 0 || !(args[0] instanceof Number)) {
             return Double.NaN;
         }
@@ -259,7 +259,7 @@ class JsDatePrototype extends Prototype {
         return jsDate.getTime();
     }
 
-    private Object setMilliseconds(Context context, Object... args) {
+    private Object setMilliseconds(Context context, Object[] args) {
         if (args.length == 0 || !(args[0] instanceof Number)) {
             return Double.NaN;
         }
@@ -271,7 +271,7 @@ class JsDatePrototype extends Prototype {
         return jsDate.getTime();
     }
 
-    private Object setTime(Context context, Object... args) {
+    private Object setTime(Context context, Object[] args) {
         if (args.length == 0 || !(args[0] instanceof Number)) {
             return Double.NaN;
         }
