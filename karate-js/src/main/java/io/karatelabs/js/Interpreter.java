@@ -115,21 +115,24 @@ class Interpreter {
     }
 
     private static Object evalBlock(Node node, CoreContext context) {
-        CoreContext blockContext = new CoreContext(context, node, ContextScope.BLOCK);
-        blockContext.event(EventType.CONTEXT_ENTER, node);
+        context.enterScope(ContextScope.BLOCK, node);
+        context.event(EventType.CONTEXT_ENTER, node);
         Object blockResult = null;
-        for (Node child : node) {
-            if (child.type == NodeType.STATEMENT) {
-                blockResult = eval(child, blockContext);
-                if (blockContext.isStopped()) {
-                    break;
+        try {
+            for (Node child : node) {
+                if (child.type == NodeType.STATEMENT) {
+                    blockResult = eval(child, context);
+                    if (context.isStopped()) {
+                        break;
+                    }
                 }
             }
+        } finally {
+            context.event(EventType.CONTEXT_EXIT, node);
+            context.exitScope();
         }
-        blockContext.event(EventType.CONTEXT_EXIT, node);
-        context.updateFrom(blockContext);
         // errors would be handled by caller
-        return blockContext.isStopped() ? blockContext.getReturnValue() : blockResult;
+        return context.isStopped() ? context.getReturnValue() : blockResult;
     }
 
     private static Object evalBreakStmt(Node node, CoreContext context) {
@@ -289,97 +292,127 @@ class Interpreter {
     }
 
     private static Object evalForStmt(Node node, CoreContext context) {
-        CoreContext outer = new CoreContext(context, node, ContextScope.LOOP_INIT);
-        outer.event(EventType.CONTEXT_ENTER, node);
+        // Enter loop init scope
+        context.enterScope(ContextScope.LOOP_INIT, node);
+        context.event(EventType.CONTEXT_ENTER, node);
         Node forBody = node.getLast();
         Object forResult = null;
-        CoreContext inner = outer;
-        if (node.get(2).token.type == SEMI) {
-            // rare case: "for(;;)"
-        } else if (node.get(3).token.type == SEMI) {
-            boolean isLetOrConst;
-            if (node.get(2).type == NodeType.VAR_STMT) {
-                evalVarStmt(node.get(2), outer);
-                isLetOrConst = node.get(2).getFirstToken().type != VAR;
-            } else {
-                isLetOrConst = false;
-                eval(node.get(2), outer);
-            }
-            if (node.get(4).token.type == SEMI) {
-                // rare no-condition case: "for(init;;increment)"
-            } else {
-                Node forAfter = node.get(6).token.type == R_PAREN ? null : node.get(6);
-                int index = -1;
-                while (true) {
-                    index++;
-                    outer.iteration = index;
-                    Object forCondition = eval(node.get(4), outer);
-                    if (Terms.isTruthy(forCondition)) {
-                        if (isLetOrConst) {
-                            inner = new CoreContext(outer, forBody, ContextScope.LOOP_BODY);
-                            inner._bindings = new Bindings(outer._bindings);
+        boolean enteredBodyScope = false;
+        try {
+            if (node.get(2).token.type == SEMI) {
+                // rare case: "for(;;)"
+            } else if (node.get(3).token.type == SEMI) {
+                // C-style for loop: for(init; condition; increment)
+                boolean isLetOrConst;
+                String loopVarName = null;
+                BindingType loopVarType = null;
+                if (node.get(2).type == NodeType.VAR_STMT) {
+                    evalVarStmt(node.get(2), context);
+                    isLetOrConst = node.get(2).getFirstToken().type != VAR;
+                    if (isLetOrConst) {
+                        // Extract loop variable name for per-iteration capture
+                        Node varBindings = node.get(2).get(1);
+                        List<Node> varNames = varBindings.findChildren(IDENT);
+                        if (!varNames.isEmpty()) {
+                            loopVarName = varNames.get(0).getText();
+                            loopVarType = node.get(2).getFirstToken().type == LET ? BindingType.LET : BindingType.CONST;
                         }
-                        forResult = eval(forBody, inner);
-                        if (inner.isStopped()) {
-                            if (inner.isContinuing()) {
-                                inner.reset();
-                            } else { // break, return or throw
-                                if (outer != inner) {
-                                    outer.updateFrom(inner);
-                                }
-                                break;
+                    }
+                } else {
+                    isLetOrConst = false;
+                    eval(node.get(2), context);
+                }
+                if (node.get(4).token.type == SEMI) {
+                    // rare no-condition case: "for(init;;increment)"
+                } else {
+                    Node forAfter = node.get(6).token.type == R_PAREN ? null : node.get(6);
+                    int index = -1;
+                    while (true) {
+                        index++;
+                        context.iteration = index;
+                        Object forCondition = eval(node.get(4), context);
+                        if (Terms.isTruthy(forCondition)) {
+                            if (isLetOrConst && loopVarName != null) {
+                                // Enter body scope and snapshot loop variable for this iteration
+                                Object loopVarValue = context.get(loopVarName);
+                                context.enterScope(ContextScope.LOOP_BODY, forBody);
+                                enteredBodyScope = true;
+                                // Push a fresh binding for this iteration (shadows the outer one)
+                                context.declare(loopVarName, loopVarValue, loopVarType, true);
                             }
+                            forResult = eval(forBody, context);
+                            if (isLetOrConst && enteredBodyScope) {
+                                context.exitScope();
+                                enteredBodyScope = false;
+                            }
+                            if (context.isStopped()) {
+                                if (context.isContinuing()) {
+                                    context.reset();
+                                } else { // break, return or throw
+                                    break;
+                                }
+                            }
+                            if (forAfter != null) {
+                                eval(forAfter, context);
+                            }
+                        } else {
+                            break;
                         }
-                        if (forAfter != null) {
-                            eval(forAfter, outer);
+                    }
+                }
+            } else { // for in / of
+                boolean in = node.get(3).token.type == IN;
+                Object forObject = eval(node.get(4), context);
+                Iterable<KeyValue> iterable = Terms.toIterable(forObject);
+                BindingType bindingType;
+                Node bindings;
+                if (node.get(2).type == NodeType.VAR_STMT) {
+                    bindings = node.get(2).get(1);
+                    bindingType = switch (node.get(2).getFirstToken().type) {
+                        case LET -> BindingType.LET;
+                        case CONST -> BindingType.CONST;
+                        default -> BindingType.VAR;
+                    };
+                } else {
+                    bindingType = BindingType.VAR;
+                    bindings = node.get(2);
+                }
+                boolean isLetOrConst = bindingType == BindingType.LET || bindingType == BindingType.CONST;
+                int index = -1;
+                for (KeyValue kv : iterable) {
+                    index++;
+                    context.iteration = index;
+                    Object varValue = in ? kv.key() : kv.value();
+                    if (isLetOrConst) {
+                        // Enter body scope for this iteration
+                        context.enterScope(ContextScope.LOOP_BODY, forBody);
+                        enteredBodyScope = true;
+                    }
+                    // Declare/assign loop variable(s) - handles both simple and destructuring cases
+                    evalAssign(bindings, context, bindingType, varValue, true);
+                    forResult = eval(forBody, context);
+                    if (isLetOrConst && enteredBodyScope) {
+                        context.exitScope();
+                        enteredBodyScope = false;
+                    }
+                    if (context.isStopped()) {
+                        if (context.isContinuing()) {
+                            context.reset();
+                        } else { // break, return or throw
+                            break;
                         }
-                    } else {
-                        break;
                     }
                 }
             }
-        } else { // for in / of
-            boolean in = node.get(3).token.type == IN;
-            Object forObject = eval(node.get(4), outer);
-            Iterable<KeyValue> iterable = Terms.toIterable(forObject);
-            BindingType bindingType;
-            Node bindings;
-            if (node.get(2).type == NodeType.VAR_STMT) {
-                bindings = node.get(2).get(1);
-                bindingType = switch (node.get(2).getFirstToken().type) {
-                    case LET -> BindingType.LET;
-                    case CONST -> BindingType.CONST;
-                    default -> BindingType.VAR;
-                };
-            } else {
-                bindingType = BindingType.VAR;
-                bindings = node.get(2);
-            }
-            int index = -1;
-            for (KeyValue kv : iterable) {
-                index++;
-                outer.iteration = index;
-                Object varValue = in ? kv.key() : kv.value();
-                evalAssign(bindings, outer, bindingType, varValue, true);
-                if (bindingType == BindingType.LET || bindingType == BindingType.CONST) {
-                    inner = new CoreContext(outer, forBody, ContextScope.LOOP_BODY);
-                    inner._bindings = new Bindings(outer._bindings);
-                }
-                forResult = eval(forBody, inner);
-                if (inner.isStopped()) {
-                    if (inner.isContinuing()) {
-                        inner.reset();
-                    } else { // break, return or throw
-                        if (outer != inner) {
-                            outer.updateFrom(inner);
-                        }
-                        break;
-                    }
-                }
+        } finally {
+            // Ensure we exit body scope if still in it
+            if (enteredBodyScope) {
+                context.exitScope();
             }
         }
-        outer.event(EventType.CONTEXT_EXIT, node);
-        context.updateFrom(outer);
+        context.event(EventType.CONTEXT_EXIT, node);
+        // Exit loop init scope
+        context.exitScope();
         return forResult;
     }
 
@@ -908,31 +941,52 @@ class Interpreter {
                 finallyBlock = node.get(8);
             }
             if (context.isError()) {
-                CoreContext catchContext = new CoreContext(context, node, ContextScope.CATCH);
-                catchContext.event(EventType.CONTEXT_ENTER, node);
-                if (node.get(3).token.type == L_PAREN) {
-                    String errorName = node.get(4).getText();
-                    catchContext.put(errorName, context.getErrorThrown());
-                    tryValue = eval(node.get(6), catchContext);
-                } else { // catch without variable name, 3 is block
-                    tryValue = eval(node.get(3), context);
+                Object errorThrown = context.getErrorThrown();
+                context.reset(); // Clear error before entering catch
+                context.enterScope(ContextScope.CATCH, node);
+                context.event(EventType.CONTEXT_ENTER, node);
+                try {
+                    if (node.get(3).token.type == L_PAREN) {
+                        String errorName = node.get(4).getText();
+                        context.put(errorName, errorThrown);
+                        tryValue = eval(node.get(6), context);
+                    } else { // catch without variable name, 3 is block
+                        tryValue = eval(node.get(3), context);
+                    }
+                    if (context.isError()) { // catch threw error
+                        tryValue = null;
+                    }
+                } finally {
+                    context.event(EventType.CONTEXT_EXIT, node);
+                    context.exitScope();
                 }
-                if (context.isError()) { // catch threw error,
-                    tryValue = null;
-                }
-                context.updateFrom(catchContext);
-                catchContext.event(EventType.CONTEXT_EXIT, node);
             }
         } else if (node.get(2).token.type == FINALLY) {
             finallyBlock = node.get(3);
         }
         if (finallyBlock != null) {
-            CoreContext finallyContext = new CoreContext(context, node, ContextScope.BLOCK);
-            finallyContext.event(EventType.CONTEXT_ENTER, node);
-            eval(finallyBlock, finallyContext);
-            finallyContext.event(EventType.CONTEXT_EXIT, node);
-            if (finallyContext.isError()) {
-                throw new RuntimeException("finally block threw error: " + finallyContext.getErrorThrown());
+            boolean wasError = context.isError();
+            Object savedError = context.getErrorThrown();
+            Object savedReturn = context.getReturnValue();
+            if (wasError) {
+                context.reset();
+            }
+            context.enterScope(ContextScope.BLOCK, node);
+            context.event(EventType.CONTEXT_ENTER, node);
+            try {
+                eval(finallyBlock, context);
+                if (context.isError()) {
+                    throw new RuntimeException("finally block threw error: " + context.getErrorThrown());
+                }
+            } finally {
+                context.event(EventType.CONTEXT_EXIT, node);
+                context.exitScope();
+            }
+            // Restore error state if there was one
+            if (wasError) {
+                context.stopAndThrow(savedError);
+            } else if (savedReturn != null) {
+                context.stopAndReturn(savedReturn);
             }
         }
         return tryValue;
@@ -976,52 +1030,58 @@ class Interpreter {
     }
 
     private static Object evalWhileStmt(Node node, CoreContext context) {
-        CoreContext whileContext = new CoreContext(context, node, ContextScope.LOOP_INIT);
-        whileContext.event(EventType.CONTEXT_ENTER, node);
+        context.enterScope(ContextScope.LOOP_INIT, node);
+        context.event(EventType.CONTEXT_ENTER, node);
         Node whileBody = node.getLast();
         Node whileExpr = node.get(2);
         Object whileResult = null;
-        while (true) {
-            Object whileCondition = eval(whileExpr, whileContext);
-            if (!Terms.isTruthy(whileCondition)) {
-                break;
-            }
-            whileResult = eval(whileBody, whileContext);
-            if (whileContext.isStopped()) {
-                if (whileContext.isContinuing()) {
-                    whileContext.reset();
-                } else { // break, return or throw
-                    context.updateFrom(whileContext);
+        try {
+            while (true) {
+                Object whileCondition = eval(whileExpr, context);
+                if (!Terms.isTruthy(whileCondition)) {
                     break;
                 }
+                whileResult = eval(whileBody, context);
+                if (context.isStopped()) {
+                    if (context.isContinuing()) {
+                        context.reset();
+                    } else { // break, return or throw
+                        break;
+                    }
+                }
             }
+        } finally {
+            context.event(EventType.CONTEXT_EXIT, node);
+            context.exitScope();
         }
-        whileContext.event(EventType.CONTEXT_EXIT, node);
         return whileResult;
     }
 
     private static Object evalDoWhileStmt(Node node, CoreContext context) {
-        CoreContext doContext = new CoreContext(context, node, ContextScope.LOOP_INIT);
-        doContext.event(EventType.CONTEXT_ENTER, node);
+        context.enterScope(ContextScope.LOOP_INIT, node);
+        context.event(EventType.CONTEXT_ENTER, node);
         Node doBody = node.get(1);
         Node doExpr = node.get(4);
-        Object doResult;
-        while (true) {
-            doResult = eval(doBody, doContext);
-            if (doContext.isStopped()) {
-                if (doContext.isContinuing()) {
-                    doContext.reset();
-                } else { // break, return or throw
-                    context.updateFrom(doContext);
+        Object doResult = null;
+        try {
+            while (true) {
+                doResult = eval(doBody, context);
+                if (context.isStopped()) {
+                    if (context.isContinuing()) {
+                        context.reset();
+                    } else { // break, return or throw
+                        break;
+                    }
+                }
+                Object doCondition = eval(doExpr, context);
+                if (!Terms.isTruthy(doCondition)) {
                     break;
                 }
             }
-            Object doCondition = eval(doExpr, doContext);
-            if (!Terms.isTruthy(doCondition)) {
-                break;
-            }
+        } finally {
+            context.event(EventType.CONTEXT_EXIT, node);
+            context.exitScope();
         }
-        doContext.event(EventType.CONTEXT_EXIT, node);
         return doResult;
     }
 

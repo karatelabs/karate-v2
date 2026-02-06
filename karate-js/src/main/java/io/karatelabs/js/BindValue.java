@@ -25,22 +25,40 @@ package io.karatelabs.js;
 
 /**
  * Represents a binding entry with its value and optional let/const metadata.
+ * <p>
+ * Supports level-keyed scoping where each binding knows its scope level and
+ * can link to a previous (shadowed) binding with the same name.
  */
 class BindValue {
 
     final String name;
+    final int level;            // scope level where binding was created
+    final BindValue previous;   // shadowed binding (forms stack per variable)
     Object value;
     BindingType type;  // null for var, LET/CONST for let/const
     boolean initialized;
 
     BindValue(String name, Object value) {
         this.name = name;
+        this.level = 0;
+        this.previous = null;
         this.value = value;
         this.initialized = true;
     }
 
     BindValue(String name, Object value, BindingType type, boolean initialized) {
         this.name = name;
+        this.level = 0;
+        this.previous = null;
+        this.value = value;
+        this.type = type;
+        this.initialized = initialized;
+    }
+
+    BindValue(String name, Object value, BindingType type, boolean initialized, int level, BindValue previous) {
+        this.name = name;
+        this.level = level;
+        this.previous = previous;
         this.value = value;
         this.type = type;
         this.initialized = initialized;
@@ -51,6 +69,8 @@ class BindValue {
      */
     BindValue(BindValue other) {
         this.name = other.name;
+        this.level = other.level;
+        this.previous = other.previous;
         this.value = other.value;
         this.type = other.type;
         this.initialized = other.initialized;
@@ -58,7 +78,7 @@ class BindValue {
 
     @Override
     public String toString() {
-        return name + "=" + value + (type != null ? " (" + type + ")" : "");
+        return name + "=" + value + (type != null ? " (" + type + ")" : "") + "@L" + level;
     }
 
 }

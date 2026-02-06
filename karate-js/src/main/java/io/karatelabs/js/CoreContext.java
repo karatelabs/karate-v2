@@ -25,8 +25,7 @@ package io.karatelabs.js;
 
 import io.karatelabs.parser.Node;
 
-import java.util.Arrays;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Supplier;
 
 class CoreContext implements Context {
@@ -42,6 +41,13 @@ class CoreContext implements Context {
     final Object[] functionArgs;
     final CoreContext closureContext;
 
+    // Scope management (level-keyed bindings)
+    int currentLevel = 0;
+    List<ScopeEntry> scopeStack; // Lazy - created on first enterScope
+
+    // Captured bindings for closures (references to BindValues from function creation time)
+    final Map<String, BindValue> capturedBindings;
+
     CoreContext(ContextRoot root, CoreContext parent, int depth, Node node, ContextScope scope, Map<String, Object> bindings) {
         this.root = root;
         this.parent = parent;
@@ -50,6 +56,7 @@ class CoreContext implements Context {
         this.scope = scope;
         this.functionArgs = null;
         this.closureContext = null;
+        this.capturedBindings = null;
         if (bindings != null) {
             this._bindings = bindings instanceof Bindings b ? b : new Bindings(bindings);
         }
@@ -62,15 +69,18 @@ class CoreContext implements Context {
         this(parent.root, parent, parent.depth + 1, node, scope, null);
     }
 
-    CoreContext(CoreContext parent, Node node, Object[] functionArgs, CoreContext closureContext) {
+    CoreContext(CoreContext parent, Node node, Object[] functionArgs,
+                CoreContext closureContext, Map<String, BindValue> captured) {
         this.root = parent.root;
         this.parent = parent;
         this.depth = parent.depth + 1;
         this.node = node;
-        this.scope = ContextScope.BLOCK;
+        this.scope = ContextScope.FUNCTION;
         this.functionArgs = functionArgs;
         this.closureContext = closureContext;
-        thisObject = parent.thisObject;
+        this.capturedBindings = captured;
+        this.thisObject = parent.thisObject;
+        // Function contexts don't need scopeStack - they use flat bindings
     }
 
     void event(EventType type, Node node) {
@@ -144,6 +154,45 @@ class CoreContext implements Context {
         return getPath();
     }
 
+    //=== Scope management =============================================================================================
+    //
+    void enterScope(ContextScope scope, Node node) {
+        currentLevel++;
+        if (scopeStack == null) {
+            scopeStack = new ArrayList<>(4);
+        }
+        scopeStack.add(new ScopeEntry(currentLevel, scope, node));
+    }
+
+    void exitScope() {
+        if (scopeStack != null && !scopeStack.isEmpty()) {
+            if (_bindings != null) {
+                _bindings.popLevel(currentLevel);
+            }
+            scopeStack.remove(scopeStack.size() - 1);
+            currentLevel--;
+        }
+    }
+
+    int findFunctionLevel() {
+        if (scopeStack != null) {
+            for (int i = scopeStack.size() - 1; i >= 0; i--) {
+                ScopeEntry entry = scopeStack.get(i);
+                if (entry.scope == ContextScope.FUNCTION) {
+                    return entry.level;
+                }
+            }
+        }
+        return 0;  // Hoist to global if no function scope
+    }
+
+    ContextScope getCurrentScope() {
+        if (scopeStack != null && !scopeStack.isEmpty()) {
+            return scopeStack.get(scopeStack.size() - 1).scope;
+        }
+        return scope;
+    }
+
     //==================================================================================================================
     //
     Object get(String key) {
@@ -153,6 +202,10 @@ class CoreContext implements Context {
         // Function context: handle "arguments" keyword
         if (functionArgs != null && "arguments".equals(key)) {
             return Arrays.asList(functionArgs);
+        }
+        // Check captured bindings first (frozen closure values)
+        if (capturedBindings != null && capturedBindings.containsKey(key)) {
+            return capturedBindings.get(key).value;
         }
         if (_bindings != null) {
             Object result = _bindings.getMember(key);
@@ -189,27 +242,46 @@ class CoreContext implements Context {
             ((JsFunction) value).name = key;
         }
         if (type != null) { // let or const
-            BindValue existing = findConstOrLet(key);
+            BindValue existing = findConstOrLetAtCurrentLevel(key);
             if (existing != null) {
-                if (scope == ContextScope.LOOP_INIT) {
-                    // for-of/for-in loop iteration: re-declaration is valid, clear binding type
-                    _bindings.clearBindingType(key);
+                ContextScope currentScope = getCurrentScope();
+                if (currentScope == ContextScope.LOOP_INIT || currentScope == ContextScope.LOOP_BODY) {
+                    // Loop iteration: re-declaration is valid (per-iteration scope)
+                    // Push a new binding that shadows the captured one
                 } else {
                     throw new RuntimeException("identifier '" + key + "' has already been declared");
                 }
             }
-            putBinding(key, value, type, initialized);
+            pushBinding(key, value, type, initialized);
             // for top-level declarations, also store in root to persist across evals
             if (depth == 0 && root != null && parent == root) {
                 root.addBinding(key, type);
             }
-        } else { // hoist var
-            CoreContext targetContext = this;
-            while (targetContext.depth > 0 && targetContext.scope != ContextScope.FUNCTION) {
-                targetContext = targetContext.parent;
+        } else { // hoist var to function level
+            int functionLevel = findFunctionLevel();
+            if (_bindings == null) {
+                _bindings = new Bindings();
             }
-            targetContext.putBinding(key, value, null, true);
+            // Check if var already exists at or below function level
+            BindValue existing = _bindings.getBindValue(key);
+            if (existing != null && existing.level <= functionLevel) {
+                // Update existing var
+                existing.value = value;
+            } else {
+                // Push new var at function level
+                _bindings.pushBinding(key, value, null, functionLevel);
+            }
         }
+    }
+
+    private BindValue findConstOrLetAtCurrentLevel(String key) {
+        if (_bindings != null) {
+            BindValue bv = _bindings.getBindValue(key);
+            if (bv != null && bv.type != null && bv.level == currentLevel) {
+                return bv;
+            }
+        }
+        return null;
     }
 
     void update(String key, Object value) {
@@ -244,12 +316,23 @@ class CoreContext implements Context {
         _bindings.putMember(key, value, type, initialized);
     }
 
+    private void pushBinding(String key, Object value, BindingType type, boolean initialized) {
+        if (_bindings == null) {
+            _bindings = new Bindings();
+        }
+        _bindings.pushBinding(key, value, type, currentLevel, initialized);
+    }
+
     boolean hasKey(String key) {
         if ("this".equals(key)) {
             return true;
         }
         // Function context: handle "arguments" keyword
         if (functionArgs != null && "arguments".equals(key)) {
+            return true;
+        }
+        // Check captured bindings (frozen closure values)
+        if (capturedBindings != null && capturedBindings.containsKey(key)) {
             return true;
         }
         if (_bindings != null && _bindings.hasMember(key)) {

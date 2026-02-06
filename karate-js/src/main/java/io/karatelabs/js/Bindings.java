@@ -132,6 +132,44 @@ public class Bindings implements Map<String, Object> {
         }
     }
 
+    //=== Level-aware operations for scope management ===
+
+    /**
+     * Push a binding at the specified level, linking to any existing binding as shadowed.
+     */
+    public void pushBinding(String key, Object value, BindingType type, int level) {
+        BindValue existing = map.get(key);
+        BindValue newBv = new BindValue(key, value, type, true, level, existing);
+        map.put(key, newBv);
+    }
+
+    /**
+     * Push a binding at the specified level with explicit initialized state.
+     */
+    public void pushBinding(String key, Object value, BindingType type, int level, boolean initialized) {
+        BindValue existing = map.get(key);
+        BindValue newBv = new BindValue(key, value, type, initialized, level, existing);
+        map.put(key, newBv);
+    }
+
+    /**
+     * Remove all bindings at the specified level, restoring previous (shadowed) bindings.
+     */
+    public void popLevel(int level) {
+        Iterator<Entry<String, BindValue>> it = map.entrySet().iterator();
+        while (it.hasNext()) {
+            Entry<String, BindValue> e = it.next();
+            BindValue bv = e.getValue();
+            if (bv.level == level) {
+                if (bv.previous != null) {
+                    e.setValue(bv.previous);
+                } else {
+                    it.remove();
+                }
+            }
+        }
+    }
+
     /**
      * Returns a raw Map view of the bindings without auto-unwrapping.
      */

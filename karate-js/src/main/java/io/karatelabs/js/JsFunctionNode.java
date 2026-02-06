@@ -30,7 +30,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 class JsFunctionNode extends JsFunction {
 
@@ -42,6 +44,7 @@ class JsFunctionNode extends JsFunction {
     final List<Node> argNodes;
     final int argCount;
     final CoreContext declaredContext;
+    final Map<String, BindValue> capturedBindings; // References to BindValues at creation time
 
     public JsFunctionNode(boolean arrow, Node node, List<Node> argNodes, Node body, CoreContext declaredContext) {
         this.arrow = arrow;
@@ -50,6 +53,25 @@ class JsFunctionNode extends JsFunction {
         this.argCount = argNodes.size();
         this.body = body;
         this.declaredContext = declaredContext;
+        // Capture references to let/const BindValues at creation time for closure semantics
+        this.capturedBindings = captureBindings(declaredContext);
+    }
+
+    private static Map<String, BindValue> captureBindings(CoreContext context) {
+        if (context._bindings == null) {
+            return null;
+        }
+        Map<String, BindValue> snapshot = null;
+        for (String key : context._bindings.keySet()) {
+            BindValue bv = context._bindings.getBindValue(key);
+            if (bv != null && bv.type != null) { // Only capture let/const bindings
+                if (snapshot == null) {
+                    snapshot = new HashMap<>(4); // Typically few captured vars
+                }
+                snapshot.put(key, bv); // Store reference, not copy
+            }
+        }
+        return snapshot;
     }
 
     @Override
@@ -60,8 +82,9 @@ class JsFunctionNode extends JsFunction {
         } else {
             parentContext = declaredContext;
         }
-        // Interpreter.evalFnCall() will always spawn function scope
-        CoreContext functionContext = new CoreContext(parentContext, node, args, declaredContext);
+        // Create lightweight function context with captured bindings
+        CoreContext functionContext = new CoreContext(parentContext, node, args,
+                                                       declaredContext, capturedBindings);
         int actualArgCount = Math.min(args.length, argCount);
         for (int i = 0; i < actualArgCount; i++) {
             Node argNode = argNodes.get(i);
