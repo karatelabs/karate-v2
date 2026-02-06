@@ -92,26 +92,11 @@ class Interpreter {
             if (lhs.type == NodeType.LIT_EXPR) {
                 evalAssign(lhs.getFirst(), context, BindingType.VAR, value, true);
             } else {
-                PropertyAccess prop = new PropertyAccess(lhs, context);
-                prop.set(value);
+                PropertyAccess.set(lhs, context, value);
             }
             return value;
         }
-        PropertyAccess prop = new PropertyAccess(lhs, context);
-        Object result = switch (operator) {
-            case PLUS_EQ -> Terms.add(prop.get(), value);
-            case MINUS_EQ -> terms(prop.get(), value).min();
-            case STAR_EQ -> terms(prop.get(), value).mul();
-            case SLASH_EQ -> terms(prop.get(), value).div();
-            case PERCENT_EQ -> terms(prop.get(), value).mod();
-            case STAR_STAR_EQ -> terms(prop.get(), value).exp();
-            case GT_GT_EQ -> terms(prop.get(), value).bitShiftRight();
-            case LT_LT_EQ -> terms(prop.get(), value).bitShiftLeft();
-            case GT_GT_GT_EQ -> terms(prop.get(), value).bitShiftRightUnsigned();
-            default -> throw new RuntimeException("unexpected assignment operator: " + node.get(1));
-        };
-        prop.set(result);
-        return result;
+        return PropertyAccess.compound(lhs, context, operator, value);
     }
 
     private static Object evalBlock(Node node, CoreContext context) {
@@ -143,16 +128,8 @@ class Interpreter {
         return context.stopAndContinue();
     }
 
-    @SuppressWarnings("unchecked")
     private static Object evalDeleteStmt(Node node, CoreContext context) {
-        PropertyAccess prop = new PropertyAccess(node.get(1).getFirst(), context);
-        String key = prop.name == null ? prop.index + "" : prop.name;
-        // Check ObjectLike BEFORE Map (JsObject implements both)
-        if (prop.object instanceof ObjectLike ol) {
-            ol.removeMember(key);
-        } else if (prop.object instanceof Map<?, ?> map) {
-            ((Map<String, Object>) map).remove(key);
-        }
+        PropertyAccess.delete(node.get(1).getFirst(), context);
         return true;
     }
 
@@ -202,8 +179,9 @@ class Interpreter {
             fnArgsNode = node.get(2);
             node = node.getFirst();
         }
-        PropertyAccess prop = new PropertyAccess(node, context, true);
-        Object o = prop.get();
+        Object[] callableAndReceiver = PropertyAccess.getCallable(node, context);
+        Object o = callableAndReceiver[0];
+        Object receiver = callableAndReceiver[1];
         if (o == Terms.UNDEFINED) { // optional chaining
             return o;
         }
@@ -252,7 +230,7 @@ class Interpreter {
                     callContext.thisObject = callable;
                 }
             } else {
-                callContext.thisObject = prop.object == null ? callable : prop.object;
+                callContext.thisObject = receiver == null ? callable : receiver;
             }
             if (callContext.root.listener != null) {
                 callContext.root.listener.onFunctionCall(callContext, args);
@@ -731,35 +709,17 @@ class Interpreter {
     }
 
     private static Object evalMathPostExpr(Node node, CoreContext context) {
-        PropertyAccess postProp = new PropertyAccess(node.get(0), context);
-        Object postValue = postProp.get();
-        switch (node.get(1).token.type) {
-            case PLUS_PLUS:
-                postProp.set(Terms.add(postValue, 1));
-                break;
-            case MINUS_MINUS:
-                postProp.set(terms(postValue, 1).min());
-                break;
-            default:
-                throw new RuntimeException("unexpected operator: " + node.get(1));
-        }
-        return postValue;
+        boolean isIncrement = node.get(1).token.type == PLUS_PLUS;
+        return PropertyAccess.postIncDec(node.get(0), context, isIncrement);
     }
 
     private static Object evalMathPreExpr(Node node, CoreContext context) {
-        PropertyAccess prop = new PropertyAccess(node.get(1).getFirst(), context);
-        final Object value = prop.get();
+        Node exprNode = node.get(1).getFirst();
         return switch (node.get(0).token.type) {
-            case PLUS_PLUS -> {
-                prop.set(Terms.add(value, 1));
-                yield prop.get();
-            }
-            case MINUS_MINUS -> {
-                prop.set(terms(value, 1).min());
-                yield prop.get();
-            }
-            case MINUS -> terms(value, -1).mul();
-            case PLUS -> Terms.objectToNumber(value);
+            case PLUS_PLUS -> PropertyAccess.preIncDec(exprNode, context, true);
+            case MINUS_MINUS -> PropertyAccess.preIncDec(exprNode, context, false);
+            case MINUS -> terms(eval(exprNode, context), -1).mul();
+            case PLUS -> Terms.objectToNumber(eval(exprNode, context));
             default -> throw new RuntimeException("unexpected operator: " + node.getFirst());
         };
     }
@@ -1115,7 +1075,7 @@ class Interpreter {
             case PAREN_EXPR -> evalExpr(node.get(1), context);
             case PROGRAM -> evalProgram(node, context);
             case REF_EXPR -> evalRefExpr(node, context);
-            case REF_BRACKET_EXPR, REF_DOT_EXPR -> new PropertyAccess(node, context).get();
+            case REF_BRACKET_EXPR, REF_DOT_EXPR -> PropertyAccess.get(node, context);
             case RETURN_STMT -> evalReturnStmt(node, context);
             case STATEMENT -> evalStatement(node, context);
             case SWITCH_STMT -> evalSwitchStmt(node, context);

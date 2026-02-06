@@ -25,13 +25,11 @@ package io.karatelabs.match;
 
 import io.karatelabs.common.Json;
 import io.karatelabs.js.Context;
-import io.karatelabs.js.ContextScope;
 import io.karatelabs.js.JavaCallable;
 import io.karatelabs.js.JsRegex;
 import io.karatelabs.js.SimpleObject;
 import io.karatelabs.js.Terms;
 import io.karatelabs.parser.Node;
-import io.karatelabs.parser.NodeType;
 
 import java.util.List;
 import java.util.Map;
@@ -125,11 +123,9 @@ public class Expect implements SimpleObject {
             return null;
         }
         try {
-            Node node;
-            if (context.getScope().equals(ContextScope.ROOT)) {
-                node = context.getCurrentNode().findParent(NodeType.EXPR_LIST);
-            } else {
-                node = context.getNode().getParent();
+            Node node = context.getNode();
+            if (node != null) {
+                node = node.getParent();
             }
             return node != null ? node.getTextIncludingWhitespace() : null;
         } catch (Exception e) {

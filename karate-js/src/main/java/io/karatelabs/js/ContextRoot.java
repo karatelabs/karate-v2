@@ -36,7 +36,6 @@ class ContextRoot extends CoreContext {
 
     Consumer<String> onConsoleLog;
 
-    Node currentNode;
     ContextListener listener;
     ExternalBridge bridge;
     RunInterceptor<?> interceptor;
@@ -53,11 +52,6 @@ class ContextRoot extends CoreContext {
     @Override
     public Engine getEngine() {
         return engine;
-    }
-
-    @Override
-    public Node getCurrentNode() {
-        return currentNode;
     }
 
     @Override

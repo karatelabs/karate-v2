@@ -32,124 +32,427 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Static utility methods for property access operations.
+ * Avoids object allocation by using static methods instead of instance-based approach.
+ */
 @SuppressWarnings("unchecked")
 class PropertyAccess {
 
     static final Logger logger = LoggerFactory.getLogger(PropertyAccess.class);
 
-    final Node node;
-    final Object object;
-    final CoreContext context;
-    final boolean functionCall;
+    private PropertyAccess() {} // Prevent instantiation
 
-    boolean optional;
-    String name;
-    Object index;
+    //=== Simple get/set operations ===
 
-    PropertyAccess(Node node, CoreContext context) {
-        this(node, context, false);
+    /**
+     * Get a property value from a node expression.
+     */
+    static Object get(Node node, CoreContext context) {
+                return switch (node.type) {
+            case REF_EXPR -> getRefExpr(node, context, false);
+            case REF_DOT_EXPR -> getRefDotExpr(node, context, false);
+            case REF_BRACKET_EXPR -> getRefBracketExpr(node, context, false);
+            case LIT_EXPR -> Interpreter.eval(node, context);
+            case PAREN_EXPR -> Interpreter.eval(node.get(1), context);
+            case FN_CALL_EXPR -> Interpreter.eval(node, context);
+            default -> throw new RuntimeException("cannot get from: " + node);
+        };
     }
 
-    PropertyAccess(Node node, CoreContext context, boolean functionCall) {
-        this.node = node;
-        this.context = context;
-        this.functionCall = functionCall;
-        context.root.currentNode = node;
-        switch (node.type) {
-            case REF_EXPR:
-                object = null;
-                name = node.getText();
-                break;
-            case REF_DOT_EXPR:
-                Object tempObject;
-                if (node.get(1).type == NodeType.TOKEN) { // normal dot or optional
-                    optional = node.get(1).token.type == TokenType.QUES_DOT;
-                    name = node.get(2).getText();
-                    try {
-                        tempObject = Interpreter.eval(node.getFirst(), context);
-                    } catch (Exception e) {
-                        if (context.root.bridge != null) {
-                            // try java interop
-                            String base = node.getFirst().getText();
-                            String path = base + "." + name;
-                            ExternalAccess ja = context.root.bridge.forType(path);
-                            if (ja != null) {
-                                tempObject = ja;
-                                name = null;
-                            } else {
-                                tempObject = context.root.bridge.forType(base);
-                            }
-                        } else {
-                            tempObject = null;
-                        }
-                        if (tempObject == null) {
-                            throw new RuntimeException("expression: " + node.getFirst().getText() + " - " + e.getMessage());
-                        }
-                    }
-                } else {
-                    optional = true;
-                    if (node.get(1).type == NodeType.REF_BRACKET_EXPR) { // optional bracket
-                        tempObject = Interpreter.eval(node.getFirst(), context);
-                        index = Interpreter.eval(node.get(1).get(2), context);
-                    } else { // optional function call
-                        tempObject = Interpreter.eval(node.getFirst(), context); // evalFnCall
-                    }
-                }
-                if (functionCall) {
-                    Object tempJsValue = Terms.toJsValue(tempObject);
-                    if (tempJsValue != null) {
-                        tempObject = tempJsValue;
-                    }
-                }
-                object = tempObject;
-                break;
-            case REF_BRACKET_EXPR:
-                object = Interpreter.eval(node.getFirst(), context);
-                index = Interpreter.eval(node.get(2), context);
-                break;
-            case LIT_EXPR: // so MATH_PRE_EXP can call set() to update variable value
-                object = Interpreter.eval(node, context);
-                break;
-            case PAREN_EXPR: // expression wrapped in round brackets that is invoked as a function, e.g., iife
-                object = Interpreter.eval(node.get(1), context);
-                break;
-            case FN_CALL_EXPR: // currying
-                object = Interpreter.eval(node, context);
-                break;
-            default:
-                throw new RuntimeException("cannot assign from: " + node);
+    /**
+     * Get a callable and its receiver (this object) for method invocation.
+     * Returns a 2-element array: [callable, receiver].
+     * For method calls like obj.method(), receiver is obj.
+     * For direct calls like foo(), receiver is null.
+     */
+    static Object[] getCallable(Node node, CoreContext context) {
+                return switch (node.type) {
+            case REF_EXPR -> new Object[]{getRefExpr(node, context, true), null};
+            case REF_DOT_EXPR -> getCallableRefDotExpr(node, context);
+            case REF_BRACKET_EXPR -> getCallableRefBracketExpr(node, context);
+            case PAREN_EXPR -> new Object[]{Interpreter.eval(node.get(1), context), null};
+            case FN_CALL_EXPR -> new Object[]{Interpreter.eval(node, context), null};
+            default -> throw new RuntimeException("cannot call: " + node);
+        };
+    }
+
+    /**
+     * Set a property value on a node expression.
+     */
+    static void set(Node node, CoreContext context, Object value) {
+                switch (node.type) {
+            case REF_EXPR -> context.update(node.getText(), value);
+            case REF_DOT_EXPR -> setRefDotExpr(node, context, value);
+            case REF_BRACKET_EXPR -> setRefBracketExpr(node, context, value);
+            default -> throw new RuntimeException("cannot set on: " + node);
         }
     }
 
-    void set(Object value) {
+    //=== Compound operations (get + modify + set) ===
+
+    /**
+     * Compound assignment: obj.x op= value (e.g., +=, -=, *=, etc.)
+     * Evaluates the base expression once, then applies the operation.
+     * Returns the new value.
+     */
+    static Object compound(Node node, CoreContext context, TokenType operator, Object operand) {
+                return switch (node.type) {
+            case REF_EXPR -> {
+                String name = node.getText();
+                Object oldValue = context.get(name);
+                Object newValue = applyOperator(oldValue, operator, operand);
+                context.update(name, newValue);
+                yield newValue;
+            }
+            case REF_DOT_EXPR -> compoundRefDotExpr(node, context, operator, operand);
+            case REF_BRACKET_EXPR -> compoundRefBracketExpr(node, context, operator, operand);
+            default -> throw new RuntimeException("cannot apply compound assignment to: " + node);
+        };
+    }
+
+    /**
+     * Post-increment/decrement: returns old value, updates variable.
+     */
+    static Object postIncDec(Node node, CoreContext context, boolean isIncrement) {
+                return switch (node.type) {
+            case REF_EXPR -> {
+                String name = node.getText();
+                Object oldValue = context.get(name);
+                Object newValue = isIncrement ? Terms.add(oldValue, 1) : new Terms(oldValue, 1).min();
+                context.update(name, newValue);
+                yield oldValue;
+            }
+            case REF_DOT_EXPR -> postIncDecRefDotExpr(node, context, isIncrement);
+            case REF_BRACKET_EXPR -> postIncDecRefBracketExpr(node, context, isIncrement);
+            case LIT_EXPR -> {
+                // Handle literals like (x)++ where x is wrapped
+                Object oldValue = Interpreter.eval(node, context);
+                yield oldValue; // Can't actually modify a literal result
+            }
+            default -> throw new RuntimeException("cannot apply post inc/dec to: " + node);
+        };
+    }
+
+    /**
+     * Pre-increment/decrement: updates variable, returns new value.
+     */
+    static Object preIncDec(Node node, CoreContext context, boolean isIncrement) {
+                return switch (node.type) {
+            case REF_EXPR -> {
+                String name = node.getText();
+                Object oldValue = context.get(name);
+                Object newValue = isIncrement ? Terms.add(oldValue, 1) : new Terms(oldValue, 1).min();
+                context.update(name, newValue);
+                yield newValue;
+            }
+            case REF_DOT_EXPR -> preIncDecRefDotExpr(node, context, isIncrement);
+            case REF_BRACKET_EXPR -> preIncDecRefBracketExpr(node, context, isIncrement);
+            default -> throw new RuntimeException("cannot apply pre inc/dec to: " + node);
+        };
+    }
+
+    /**
+     * Delete a property. Returns true on success.
+     */
+    static boolean delete(Node node, CoreContext context) {
+                return switch (node.type) {
+            case REF_EXPR -> false; // Can't delete variables
+            case REF_DOT_EXPR -> deleteRefDotExpr(node, context);
+            case REF_BRACKET_EXPR -> deleteRefBracketExpr(node, context);
+            default -> false;
+        };
+    }
+
+    //=== Private implementation methods ===
+
+    private static Object getRefExpr(Node node, CoreContext context, boolean functionCall) {
+        String name = node.getText();
+        if (context.hasKey(name)) {
+            Object result = context.get(name);
+            if (functionCall && context.root.bridge != null && result instanceof ExternalAccess ea) {
+                return (JsCallable) (c, args) -> ea.construct(args);
+            }
+            return result;
+        }
+        throw new RuntimeException(name + " is not defined");
+    }
+
+    private static Object getRefDotExpr(Node node, CoreContext context, boolean functionCall) {
+        String name;
+        Object object;
+        boolean optional;
+
+        if (node.get(1).type == NodeType.TOKEN) {
+            optional = node.get(1).token.type == TokenType.QUES_DOT;
+            name = node.get(2).getText();
+            try {
+                object = Interpreter.eval(node.getFirst(), context);
+            } catch (Exception e) {
+                if (context.root.bridge != null) {
+                    String base = node.getFirst().getText();
+                    String path = base + "." + name;
+                    ExternalAccess ja = context.root.bridge.forType(path);
+                    if (ja != null) {
+                        if (functionCall) {
+                            return (JsCallable) (c, args) -> ja.construct(args);
+                        }
+                        return ja;
+                    }
+                    object = context.root.bridge.forType(base);
+                } else {
+                    object = null;
+                }
+                if (object == null) {
+                    throw new RuntimeException("expression: " + node.getFirst().getText() + " - " + e.getMessage());
+                }
+            }
+        } else {
+            optional = true;
+            if (node.get(1).type == NodeType.REF_BRACKET_EXPR) {
+                object = Interpreter.eval(node.getFirst(), context);
+                Object index = Interpreter.eval(node.get(1).get(2), context);
+                return getByIndex(object, index, optional, context, functionCall);
+            } else {
+                object = Interpreter.eval(node.getFirst(), context);
+                name = null;
+            }
+        }
+
+        if (functionCall) {
+            Object jsValue = Terms.toJsValue(object);
+            if (jsValue != null) {
+                object = jsValue;
+            }
+        }
+
+        if (name == null) {
+            if (functionCall && context.root.bridge != null && object instanceof ExternalAccess ea) {
+                return (JsCallable) (c, args) -> ea.construct(args);
+            }
+            return object;
+        }
+
+        return getByName(object, name, optional, context, functionCall);
+    }
+
+    private static Object getRefBracketExpr(Node node, CoreContext context, boolean functionCall) {
+        Object object = Interpreter.eval(node.getFirst(), context);
+        Object index = Interpreter.eval(node.get(2), context);
+        return getByIndex(object, index, false, context, functionCall);
+    }
+
+    private static Object[] getCallableRefDotExpr(Node node, CoreContext context) {
+        String name;
+        Object object;
+        boolean optional;
+
+        if (node.get(1).type == NodeType.TOKEN) {
+            optional = node.get(1).token.type == TokenType.QUES_DOT;
+            name = node.get(2).getText();
+            try {
+                object = Interpreter.eval(node.getFirst(), context);
+            } catch (Exception e) {
+                if (context.root.bridge != null) {
+                    String base = node.getFirst().getText();
+                    String path = base + "." + name;
+                    ExternalAccess ja = context.root.bridge.forType(path);
+                    if (ja != null) {
+                        return new Object[]{(JsCallable) (c, args) -> ja.construct(args), null};
+                    }
+                    object = context.root.bridge.forType(base);
+                } else {
+                    object = null;
+                }
+                if (object == null) {
+                    throw new RuntimeException("expression: " + node.getFirst().getText() + " - " + e.getMessage());
+                }
+            }
+            // Handle optional chaining: obj?.method() where obj is null/undefined
+            if (optional && (object == null || object == Terms.UNDEFINED)) {
+                return new Object[]{Terms.UNDEFINED, null};
+            }
+        } else {
+            optional = true;
+            if (node.get(1).type == NodeType.REF_BRACKET_EXPR) {
+                object = Interpreter.eval(node.getFirst(), context);
+                if (optional && (object == null || object == Terms.UNDEFINED)) {
+                    return new Object[]{Terms.UNDEFINED, null};
+                }
+                Object index = Interpreter.eval(node.get(1).get(2), context);
+                return new Object[]{getByIndex(object, index, true, context, true), object};
+            } else {
+                object = Interpreter.eval(node.getFirst(), context);
+                if (optional && (object == null || object == Terms.UNDEFINED)) {
+                    return new Object[]{Terms.UNDEFINED, null};
+                }
+                name = null;
+            }
+        }
+
+        Object jsValue = Terms.toJsValue(object);
+        if (jsValue != null) {
+            object = jsValue;
+        }
+
+        if (name == null) {
+            if (context.root.bridge != null && object instanceof ExternalAccess ea) {
+                return new Object[]{(JsCallable) (c, args) -> ea.construct(args), null};
+            }
+            return new Object[]{object, null};
+        }
+
+        return new Object[]{getByName(object, name, optional, context, true), object};
+    }
+
+    private static Object[] getCallableRefBracketExpr(Node node, CoreContext context) {
+        Object object = Interpreter.eval(node.getFirst(), context);
+        Object index = Interpreter.eval(node.get(2), context);
+        return new Object[]{getByIndex(object, index, false, context, true), object};
+    }
+
+    private static Object getByIndex(Object object, Object index, boolean optional,
+                                      CoreContext context, boolean functionCall) {
+        if (!functionCall && index instanceof Number n) {
+            int i = n.intValue();
+            if (object == null || object == Terms.UNDEFINED) {
+                if (optional) return Terms.UNDEFINED;
+                throw new RuntimeException("cannot read properties of " + object + " (reading '[" + i + "]')");
+            }
+            if (object instanceof JsArray array) {
+                return array.getElement(i);
+            }
+            if (object instanceof List<?> list) {
+                if (i < 0 || i >= list.size()) return Terms.UNDEFINED;
+                return list.get(i);
+            }
+            if (object instanceof String s) {
+                if (i < 0 || i >= s.length()) return Terms.UNDEFINED;
+                return s.substring(i, i + 1);
+            }
+            if (object instanceof byte[] bytes) {
+                if (i < 0 || i >= bytes.length) return Terms.UNDEFINED;
+                return bytes[i] & 0xFF;
+            }
+            ObjectLike converted = Terms.toObjectLike(object);
+            if (converted instanceof JsArray jsArray) {
+                return jsArray.getElement(i);
+            }
+            if (object instanceof Map || object instanceof ObjectLike) {
+                return getByName(object, String.valueOf(index), optional, context, functionCall);
+            }
+            throw new RuntimeException("get by index [" + i + "] for non-array: " + object);
+        }
+        return getByName(object, String.valueOf(index), optional, context, functionCall);
+    }
+
+    private static Object getByName(Object object, String name, boolean optional,
+                                     CoreContext context, boolean functionCall) {
+        if (object == null || object == Terms.UNDEFINED) {
+            if (context.hasKey(name)) {
+                Object result = context.get(name);
+                if (functionCall && context.root.bridge != null && result instanceof ExternalAccess ea) {
+                    return (JsCallable) (c, args) -> ea.construct(args);
+                }
+                return result;
+            }
+            if (optional) return Terms.UNDEFINED;
+            throw new RuntimeException("cannot read properties of " + object + " (reading '" + name + "')");
+        }
+
+        if (object instanceof JsObject jsObj) {
+            if (jsObj.containsKey(name)) {
+                return jsObj.getMember(name);
+            }
+            Object result = jsObj.getMember(name);
+            if (isFound(result)) return result;
+            return Terms.UNDEFINED;
+        } else if (object instanceof JsArray jsArr) {
+            Object result = jsArr.getMember(name);
+            if (isFound(result)) return result;
+            return Terms.UNDEFINED;
+        } else if (object instanceof ObjectLike ol) {
+            Object result = ol.getMember(name);
+            if (isFound(result)) return result;
+        } else if (object instanceof Map) {
+            Map<String, Object> map = (Map<String, Object>) object;
+            if (map.containsKey(name)) return map.get(name);
+            Object result = new JsObject(map).getMember(name);
+            if (result != null) return result;
+        } else if (object instanceof List) {
+            ObjectLike ol = Terms.toObjectLike(object);
+            if (ol != null) {
+                Object result = ol.getMember(name);
+                if (isFound(result)) return result;
+            }
+        } else {
+            ObjectLike ol = Terms.toObjectLike(object);
+            if (ol != null) {
+                Object result = ol.getMember(name);
+                if (isFound(result)) return result;
+            }
+        }
+
+        if (object instanceof JsCallable callable) {
+            return new JsFunction() {
+                @Override
+                public Object call(Context context, Object... args) {
+                    return callable.call(context, args);
+                }
+            }.getMember(name);
+        }
+
+        return accessViaBridge(object, name, context, functionCall);
+    }
+
+    private static void setRefDotExpr(Node node, CoreContext context, Object value) {
+        String name;
+        Object object;
+
+        if (node.get(1).type == NodeType.TOKEN) {
+            name = node.get(2).getText();
+            object = Interpreter.eval(node.getFirst(), context);
+        } else if (node.get(1).type == NodeType.REF_BRACKET_EXPR) {
+            object = Interpreter.eval(node.getFirst(), context);
+            Object index = Interpreter.eval(node.get(1).get(2), context);
+            setByIndex(object, index, value, context);
+            return;
+        } else {
+            throw new RuntimeException("cannot set on optional call expression");
+        }
+
+        setByName(object, name, value, context);
+    }
+
+    private static void setRefBracketExpr(Node node, CoreContext context, Object value) {
+        Object object = Interpreter.eval(node.getFirst(), context);
+        Object index = Interpreter.eval(node.get(2), context);
+        setByIndex(object, index, value, context);
+    }
+
+    private static void setByIndex(Object object, Object index, Object value, CoreContext context) {
         if (index instanceof Number n) {
-            // TODO out of bounds handling, unify iterable
-            if (object instanceof List) { // most common case
-                ((List<Object>) object).set(n.intValue(), value);
+            int i = n.intValue();
+            if (object instanceof List) {
+                ((List<Object>) object).set(i, value);
                 return;
             } else if (object instanceof byte[] bytes) {
                 if (value instanceof Number v) {
-                    bytes[n.intValue()] = (byte) (v.intValue() & 0xFF);
+                    bytes[i] = (byte) (v.intValue() & 0xFF);
                 }
                 return;
-            } else if (object instanceof Map || object instanceof ObjectLike) {
-                // For objects, convert numeric index to string for property access
-                name = index + "";
-            } else {
-                throw new RuntimeException("cannot set by index [" + index + "]:" + value + " on (non-array): " + object);
-            }
-        } else {
-            if (index != null) {
-                name = index + "";
             }
         }
+        setByName(object, String.valueOf(index), value, context);
+    }
+
+    private static void setByName(Object object, String name, Object value, CoreContext context) {
         if (name == null) {
             throw new RuntimeException("unexpected set [null]:" + value + " on: " + object);
         }
         if (object == null) {
             context.update(name, value);
         } else if (object instanceof ObjectLike objectLike) {
-            // Check ObjectLike BEFORE Map (JsObject implements Map)
             objectLike.putMember(name, value);
         } else if (object instanceof Map) {
             ((Map<String, Object>) object).put(name, value);
@@ -166,152 +469,204 @@ class PropertyAccess {
                 throw new RuntimeException("cannot set '" + name + "'");
             }
         } else {
-            throw new RuntimeException("cannot set '" + name + "' - " + node.getText());
+            throw new RuntimeException("cannot set '" + name + "'");
         }
     }
 
-    Object get() {
-        if (!functionCall && index instanceof Number n) {
-            int i = n.intValue();
-            if (object == null || object == Terms.UNDEFINED) {
-                if (optional) {
-                    return Terms.UNDEFINED;
-                }
-                throw new RuntimeException("cannot read properties of " + object + " (reading '[" + i + "]')");
-            }
-            // Check JsArray BEFORE List (JsArray implements List)
-            if (object instanceof JsArray array) {
-                // JsArray.getElement(int) returns raw values for JS internal use
-                return array.getElement(i);
-            }
-            if (object instanceof List<?> list) {
-                // Plain Java List - return undefined for out of bounds access (JS behavior)
-                if (i < 0 || i >= list.size()) {
-                    return Terms.UNDEFINED;
-                }
-                return list.get(i);
-            }
-            if (object instanceof String s) {
-                if (i < 0 || i >= s.length()) {
-                    return Terms.UNDEFINED;
-                }
-                return s.substring(i, i + 1);
-            }
-            if (object instanceof byte[] bytes) {
-                if (i < 0 || i >= bytes.length) {
-                    return Terms.UNDEFINED;
-                }
-                return bytes[i] & 0xFF;
-            }
-            // Handle Java native arrays via toObjectLike conversion to JsArray
-            ObjectLike converted = Terms.toObjectLike(object);
-            if (converted instanceof JsArray jsArray) {
-                return jsArray.getElement(i);
-            }
-            // For objects (Map, ObjectLike), convert numeric index to string for property access
-            if (object instanceof Map || object instanceof ObjectLike) {
-                name = index + "";
-            } else {
-                throw new RuntimeException("get by index [" + i + "] for non-array: " + object);
-            }
-        } else if (index != null) {
-            name = index + "";
-        }
-        if (name == null) {
-            if (functionCall && context.root.bridge != null && object instanceof ExternalAccess ea) {
-                return (JsCallable) (c, args) -> ea.construct(args);
-            }
-            return object;
-        }
-        if (object == null || object == Terms.UNDEFINED) {
-            if (context.hasKey(name)) {
-                Object result = context.get(name);
-                if (functionCall && context.root.bridge != null && result instanceof ExternalAccess ea) {
-                    return (JsCallable) (c, args) -> ea.construct(args);
-                }
-                return result;
-            }
-            if (optional) {
-                return Terms.UNDEFINED;
-            }
-            throw new RuntimeException("cannot read properties of " + object + " (reading '" + name + "')");
-        }
-        // Check JsObject/JsArray BEFORE generic ObjectLike/Map
-        // This ensures prototype chain lookup and raw value access for JS internals
-        if (object instanceof JsObject jsObj) {
-            // For JsObject, check if key exists to distinguish null from undefined
-            if (jsObj.containsKey(name)) {
-                return jsObj.getMember(name);  // Returns raw value including null
-            }
-            // Check prototype chain
-            Object result = jsObj.getMember(name);
-            if (isFound(result)) {
-                return result;
-            }
-            return Terms.UNDEFINED;
-        } else if (object instanceof JsArray jsArr) {
-            Object result = jsArr.getMember(name);
-            if (isFound(result)) {
-                return result;
-            }
-            return Terms.UNDEFINED;
-        } else if (object instanceof ObjectLike ol) {
-            Object result = ol.getMember(name);
-            if (isFound(result)) {
-                return result;
-            }
-            // For other ObjectLike (JavaObject, SimpleObject), fall through to external bridge
-        } else if (object instanceof Map) {
-            // Plain Java Map - check direct key access first, then prototype
-            Map<String, Object> map = (Map<String, Object>) object;
-            if (map.containsKey(name)) {
-                return map.get(name);
-            }
-            Object result = new JsObject(map).getMember(name);
-            if (result != null) {
-                return result;
-            }
-            // fallthrough to external bridge for Java interop (e.g., Properties.put())
-        } else if (object instanceof List) {
-            // Plain Java List - convert to ObjectLike for property access
-            ObjectLike ol = Terms.toObjectLike(object);
-            if (ol != null) {
-                Object result = ol.getMember(name);
-                if (isFound(result)) {
-                    return result;
-                }
-            }
-            // fallthrough to external bridge for Java method access
+    //=== Compound operation implementations ===
+
+    private static Object compoundRefDotExpr(Node node, CoreContext context, TokenType operator, Object operand) {
+        String name;
+        Object object;
+
+        if (node.get(1).type == NodeType.TOKEN) {
+            name = node.get(2).getText();
+            object = Interpreter.eval(node.getFirst(), context);
+        } else if (node.get(1).type == NodeType.REF_BRACKET_EXPR) {
+            object = Interpreter.eval(node.getFirst(), context);
+            Object index = Interpreter.eval(node.get(1).get(2), context);
+            return compoundByIndex(object, index, operator, operand, context);
         } else {
-            // Other objects (primitives, POJOs, ExternalAccess like JavaType)
-            ObjectLike ol = Terms.toObjectLike(object);
-            if (ol != null) {
-                Object result = ol.getMember(name);
-                if (isFound(result)) {
-                    return result;
-                }
+            throw new RuntimeException("cannot apply compound assignment to optional call");
+        }
+
+        return compoundByName(object, name, operator, operand, context);
+    }
+
+    private static Object compoundRefBracketExpr(Node node, CoreContext context, TokenType operator, Object operand) {
+        Object object = Interpreter.eval(node.getFirst(), context);
+        Object index = Interpreter.eval(node.get(2), context);
+        return compoundByIndex(object, index, operator, operand, context);
+    }
+
+    private static Object compoundByIndex(Object object, Object index, TokenType operator, Object operand, CoreContext context) {
+        if (index instanceof Number n) {
+            int i = n.intValue();
+            if (object instanceof List) {
+                List<Object> list = (List<Object>) object;
+                Object oldValue = i < list.size() ? list.get(i) : Terms.UNDEFINED;
+                Object newValue = applyOperator(oldValue, operator, operand);
+                list.set(i, newValue);
+                return newValue;
             }
-            // For primitives without a bridge, return undefined
-            // POJOs and ExternalAccess fall through to the bridge
         }
-        if (object instanceof JsCallable callable) {
-            // e.g. [].map.call([1, 2, 3], x => x * 2)
-            // we wrap in a JsFunction, so that prototype methods can be looked-up by get(name)
-            return new JsFunction() {
-                @Override
-                public Object call(Context context, Object... args) {
-                    return callable.call(context, args);
-                }
-            }.getMember(name);
+        return compoundByName(object, String.valueOf(index), operator, operand, context);
+    }
+
+    private static Object compoundByName(Object object, String name, TokenType operator, Object operand, CoreContext context) {
+        Object oldValue = getByName(object, name, false, context, false);
+        Object newValue = applyOperator(oldValue, operator, operand);
+        setByName(object, name, newValue, context);
+        return newValue;
+    }
+
+    private static Object postIncDecRefDotExpr(Node node, CoreContext context, boolean isIncrement) {
+        String name;
+        Object object;
+
+        if (node.get(1).type == NodeType.TOKEN) {
+            name = node.get(2).getText();
+            object = Interpreter.eval(node.getFirst(), context);
+        } else if (node.get(1).type == NodeType.REF_BRACKET_EXPR) {
+            object = Interpreter.eval(node.getFirst(), context);
+            Object index = Interpreter.eval(node.get(1).get(2), context);
+            return postIncDecByIndex(object, index, isIncrement, context);
+        } else {
+            throw new RuntimeException("cannot apply inc/dec to optional call");
         }
-        return accessViaBridge(name);
+
+        return postIncDecByName(object, name, isIncrement, context);
+    }
+
+    private static Object postIncDecRefBracketExpr(Node node, CoreContext context, boolean isIncrement) {
+        Object object = Interpreter.eval(node.getFirst(), context);
+        Object index = Interpreter.eval(node.get(2), context);
+        return postIncDecByIndex(object, index, isIncrement, context);
+    }
+
+    private static Object postIncDecByIndex(Object object, Object index, boolean isIncrement, CoreContext context) {
+        if (index instanceof Number n) {
+            int i = n.intValue();
+            if (object instanceof List) {
+                List<Object> list = (List<Object>) object;
+                Object oldValue = i < list.size() ? list.get(i) : Terms.UNDEFINED;
+                Object newValue = isIncrement ? Terms.add(oldValue, 1) : new Terms(oldValue, 1).min();
+                list.set(i, newValue);
+                return oldValue;
+            }
+        }
+        return postIncDecByName(object, String.valueOf(index), isIncrement, context);
+    }
+
+    private static Object postIncDecByName(Object object, String name, boolean isIncrement, CoreContext context) {
+        Object oldValue = getByName(object, name, false, context, false);
+        Object newValue = isIncrement ? Terms.add(oldValue, 1) : new Terms(oldValue, 1).min();
+        setByName(object, name, newValue, context);
+        return oldValue;
+    }
+
+    private static Object preIncDecRefDotExpr(Node node, CoreContext context, boolean isIncrement) {
+        String name;
+        Object object;
+
+        if (node.get(1).type == NodeType.TOKEN) {
+            name = node.get(2).getText();
+            object = Interpreter.eval(node.getFirst(), context);
+        } else if (node.get(1).type == NodeType.REF_BRACKET_EXPR) {
+            object = Interpreter.eval(node.getFirst(), context);
+            Object index = Interpreter.eval(node.get(1).get(2), context);
+            return preIncDecByIndex(object, index, isIncrement, context);
+        } else {
+            throw new RuntimeException("cannot apply inc/dec to optional call");
+        }
+
+        return preIncDecByName(object, name, isIncrement, context);
+    }
+
+    private static Object preIncDecRefBracketExpr(Node node, CoreContext context, boolean isIncrement) {
+        Object object = Interpreter.eval(node.getFirst(), context);
+        Object index = Interpreter.eval(node.get(2), context);
+        return preIncDecByIndex(object, index, isIncrement, context);
+    }
+
+    private static Object preIncDecByIndex(Object object, Object index, boolean isIncrement, CoreContext context) {
+        if (index instanceof Number n) {
+            int i = n.intValue();
+            if (object instanceof List) {
+                List<Object> list = (List<Object>) object;
+                Object oldValue = i < list.size() ? list.get(i) : Terms.UNDEFINED;
+                Object newValue = isIncrement ? Terms.add(oldValue, 1) : new Terms(oldValue, 1).min();
+                list.set(i, newValue);
+                return newValue;
+            }
+        }
+        return preIncDecByName(object, String.valueOf(index), isIncrement, context);
+    }
+
+    private static Object preIncDecByName(Object object, String name, boolean isIncrement, CoreContext context) {
+        Object oldValue = getByName(object, name, false, context, false);
+        Object newValue = isIncrement ? Terms.add(oldValue, 1) : new Terms(oldValue, 1).min();
+        setByName(object, name, newValue, context);
+        return newValue;
+    }
+
+    private static boolean deleteRefDotExpr(Node node, CoreContext context) {
+        String name;
+        Object object;
+
+        if (node.get(1).type == NodeType.TOKEN) {
+            name = node.get(2).getText();
+            object = Interpreter.eval(node.getFirst(), context);
+        } else if (node.get(1).type == NodeType.REF_BRACKET_EXPR) {
+            object = Interpreter.eval(node.getFirst(), context);
+            Object index = Interpreter.eval(node.get(1).get(2), context);
+            return deleteByKey(object, String.valueOf(index));
+        } else {
+            return false;
+        }
+
+        return deleteByKey(object, name);
+    }
+
+    private static boolean deleteRefBracketExpr(Node node, CoreContext context) {
+        Object object = Interpreter.eval(node.getFirst(), context);
+        Object index = Interpreter.eval(node.get(2), context);
+        return deleteByKey(object, String.valueOf(index));
+    }
+
+    private static boolean deleteByKey(Object object, String key) {
+        if (object instanceof ObjectLike ol) {
+            ol.removeMember(key);
+            return true;
+        } else if (object instanceof Map<?, ?> map) {
+            ((Map<String, Object>) map).remove(key);
+            return true;
+        }
+        return false;
+    }
+
+    //=== Helper methods ===
+
+    private static Object applyOperator(Object oldValue, TokenType operator, Object operand) {
+        return switch (operator) {
+            case PLUS_EQ -> Terms.add(oldValue, operand);
+            case MINUS_EQ -> new Terms(oldValue, operand).min();
+            case STAR_EQ -> new Terms(oldValue, operand).mul();
+            case SLASH_EQ -> new Terms(oldValue, operand).div();
+            case PERCENT_EQ -> new Terms(oldValue, operand).mod();
+            case STAR_STAR_EQ -> new Terms(oldValue, operand).exp();
+            case GT_GT_EQ -> new Terms(oldValue, operand).bitShiftRight();
+            case LT_LT_EQ -> new Terms(oldValue, operand).bitShiftLeft();
+            case GT_GT_GT_EQ -> new Terms(oldValue, operand).bitShiftRightUnsigned();
+            default -> throw new RuntimeException("unexpected operator: " + operator);
+        };
     }
 
     private static boolean isFound(Object result) {
         return result != null && result != Terms.UNDEFINED;
     }
 
-    private Object accessViaBridge(String name) {
+    private static Object accessViaBridge(Object object, String name, CoreContext context, boolean functionCall) {
         if (context.root.bridge == null) {
             return Terms.UNDEFINED;
         }
@@ -325,4 +680,3 @@ class PropertyAccess {
     }
 
 }
-

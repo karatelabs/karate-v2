@@ -572,4 +572,107 @@ class EngineTest {
         assertEquals("changed", engine.evalWith("localNull = 'changed'; localNull", vars));
     }
 
+    @Test
+    void testContextListenerExpressionTracking() {
+        Engine engine = new Engine();
+        List<Node> expressionNodes = new ArrayList<>();
+
+        engine.setListener(new ContextListener() {
+            @Override
+            public void onEvent(Event event) {
+                if (event.type == EventType.EXPRESSION_ENTER) {
+                    expressionNodes.add(event.node);
+                }
+            }
+        });
+
+        // Evaluate a simple expression
+        engine.eval("1 + 2");
+        assertFalse(expressionNodes.isEmpty(), "Should capture at least one expression");
+
+        // Check that we can find EXPR_LIST parent
+        Node lastNode = expressionNodes.get(expressionNodes.size() - 1);
+        Node exprList = lastNode.findParent(NodeType.EXPR_LIST);
+        assertNotNull(exprList, "Should find EXPR_LIST parent. Node type: " + lastNode.type);
+        assertTrue(exprList.getTextIncludingWhitespace().contains("1 + 2"),
+            "EXPR_LIST should contain the source. Got: " + exprList.getTextIncludingWhitespace());
+    }
+
+    @Test
+    void testContextListenerAssignmentTracking() {
+        Engine engine = new Engine();
+        List<Node> expressionNodes = new ArrayList<>();
+
+        // Create a simple object to assign to
+        engine.eval("var obj = {}");
+
+        engine.setListener(new ContextListener() {
+            @Override
+            public void onEvent(Event event) {
+                if (event.type == EventType.EXPRESSION_ENTER) {
+                    expressionNodes.add(event.node);
+                }
+            }
+        });
+
+        // Evaluate an assignment expression (similar to tests['foo'] = true)
+        expressionNodes.clear();
+        engine.eval("obj['foo'] = 1 + 1 === 2");
+
+        assertFalse(expressionNodes.isEmpty(), "Should capture expressions");
+
+        // The last expression should be able to find its EXPR_LIST parent
+        Node lastNode = expressionNodes.get(expressionNodes.size() - 1);
+        Node exprList = lastNode.findParent(NodeType.EXPR_LIST);
+
+        // Debug output
+        logger.info("Last node type: {}", lastNode.type);
+        logger.info("Last node text: {}", lastNode.getTextIncludingWhitespace());
+        if (exprList != null) {
+            logger.info("EXPR_LIST text: {}", exprList.getTextIncludingWhitespace());
+        } else {
+            logger.info("EXPR_LIST is null, walking parent chain:");
+            Node parent = lastNode.getParent();
+            while (parent != null) {
+                logger.info("  Parent type: {}", parent.type);
+                parent = parent.getParent();
+            }
+        }
+
+        // Either EXPR_LIST should be found, or we fall back to the expression itself
+        String source = exprList != null ? exprList.getTextIncludingWhitespace() : lastNode.getTextIncludingWhitespace();
+        assertTrue(source.contains("obj['foo']") || source.contains("1 + 1"),
+            "Source should contain the expression. Got: " + source);
+    }
+
+    @Test
+    void testStatementEnterScope() {
+        Engine engine = new Engine();
+        List<Node> statementNodes = new ArrayList<>();
+
+        engine.setListener(new ContextListener() {
+            @Override
+            public void onEvent(Event event) {
+                if (event.type == EventType.STATEMENT_ENTER) {
+                    statementNodes.add(event.node);
+                }
+            }
+        });
+
+        engine.eval("var obj = {}");
+        statementNodes.clear();
+        engine.eval("obj['foo'] = 1 + 1 === 2");
+
+        // Verify root context has ROOT scope
+        assertEquals(ContextScope.ROOT, engine.getRootContext().getScope());
+
+        // Verify STATEMENT_ENTER was captured
+        assertFalse(statementNodes.isEmpty(), "Should capture STATEMENT_ENTER events");
+
+        // For expression statements, the statement node IS the EXPR_LIST
+        Node lastStmt = statementNodes.get(statementNodes.size() - 1);
+        assertEquals(NodeType.EXPR_LIST, lastStmt.type);
+        assertTrue(lastStmt.getTextIncludingWhitespace().contains("obj['foo']"));
+    }
+
 }

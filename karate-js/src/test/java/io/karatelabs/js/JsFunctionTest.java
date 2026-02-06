@@ -209,6 +209,19 @@ class JsFunctionTest extends EvalBase {
     }
 
     @Test
+    void testIifeConstShadowing() {
+        // Verify that const declarations inside IIFE properly shadow outer const
+        Engine engine = new Engine();
+        engine.eval("const testVar = 1;");
+        assertEquals(1, engine.eval("testVar"));
+        // IIFE should create a new scope where const can be redeclared
+        Object result = engine.eval("(function(){ const testVar = 3; return testVar; })()");
+        assertEquals(3, result);
+        // Outer const should still be 1
+        assertEquals(1, engine.eval("testVar"));
+    }
+
+    @Test
     void testCallAndApply() {
         matchEval("function sum(a, b, c){ return a + b + c }; sum(1, 2, 3)", "6");
         matchEval("function sum(a, b, c){ return a + b + c }; sum.call(null, 1, 2, 3)", "6");

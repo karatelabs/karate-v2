@@ -103,11 +103,6 @@ class CoreContext implements Context {
     }
 
     @Override
-    public Node getCurrentNode() {
-        return root.currentNode;
-    }
-
-    @Override
     public Context getParent() {
         return parent;
     }
@@ -203,10 +198,7 @@ class CoreContext implements Context {
         if (functionArgs != null && "arguments".equals(key)) {
             return Arrays.asList(functionArgs);
         }
-        // Check captured bindings first (frozen closure values)
-        if (capturedBindings != null && capturedBindings.containsKey(key)) {
-            return capturedBindings.get(key).value;
-        }
+        // Check local bindings first (local declarations shadow captured closures)
         if (_bindings != null) {
             Object result = _bindings.getMember(key);
             if (result != null || _bindings.hasMember(key)) {
@@ -219,6 +211,10 @@ class CoreContext implements Context {
                 }
                 return result;
             }
+        }
+        // Check captured bindings (closure values from function definition time)
+        if (capturedBindings != null && capturedBindings.containsKey(key)) {
+            return capturedBindings.get(key).value;
         }
         if (parent != null && parent.hasKey(key)) {
             return parent.get(key);
@@ -331,11 +327,12 @@ class CoreContext implements Context {
         if (functionArgs != null && "arguments".equals(key)) {
             return true;
         }
-        // Check captured bindings (frozen closure values)
-        if (capturedBindings != null && capturedBindings.containsKey(key)) {
+        // Check local bindings first (local declarations shadow captured closures)
+        if (_bindings != null && _bindings.hasMember(key)) {
             return true;
         }
-        if (_bindings != null && _bindings.hasMember(key)) {
+        // Check captured bindings (closure values from function definition time)
+        if (capturedBindings != null && capturedBindings.containsKey(key)) {
             return true;
         }
         if (parent != null && parent.hasKey(key)) {
