@@ -45,4 +45,12 @@ public interface Context {
 
     CallInfo getCallInfo();
 
+    Object[] getCallArgs();
+
+    Object getReturnValue();
+
+    Object getErrorThrown();
+
+    ExitType getExitType();
+
 }

@@ -33,9 +33,6 @@ public interface ContextListener {
         return null;
     }
 
-    default void onFunctionCall(Context context, Object[] args) {
-
-    }
 
     default void onVariableWrite(Context context, BindingType type, String name, Object value) {
 

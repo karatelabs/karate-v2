@@ -204,6 +204,41 @@ class JsFunctionTest extends EvalBase {
     }
 
     @Test
+    void testNestedFunctionReturnValue() {
+        // Regression test: nested function return should not clobber outer function's return
+        assertEquals("outer", eval("""
+            function outer() {
+                function inner() {
+                    return 'inner';
+                }
+                var x = inner();
+                return 'outer';
+            }
+            outer();
+        """));
+        // Multiple nested calls
+        assertEquals(12, eval("""
+            function outer(n) {
+                function double(x) { return x * 2; }
+                function half(x) { return x / 2; }
+                var a = double(n);
+                var b = half(a);
+                return a + b;
+            }
+            outer(4);
+        """));
+        // Nested with different return types
+        assertEquals("result: 42", eval("""
+            function outer() {
+                function getNumber() { return 42; }
+                var num = getNumber();
+                return 'result: ' + num.toString();
+            }
+            outer();
+        """));
+    }
+
+    @Test
     void testIife() {
         matchEval("(function(){ return 'hello' })()", "'hello'");
     }

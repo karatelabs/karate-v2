@@ -38,7 +38,7 @@ class CoreContext implements Context {
     Bindings _bindings;
 
     // Function context fields (non-null indicates this is a function context)
-    final Object[] functionArgs;
+    final Object[] callArgs;
     final CoreContext closureContext;
 
     // Scope management (level-keyed bindings)
@@ -54,7 +54,7 @@ class CoreContext implements Context {
         this.depth = depth;
         this.node = node;
         this.scope = scope;
-        this.functionArgs = null;
+        this.callArgs = null;
         this.closureContext = null;
         this.capturedBindings = null;
         if (bindings != null) {
@@ -65,10 +65,7 @@ class CoreContext implements Context {
         }
     }
 
-    CoreContext(CoreContext parent, Node node, ContextScope scope) {
-        this(parent.root, parent, parent.depth + 1, node, scope, null);
-    }
-
+    // Unified constructor for child contexts (function calls)
     CoreContext(CoreContext parent, Node node, Object[] functionArgs,
                 CoreContext closureContext, Map<String, BindValue> captured) {
         this.root = parent.root;
@@ -76,11 +73,15 @@ class CoreContext implements Context {
         this.depth = parent.depth + 1;
         this.node = node;
         this.scope = ContextScope.FUNCTION;
-        this.functionArgs = functionArgs;
+        this.callArgs = functionArgs;
         this.closureContext = closureContext;
         this.capturedBindings = captured;
         this.thisObject = parent.thisObject;
-        // Function contexts don't need scopeStack - they use flat bindings
+    }
+
+    // Convenience for built-in function calls (no closure)
+    CoreContext(CoreContext parent, Node node, Object[] functionArgs) {
+        this(parent, node, functionArgs, null, null);
     }
 
     void event(EventType type, Node node) {
@@ -145,6 +146,11 @@ class CoreContext implements Context {
     }
 
     @Override
+    public Object[] getCallArgs() {
+        return callArgs;
+    }
+
+    @Override
     public String toString() {
         return getPath();
     }
@@ -183,7 +189,7 @@ class CoreContext implements Context {
 
     ContextScope getCurrentScope() {
         if (scopeStack != null && !scopeStack.isEmpty()) {
-            return scopeStack.get(scopeStack.size() - 1).scope;
+            return scopeStack.getLast().scope;
         }
         return scope;
     }
@@ -195,8 +201,8 @@ class CoreContext implements Context {
             return thisObject;
         }
         // Function context: handle "arguments" keyword
-        if (functionArgs != null && "arguments".equals(key)) {
-            return Arrays.asList(functionArgs);
+        if (callArgs != null && "arguments".equals(key)) {
+            return Arrays.asList(callArgs);
         }
         // Check local bindings first (local declarations shadow captured closures)
         if (_bindings != null) {
@@ -324,7 +330,7 @@ class CoreContext implements Context {
             return true;
         }
         // Function context: handle "arguments" keyword
-        if (functionArgs != null && "arguments".equals(key)) {
+        if (callArgs != null && "arguments".equals(key)) {
             return true;
         }
         // Check local bindings first (local declarations shadow captured closures)
@@ -413,11 +419,17 @@ class CoreContext implements Context {
         return exitType == ExitType.THROW;
     }
 
-    Object getReturnValue() {
+    public ExitType getExitType() {
+        return exitType;
+    }
+
+    @Override
+    public Object getReturnValue() {
         return returnValue;
     }
 
-    Object getErrorThrown() {
+    @Override
+    public Object getErrorThrown() {
         return errorThrown;
     }
 

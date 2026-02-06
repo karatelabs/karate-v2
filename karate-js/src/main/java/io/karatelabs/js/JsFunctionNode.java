@@ -83,8 +83,12 @@ class JsFunctionNode extends JsFunction {
             parentContext = declaredContext;
         }
         // Create lightweight function context with captured bindings
-        CoreContext functionContext = new CoreContext(parentContext, node, args,
-                                                       declaredContext, capturedBindings);
+        CoreContext functionContext = new CoreContext(parentContext, node, args, declaredContext, capturedBindings);
+        return bindArgsAndExecute(functionContext, parentContext, args);
+    }
+
+    // Called by Interpreter when context is pre-prepared with closure info
+    Object bindArgsAndExecute(CoreContext functionContext, CoreContext parentContext, Object[] args) {
         int actualArgCount = Math.min(args.length, argCount);
         for (int i = 0; i < actualArgCount; i++) {
             Node argNode = argNodes.get(i);

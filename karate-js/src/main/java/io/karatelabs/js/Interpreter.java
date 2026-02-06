@@ -213,30 +213,42 @@ class Interpreter {
                 });
             }
             Object[] args = argsList.toArray();
-            CoreContext callContext = new CoreContext(context, node, ContextScope.FUNCTION);
+            CoreContext callContext;
             JsObject newInstance = null;
-            if (newKeyword) {
-                callContext.callInfo = new CallInfo(true, callable);
-                // Only create new instance for user-defined functions (JsFunctionNode)
-                // Built-in constructors (JsArray, JsDate, etc.) handle their own construction
-                if (callable instanceof JsFunction jsFunc) {
+            Object result;
+            // For user-defined functions, create full function context with closure info
+            if (callable instanceof JsFunctionNode jsFunc) {
+                callContext = new CoreContext(context, node, args, jsFunc.declaredContext, jsFunc.capturedBindings);
+                if (newKeyword) {
+                    callContext.callInfo = new CallInfo(true, callable);
                     newInstance = new JsObject();
                     Object proto = jsFunc.getMember("prototype");
                     if (proto instanceof ObjectLike protoObj) {
                         newInstance.setPrototype(protoObj);
                     }
                     callContext.thisObject = newInstance;
-                } else {
-                    callContext.thisObject = callable;
+                } else if (!jsFunc.arrow) {
+                    // Regular functions get their own 'this', arrow functions inherit from parent
+                    callContext.thisObject = receiver == null ? callable : receiver;
                 }
+                callContext.event(EventType.CONTEXT_ENTER, node);
+                // bindArgsAndExecute handles error propagation internally
+                result = jsFunc.bindArgsAndExecute(callContext, context, args);
             } else {
-                callContext.thisObject = receiver == null ? callable : receiver;
+                // For built-in callables, create function context with args for event tracking
+                callContext = new CoreContext(context, node, args);
+                if (newKeyword) {
+                    callContext.callInfo = new CallInfo(true, callable);
+                    // Built-in constructors handle their own construction
+                    callContext.thisObject = callable;
+                } else {
+                    callContext.thisObject = receiver == null ? callable : receiver;
+                }
+                callContext.event(EventType.CONTEXT_ENTER, node);
+                result = callable.call(callContext, args);
+                // Propagate exit state from built-in calls
+                context.updateFrom(callContext);
             }
-            if (callContext.root.listener != null) {
-                callContext.root.listener.onFunctionCall(callContext, args);
-            }
-            Object result = callable.call(callContext, args);
-            context.updateFrom(callContext);
             if (newKeyword && newInstance != null) {
                 // Return the new instance unless constructor explicitly returns an object
                 if (!(result instanceof ObjectLike)) {

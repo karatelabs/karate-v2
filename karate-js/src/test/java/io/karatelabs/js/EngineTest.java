@@ -336,9 +336,13 @@ class EngineTest {
         StringBuilder sb = new StringBuilder();
         ContextListener listener = new ContextListener() {
             @Override
-            public void onFunctionCall(Context context, Object[] args) {
-                if (context.getNode().type == NodeType.REF_DOT_EXPR && "b.push".equals(context.getNode().getText())) {
-                    sb.append(context.getParent().getParent().getIteration()).append(":").append(args[0]).append("|");
+            public void onEvent(Event event) {
+                if (event.type == EventType.CONTEXT_ENTER
+                        && event.context.getScope() == ContextScope.FUNCTION
+                        && event.node.type == NodeType.REF_DOT_EXPR
+                        && "b.push".equals(event.node.getText())) {
+                    Object[] args = event.context.getCallArgs();
+                    sb.append(event.context.getParent().getParent().getIteration()).append(":").append(args[0]).append("|");
                 }
             }
         };
@@ -367,9 +371,13 @@ class EngineTest {
         StringBuilder sb = new StringBuilder();
         ContextListener listener = new ContextListener() {
             @Override
-            public void onFunctionCall(Context context, Object[] args) {
-                if (context.getNode().type == NodeType.REF_DOT_EXPR && "b.push".equals(context.getNode().getText())) {
-                    sb.append(context.getParent().getIteration()).append(":").append(args[0]).append("|");
+            public void onEvent(Event event) {
+                if (event.type == EventType.CONTEXT_ENTER
+                        && event.context.getScope() == ContextScope.FUNCTION
+                        && event.node.type == NodeType.REF_DOT_EXPR
+                        && "b.push".equals(event.node.getText())) {
+                    Object[] args = event.context.getCallArgs();
+                    sb.append(event.context.getParent().getIteration()).append(":").append(args[0]).append("|");
                 }
             }
         };
