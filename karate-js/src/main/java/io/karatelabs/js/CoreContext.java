@@ -239,11 +239,11 @@ class CoreContext implements Context {
         declare(key, value, null, true);
     }
 
-    void declare(String key, Object value, BindingType type, boolean initialized) {
+    void declare(String key, Object value, BindScope scope, boolean initialized) {
         if (value instanceof JsFunction) {
             ((JsFunction) value).name = key;
         }
-        if (type != null) { // let or const
+        if (scope != null) { // let or const
             BindValue existing = findConstOrLetAtCurrentLevel(key);
             if (existing != null) {
                 ContextScope currentScope = getCurrentScope();
@@ -254,10 +254,10 @@ class CoreContext implements Context {
                     throw new RuntimeException("identifier '" + key + "' has already been declared");
                 }
             }
-            pushBinding(key, value, type, initialized);
+            pushBinding(key, value, scope, initialized);
             // for top-level declarations, also store in root to persist across evals
             if (depth == 0 && root != null && parent == root) {
-                root.addBinding(key, type);
+                root.addBinding(key, scope);
             }
         } else { // hoist var to function level
             int functionLevel = findFunctionLevel();
@@ -279,7 +279,7 @@ class CoreContext implements Context {
     private BindValue findConstOrLetAtCurrentLevel(String key) {
         if (_bindings != null) {
             BindValue bv = _bindings.getBindValue(key);
-            if (bv != null && bv.type != null && bv.level == currentLevel) {
+            if (bv != null && bv.scope != null && bv.level == currentLevel) {
                 return bv;
             }
         }
@@ -287,17 +287,25 @@ class CoreContext implements Context {
     }
 
     void update(String key, Object value) {
+        update(key, value, null);
+    }
+
+    void update(String key, Object value, Node node) {
         if (_bindings != null && _bindings.hasMember(key)) {
             BindValue bv = findConstOrLet(key);
+            Object oldValue = _bindings.getMember(key);
             if (bv != null) {
-                if (bv.type == BindingType.CONST && bv.initialized) {
+                if (bv.scope == BindScope.CONST && bv.initialized) {
                     throw new RuntimeException("assignment to constant: " + key);
                 }
                 bv.initialized = true;
             }
             _bindings.putMember(key, value);
+            if (root.listener != null) {
+                root.listener.onBind(BindEvent.assign(key, value, oldValue, this, node));
+            }
         } else if (parent != null && parent.hasKey(key)) {
-            parent.update(key, value);
+            parent.update(key, value, node);
         } else {
             // implicit global: assign to global scope (ES6 non-strict behavior)
             CoreContext globalContext = this;
@@ -306,23 +314,23 @@ class CoreContext implements Context {
             }
             globalContext.putBinding(key, value, null, true);
             if (root.listener != null) {
-                root.listener.onVariableWrite(this, BindingType.VAR, key, value);
+                root.listener.onBind(BindEvent.declare(key, value, BindScope.VAR, this, node));
             }
         }
     }
 
-    private void putBinding(String key, Object value, BindingType type, boolean initialized) {
+    private void putBinding(String key, Object value, BindScope scope, boolean initialized) {
         if (_bindings == null) {
             _bindings = new Bindings();
         }
-        _bindings.putMember(key, value, type, initialized);
+        _bindings.putMember(key, value, scope, initialized);
     }
 
-    private void pushBinding(String key, Object value, BindingType type, boolean initialized) {
+    private void pushBinding(String key, Object value, BindScope scope, boolean initialized) {
         if (_bindings == null) {
             _bindings = new Bindings();
         }
-        _bindings.pushBinding(key, value, type, currentLevel, initialized);
+        _bindings.pushBinding(key, value, scope, currentLevel, initialized);
     }
 
     boolean hasKey(String key) {
@@ -354,7 +362,7 @@ class CoreContext implements Context {
     private BindValue findConstOrLet(String key) {
         if (_bindings != null) {
             BindValue bv = _bindings.getBindValue(key);
-            if (bv != null && bv.type != null) {
+            if (bv != null && bv.scope != null) {
                 return bv;
             }
         }

@@ -64,7 +64,7 @@ class JsFunctionNode extends JsFunction {
         Map<String, BindValue> snapshot = null;
         for (String key : context._bindings.keySet()) {
             BindValue bv = context._bindings.getBindValue(key);
-            if (bv != null && bv.type != null) { // Only capture let/const bindings
+            if (bv != null && bv.scope != null) { // Only capture let/const bindings
                 if (snapshot == null) {
                     snapshot = new HashMap<>(4); // Typically few captured vars
                 }
@@ -101,7 +101,7 @@ class JsFunctionNode extends JsFunction {
                 String argName = argNode.getLast().getText();
                 functionContext.put(argName, remainingArgs);
             } else if (first.type == NodeType.LIT_ARRAY || first.type == NodeType.LIT_OBJECT) {
-                Interpreter.evalAssign(first, functionContext, BindingType.VAR, args[i], true);
+                Interpreter.evalAssign(first, functionContext, BindScope.VAR, args[i], true);
             } else {
                 String argName = argNode.getFirst().getText();
                 Object argValue = args[i];

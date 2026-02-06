@@ -23,18 +23,12 @@
  */
 package io.karatelabs.js;
 
-public interface ContextListener {
+public enum BindType {
 
-    default void onEvent(Event event) {
-
-    }
-
-    default ExitResult onError(Event event, Exception e) {
-        return null;
-    }
-
-    default void onBind(BindEvent event) {
-
-    }
+    DECLARE,
+    ASSIGN,
+    DELETE,
+    PROPERTY_SET,
+    PROPERTY_DELETE
 
 }

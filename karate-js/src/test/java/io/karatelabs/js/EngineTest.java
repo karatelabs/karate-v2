@@ -263,23 +263,119 @@ class EngineTest {
     }
 
     @Test
-    void testOnAssign() {
+    void testOnBind() {
         Engine engine = new Engine();
         Map<String, Object> map = new HashMap<>();
         ContextListener listener = new ContextListener() {
             @Override
-            public void onVariableWrite(Context context, BindingType type, String name, Object value) {
-                map.put("name", name);
-                map.put("value", value);
+            public void onBind(BindEvent event) {
+                map.put("type", event.type);
+                map.put("name", event.name);
+                map.put("value", event.value);
+                map.put("scope", event.scope);
             }
         };
         engine.setListener(listener);
         engine.eval("var a = 'a'");
+        assertEquals(BindType.DECLARE, map.get("type"));
         assertEquals("a", map.get("name"));
         assertEquals("a", map.get("value"));
+        assertEquals(BindScope.VAR, map.get("scope"));
         engine.eval("b = 'b'");
+        assertEquals(BindType.DECLARE, map.get("type"));
         assertEquals("b", map.get("name"));
         assertEquals("b", map.get("value"));
+    }
+
+    @Test
+    void testOnBindPropertySet() {
+        Engine engine = new Engine();
+        List<BindEvent> events = new ArrayList<>();
+        ContextListener listener = new ContextListener() {
+            @Override
+            public void onBind(BindEvent event) {
+                events.add(event);
+            }
+        };
+        engine.setListener(listener);
+        engine.eval("var obj = {}");
+        events.clear();
+        engine.eval("obj.foo = 'bar'");
+        assertEquals(1, events.size());
+        BindEvent event = events.get(0);
+        assertEquals(BindType.PROPERTY_SET, event.type);
+        assertEquals("foo", event.name);
+        assertEquals("bar", event.value);
+        assertNull(event.oldValue);
+        assertNotNull(event.target);
+    }
+
+    @Test
+    void testOnBindPropertyDelete() {
+        Engine engine = new Engine();
+        List<BindEvent> events = new ArrayList<>();
+        ContextListener listener = new ContextListener() {
+            @Override
+            public void onBind(BindEvent event) {
+                events.add(event);
+            }
+        };
+        engine.setListener(listener);
+        engine.eval("var obj = { foo: 'bar' }");
+        events.clear();
+        engine.eval("delete obj.foo");
+        assertEquals(1, events.size());
+        BindEvent event = events.get(0);
+        assertEquals(BindType.PROPERTY_DELETE, event.type);
+        assertEquals("foo", event.name);
+        assertNull(event.value);
+        assertEquals("bar", event.oldValue);
+        assertNotNull(event.target);
+    }
+
+    @Test
+    void testOnBindAssign() {
+        Engine engine = new Engine();
+        List<BindEvent> events = new ArrayList<>();
+        ContextListener listener = new ContextListener() {
+            @Override
+            public void onBind(BindEvent event) {
+                events.add(event);
+            }
+        };
+        engine.setListener(listener);
+        engine.eval("var x = 1");
+        events.clear();
+        engine.eval("x = 2");
+        assertEquals(1, events.size());
+        BindEvent event = events.get(0);
+        assertEquals(BindType.ASSIGN, event.type);
+        assertEquals("x", event.name);
+        assertEquals(2, event.value);
+        assertEquals(1, event.oldValue);
+        assertNull(event.scope);
+    }
+
+    @Test
+    void testOnBindLetConst() {
+        Engine engine = new Engine();
+        List<BindEvent> events = new ArrayList<>();
+        ContextListener listener = new ContextListener() {
+            @Override
+            public void onBind(BindEvent event) {
+                events.add(event);
+            }
+        };
+        engine.setListener(listener);
+        engine.eval("let a = 1");
+        assertEquals(1, events.size());
+        assertEquals(BindType.DECLARE, events.get(0).type);
+        assertEquals(BindScope.LET, events.get(0).scope);
+        events.clear();
+        engine.eval("const b = 2");
+        assertEquals(1, events.size());
+        assertEquals(BindType.DECLARE, events.get(0).type);
+        assertEquals(BindScope.CONST, events.get(0).scope);
     }
 
     @Test

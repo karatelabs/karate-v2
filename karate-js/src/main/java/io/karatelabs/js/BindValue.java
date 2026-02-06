@@ -35,7 +35,7 @@ class BindValue {
     final int level;            // scope level where binding was created
     final BindValue previous;   // shadowed binding (forms stack per variable)
     Object value;
-    BindingType type;  // null for var, LET/CONST for let/const
+    BindScope scope;  // null for var, LET/CONST for let/const
     boolean initialized;
 
     BindValue(String name, Object value) {
@@ -46,21 +46,21 @@ class BindValue {
         this.initialized = true;
     }
 
-    BindValue(String name, Object value, BindingType type, boolean initialized) {
+    BindValue(String name, Object value, BindScope scope, boolean initialized) {
         this.name = name;
         this.level = 0;
         this.previous = null;
         this.value = value;
-        this.type = type;
+        this.scope = scope;
         this.initialized = initialized;
     }
 
-    BindValue(String name, Object value, BindingType type, boolean initialized, int level, BindValue previous) {
+    BindValue(String name, Object value, BindScope scope, boolean initialized, int level, BindValue previous) {
         this.name = name;
         this.level = level;
         this.previous = previous;
         this.value = value;
-        this.type = type;
+        this.scope = scope;
         this.initialized = initialized;
     }
 
@@ -72,13 +72,13 @@ class BindValue {
         this.level = other.level;
         this.previous = other.previous;
         this.value = other.value;
-        this.type = other.type;
+        this.scope = other.scope;
         this.initialized = other.initialized;
     }
 
     @Override
     public String toString() {
-        return name + "=" + value + (type != null ? " (" + type + ")" : "") + "@L" + level;
+        return name + "=" + value + (scope != null ? " (" + scope + ")" : "") + "@L" + level;
     }
 
 }

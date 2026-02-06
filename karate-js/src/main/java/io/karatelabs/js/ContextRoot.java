@@ -93,11 +93,11 @@ class ContextRoot extends CoreContext {
         };
     }
 
-    void addBinding(String name, BindingType type) {
+    void addBinding(String name, BindScope scope) {
         if (_topLevelBindings == null) {
             _topLevelBindings = new ArrayList<>();
         }
-        _topLevelBindings.add(new BindValue(name, null, type, true));
+        _topLevelBindings.add(new BindValue(name, null, scope, true));
     }
 
     BindValue getBindValue(String key) {

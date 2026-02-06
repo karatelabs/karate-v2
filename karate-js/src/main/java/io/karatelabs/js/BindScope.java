@@ -23,7 +23,7 @@
  */
 package io.karatelabs.js;
 
-public enum BindingType {
+public enum BindScope {
 
     VAR,
     LET,

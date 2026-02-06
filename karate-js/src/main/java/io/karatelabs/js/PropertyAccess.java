@@ -81,10 +81,17 @@ class PropertyAccess {
      * Set a property value on a node expression.
      */
     static void set(Node node, CoreContext context, Object value) {
+        set(node, context, value, null);
+    }
+
+    /**
+     * Set a property value on a node expression with tracking node for events.
+     */
+    static void set(Node node, CoreContext context, Object value, Node trackingNode) {
                 switch (node.type) {
-            case REF_EXPR -> context.update(node.getText(), value);
-            case REF_DOT_EXPR -> setRefDotExpr(node, context, value);
-            case REF_BRACKET_EXPR -> setRefBracketExpr(node, context, value);
+            case REF_EXPR -> context.update(node.getText(), value, trackingNode);
+            case REF_DOT_EXPR -> setRefDotExpr(node, context, value, trackingNode);
+            case REF_BRACKET_EXPR -> setRefBracketExpr(node, context, value, trackingNode);
             default -> throw new RuntimeException("cannot set on: " + node);
         }
     }
@@ -97,16 +104,23 @@ class PropertyAccess {
      * Returns the new value.
      */
     static Object compound(Node node, CoreContext context, TokenType operator, Object operand) {
+        return compound(node, context, operator, operand, null);
+    }
+
+    /**
+     * Compound assignment with tracking node for events.
+     */
+    static Object compound(Node node, CoreContext context, TokenType operator, Object operand, Node trackingNode) {
                 return switch (node.type) {
             case REF_EXPR -> {
                 String name = node.getText();
                 Object oldValue = context.get(name);
                 Object newValue = applyOperator(oldValue, operator, operand);
-                context.update(name, newValue);
+                context.update(name, newValue, trackingNode);
                 yield newValue;
             }
-            case REF_DOT_EXPR -> compoundRefDotExpr(node, context, operator, operand);
-            case REF_BRACKET_EXPR -> compoundRefBracketExpr(node, context, operator, operand);
+            case REF_DOT_EXPR -> compoundRefDotExpr(node, context, operator, operand, trackingNode);
+            case REF_BRACKET_EXPR -> compoundRefBracketExpr(node, context, operator, operand, trackingNode);
             default -> throw new RuntimeException("cannot apply compound assignment to: " + node);
         };
     }
@@ -405,7 +419,7 @@ class PropertyAccess {
         return accessViaBridge(object, name, context, functionCall);
     }
 
-    private static void setRefDotExpr(Node node, CoreContext context, Object value) {
+    private static void setRefDotExpr(Node node, CoreContext context, Object value, Node trackingNode) {
         String name;
         Object object;
 
@@ -415,47 +429,57 @@ class PropertyAccess {
         } else if (node.get(1).type == NodeType.REF_BRACKET_EXPR) {
             object = Interpreter.eval(node.getFirst(), context);
             Object index = Interpreter.eval(node.get(1).get(2), context);
-            setByIndex(object, index, value, context);
+            setByIndex(object, index, value, context, trackingNode);
             return;
         } else {
             throw new RuntimeException("cannot set on optional call expression");
         }
 
-        setByName(object, name, value, context);
+        setByName(object, name, value, context, trackingNode);
     }
 
-    private static void setRefBracketExpr(Node node, CoreContext context, Object value) {
+    private static void setRefBracketExpr(Node node, CoreContext context, Object value, Node trackingNode) {
         Object object = Interpreter.eval(node.getFirst(), context);
         Object index = Interpreter.eval(node.get(2), context);
-        setByIndex(object, index, value, context);
+        setByIndex(object, index, value, context, trackingNode);
     }
 
-    private static void setByIndex(Object object, Object index, Object value, CoreContext context) {
+    private static void setByIndex(Object object, Object index, Object value, CoreContext context, Node trackingNode) {
         if (index instanceof Number n) {
             int i = n.intValue();
             if (object instanceof List) {
-                ((List<Object>) object).set(i, value);
+                List<Object> list = (List<Object>) object;
+                Object oldValue = i < list.size() ? list.get(i) : Terms.UNDEFINED;
+                list.set(i, value);
+                firePropertySet(context, String.valueOf(i), value, oldValue, object, trackingNode);
                 return;
             } else if (object instanceof byte[] bytes) {
                 if (value instanceof Number v) {
+                    Object oldValue = i < bytes.length ? bytes[i] & 0xFF : Terms.UNDEFINED;
                     bytes[i] = (byte) (v.intValue() & 0xFF);
+                    firePropertySet(context, String.valueOf(i), v.intValue() & 0xFF, oldValue, object, trackingNode);
                 }
                 return;
             }
         }
-        setByName(object, String.valueOf(index), value, context);
+        setByName(object, String.valueOf(index), value, context, trackingNode);
     }
 
-    private static void setByName(Object object, String name, Object value, CoreContext context) {
+    private static void setByName(Object object, String name, Object value, CoreContext context, Node trackingNode) {
         if (name == null) {
             throw new RuntimeException("unexpected set [null]:" + value + " on: " + object);
         }
         if (object == null) {
-            context.update(name, value);
+            context.update(name, value, trackingNode);
         } else if (object instanceof ObjectLike objectLike) {
+            Object oldValue = objectLike.getMember(name);
             objectLike.putMember(name, value);
+            firePropertySet(context, name, value, oldValue, object, trackingNode);
         } else if (object instanceof Map) {
-            ((Map<String, Object>) object).put(name, value);
+            Map<String, Object> map = (Map<String, Object>) object;
+            Object oldValue = map.get(name);
+            map.put(name, value);
+            firePropertySet(context, name, value, oldValue, object, trackingNode);
         } else if (context.root.bridge != null) {
             try {
                 if (object instanceof ExternalAccess ja) {
@@ -464,6 +488,7 @@ class PropertyAccess {
                     ExternalAccess ja = context.root.bridge.forInstance(object);
                     ja.setProperty(name, value);
                 }
+                firePropertySet(context, name, value, null, object, trackingNode);
             } catch (Exception e) {
                 logger.error("external bridge error: {}", e.getMessage());
                 throw new RuntimeException("cannot set '" + name + "'");
@@ -473,9 +498,15 @@ class PropertyAccess {
         }
     }
 
+    private static void firePropertySet(CoreContext context, String name, Object value, Object oldValue, Object target, Node node) {
+        if (context.root.listener != null) {
+            context.root.listener.onBind(BindEvent.propertySet(name, value, oldValue, target, context, node));
+        }
+    }
+
     //=== Compound operation implementations ===
 
-    private static Object compoundRefDotExpr(Node node, CoreContext context, TokenType operator, Object operand) {
+    private static Object compoundRefDotExpr(Node node, CoreContext context, TokenType operator, Object operand, Node trackingNode) {
         String name;
         Object object;
 
@@ -485,21 +516,21 @@ class PropertyAccess {
         } else if (node.get(1).type == NodeType.REF_BRACKET_EXPR) {
             object = Interpreter.eval(node.getFirst(), context);
             Object index = Interpreter.eval(node.get(1).get(2), context);
-            return compoundByIndex(object, index, operator, operand, context);
+            return compoundByIndex(object, index, operator, operand, context, trackingNode);
         } else {
             throw new RuntimeException("cannot apply compound assignment to optional call");
         }
 
-        return compoundByName(object, name, operator, operand, context);
+        return compoundByName(object, name, operator, operand, context, trackingNode);
     }
 
-    private static Object compoundRefBracketExpr(Node node, CoreContext context, TokenType operator, Object operand) {
+    private static Object compoundRefBracketExpr(Node node, CoreContext context, TokenType operator, Object operand, Node trackingNode) {
         Object object = Interpreter.eval(node.getFirst(), context);
         Object index = Interpreter.eval(node.get(2), context);
-        return compoundByIndex(object, index, operator, operand, context);
+        return compoundByIndex(object, index, operator, operand, context, trackingNode);
     }
 
-    private static Object compoundByIndex(Object object, Object index, TokenType operator, Object operand, CoreContext context) {
+    private static Object compoundByIndex(Object object, Object index, TokenType operator, Object operand, CoreContext context, Node trackingNode) {
         if (index instanceof Number n) {
             int i = n.intValue();
             if (object instanceof List) {
@@ -507,16 +538,17 @@ class PropertyAccess {
                 Object oldValue = i < list.size() ? list.get(i) : Terms.UNDEFINED;
                 Object newValue = applyOperator(oldValue, operator, operand);
                 list.set(i, newValue);
+                firePropertySet(context, String.valueOf(i), newValue, oldValue, object, trackingNode);
                 return newValue;
             }
         }
-        return compoundByName(object, String.valueOf(index), operator, operand, context);
+        return compoundByName(object, String.valueOf(index), operator, operand, context, trackingNode);
     }
 
-    private static Object compoundByName(Object object, String name, TokenType operator, Object operand, CoreContext context) {
+    private static Object compoundByName(Object object, String name, TokenType operator, Object operand, CoreContext context, Node trackingNode) {
         Object oldValue = getByName(object, name, false, context, false);
         Object newValue = applyOperator(oldValue, operator, operand);
-        setByName(object, name, newValue, context);
+        setByName(object, name, newValue, context, trackingNode);
         return newValue;
     }
 
@@ -552,6 +584,7 @@ class PropertyAccess {
                 Object oldValue = i < list.size() ? list.get(i) : Terms.UNDEFINED;
                 Object newValue = isIncrement ? Terms.add(oldValue, 1) : new Terms(oldValue, 1).min();
                 list.set(i, newValue);
+                firePropertySet(context, String.valueOf(i), newValue, oldValue, object, null);
                 return oldValue;
             }
         }
@@ -561,7 +594,7 @@ class PropertyAccess {
     private static Object postIncDecByName(Object object, String name, boolean isIncrement, CoreContext context) {
         Object oldValue = getByName(object, name, false, context, false);
         Object newValue = isIncrement ? Terms.add(oldValue, 1) : new Terms(oldValue, 1).min();
-        setByName(object, name, newValue, context);
+        setByName(object, name, newValue, context, null);
         return oldValue;
     }
 
@@ -597,6 +630,7 @@ class PropertyAccess {
                 Object oldValue = i < list.size() ? list.get(i) : Terms.UNDEFINED;
                 Object newValue = isIncrement ? Terms.add(oldValue, 1) : new Terms(oldValue, 1).min();
                 list.set(i, newValue);
+                firePropertySet(context, String.valueOf(i), newValue, oldValue, object, null);
                 return newValue;
             }
         }
@@ -606,7 +640,7 @@ class PropertyAccess {
     private static Object preIncDecByName(Object object, String name, boolean isIncrement, CoreContext context) {
         Object oldValue = getByName(object, name, false, context, false);
         Object newValue = isIncrement ? Terms.add(oldValue, 1) : new Terms(oldValue, 1).min();
-        setByName(object, name, newValue, context);
+        setByName(object, name, newValue, context, null);
         return newValue;
     }
 
@@ -620,29 +654,40 @@ class PropertyAccess {
         } else if (node.get(1).type == NodeType.REF_BRACKET_EXPR) {
             object = Interpreter.eval(node.getFirst(), context);
             Object index = Interpreter.eval(node.get(1).get(2), context);
-            return deleteByKey(object, String.valueOf(index));
+            return deleteByKey(object, String.valueOf(index), context, node);
         } else {
             return false;
         }
 
-        return deleteByKey(object, name);
+        return deleteByKey(object, name, context, node);
     }
 
     private static boolean deleteRefBracketExpr(Node node, CoreContext context) {
         Object object = Interpreter.eval(node.getFirst(), context);
         Object index = Interpreter.eval(node.get(2), context);
-        return deleteByKey(object, String.valueOf(index));
+        return deleteByKey(object, String.valueOf(index), context, node);
     }
 
-    private static boolean deleteByKey(Object object, String key) {
+    private static boolean deleteByKey(Object object, String key, CoreContext context, Node node) {
+        Object oldValue = null;
         if (object instanceof ObjectLike ol) {
+            oldValue = ol.getMember(key);
             ol.removeMember(key);
+            firePropertyDelete(context, key, oldValue, object, node);
             return true;
         } else if (object instanceof Map<?, ?> map) {
+            oldValue = ((Map<String, Object>) map).get(key);
             ((Map<String, Object>) map).remove(key);
+            firePropertyDelete(context, key, oldValue, object, node);
             return true;
         }
         return false;
+    }
+
+    private static void firePropertyDelete(CoreContext context, String name, Object oldValue, Object target, Node node) {
+        if (context.root.listener != null) {
+            context.root.listener.onBind(BindEvent.propertyDelete(name, oldValue, target, context, node));
+        }
     }
 
     //=== Helper methods ===

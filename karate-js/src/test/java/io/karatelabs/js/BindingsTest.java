@@ -245,31 +245,31 @@ class BindingsTest {
         Bindings bindings = new Bindings();
 
         // const binding
-        bindings.putMember("x", 42, BindingType.CONST, true);
+        bindings.putMember("x", 42, BindScope.CONST, true);
 
         // let binding
-        bindings.putMember("y", "hello", BindingType.LET, true);
+        bindings.putMember("y", "hello", BindScope.LET, true);
 
-        // var binding (no type)
+        // var binding (no scope)
         bindings.putMember("z", 100);
 
         // Get BindValue
-        assertEquals(BindingType.CONST, bindings.getBindValue("x").type);
-        assertEquals(BindingType.LET, bindings.getBindValue("y").type);
-        assertNull(bindings.getBindValue("z").type);  // var has no binding type
+        assertEquals(BindScope.CONST, bindings.getBindValue("x").scope);
+        assertEquals(BindScope.LET, bindings.getBindValue("y").scope);
+        assertNull(bindings.getBindValue("z").scope);  // var has no binding scope
     }
 
     @Test
-    void testClearBindingType() {
+    void testClearBindingScope() {
         Bindings bindings = new Bindings();
 
-        bindings.putMember("x", 1, BindingType.LET, true);
+        bindings.putMember("x", 1, BindScope.LET, true);
 
-        assertNotNull(bindings.getBindValue("x").type);
+        assertNotNull(bindings.getBindValue("x").scope);
 
-        bindings.clearBindingType("x");
+        bindings.clearBindingScope("x");
 
-        assertNull(bindings.getBindValue("x").type);
+        assertNull(bindings.getBindValue("x").scope);
         assertEquals(1, bindings.getMember("x"));  // value still there
     }
 
@@ -277,7 +277,7 @@ class BindingsTest {
     void testCopyConstructorCopiesValuesAndBindValues() {
         Bindings original = new Bindings();
 
-        original.putMember("x", 1, BindingType.LET, true);
+        original.putMember("x", 1, BindScope.LET, true);
         original.putMember("y", 2);
 
         Bindings copy = new Bindings(original);
@@ -288,7 +288,7 @@ class BindingsTest {
 
         // BindValue copied
         assertNotNull(copy.getBindValue("x"));
-        assertEquals(BindingType.LET, copy.getBindValue("x").type);
+        assertEquals(BindScope.LET, copy.getBindValue("x").scope);
 
         // Changes to copy don't affect original
         copy.putMember("x", 100);
@@ -345,15 +345,15 @@ class BindingsTest {
     }
 
     @Test
-    void testUpdateExistingKeyWithBindingType() {
+    void testUpdateExistingKeyWithBindingScope() {
         Bindings bindings = new Bindings();
         bindings.putMember("x", 1);
 
-        bindings.putMember("x", 2, BindingType.CONST, true);
+        bindings.putMember("x", 2, BindScope.CONST, true);
 
         assertEquals(2, bindings.getMember("x"));
-        assertNotNull(bindings.getBindValue("x").type);
-        assertEquals(BindingType.CONST, bindings.getBindValue("x").type);
+        assertNotNull(bindings.getBindValue("x").scope);
+        assertEquals(BindScope.CONST, bindings.getBindValue("x").scope);
     }
 
 }

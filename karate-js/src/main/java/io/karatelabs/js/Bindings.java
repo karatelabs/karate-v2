@@ -90,18 +90,18 @@ public class Bindings implements Map<String, Object> {
     }
 
     /**
-     * Raw put with optional binding type (for let/const declarations).
+     * Raw put with optional binding scope (for let/const declarations).
      */
-    public void putMember(String key, Object value, BindingType type, boolean initialized) {
+    public void putMember(String key, Object value, BindScope scope, boolean initialized) {
         BindValue existing = map.get(key);
         if (existing != null) {
             existing.value = value;
-            if (type != null) {
-                existing.type = type;
+            if (scope != null) {
+                existing.scope = scope;
                 existing.initialized = initialized;
             }
-        } else if (type != null) {
-            map.put(key, new BindValue(key, value, type, initialized));
+        } else if (scope != null) {
+            map.put(key, new BindValue(key, value, scope, initialized));
         } else {
             map.put(key, new BindValue(key, value));
         }
@@ -122,12 +122,12 @@ public class Bindings implements Map<String, Object> {
     }
 
     /**
-     * Clear binding type for a key (for loop re-declaration).
+     * Clear binding scope for a key (for loop re-declaration).
      */
-    public void clearBindingType(String key) {
+    public void clearBindingScope(String key) {
         BindValue bv = map.get(key);
         if (bv != null) {
-            bv.type = null;
+            bv.scope = null;
             bv.initialized = true;
         }
     }
@@ -137,18 +137,18 @@ public class Bindings implements Map<String, Object> {
     /**
      * Push a binding at the specified level, linking to any existing binding as shadowed.
      */
-    public void pushBinding(String key, Object value, BindingType type, int level) {
+    public void pushBinding(String key, Object value, BindScope scope, int level) {
         BindValue existing = map.get(key);
-        BindValue newBv = new BindValue(key, value, type, true, level, existing);
+        BindValue newBv = new BindValue(key, value, scope, true, level, existing);
         map.put(key, newBv);
     }
 
     /**
      * Push a binding at the specified level with explicit initialized state.
      */
-    public void pushBinding(String key, Object value, BindingType type, int level, boolean initialized) {
+    public void pushBinding(String key, Object value, BindScope scope, int level, boolean initialized) {
         BindValue existing = map.get(key);
-        BindValue newBv = new BindValue(key, value, type, initialized, level, existing);
+        BindValue newBv = new BindValue(key, value, scope, initialized, level, existing);
         map.put(key, newBv);
     }
 

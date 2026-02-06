@@ -58,26 +58,26 @@ class Interpreter {
     }
 
     @SuppressWarnings("unchecked")
-    static Object evalAssign(Node bindings, CoreContext context, BindingType bindingType, Object value, boolean initialized) {
+    static Object evalAssign(Node bindings, CoreContext context, BindScope bindScope, Object value, boolean initialized) {
         if (bindings.type == NodeType.LIT_ARRAY) {
             List<Object> list = null;
             if (value instanceof List) {
                 list = (List<Object>) value;
             }
-            evalLitArray(bindings, context, bindingType, list);
+            evalLitArray(bindings, context, bindScope, list);
         } else if (bindings.type == NodeType.LIT_OBJECT) {
             Map<String, Object> object = null;
             if (value instanceof Map) {
                 object = (Map<String, Object>) value;
             }
-            evalLitObject(bindings, context, bindingType, object);
+            evalLitObject(bindings, context, bindScope, object);
         } else {
             List<Node> varNames = bindings.findChildren(IDENT);
             for (Node varName : varNames) {
                 String name = varName.getText();
-                context.declare(name, value, toType(bindingType), initialized);
+                context.declare(name, value, toScope(bindScope), initialized);
                 if (context.root.listener != null) {
-                    context.root.listener.onVariableWrite(context, bindingType, name, value);
+                    context.root.listener.onBind(BindEvent.declare(name, value, bindScope, context, bindings));
                 }
             }
         }
@@ -90,13 +90,13 @@ class Interpreter {
         Object value = eval(node.get(2), context);
         if (operator == EQ) {
             if (lhs.type == NodeType.LIT_EXPR) {
-                evalAssign(lhs.getFirst(), context, BindingType.VAR, value, true);
+                evalAssign(lhs.getFirst(), context, BindScope.VAR, value, true);
             } else {
-                PropertyAccess.set(lhs, context, value);
+                PropertyAccess.set(lhs, context, value, node);
             }
             return value;
         }
-        return PropertyAccess.compound(lhs, context, operator, value);
+        return PropertyAccess.compound(lhs, context, operator, value, node);
     }
 
     private static Object evalBlock(Node node, CoreContext context) {
@@ -295,7 +295,7 @@ class Interpreter {
                 // C-style for loop: for(init; condition; increment)
                 boolean isLetOrConst;
                 String loopVarName = null;
-                BindingType loopVarType = null;
+                BindScope loopVarScope = null;
                 if (node.get(2).type == NodeType.VAR_STMT) {
                     evalVarStmt(node.get(2), context);
                     isLetOrConst = node.get(2).getFirstToken().type != VAR;
@@ -305,7 +305,7 @@ class Interpreter {
                         List<Node> varNames = varBindings.findChildren(IDENT);
                         if (!varNames.isEmpty()) {
                             loopVarName = varNames.get(0).getText();
-                            loopVarType = node.get(2).getFirstToken().type == LET ? BindingType.LET : BindingType.CONST;
+                            loopVarScope = node.get(2).getFirstToken().type == LET ? BindScope.LET : BindScope.CONST;
                         }
                     }
                 } else {
@@ -328,7 +328,7 @@ class Interpreter {
                                 context.enterScope(ContextScope.LOOP_BODY, forBody);
                                 enteredBodyScope = true;
                                 // Push a fresh binding for this iteration (shadows the outer one)
-                                context.declare(loopVarName, loopVarValue, loopVarType, true);
+                                context.declare(loopVarName, loopVarValue, loopVarScope, true);
                             }
                             forResult = eval(forBody, context);
                             if (isLetOrConst && enteredBodyScope) {
@@ -354,20 +354,20 @@ class Interpreter {
                 boolean in = node.get(3).token.type == IN;
                 Object forObject = eval(node.get(4), context);
                 Iterable<KeyValue> iterable = Terms.toIterable(forObject);
-                BindingType bindingType;
+                BindScope bindScope;
                 Node bindings;
                 if (node.get(2).type == NodeType.VAR_STMT) {
                     bindings = node.get(2).get(1);
-                    bindingType = switch (node.get(2).getFirstToken().type) {
-                        case LET -> BindingType.LET;
-                        case CONST -> BindingType.CONST;
-                        default -> BindingType.VAR;
+                    bindScope = switch (node.get(2).getFirstToken().type) {
+                        case LET -> BindScope.LET;
+                        case CONST -> BindScope.CONST;
+                        default -> BindScope.VAR;
                     };
                 } else {
-                    bindingType = BindingType.VAR;
+                    bindScope = BindScope.VAR;
                     bindings = node.get(2);
                 }
-                boolean isLetOrConst = bindingType == BindingType.LET || bindingType == BindingType.CONST;
+                boolean isLetOrConst = bindScope == BindScope.LET || bindScope == BindScope.CONST;
                 int index = -1;
                 for (KeyValue kv : iterable) {
                     index++;
@@ -379,7 +379,7 @@ class Interpreter {
                         enteredBodyScope = true;
                     }
                     // Declare/assign loop variable(s) - handles both simple and destructuring cases
-                    evalAssign(bindings, context, bindingType, varValue, true);
+                    evalAssign(bindings, context, bindScope, varValue, true);
                     forResult = eval(forBody, context);
                     if (isLetOrConst && enteredBodyScope) {
                         context.exitScope();
@@ -421,11 +421,11 @@ class Interpreter {
         return Terms.instanceOf(eval(node.get(0), context), eval(node.get(2), context));
     }
 
-    private static BindingType toType(BindingType type) {
-        return type == BindingType.VAR ? null : type;
+    private static BindScope toScope(BindScope scope) {
+        return scope == BindScope.VAR ? null : scope;
     }
 
-    private static Object evalLitArray(Node node, CoreContext context, BindingType bindingType, List<Object> bindSource) {
+    private static Object evalLitArray(Node node, CoreContext context, BindScope bindScope, List<Object> bindSource) {
         int last = node.size() - 1;
         JsArray array = new JsArray();
         List<Object> list = array.list;  // Direct access to internal list for building
@@ -434,7 +434,7 @@ class Interpreter {
             Node elem = node.get(i);
             Node exprNode = elem.get(0);
             if (exprNode.token.type == DOT_DOT_DOT) { // rest
-                if (bindingType != null) {
+                if (bindScope != null) {
                     String varName = elem.getLast().getText();
                     JsArray restArray = new JsArray();
                     if (bindSource != null) {
@@ -446,7 +446,7 @@ class Interpreter {
                             restArray.list.add(elem_);
                         }
                     }
-                    context.declare(varName, restArray, toType(bindingType), true);
+                    context.declare(varName, restArray, toScope(bindScope), true);
                 } else {
                     Object value = evalRefExpr(elem.get(1), context);
                     Iterable<KeyValue> iterable = Terms.toIterable(value);
@@ -458,7 +458,7 @@ class Interpreter {
                 list.add(null);
                 index++;
             } else {
-                if (bindingType != null) {
+                if (bindScope != null) {
                     Object value = Terms.UNDEFINED;
                     String varName = exprNode.getFirstToken().getText();
                     if (exprNode.getFirst().type == NodeType.ASSIGN_EXPR) { // default value
@@ -474,7 +474,7 @@ class Interpreter {
                             value = temp;
                         }
                     }
-                    context.declare(varName, value, toType(bindingType), true);
+                    context.declare(varName, value, toScope(bindScope), true);
                 } else {
                     Object value = evalExpr(exprNode, context);
                     list.add(value);
@@ -486,7 +486,7 @@ class Interpreter {
     }
 
     @SuppressWarnings("unchecked")
-    private static Object evalLitObject(Node node, CoreContext context, BindingType bindingType, Map<String, Object> bindSource) {
+    private static Object evalLitObject(Node node, CoreContext context, BindScope bindScope, Map<String, Object> bindSource) {
         int last = node.size() - 1;
         Map<String, Object> result;
         if (bindSource != null) {
@@ -507,9 +507,9 @@ class Interpreter {
                 key = keyNode.getText();
             }
             if (token == DOT_DOT_DOT) {
-                if (bindingType != null) {
+                if (bindScope != null) {
                     // previous keys were being removed from result
-                    context.declare(key, result, toType(bindingType), true);
+                    context.declare(key, result, toScope(bindScope), true);
                 } else {
                     Object value = context.get(key);
                     if (value instanceof Map) {
@@ -518,29 +518,29 @@ class Interpreter {
                     }
                 }
             } else if (elem.size() < 3) { // es6 enhanced object literals
-                if (bindingType != null) {
+                if (bindScope != null) {
                     Object value = Terms.UNDEFINED;
                     if (bindSource != null && bindSource.containsKey(key)) {
                         value = bindSource.get(key);
                     }
-                    context.declare(key, value, toType(bindingType), true);
+                    context.declare(key, value, toScope(bindScope), true);
                     result.remove(key);
                 } else {
                     Object value = context.get(key);
                     result.put(key, value);
                 }
             } else {
-                if (bindingType != null) {
+                if (bindScope != null) {
                     Object value = Terms.UNDEFINED;
                     if (bindSource != null && bindSource.containsKey(key)) {
                         value = bindSource.get(key);
                     }
                     if (elem.get(1).getFirstToken().type == EQ) { // default value
                         value = evalExpr(elem.get(2), context);
-                        context.declare(key, value, toType(bindingType), true);
+                        context.declare(key, value, toScope(bindScope), true);
                     } else {
                         String varName = elem.get(2).getText();
-                        context.declare(varName, value, toType(bindingType), true);
+                        context.declare(varName, value, toScope(bindScope), true);
                     }
                     result.remove(key);
                 } else {
@@ -992,13 +992,13 @@ class Interpreter {
             value = Terms.UNDEFINED;
             initialized = false;
         }
-        BindingType bindingType = switch (node.getFirstToken().type) {
-            case CONST -> BindingType.CONST;
-            case LET -> BindingType.LET;
-            default -> BindingType.VAR;
+        BindScope bindScope = switch (node.getFirstToken().type) {
+            case CONST -> BindScope.CONST;
+            case LET -> BindScope.LET;
+            default -> BindScope.VAR;
         };
         Node bindings = node.get(1);
-        return evalAssign(bindings, context, bindingType, value, initialized);
+        return evalAssign(bindings, context, bindScope, value, initialized);
     }
 
     private static Object evalWhileStmt(Node node, CoreContext context) {
