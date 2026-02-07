@@ -109,8 +109,14 @@ public enum NodeType {
             // Leaf node - never has children
             case TOKEN -> 0;
             // Small nodes: 1-2 children typical
-            case LIT_EXPR, LIT_REGEX, EOS, BREAK_STMT, CONTINUE_STMT,
+            // Single-child nodes: REF_EXPR only has 1 TOKEN child
+            case REF_EXPR -> 1;
+            // Two-child nodes: operator + operand
+            case UNARY_EXPR, TYPEOF_EXPR, MATH_PRE_EXPR, MATH_POST_EXPR,
+                 LIT_EXPR, LIT_REGEX, EOS, BREAK_STMT, CONTINUE_STMT,
                  PLACEHOLDER, FN_DECL_ARG, FN_CALL_ARG, ARRAY_ELEM -> 2;
+            // Three-child nodes: binary ops after Shift.LEFT (left, op, right)
+            case REF_DOT_EXPR, INSTANCEOF_EXPR -> 3;
             // Ternary: condition ? true_expr : false_expr = 5 children
             case LOGIC_TERN_EXPR -> 5;
             // Container nodes: variable, often many children

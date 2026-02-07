@@ -205,7 +205,12 @@ public abstract class BaseParser {
     // ========== End Error Recovery Methods ==========
 
     protected void enter(NodeType type) {
-        enterIf(type, (TokenType[]) null);
+        if (stackPointer >= MAX_DEPTH) {
+            throw new ParserException("too much recursion");
+        }
+        positionStack[stackPointer] = position;
+        nodeStack[stackPointer] = new Node(type);
+        stackPointer++;
     }
 
     // Single-token overload - avoids array allocation
