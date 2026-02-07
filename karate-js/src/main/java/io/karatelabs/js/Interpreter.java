@@ -40,7 +40,8 @@ class Interpreter {
 
     private static List<Node> fnArgs(Node fnArgs) {
         List<Node> list = new ArrayList<>(fnArgs.size() - 2);
-        for (Node fnArg : fnArgs) {
+        for (int i = 0, n = fnArgs.size(); i < n; i++) {
+            Node fnArg = fnArgs.get(i);
             if (fnArg.type != NodeType.FN_DECL_ARG) {
                 continue;
             }
@@ -104,7 +105,8 @@ class Interpreter {
         context.event(EventType.CONTEXT_ENTER, node);
         Object blockResult = null;
         try {
-            for (Node child : node) {
+            for (int i = 0, n = node.size(); i < n; i++) {
+                Node child = node.get(i);
                 if (child.type == NodeType.STATEMENT) {
                     blockResult = eval(child, context);
                     if (context.isStopped()) {
@@ -156,7 +158,8 @@ class Interpreter {
 
     private static Object evalExprList(Node node, CoreContext context) {
         Object result = null;
-        for (Node child : node) {
+        for (int i = 0, n = node.size(); i < n; i++) {
+            Node child = node.get(i);
             if (child.type == NodeType.EXPR) {
                 result = eval(child, context);
             }
@@ -554,7 +557,8 @@ class Interpreter {
 
     private static String evalLitTemplate(Node node, CoreContext context) {
         StringBuilder sb = new StringBuilder();
-        for (Node child : node) {
+        for (int i = 0, n = node.size(); i < n; i++) {
+            Node child = node.get(i);
             if (child.token.type == T_STRING) {
                 sb.append(child.token.getText());
             } else if (child.type == NodeType.EXPR) {
@@ -738,7 +742,8 @@ class Interpreter {
 
     private static Object evalProgram(Node node, CoreContext context) {
         Object progResult = null;
-        for (Node child : node) {
+        for (int i = 0, n = node.size(); i < n; i++) {
+            Node child = node.get(i);
             if (child.isEof()) {
                 break;
             }

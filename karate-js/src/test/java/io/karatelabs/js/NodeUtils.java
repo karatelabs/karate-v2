@@ -111,8 +111,8 @@ public class NodeUtils {
                     return Collections.singletonMap(key, ser(node.get(0)));
                 } else {
                     List<Object> list = new ArrayList<>(node.size());
-                    for (Node child : node) {
-                        list.add(ser(child));
+                    for (int i = 0, n = node.size(); i < n; i++) {
+                        list.add(ser(node.get(i)));
                     }
                     return Collections.singletonMap(key, list);
                 }
@@ -137,8 +137,8 @@ public class NodeUtils {
                     return ser(node.get(0));
                 } else {
                     List<Object> list = new ArrayList<>();
-                    for (Node child : node) {
-                        list.add(ser(child));
+                    for (int i = 0, n = node.size(); i < n; i++) {
+                        list.add(ser(node.get(i)));
                     }
                     return list;
                 }
@@ -168,8 +168,8 @@ public class NodeUtils {
     private static void recurse(StringBuilder sb, int level, Node node) {
         spaces(sb, level);
         sb.append(node).append('\n');
-        for (Node child : node) {
-            recurse(sb, level + 1, child);
+        for (int i = 0, n = node.size(); i < n; i++) {
+            recurse(sb, level + 1, node.get(i));
         }
     }
 

@@ -262,7 +262,8 @@ public class GherkinParser extends BaseParser {
         Feature feature = new Feature(resource);
         List<Tag> pendingTags = null;
 
-        for (Node child : ast) {
+        for (int i = 0, n = ast.size(); i < n; i++) {
+            Node child = ast.get(i);
             switch (child.type) {
                 case G_TAGS -> pendingTags = transformTags(child);
                 case TOKEN -> {
@@ -300,7 +301,8 @@ public class GherkinParser extends BaseParser {
 
     private List<Tag> transformTags(Node tagsNode) {
         List<Tag> tags = new ArrayList<>();
-        for (Node child : tagsNode) {
+        for (int i = 0, n = tagsNode.size(); i < n; i++) {
+            Node child = tagsNode.get(i);
             if (child.isToken() && child.token.type == G_TAG) {
                 tags.add(new Tag(child.token.line + 1, child.token.getText()));
             }
@@ -312,7 +314,8 @@ public class GherkinParser extends BaseParser {
         String name = null;
         StringBuilder desc = new StringBuilder();
         boolean first = true;
-        for (Node child : node) {
+        for (int i = 0, n = node.size(); i < n; i++) {
+            Node child = node.get(i);
             if (child.isToken() && child.token.type == G_DESC) {
                 String text = StringUtils.trimToNull(child.token.getText());
                 if (first) {
@@ -334,7 +337,8 @@ public class GherkinParser extends BaseParser {
         Background bg = new Background();
         List<Step> steps = new ArrayList<>();
 
-        for (Node child : node) {
+        for (int i = 0, n = node.size(); i < n; i++) {
+            Node child = node.get(i);
             switch (child.type) {
                 case TOKEN -> {
                     if (child.token.type == G_BACKGROUND) {
@@ -354,7 +358,8 @@ public class GherkinParser extends BaseParser {
         section.setScenario(scenario);
         List<Step> steps = new ArrayList<>();
 
-        for (Node child : node) {
+        for (int i = 0, n = node.size(); i < n; i++) {
+            Node child = node.get(i);
             switch (child.type) {
                 case G_TAGS -> {
                     if (tags == null) {
@@ -388,7 +393,8 @@ public class GherkinParser extends BaseParser {
         List<Step> steps = new ArrayList<>();
         List<ExamplesTable> examplesTables = new ArrayList<>();
 
-        for (Node child : node) {
+        for (int i = 0, n = node.size(); i < n; i++) {
+            Node child = node.get(i);
             switch (child.type) {
                 case G_TAGS -> {
                     if (tags == null) {
@@ -421,7 +427,8 @@ public class GherkinParser extends BaseParser {
         ExamplesTable examples = new ExamplesTable();
         List<Tag> tags = null;
 
-        for (Node child : node) {
+        for (int i = 0, n = node.size(); i < n; i++) {
+            Node child = node.get(i);
             switch (child.type) {
                 case G_TAGS -> tags = transformTags(child);
                 case TOKEN -> {
@@ -444,7 +451,8 @@ public class GherkinParser extends BaseParser {
         Step step = scenario != null ? new Step(scenario, index) : new Step(feature, index);
         Token lastToken = null;
 
-        for (Node child : node) {
+        for (int i = 0, n = node.size(); i < n; i++) {
+            Node child = node.get(i);
             if (child.isToken()) {
                 lastToken = child.token;
                 switch (child.token.type) {
@@ -504,7 +512,8 @@ public class GherkinParser extends BaseParser {
         // Find opening and closing triple quotes to get raw text positions
         Token openQuote = null;
         Token closeQuote = null;
-        for (Node child : docStringNode) {
+        for (int i = 0, n = docStringNode.size(); i < n; i++) {
+            Node child = docStringNode.get(i);
             if (child.isToken() && child.token.type == G_TRIPLE_QUOTE) {
                 if (openQuote == null) {
                     openQuote = child.token;
@@ -559,7 +568,8 @@ public class GherkinParser extends BaseParser {
      */
     private int extractDocStringContentLine(Node docStringNode) {
         Token openQuote = null;
-        for (Node child : docStringNode) {
+        for (int i = 0, n = docStringNode.size(); i < n; i++) {
+            Node child = docStringNode.get(i);
             if (child.isToken() && child.token.type == G_TRIPLE_QUOTE) {
                 openQuote = child.token;
                 break;
@@ -596,13 +606,15 @@ public class GherkinParser extends BaseParser {
         List<List<String>> rows = new ArrayList<>();
         List<Integer> lineNumbers = new ArrayList<>();
 
-        for (Node rowNode : tableNode) {
+        for (int i = 0, n = tableNode.size(); i < n; i++) {
+            Node rowNode = tableNode.get(i);
             if (rowNode.type == NodeType.G_TABLE_ROW) {
                 List<String> cells = new ArrayList<>();
                 int line = 0;
                 boolean expectingCell = false; // Track if we're expecting a cell after a pipe
 
-                for (Node cellNode : rowNode) {
+                for (int j = 0, m = rowNode.size(); j < m; j++) {
+                    Node cellNode = rowNode.get(j);
                     if (cellNode.isToken()) {
                         if (cellNode.token.type == G_PIPE) {
                             if (line == 0) {

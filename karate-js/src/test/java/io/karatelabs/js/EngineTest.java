@@ -182,7 +182,8 @@ class EngineTest {
         JsParser parser = new JsParser(Resource.text(js));
         Node node = parser.parse();
         assertEquals(3, node.size());
-        for (Node child : node) {
+        for (int i = 0, n = node.size(); i < n; i++) {
+            Node child = node.get(i);
             if (!child.isEof()) {
                 assertEquals(NodeType.STATEMENT, child.type);
             }

@@ -28,11 +28,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-public class Node implements Iterable<Node> {
+public class Node {
 
     static final Logger logger = LoggerFactory.getLogger(Node.class);
 
@@ -43,7 +42,7 @@ public class Node implements Iterable<Node> {
     public final Token token;
     // Raw array storage - null for TOKEN nodes, allocated on first child
     private Node[] children;
-    private int childCount;
+    private short childCount;
     // Cached text for getText() - avoids repeated StringBuilder operations
     private String cachedText;
 
@@ -225,6 +224,10 @@ public class Node implements Iterable<Node> {
             cachedText = token.getText();
             return cachedText;
         }
+        if (childCount == 1) {
+            cachedText = children[0].getText();
+            return cachedText;
+        }
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < childCount; i++) {
             sb.append(children[i].getText());
@@ -294,26 +297,6 @@ public class Node implements Iterable<Node> {
 
     public boolean isEmpty() {
         return childCount == 0;
-    }
-
-    @Override
-    public Iterator<Node> iterator() {
-        return new Iterator<>() {
-            private int index = 0;
-
-            @Override
-            public boolean hasNext() {
-                return index < childCount;
-            }
-
-            @Override
-            public Node next() {
-                if (index >= childCount) {
-                    throw new NoSuchElementException();
-                }
-                return children[index++];
-            }
-        };
     }
 
 }
