@@ -137,6 +137,9 @@ public class ScenarioResult implements Comparable<ScenarioResult> {
             return null;
         }
         Step step = failedStep.getStep();
+        if (step == null) {
+            return null;
+        }
         // Prefer absolute path for IDE click-to-navigate; fall back to relative
         var resource = scenario.getFeature().getResource();
         String featurePath = resource.getPath() != null
@@ -161,6 +164,9 @@ public class ScenarioResult implements Comparable<ScenarioResult> {
             return null;
         }
         Step step = failedStep.getStep();
+        if (step == null) {
+            return null;
+        }
         String location = getFailedStepLocation();
         return location != null ? location + " " + step.getText() : step.getText();
     }
