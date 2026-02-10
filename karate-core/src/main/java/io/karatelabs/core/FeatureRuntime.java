@@ -29,6 +29,7 @@ import io.karatelabs.gherkin.FeatureSection;
 import io.karatelabs.gherkin.Scenario;
 import io.karatelabs.gherkin.ScenarioOutline;
 import io.karatelabs.gherkin.ExamplesTable;
+import io.karatelabs.gherkin.Table;
 import io.karatelabs.gherkin.Tag;
 import io.karatelabs.js.JavaCallable;
 import io.karatelabs.output.LogContext;
@@ -694,11 +695,26 @@ public class FeatureRuntime implements Callable<FeatureResult> {
             }
 
             // For outline examples, also check the Scenario Outline declaration line
+            // and the specific example row line
             if (scenario.isOutlineExample() && scenario.getSection() != null
                     && scenario.getSection().isOutline()) {
-                int outlineLine = scenario.getSection().getScenarioOutline().getLine();
-                if (lines.contains(outlineLine)) {
+                ScenarioOutline outline = scenario.getSection().getScenarioOutline();
+                if (lines.contains(outline.getLine())) {
                     return true;
+                }
+                // Check if line matches this specific example row's line number
+                for (ExamplesTable exTable : outline.getExamplesTables()) {
+                    if (exTable.getLine() == scenarioLine) {
+                        Table t = exTable.getTable();
+                        int dataRowIndex = scenario.getExampleIndex() + 1; // +1 to skip header row
+                        if (dataRowIndex < t.getRows().size()) {
+                            int rowLine = t.getLineNumberForRow(dataRowIndex);
+                            if (lines.contains(rowLine)) {
+                                return true;
+                            }
+                        }
+                        break;
+                    }
                 }
             }
 
@@ -707,10 +723,10 @@ public class FeatureRuntime implements Callable<FeatureResult> {
             if (scenario.getSteps() != null && !scenario.getSteps().isEmpty()) {
                 int firstStepLine = scenario.getSteps().get(0).getLine();
                 int lastStepLine = scenario.getSteps().get(scenario.getSteps().size() - 1).getLine();
+                int rangeStart = Math.min(scenarioLine, firstStepLine);
 
                 for (int line : lines) {
-                    // Line is within the scenario (between scenario declaration and last step)
-                    if (line >= scenarioLine && line <= lastStepLine) {
+                    if (line >= rangeStart && line <= lastStepLine) {
                         return true;
                     }
                 }

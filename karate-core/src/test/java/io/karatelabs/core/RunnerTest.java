@@ -435,4 +435,64 @@ class RunnerTest {
         assertEquals(3, result.getScenarioPassedCount());
     }
 
+    @Test
+    void testRunnerWithLineNumberFilterSpecificExampleRow() throws Exception {
+        // Create a feature with Scenario Outline
+        Path feature = tempDir.resolve("outline-row.feature");
+        Files.writeString(feature, """
+            Feature: Outline row test
+
+            Scenario Outline: Parameterized test
+            * def val = <value>
+            * match val == <expected>
+
+            Examples:
+            | value | expected |
+            | 1     | 1        |
+            | 2     | 2        |
+            | 3     | 3        |
+            """);
+
+        // Run targeting a specific example row line (line 9 = "| 1 | 1 |")
+        SuiteResult result = Runner.path(feature.toString() + ":9")
+                .workingDir(tempDir)
+                .outputDir(tempDir.resolve("reports"))
+                .outputConsoleSummary(false)
+                .parallel(1);
+
+        assertTrue(result.isPassed());
+        // Only 1 example should run
+        assertEquals(1, result.getScenarioPassedCount());
+    }
+
+    @Test
+    void testRunnerWithLineNumberFilterMultipleExampleRows() throws Exception {
+        // Create a feature with Scenario Outline
+        Path feature = tempDir.resolve("outline-multi-row.feature");
+        Files.writeString(feature, """
+            Feature: Outline multi row test
+
+            Scenario Outline: Parameterized test
+            * def val = <value>
+            * match val == <expected>
+
+            Examples:
+            | value | expected |
+            | 1     | 1        |
+            | 2     | 2        |
+            | 3     | 3        |
+            """);
+
+        // Run targeting two specific example rows (lines 9 and 11)
+        SuiteResult result = Runner.path(feature.toString() + ":9:11")
+                .workingDir(tempDir)
+                .outputDir(tempDir.resolve("reports"))
+                .outputConsoleSummary(false)
+                .parallel(1);
+
+        assertTrue(result.isPassed());
+        // 2 examples should run
+        assertEquals(2, result.getScenarioPassedCount());
+    }
+
 }
