@@ -335,6 +335,7 @@ public final class HtmlReportWriter {
      */
     private static String inlineJson(String template, Object data) {
         String json = Json.of(data).toStringPretty();
+        json = json.replace("</", "<\\/"); // prevent </script> in JSON from closing the script tag
         return template.replace(DATA_PLACEHOLDER, json);
     }
 
