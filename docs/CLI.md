@@ -458,10 +458,17 @@ Main.java parses and executes
 
 ### Classpath Construction
 
-The Rust launcher constructs the classpath:
+The Rust launcher constructs the classpath in this order:
 - Karate fatjar (`~/.karate/dist/karate-X.X.X.jar`)
 - Extension JARs (`~/.karate/ext/*.jar`)
 - Project-local extensions (`.karate/ext/*.jar`)
+- Extra classpath entries from `--cp` flags
+
+The `--cp` global flag allows extensions (e.g. IDE integrations) to contribute proprietary JARs:
+```bash
+karate --cp /path/to/karate-ide-v2.jar run features/
+karate --cp /path/to/a.jar --cp /path/to/b.jar run features/
+```
 
 ### JVM Options
 
