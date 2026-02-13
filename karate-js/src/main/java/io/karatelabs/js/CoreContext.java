@@ -48,6 +48,7 @@ class CoreContext implements Context {
     // Captured bindings for closures (references to BindValues from function creation time)
     final Map<String, BindValue> capturedBindings;
 
+
     CoreContext(ContextRoot root, CoreContext parent, int depth, Node node, ContextScope scope, Map<String, Object> bindings) {
         this.root = root;
         this.parent = parent;
@@ -250,11 +251,21 @@ class CoreContext implements Context {
                 if (currentScope == ContextScope.LOOP_INIT || currentScope == ContextScope.LOOP_BODY) {
                     // Loop iteration: re-declaration is valid (per-iteration scope)
                     // Push a new binding that shadows the captured one
+                } else if (depth == 0 && existing.evalId != root.evalId) {
+                    // Cross-eval re-declaration at top level (REPL semantics)
+                    existing.value = value;
+                    existing.scope = scope;
+                    existing.initialized = initialized;
+                    existing.evalId = root.evalId;
+                    return;
                 } else {
                     throw new RuntimeException("identifier '" + key + "' has already been declared");
                 }
             }
             pushBinding(key, value, scope, initialized);
+            if (depth == 0) {
+                _bindings.getBindValue(key).evalId = root.evalId;
+            }
             // for top-level declarations, also store in root to persist across evals
             if (depth == 0 && root != null && parent == root) {
                 root.addBinding(key, scope);

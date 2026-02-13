@@ -37,6 +37,7 @@ class BindValue {
     Object value;
     BindScope scope;  // null for var, LET/CONST for let/const
     boolean initialized;
+    short evalId;               // tracks which eval() declared this binding
 
     BindValue(String name, Object value) {
         this.name = name;

@@ -169,6 +169,7 @@ public class Engine {
 
     private Object evalInternal(Node program, Map<String, Object> localVars) {
         try {
+            root.evalId++;
             CoreContext context;
             if (localVars == null) {
                 context = new CoreContext(root, root, 0, program, ContextScope.GLOBAL, bindings);

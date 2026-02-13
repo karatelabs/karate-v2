@@ -44,6 +44,8 @@ class ContextRoot extends CoreContext {
     // Stores top-level const/let bindings for cross-eval persistence
     private List<BindValue> _topLevelBindings;
 
+    short evalId;
+
     ContextRoot(Engine engine) {
         super(null, null, -1, null, ContextScope.ROOT, null);
         this.engine = engine;

@@ -580,20 +580,22 @@ class EngineTest {
 
     @Test
     void testConstRedeclareAcrossEvals() {
+        // REPL semantics: top-level const/let re-declaration across evals is allowed
         Engine engine = new Engine();
         engine.eval("const a = 1");
+        assertEquals(1, engine.eval("a"));
+        // Re-declare const with new value
+        engine.eval("const a = 2");
+        assertEquals(2, engine.eval("a"));
+        // Re-declare as let
+        engine.eval("let a = 3");
+        assertEquals(3, engine.eval("a"));
+        // Re-declaration within the SAME eval is still an error
         try {
-            engine.eval("const a = 2");
+            engine.eval("let b = 1; let b = 2");
             fail("error expected");
         } catch (Exception e) {
-            assertTrue(e.getMessage().contains("identifier 'a' has already been declared"));
-        }
-        // let should also fail
-        try {
-            engine.eval("let a = 3");
-            fail("error expected");
-        } catch (Exception e) {
-            assertTrue(e.getMessage().contains("identifier 'a' has already been declared"));
+            assertTrue(e.getMessage().contains("identifier 'b' has already been declared"));
         }
     }
 
@@ -748,6 +750,29 @@ class EngineTest {
         String source = exprList != null ? exprList.getTextIncludingWhitespace() : lastNode.getTextIncludingWhitespace();
         assertTrue(source.contains("obj['foo']") || source.contains("1 + 1"),
             "Source should contain the expression. Got: " + source);
+    }
+
+    @Test
+    void testReEvalWithConstFunction() {
+        // Simulates the veriquant Calc.java use case:
+        // A JS file with top-level const + function is eval'd multiple times
+        // on the same engine to re-load and re-invoke the function
+        Engine engine = new Engine();
+        engine.put("input", 5);
+        String calcJs = """
+                const lookup = { multiplier: 10 };
+                function execute(calc) {
+                    return calc.input * lookup.multiplier;
+                }
+                """;
+        // First eval + invoke works fine
+        engine.eval(calcJs);
+        JsFunctionWrapper execute = (JsFunctionWrapper) engine.get("execute");
+        assertNotNull(execute);
+        // Second eval of the same file works (REPL semantics: top-level re-declaration allowed)
+        engine.eval(calcJs);
+        execute = (JsFunctionWrapper) engine.get("execute");
+        assertNotNull(execute);
     }
 
     @Test
