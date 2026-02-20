@@ -215,10 +215,13 @@ public class CdpKeys implements Keys {
         }
 
         dispatchRawKeyDown(info);
-        // Puppeteer behavior: suppress text when non-Shift modifiers are active
-        // (modifiers & ~SHIFT_FLAG) checks if Ctrl, Alt, or Meta are held
+        // Use Input.insertText for the actual text insertion — bypasses keyboard
+        // layout issues (e.g., '!' being misinterpreted without proper Shift+Digit1)
+        // while still firing keydown/keyup for framework compatibility
         if ((modifiers & ~SHIFT_FLAG) == 0) {
-            dispatchChar(info);
+            cdp.method("Input.insertText")
+                    .param("text", String.valueOf(effectiveChar))
+                    .send();
         }
         dispatchKeyUp(info);
     }

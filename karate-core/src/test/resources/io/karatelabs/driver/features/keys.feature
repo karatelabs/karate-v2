@@ -151,3 +151,15 @@ Feature: Keyboard Tests
     * keys().type('X')
     * def val = value('#username')
     * match val != 'test'
+
+  Scenario: Type shifted punctuation characters
+    * focus('#username')
+    * keys().type('P@ss!')
+    * def val = value('#username')
+    * match val == 'P@ss!'
+
+  Scenario: Type all shifted number row characters
+    * focus('#username')
+    * keys().type('!@#$%^&*()')
+    * def val = value('#username')
+    * match val == '!@#$%^&*()'
