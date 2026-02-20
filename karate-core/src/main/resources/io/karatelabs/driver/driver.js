@@ -209,6 +209,7 @@
      */
     kjs._resolveFromCandidates = function(candidates, tag, text, index, contains) {
         var selector = this.getSelector(tag);
+        text = text.replace(/\s+/g, ' ').trim(); // normalize whitespace (including \u00a0)
         var count = 0;
         for (var i = 0; i < candidates.length; i++) {
             var el = candidates[i];
