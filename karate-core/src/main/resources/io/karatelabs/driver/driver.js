@@ -29,6 +29,114 @@
         this._logs = [];
     };
 
+    // ==================== Shadow DOM Utilities ====================
+
+    kjs._hasShadowCache = undefined;
+
+    /**
+     * Check if page uses shadow DOM (cached per look() cycle).
+     */
+    kjs.hasShadowDOM = function() {
+        if (this._hasShadowCache !== undefined) return this._hasShadowCache;
+        var allElements = document.querySelectorAll('*');
+        for (var i = 0; i < allElements.length; i++) {
+            if (allElements[i].shadowRoot) {
+                this._hasShadowCache = true;
+                return true;
+            }
+        }
+        this._hasShadowCache = false;
+        return false;
+    };
+
+    /**
+     * Recursively find ALL elements matching selector, including inside shadow roots.
+     * Returns actual shadow elements (not hosts).
+     */
+    kjs.querySelectorAllDeep = function(selector, root) {
+        root = root || document;
+        var seen = new Set();
+        var results = [];
+
+        function collect(node) {
+            var matches = node.querySelectorAll(selector);
+            for (var i = 0; i < matches.length; i++) {
+                if (!seen.has(matches[i])) {
+                    seen.add(matches[i]);
+                    results.push(matches[i]);
+                }
+            }
+            // Recurse into shadow roots
+            var allEls = node.querySelectorAll('*');
+            for (var j = 0; j < allEls.length; j++) {
+                if (allEls[j].shadowRoot) {
+                    collect(allEls[j].shadowRoot);
+                }
+            }
+        }
+
+        collect(root);
+        return results;
+    };
+
+    /**
+     * Recursively find first element matching selector, including shadow roots.
+     */
+    kjs.querySelectorDeep = function(selector, root) {
+        root = root || document;
+        var el = root.querySelector(selector);
+        if (el) return el;
+        var allEls = root.querySelectorAll('*');
+        for (var i = 0; i < allEls.length; i++) {
+            if (allEls[i].shadowRoot) {
+                el = kjs.querySelectorDeep(selector, allEls[i].shadowRoot);
+                if (el) return el;
+            }
+        }
+        return null;
+    };
+
+    /**
+     * Convenience: querySelector with shadow DOM fallback.
+     * Used by Locators.java for CSS selectors.
+     */
+    kjs.qsDeep = function(selector) {
+        var el = document.querySelector(selector);
+        if (el) return el;
+        if (!this.hasShadowDOM()) return null;
+        return this.querySelectorDeep(selector);
+    };
+
+    /**
+     * Convenience: querySelectorAll with shadow DOM fallback.
+     * Used by Locators.java for CSS selectors.
+     */
+    kjs.qsaDeep = function(selector) {
+        if (!this.hasShadowDOM()) {
+            return document.querySelectorAll(selector);
+        }
+        return this.querySelectorAllDeep(selector);
+    };
+
+    /**
+     * Extract visible text from a shadow root's content.
+     */
+    kjs._getShadowText = function(shadowRoot) {
+        if (!shadowRoot) return '';
+        var text = '';
+        var walker = document.createTreeWalker(shadowRoot, NodeFilter.SHOW_TEXT, null, false);
+        var node;
+        while ((node = walker.nextNode())) {
+            var parent = node.parentElement;
+            if (parent) {
+                var style = window.getComputedStyle(parent);
+                if (style.display === 'none' || style.visibility === 'hidden') continue;
+            }
+            text += node.textContent;
+        }
+        return text.trim().replace(/\s+/g, ' ');
+    };
+
     // ==================== Shared Utilities ====================
 
     kjs.isVisible = function(el) {
@@ -58,7 +166,12 @@
             }
             if (!hidden) text += node.textContent;
         }
-        return text.trim().replace(/\s+/g, ' ');
+        var result = text.trim().replace(/\s+/g, ' ');
+        // Fallback: if no light DOM text and element has shadow root, try shadow content
+        if (!result && el.shadowRoot) {
+            result = this._getShadowText(el.shadowRoot);
+        }
+        return result;
     };
 
     kjs.hasMatchingDescendant = function(el, text, contains, selector) {
@@ -90,9 +203,12 @@
     // ==================== Wildcard Resolver ====================
     // Public API: __kjs.resolve(tag, text, index, contains)
 
-    kjs.resolve = function(tag, text, index, contains) {
+    /**
+     * Match candidates against text criteria.
+     * Shared logic for light DOM and shadow DOM resolution.
+     */
+    kjs._resolveFromCandidates = function(candidates, tag, text, index, contains) {
         var selector = this.getSelector(tag);
-        var candidates = document.querySelectorAll(selector);
         var count = 0;
         for (var i = 0; i < candidates.length; i++) {
             var el = candidates[i];
@@ -108,7 +224,22 @@
                 if (count === index) return el;
             }
         }
-        this.log('Wildcard not found', {tag: tag, text: text, index: index, contains: contains, found: count});
+        return null;
+    };
+
+    kjs.resolve = function(tag, text, index, contains) {
+        var selector = this.getSelector(tag);
+        // Try light DOM first
+        var candidates = document.querySelectorAll(selector);
+        var el = this._resolveFromCandidates(candidates, tag, text, index, contains);
+        if (el) return el;
+        // Shadow DOM fallback
+        if (this.hasShadowDOM()) {
+            var deepCandidates = this.querySelectorAllDeep(selector);
+            el = this._resolveFromCandidates(deepCandidates, tag, text, index, contains);
+            if (el) return el;
+        }
+        this.log('Wildcard not found', {tag: tag, text: text, index: index, contains: contains});
         return null;
     };
 })();

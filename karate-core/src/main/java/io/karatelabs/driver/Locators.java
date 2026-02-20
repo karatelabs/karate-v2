@@ -99,8 +99,12 @@ public class Locators {
             return xpathSelector(locator, contextNode);
         }
 
-        // CSS selector
-        return contextNode + ".querySelector(\"" + escapeForJs(locator) + "\")";
+        // CSS selector — use shadow DOM fallback when context is document
+        String escaped = escapeForJs(locator);
+        if (DOCUMENT.equals(contextNode)) {
+            return "(window.__kjs && window.__kjs.qsDeep ? window.__kjs.qsDeep(\"" + escaped + "\") : document.querySelector(\"" + escaped + "\"))";
+        }
+        return contextNode + ".querySelector(\"" + escaped + "\")";
     }
 
     /**
@@ -203,7 +207,12 @@ public class Locators {
                     ", null, 5, null)";
         }
 
-        return contextNode + ".querySelectorAll(\"" + escapeForJs(locator) + "\")";
+        // CSS selector — use shadow DOM fallback when context is document
+        String escaped = escapeForJs(locator);
+        if (DOCUMENT.equals(contextNode)) {
+            return "(window.__kjs && window.__kjs.qsaDeep ? window.__kjs.qsaDeep(\"" + escaped + "\") : document.querySelectorAll(\"" + escaped + "\"))";
+        }
+        return contextNode + ".querySelectorAll(\"" + escaped + "\")";
     }
 
     // ========== IIFE Wrapper ==========
@@ -301,9 +310,15 @@ public class Locators {
             locator = "." + locator;
         }
 
-        String selectorExpr = isXpathLocator
-                ? "document.evaluate(\"" + escapeForJs(locator) + "\", " + contextNode + ", null, 5, null)"
-                : contextNode + ".querySelectorAll(\"" + escapeForJs(locator) + "\")";
+        String escaped = escapeForJs(locator);
+        String selectorExpr;
+        if (isXpathLocator) {
+            selectorExpr = "document.evaluate(\"" + escaped + "\", " + contextNode + ", null, 5, null)";
+        } else if (DOCUMENT.equals(contextNode)) {
+            selectorExpr = "(window.__kjs && window.__kjs.qsaDeep ? window.__kjs.qsaDeep(\"" + escaped + "\") : document.querySelectorAll(\"" + escaped + "\"))";
+        } else {
+            selectorExpr = contextNode + ".querySelectorAll(\"" + escaped + "\")";
+        }
 
         String js = "var res = []; var fun = " + toFunction(expression) + "; var es = " + selectorExpr + "; ";
         if (isXpathLocator) {
@@ -488,7 +503,7 @@ public class Locators {
         // For CSS selectors, generate nth-of-type selectors
         if (!isXpath(locator) && !locator.startsWith("{")) {
             String escaped = escapeForJs(locator);
-            String js = "var els = document.querySelectorAll(\"" + escaped + "\");" +
+            String js = "var els = (window.__kjs && window.__kjs.qsaDeep ? window.__kjs.qsaDeep(\"" + escaped + "\") : document.querySelectorAll(\"" + escaped + "\"));" +
                     " var result = [];" +
                     " els.forEach(function(el, i) {" +
                     "   result.push(\"" + escaped + ":nth-of-type(\" + (i+1) + \")\");" +
@@ -520,7 +535,8 @@ public class Locators {
                     " var count = 0; while(iter.iterateNext()) count++; return count";
             return wrapInFunctionInvoke(js);
         }
-        return "document.querySelectorAll(\"" + escapeForJs(locator) + "\").length";
+        String escaped = escapeForJs(locator);
+        return "(window.__kjs && window.__kjs.qsaDeep ? window.__kjs.qsaDeep(\"" + escaped + "\") : document.querySelectorAll(\"" + escaped + "\")).length";
     }
 
     // ========== String Escaping ==========

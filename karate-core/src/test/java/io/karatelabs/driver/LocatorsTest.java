@@ -36,25 +36,26 @@ class LocatorsTest {
     @Test
     void testCssSelectorById() {
         String result = Locators.selector("#myId");
-        assertEquals("document.querySelector(\"#myId\")", result);
+        // Uses shadow DOM fallback when context is document
+        assertEquals("(window.__kjs && window.__kjs.qsDeep ? window.__kjs.qsDeep(\"#myId\") : document.querySelector(\"#myId\"))", result);
     }
 
     @Test
     void testCssSelectorByClass() {
         String result = Locators.selector(".myClass");
-        assertEquals("document.querySelector(\".myClass\")", result);
+        assertEquals("(window.__kjs && window.__kjs.qsDeep ? window.__kjs.qsDeep(\".myClass\") : document.querySelector(\".myClass\"))", result);
     }
 
     @Test
     void testCssSelectorByTag() {
         String result = Locators.selector("button");
-        assertEquals("document.querySelector(\"button\")", result);
+        assertEquals("(window.__kjs && window.__kjs.qsDeep ? window.__kjs.qsDeep(\"button\") : document.querySelector(\"button\"))", result);
     }
 
     @Test
     void testCssSelectorComplex() {
         String result = Locators.selector("div.container > p.text");
-        assertEquals("document.querySelector(\"div.container > p.text\")", result);
+        assertEquals("(window.__kjs && window.__kjs.qsDeep ? window.__kjs.qsDeep(\"div.container > p.text\") : document.querySelector(\"div.container > p.text\"))", result);
     }
 
     @Test
@@ -222,7 +223,8 @@ class LocatorsTest {
     @Test
     void testSelectorAllCss() {
         String result = Locators.selectorAll("div.item");
-        assertEquals("document.querySelectorAll(\"div.item\")", result);
+        // Uses shadow DOM fallback when context is document
+        assertEquals("(window.__kjs && window.__kjs.qsaDeep ? window.__kjs.qsaDeep(\"div.item\") : document.querySelectorAll(\"div.item\"))", result);
     }
 
     @Test
@@ -309,7 +311,7 @@ class LocatorsTest {
         assertTrue(result.startsWith("(function(){"));
         // Now uses arrow function syntax
         assertTrue(result.contains("var fun = _ => _.value"));
-        assertTrue(result.contains("document.querySelector(\"#myInput\")"));
+        assertTrue(result.contains("qsDeep(\"#myInput\")"));
         assertTrue(result.contains("return fun(e)"));
         assertTrue(result.endsWith("})()"));
     }
@@ -335,7 +337,7 @@ class LocatorsTest {
     @Test
     void testHighlightJs() {
         String result = Locators.highlight("#btn", 3000);
-        assertTrue(result.contains("document.querySelector(\"#btn\")"));
+        assertTrue(result.contains("qsDeep(\"#btn\")"));
         assertTrue(result.contains("background: yellow"));
         assertTrue(result.contains("border: 2px solid red"));
         assertTrue(result.contains("setTimeout"));
@@ -382,7 +384,8 @@ class LocatorsTest {
     @Test
     void testClickJs() {
         String result = Locators.clickJs("#btn");
-        assertEquals("document.querySelector(\"#btn\").click()", result);
+        assertTrue(result.contains("qsDeep(\"#btn\")"));
+        assertTrue(result.contains(".click()"));
     }
 
     @Test
@@ -530,6 +533,52 @@ class LocatorsTest {
     @Test
     void testEscapeForJsNull() {
         assertEquals("", Locators.escapeForJs(null));
+    }
+
+    // ========== Shadow DOM Fallback Tests ==========
+
+    @Test
+    void testCssSelectorShadowFallback() {
+        // Document context uses qsDeep shadow fallback
+        String result = Locators.selector("[aria-label=\"shadow\"]");
+        assertTrue(result.contains("window.__kjs.qsDeep"));
+        assertTrue(result.contains("document.querySelector"));
+    }
+
+    @Test
+    void testCssSelectorNoShadowFallbackWithContext() {
+        // Non-document context uses plain querySelector (no shadow fallback)
+        String result = Locators.selector("#child", "parentElement");
+        assertEquals("parentElement.querySelector(\"#child\")", result);
+        assertFalse(result.contains("qsDeep"));
+    }
+
+    @Test
+    void testSelectorAllShadowFallback() {
+        String result = Locators.selectorAll("button.shadow");
+        assertTrue(result.contains("window.__kjs.qsaDeep"));
+        assertTrue(result.contains("document.querySelectorAll"));
+    }
+
+    @Test
+    void testSelectorAllNoShadowFallbackWithContext() {
+        String result = Locators.selectorAll("span", "parentElement");
+        assertEquals("parentElement.querySelectorAll(\"span\")", result);
+        assertFalse(result.contains("qsaDeep"));
+    }
+
+    @Test
+    void testCountJsShadowFallback() {
+        String result = Locators.countJs("li.item");
+        assertTrue(result.contains("qsaDeep"));
+        assertTrue(result.contains(".length"));
+    }
+
+    @Test
+    void testFindAllJsShadowFallback() {
+        String result = Locators.findAllJs("li.item");
+        assertTrue(result.contains("qsaDeep"));
+        assertTrue(result.contains("nth-of-type"));
     }
 
     // ========== Error Cases ==========

@@ -989,6 +989,54 @@ The resolver expands certain tags to include ARIA roles:
 
 ---
 
+## Shadow DOM Support
+
+Modern web components (Lit, Shoelace, Material Web, Salesforce Lightning) use Shadow DOM to encapsulate their internals. Standard `document.querySelector()` cannot reach inside shadow roots.
+
+### Strategy: Light DOM First, Shadow Fallback
+
+- **`hasShadowDOM()`** — cached check for any shadow roots on the page. Zero overhead on non-shadow pages.
+- **Light DOM first** — all operations try `document.querySelector()` first
+- **Shadow fallback** — if not found and shadow DOM exists, recursively search shadow roots
+- **Returns actual elements** — shadow elements themselves are returned (not host elements), enabling proper text extraction and interaction
+
+### Shadow DOM Utilities (`window.__kjs`)
+
+| Function | Description |
+|----------|-------------|
+| `__kjs.hasShadowDOM()` | Cached check: does the page have any shadow roots? |
+| `__kjs.querySelectorDeep(sel, root)` | Recursive single-element finder across shadow boundaries |
+| `__kjs.querySelectorAllDeep(sel, root)` | Recursive all-elements finder across shadow boundaries |
+| `__kjs.qsDeep(sel)` | Convenience: `querySelector` with shadow fallback (used by `Locators.java`) |
+| `__kjs.qsaDeep(sel)` | Convenience: `querySelectorAll` with shadow fallback (used by `Locators.java`) |
+| `__kjs._getShadowText(shadowRoot)` | Extract visible text from a shadow root |
+
+### What Pierces Shadow DOM
+
+| Operation | Shadow Support | Notes |
+|-----------|---------------|-------|
+| CSS selectors (`#id`, `[attr]`) | Yes | Via `qsDeep()` fallback in `Locators.java` |
+| Wildcard locators (`{button}Text`) | Yes | `resolve()` searches shadow roots after light DOM |
+| `getVisibleText()` | Yes | Falls back to shadow root text if no light DOM text |
+| `exists()`, `click()`, `input()`, `text()` | Yes | All use `Locators.selector()` which has shadow fallback |
+| XPath locators | No | XPath is DOM-level-3, does not support shadow DOM |
+
+### Locators.java Integration
+
+CSS selectors at document scope use conditional shadow fallback:
+
+```java
+// Generated JS for selector("#myBtn")
+(window.__kjs && window.__kjs.qsDeep
+    ? window.__kjs.qsDeep("#myBtn")
+    : document.querySelector("#myBtn"))
+```
+
+- Checks `window.__kjs.qsDeep` exists before calling (backward compatible)
+- Non-document context (e.g., within an element) uses plain `querySelector` (shadow elements already resolved)
+
+---
+
 ## Deferred Features
 
 ### Commercial JavaFX Application
